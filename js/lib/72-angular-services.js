@@ -2440,8 +2440,8 @@ angular.module('MoneyNetwork')
                     for (i=local_storage_contacts.length-1 ; i >= 0 ; i-- ) {
                         if (local_storage_contacts[i].unique_id == contact.unique_id) local_storage_contacts.splice(i,1);
                     }
-                    return true ;
                     local_storage_save_contacts(false) ;
+                    return true ;
                 })
             }
         } // contact_delete

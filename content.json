@@ -83,8 +83,8 @@
    "size": 4256
   },
   "source.zip": {
-   "sha512": "f1fea7205d9906a4bde08b7b88d8175fdc595661ed500f37df00581b838af399",
-   "size": 913502
+   "sha512": "da3142576e27b3b1889df6bbdca9f191a34978dd31b422e6e20b0fbd4b2d95f0",
+   "size": 913694
   }
  },
  "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*)",
@@ -97,15 +97,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1478712691.439234,
+ "modified": 1478780970.074096,
  "postmessage_nonce_security": true,
  "sign": [
-  52777267474401798046373531303552033968075925335863985227883275494927562383844,
-  9914814704742042383150273675608344169862114732752140423309921608513530502489
+  99136198101555743856959299900201263853387514892036230843294854904393517420216,
+  101214325145799599264438182600951141983567263248148997065885003454588278570094
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HEuet2DL59pSXFocNFC/1hrblZIot0/rtiJQL9pjFLISYnz19x2jbAegukTrRquHKOePNLJ2hC8FrM7Y9fzWhec="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G4+JWKoMU0fp3hLJChrvP/sTqA6xatgl9L4oJrMtLqCG/8Gpvt70Ko8ZfpJyu8EB3DjK0H2XN4W1KunC2ck7qoM="
  },
  "signs_required": 1,
  "title": "Money Network",
