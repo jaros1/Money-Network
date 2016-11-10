@@ -1,0 +1,84 @@
+{
+  "db_name": "MoneyNetwork",
+  "db_file": "data/moneynetwork.db",
+  "version": 2,
+  "maps": {
+    "users/.+/data.json": {
+      "to_table": [
+        { "node": "search", "table": "search" },
+        { "node": "users",  "table": "users" },
+        { "node": "msg",    "table": "messages" } ]
+    },
+    "users/.+/content.json": {
+      "to_keyvalue": [ "cert_user_id", "modified" ],
+      "to_table": [
+        { "node": "files", "table": "files", "key_col": "filename"}
+      ]
+    },
+    "users/.+/status.json": {
+      "to_table": [
+        { "node": "status", "table": "status"}
+      ]
+    }
+  },
+  "tables": {
+    "search": {
+      "cols": [
+        ["user_seq", "INTEGER"],
+        ["tag", "TEXT"],
+        ["value", "TEXT"],
+        ["json_id", "INTEGER REFERENCES json (json_id)"]
+      ],
+      "indexes": ["CREATE INDEX search_i1 ON search(value, tag)"],
+      "schema_changed": 5
+    },
+    "users": {
+      "cols": [
+        ["user_seq", "INTEGER"],
+        ["pubkey", "TEXT"],
+        ["avatar", "TEXT"],
+        ["json_id", "INTEGER REFERENCES json (json_id)"]
+      ],
+      "indexes": [
+        "CREATE INDEX users_i1 ON users(pubkey)",
+        "CREATE INDEX users_i2 ON users(json_id)",
+        "CREATE INDEX json_i1 ON json(directory)"
+      ],
+      "schema_changed": 5
+    },
+    "files": {
+      "cols": [
+        ["filename", "TEXT"],
+        ["sha512", "TEXT"],
+        ["size", "INTEGER"],
+        ["json_id", "INTEGER REFERENCES json (json_id)"]
+      ],
+      "indexes": ["CREATE INDEX files_i1 ON files(json_id)"],
+      "schema_changed": 5
+    },
+    "messages": {
+      "cols": [
+        ["user_seq", "INTEGER"],
+        ["receiver_sha256", "TEXT"],
+        ["key", "TEXT"],
+        ["message", "TEXT"],
+        ["message_sha256", "TEXT"],
+        ["timestamp", "INTEGER"],
+        ["json_id", "INTEGER REFERENCES json (json_id)"]
+      ],
+      "indexes": [
+        "CREATE INDEX messages_i1 ON messages(user_seq, message_sha256)",
+        "CREATE INDEX messages_i2 ON messages(receiver_sha256)"],
+      "schema_changed": 5
+    },
+    "status": {
+      "cols": [
+        ["user_seq", "INTEGER"],
+        ["timestamp", "INTEGER"],
+        ["json_id", "INTEGER REFERENCES json (json_id)"]
+      ],
+      "indexes": ["CREATE INDEX status_i1 ON status(json_id)"],
+      "schema_changed": 5
+    }
+  }
+}

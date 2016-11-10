@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html ng-app="MoneyNetwork">
+<head>
+    <title ng-bind="n.texts.appname">Money Network loading</title>
+    <link rel="stylesheet" media="all" href="css/all.css"/>
+
+    <!-- angularJS templates - subpages in single page site - same sequence as in main menu -->
+
+    <script type="text/ng-template" id="about.html">
+        <p>
+            Money Network is a demo about money.
+            With inspiration from <a href="http://charleseisenstein.net/" target="_blank" rel="noopener noreferrer">Charles Eisenstein</a> and
+            <a href="http://www.lietaer.com/" target="_blank" rel="noopener noreferrer">Bernard Lietaer</a>.
+            Money is everywhere, money is everything and everything is money.
+            This is an attempt to make money free. Make is easier to use complementare and alternative money.
+            No more Hammerville.
+        </p>
+        <br/>
+        <p>
+            Summary:
+        <ul style="list-style-type:disc">
+            <li>No registration. User account is created in browser client.
+                A anonymous <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a> cert is being for client communication.
+            </li>
+            <li>Search for contacts in Money Network. Server returns possible contacts. Verify contacts.</li>
+            <li>Chat with contacts. Quick dialog. Small picture supported. todo: group chat.</li>
+            <li>Free money definition. Use existing money definitions from network or create your own type of money.</li>
+            <li>Use money to exchange goods and services.
+                Transactions are stored encrypted in <b>todo:</b> block chains, clients or
+                on <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
+            </li>
+            <li>Full client side encryption. Only very little information is shared public and unencrypted.</li>
+            <li>A client network. Data on clients. Minimum data on servers. Servers are used for communication between
+                clients.
+            </li>
+            <li>Open source. Feel free to clone, <a href="source.zip" target="_blank" rel="noopener noreferrer">download</a>,
+                modify and make your own website or app.
+            </li>
+            <li>You may want to use <a href="https://www.torproject.org/" target="_blank" rel="noopener noreferrer">TOR</a>
+                when using Money Network
+                on <a href="https://zeronet.readthedocs.io/en/latest/faq/#how-to-use-zeronet-with-tor" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
+                You may NOT want to use a public ZeroNet proxy on clearnet.
+            </li>
+            <li>
+                You may want to make a backup <b>todo:</b> link of your local data. Everything is lost if you clear
+                browser data or switches to an other browser client.
+            </li>
+            <li>
+                You may want to delete your data <b>todo:</b> link
+                from <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>
+                and browser client when finished used this demo.
+            </li>
+            <li>
+                Data from inactive user accounts will be deleted from ZeroNet after {{a.no_days_before_cleanup}} days.
+                The data is still in client and will be restored from client to ZeroNet after next user login.
+            </li>
+        </ul>
+        </p>
+
+        <!-- end about.html -->
+    </script>
+
+    <script type="text/ng-template" id="money.html">
+        money.html - page to manage complementare and alternative money
+
+        <div style="width: 100%">
+            <div class="media-left" style="width: 20%; overflow-y: scroll;">
+                <p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p><p>Left contents</p>
+            </div>
+
+            <div class="media-right" style="width: 70%;">
+                <p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p><p>Right contents</p>
+            </div>
+        </div>
+
+        <!-- end money.html -->
+    </script>
+
+    <script type="text/ng-template" id="network.html">
+        <p ng-show="c.show_welcome_msg()">
+            No contacts were found. Please go to "Account" page and enter/update search tags.
+        </p>
+        <div ng-hide="c.show_welcome_msg()" class="bodyfull">
+            <p>
+                Money Network contacts. Use this page to manage your Money Network contacts.
+            </p>
+            <p>
+            </p>
+            <p>
+                Filter:
+                <input type="button" value="All" ng-click="c.toogle_filter('all')" style="color: {{c.filters.all}}"/>&nbsp;
+                <input type="button" value="New" ng-click="c.toogle_filter('new')" style="color: {{c.filters.new}}"/>&nbsp;
+                <input type="button" value="Unverified" ng-click="c.toogle_filter('unverified')"
+                       style="color: {{c.filters.unverified}}"/>&nbsp;
+                <input type="button" value="Verified" ng-click="c.toogle_filter('verified')"
+                       style="color: {{c.filters.verified}}"/>&nbsp;
+                <input type="button" value="Ignored" ng-click="c.toogle_filter('ignore')"
+                       style="color: {{c.filters.ignore}}"/>&nbsp;
+
+                Sort:
+                <input type="text" placeholder="Start typing" ng-model="c.contact_sort" class="user_info" style="width: 140px"
+                       uib-typeahead="sort for sort in c.contact_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
+                       alt="{{c.contact_sort_title}}" title="{{c.contact_sort_title}}" typeahead-on-select="c.contact_sort_changed()">
+            </p>
+            <table>
+                <thead>
+                <tr>
+                    <th colspan="2" style="text-align: center"
+                        title="User id (ZeroNet or alias) and contact status (new, added, unverfied, verified and ignore). Click to User id to edit">
+                        User
+                    </th>
+                    <th style="text-align: center" colspan="3" title="User information">
+                        User information
+                    </th>
+                    <th></th>
+                    <th style="text-align: center">
+                        Action
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td colspan="5">&nbsp;</td>
+                </tr>
+                </tbody>
+                <tbody ng-repeat="x in c.contacts|filter:c.filter_contacts|orderBy:c.contact_order_by">
+                <tr ng-repeat="y in x.search">
+                    <td ng-hide="y.edit_alias" ng-bind-html="c.get_user_info(x,y)" ng-click="c.edit_alias(x,y)"
+                        title="{{x.cert_user_id}}. Click to edit">
+                    </td>
+                    <td ng-show="y.edit_alias" title="{{c.edit_alias_title}}">
+                        <input type="text" ng-model="x.new_alias" style="width: 110px" id="{{x.$$hashKey}}:alias"
+                               on-key-enter="c.save_user_info(x,y)" on-key-escape="c.cancel_edit_alias(x,y)">
+                    </td>
+                    <td ng-show="y.row == 1" rowspan="{{x.search.length}}" style="vertical-align: top">
+                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat" ng-click="c.chat_contact(x)">
+                    </td>
+                    <td ng-bind-html="y.tag"></td>
+                    <td>:</td>
+                    <td ng-bind-html="y|formatSearchValue" title="{{y|formatSearchTitle}}"></td>
+                    <td>&nbsp;</td>
+                    <td>
+                    <span ng-show="y.row == 1">
+                    <input ng-show="x.type == 'new'" type="button" value="Ignore" ng-click="c.contact_ignore(x)"/>
+                    <input ng-show="x.type == 'ignore'" type="button" value="Unplonk" ng-click="c.contact_unplonk(x)"/>
+                    <input ng-show="x.type == 'new'" type="button" value="Add" ng-click="c.contact_add(x)"/>
+                    <input ng-show="x.type == 'ignore'" type="button" value="Add" ng-click="c.contact_add(x)"/>
+                    <input ng-show="x.type == 'unverified'" type="button" value="Remove"
+                           ng-click="c.contact_remove(x)"/>
+                    <input ng-show="x.type == 'unverified'" type="button" value="Verify"
+                           ng-click="c.contact_verify(x)"/>
+                    <input ng-show="x.type != 'ignore'" type="button" value="Chat" ng-click="c.chat_contact(x)"/>
+                    </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="5">&nbsp;</td>
+                </tr>
+                </tbody>
+            </table>
+
+        </div>
+
+        <!-- end network.html -->
+    </script>
+
+    <script type="text/ng-template" id="chat.html">
+
+        <div class="bodyfull">
+
+        <p ng-show="c.show_welcome_msg1()">
+            No contacts were found. Please go to "Account" page and enter/update search tags.
+        </p>
+        <p ng-show="c.show_welcome_msg2()">
+            No chat messages were found. Please go to "Network" page and add contacts and/or start chatting.
+        </p>
+
+        <div ng-show="c.show_no_welcome()">
+            <p>
+                Chat with your Money Network contacts. Chat is private and end to end encrypted.
+                <span ng-hide="c.contact">Click on avatar to start a new chat / manage contact.</span>
+            </p>
+
+            <p ng-hide="c.contact">
+                Filter:
+                <input type="button" value="All" ng-click="c.toogle_filter('all')" style="color: {{c.filters.all}}"/>&nbsp;
+                <input type="button" value="New" ng-click="c.toogle_filter('new')" style="color: {{c.filters.new}}"/>&nbsp;
+                <input type="button" value="Unverified" ng-click="c.toogle_filter('unverified')"
+                       style="color: {{c.filters.unverified}}"/>&nbsp;
+                <input type="button" value="Verified" ng-click="c.toogle_filter('verified')"
+                       style="color: {{c.filters.verified}}"/>&nbsp;
+                <input type="button" value="Ignored" ng-click="c.toogle_filter('ignore')"
+                       style="color: {{c.filters.ignore}}"/>&nbsp;
+
+                Sort:
+                <input type="text" placeholder="Start typing" ng-model="c.chat_sort" class="user_info" style="width: 140px"
+                       uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
+                       alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
+
+                Two panel chat:
+                <input type="checkbox" ng-model="c.two_panel_chat" ng-change="c.two_panel_chat_changed()">
+
+            </p>
+            <p ng-show="c.contact">
+                Sort:
+                <input type="text" placeholder="Start typing" ng-model="c.chat_sort" class="user_info" style="width: 140px"
+                       uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
+                       alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
+            </p>
+
+            <table ng-show="c.contact">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Tag</th>
+                    <th></th>
+                    <th>Value</th>
+                    <th></th>
+                    <th>Privacy</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                        <img ng-src="{{c.contact|findContactAvatar}}" class="img-circle img-sm">
+                    </td>
+                    <td>User Id</td>
+                    <td>&nbsp;</td>
+                    <td>
+                    <span ng-hide="c.contact.edit_alias" ng-bind-html="c.contact|aliasOrShortCertUserId"
+                          title="{{c.contact.cert_user_id}}. Click to edit" ng-click="c.edit_alias()">
+                    </span>
+                    <span ng-show="c.contact.edit_alias">
+                        <input type="text" ng-model="c.contact.new_alias" style="width: 110px" id="contact_alias_id"
+                               on-key-enter="c.save_user_info()" on-key-escape="c.cancel_edit_alias()">
+                    </span>
+                    </td>
+                    <td>&nbsp;</td>
+                    <td>-</td>
+                    <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                        <input ng-show="c.contact.type == 'new'" type="button" value="Ignore" ng-click="c.contact_ignore()"/>
+                        <input ng-show="c.contact.type == 'ignore'" type="button" value="Unplonk" ng-click="c.contact_unplonk()"/>
+                        <input ng-show="c.contact.type == 'new'" type="button" value="Add" ng-click="c.contact_add()"/>
+                        <input ng-show="c.contact.type == 'ignore'" type="button" value="Add" ng-click="c.contact_add()"/>
+                        <input ng-show="c.contact.type == 'unverified'" type="button" value="Remove"
+                               ng-click="c.contact_remove()"/>
+                        <input ng-show="c.contact.type == 'unverified'" type="button" value="Verify"
+                               ng-click="c.contact_verify()" alt="Send verification request to contact" title="Send verification request to contact"/>
+                        <input ng-show="c.show_contact_delete()" type="button" value="Delete" ng-click="c.contact_delete()"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td>User type</td>
+                    <td>&nbsp;</td>
+                    <td ng-bind="c.contact.type"></td>
+                    <td>&nbsp;</td>
+                    <td>-</td>
+                </tr>
+                <tr ng-repeat="s in c.contact.search">
+                    <td ng-bind-html="s.tag"></td>
+                    <td></td>
+                    <td ng-bind-html="s|formatSearchValue" title="{{s|formatSearchTitle}}"></td>
+                    <td></td>
+                    <td ng-bind-html="s.privacy"></td>
+                </tr>
+                </tbody>
+            </table>
+
+            <br>
+
+            <ul class="list-unstyled media-block">
+
+                <li ng-show="c.contact">
+
+                    <div class="media-left">
+                        <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Avatar">
+                    </div>
+
+                    <div class="media-body pad-hor">
+                        <form name="new_chat_msg_form" class="css-form" novalidate>
+                            <div imagedrop on-image-drop="c.imageDropped()">
+                                <table class="speech" style="width: 100%">
+                                    <tbody>
+                                    <tr>
+                                        <td style="white-space: nowrap;"><a href="#" class="media-heading"
+                                                                            ng-bind-html="c.alias">Me</a></td>
+                                        <td style="text-align: right; vertical-align: top; width: 99%">
+                                            <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" style="width: 99%">
+                                        <textarea ng-show="c.contact.pubkey" class="autosize postfield new_chat_msg" id="new_chat_msg"
+                                                  placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox" rows="1" required
+                                                  ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
+                                        </textarea>
+                                        <span ng-hide="c.contact.pubkey">
+                                            Chat disabled. No public key found for this contact at ZeroNet.
+                                            Could be an old inactive contact. Data on ZeroNet are deleted after {{c.no_days_before_cleanup}} days.
+                                            Keep contact and chat if you think that contact will return to Money Network later.
+                                            Delete contact and chat if you think that user has left Money Network for good.
+                                        </span>
+                                        </td>
+                                    </tr>
+                                    <tr ng-show="c.new_chat_src">
+                                        <td colspan="2">
+                                            <div style="position: relative; display: inline-block;">
+                                                <span ng-click="c.new_char_src_remove()" class="glyphicon glyphicon-remove" style="position: absolute; right: 0;"></span>
+                                                <img ng-src="{{c.new_chat_src}}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" style="width: 99%; text-align: right">
+                                            <button type="submit" ng-click="c.send_chat_msg()" ng-disabled="new_chat_msg_form.$invalid">Send</button>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </form>
+                    </div>
+                </li>
+
+                <li ng-repeat="m in c.messages|filter:c.filter|orderBy:c.chat_order_by" class="mar-btm">
+
+                    <div ng-show="(m.message.folder == 'outbox')" class="media-left">
+                        <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Click to chat" title="Click to chat" ng-click="c.chat_contact(m.contact)">
+                    </div>
+                    <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
+
+                        <!-- show outgoing message -->
+                        <table class="speech" ng-hide="m.edit_chat_message">
+                            <tr>
+                                <td><a href="#" class="media-heading" ng-bind-html="c.alias">Me</a></td>
+                                <td style="text-align: right; vertical-align: top">
+                                    <span class="speech-time" alt="Message size in browser and on ZeroNet" title="Message size in browser and on ZeroNet"> {{m.message|formatMsgSize}}</span>
+                                    <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
+                                    <a class="icon icon-edit" href="" ng-show="m.message.msgtype = 'chat msg'" ng-click="c.edit_chat_msg(m)"></a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><span ng-bind-html="m|formatChatMessage"></span></td>
+                            </tr>
+                            <tr ng-show="c.show_image(m)">
+                                <td colspan="2">
+                                    <img ng-src="{{m.message.message.image}}">
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- edit outgoing message -->
+                        <form name="{{m|chatEditFormName}}" ng-show="m.edit_chat_message" class="css-form" novalidate>
+
+                            <table class="speech" style="width: 100%">
+                                <tr>
+                                    <td style="white-space: nowrap;"><a href="#" class="media-heading"
+                                                                        ng-bind-html="c.alias">Me</a></td>
+                                    <td style="text-align: right; vertical-align: top; width: 99%">
+                                        <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="width: 99%">
+                                        <textarea class="autosize postfield new_chat_msg" id="{{m|chatEditTextAreaId}}"
+                                                  placeholder="Write something..." rows="1" required
+                                                  ng-keyup="c.handleTextAreaHeight($event)">
+                                        </textarea>
+                                    </td>
+                                </tr>
+                                <tr ng-show="c.show_image(m)">
+                                    <td colspan="2">
+                                        <div style="position: relative; display: inline-block;">
+                                            <span ng-click="c.edit_chat_message_remove_image(m)"
+                                                  class="glyphicon glyphicon-remove"
+                                                  style="position: absolute; right: 0;">
+                                            </span>
+                                            <img id="{{m|chatEditImgId}}">
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="width: 99%; text-align: right">
+                                        <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
+                                        <button type="submit" ng-click="c.delete_edit_chat_msg(m)">Delete</button>
+                                        <button type="submit" ng-click="c.save_chat_msg(m)"
+                                                ng-disabled="{{m|chatEditFormDisabled}}">Send
+                                        </button>
+                                    </td>
+                                </tr>
+                            </table>
+
+                        </form>
+                    </div>
+
+                    <div ng-show="(m.message.folder == 'inbox')" class="media-right">
+                        <img ng-src="{{m.contact|findContactAvatar}}" class="img-circle img-sm" alt="Click to chat"  title="Click to chat" ng-click="c.chat_contact(m.contact)">
+                    </div>
+                    <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
+                        <table class="speech">
+                            <tr>
+                                <td style="text-align: left"><a href="#" class="media-heading" ng-bind-html="m.contact|aliasOrShortCertUserId"></a></td>
+                                <td style="text-align: right; vertical-align: top">
+                                    <span class="speech-time" alt="Message size in browser" title="Message size in browser"> {{m.message|formatMsgSize}}</span>
+                                    <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
+                                    <a class="icon icon-edit" href="" ng-click="c.edit_chat_msg(m)" alt="Click to delete" title="Click to delete"></a>
+                                    <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href="" ng-click="c.enter_password(m)" alt="Click to verify" title="Click to verify"></a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td ng-bind-html="m|formatChatMessage" colspan="2"></td>
+                            </tr>
+                            <tr ng-show="c.show_image(m)">
+                                <td colspan="2">
+                                    <img ng-src="{{m.message.message.image}}">
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </li>
+            </ul>
+
+        </div>
+
+        </div>
+        <!-- end chat.html -->
+    </script>
+
+    <script type="text/ng-template" id="chat2.html">
+
+        <div class="bodyleft">
+            <p>
+                Sort:
+                <input type="text" placeholder="Start typing" ng-model="c.contact_sort" class="user_info" style="width: 140px"
+                       uib-typeahead="sort for sort in c.contact_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
+                       alt="{{c.contact_sort_title}}" title="{{c.contact_sort_title}}" typeahead-on-select="c.contact_sort_changed()">
+            </p>
+
+            <table>
+                <thead>
+                <tr>
+                    <th colspan="2" style="text-align: center"
+                        title="User id (ZeroNet or alias) and contact status (new, added, unverfied, verified and ignore). Click to User id to edit">
+                        User
+                    </th>
+                    <th style="text-align: center" colspan="3" title="User information">
+                        User information
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td colspan="3">&nbsp;</td>
+                </tr>
+                </tbody>
+                <tbody ng-repeat="x in c.contacts|filter:c.filter_contacts|orderBy:c.contact_order_by">
+                <tr>
+                    <td rowspan="{{x.search.length+1}}" style="vertical-align: top">
+                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat" ng-click="c.chat_contact(x)">
+                    </td>
+                    <td>User</td>
+                    <td>:</td>
+                    <td ng-hide="x.edit_alias" ng-bind-html="x|aliasOrShortCertUserId" ng-click="c.edit_alias(x)"
+                        title="{{x.cert_user_id}}. Click to edit">
+                    </td>
+                    <td ng-show="x.edit_alias" title="{{c.edit_alias_title}}">
+                        <input type="text" ng-model="x.new_alias" style="width: 110px" id="{{x.$$hashKey}}:alias"
+                               on-key-enter="c.save_user_info(x)" on-key-escape="c.cancel_edit_alias(x)">
+                    </td>
+                </tr>
+                <tr ng-repeat="y in x.search">
+                    <td ng-bind-html="y.tag"></td>
+                    <td>:</td>
+                    <td ng-bind-html="y|formatSearchValue" title="{{y|formatSearchTitle}}"></td>
+                </tr>
+                <tr>
+                    <td colspan="3">&nbsp;</td>
+                </tr>
+                </tbody>
+            </table>
+
+
+        </div>
+
+        <div class="bodyright">
+
+            <p ng-hide="(c.contact && !c.two_panel_chat)">
+                Filter:
+                <input type="button" value="All" ng-click="c.toogle_filter('all')" style="color: {{c.filters.all}}"/>&nbsp;
+                <input type="button" value="New" ng-click="c.toogle_filter('new')" style="color: {{c.filters.new}}"/>&nbsp;
+                <input type="button" value="Unverified" ng-click="c.toogle_filter('unverified')"
+                       style="color: {{c.filters.unverified}}"/>&nbsp;
+                <input type="button" value="Verified" ng-click="c.toogle_filter('verified')"
+                       style="color: {{c.filters.verified}}"/>&nbsp;
+                <input type="button" value="Ignored" ng-click="c.toogle_filter('ignore')"
+                       style="color: {{c.filters.ignore}}"/>&nbsp;
+
+                Sort:
+                <input type="text" placeholder="Start typing" ng-model="c.chat_sort" class="user_info" style="width: 140px"
+                       uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8"
+                       typeahead-editable="false"
+                       alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
+
+                <span class="two_panel_chat">
+                    Two panel chat:
+                    <input type="checkbox" ng-model="c.two_panel_chat" ng-change="c.two_panel_chat_changed()">
+                </span>
+
+            </p>
+            <p ng-show="c.contact">
+                Sort:
+                <input type="text" placeholder="Start typing" ng-model="c.chat_sort" class="user_info" style="width: 140px"
+                       uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8"
+                       typeahead-editable="false"
+                       alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
+            </p>
+
+            <table ng-show="c.contact">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Tag</th>
+                    <th></th>
+                    <th>Value</th>
+                    <th></th>
+                    <th>Privacy</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                        <img ng-src="{{c.contact|findContactAvatar}}" class="img-circle img-sm">
+                    </td>
+                    <td>User Id</td>
+                    <td>&nbsp;</td>
+                    <td>
+                    <span ng-hide="c.contact.edit_alias" ng-bind-html="c.contact|aliasOrShortCertUserId"
+                          title="{{c.contact.cert_user_id}}. Click to edit" ng-click="c.edit_alias()">
+                    </span>
+                    <span ng-show="c.contact.edit_alias">
+                        <input type="text" ng-model="c.contact.new_alias" style="width: 110px" id="contact_alias_id"
+                               on-key-enter="c.save_user_info()" on-key-escape="c.cancel_edit_alias()">
+                    </span>
+                    </td>
+                    <td>&nbsp;</td>
+                    <td>-</td>
+                    <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                        <input ng-show="c.contact.type == 'new'" type="button" value="Ignore"
+                               ng-click="c.contact_ignore()"/>
+                        <input ng-show="c.contact.type == 'ignore'" type="button" value="Unplonk"
+                               ng-click="c.contact_unplonk()"/>
+                        <input ng-show="c.contact.type == 'new'" type="button" value="Add" ng-click="c.contact_add()"/>
+                        <input ng-show="c.contact.type == 'ignore'" type="button" value="Add"
+                               ng-click="c.contact_add()"/>
+                        <input ng-show="c.contact.type == 'unverified'" type="button" value="Remove"
+                               ng-click="c.contact_remove()"/>
+                        <input ng-show="c.contact.type == 'unverified'" type="button" value="Verify"
+                               ng-click="c.contact_verify()" alt="Send verification request to contact"
+                               title="Send verification request to contact"/>
+                        <input ng-show="c.show_contact_delete()" type="button" value="Delete"
+                               ng-click="c.contact_delete()"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td>User type</td>
+                    <td>&nbsp;</td>
+                    <td ng-bind="c.contact.type"></td>
+                    <td>&nbsp;</td>
+                    <td>-</td>
+                </tr>
+                <tr ng-repeat="s in c.contact.search">
+                    <td ng-bind-html="s.tag"></td>
+                    <td></td>
+                    <td ng-bind-html="s|formatSearchValue" title="{{s|formatSearchTitle}}"></td>
+                    <td></td>
+                    <td ng-bind-html="s.privacy"></td>
+                </tr>
+                </tbody>
+            </table>
+
+            <br>
+
+            <ul class="list-unstyled media-block">
+
+                <li ng-show="c.contact">
+
+                    <div class="media-left">
+                        <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Avatar">
+                    </div>
+
+                    <div class="media-body pad-hor">
+                        <form name="new_chat_msg_form" class="css-form" novalidate>
+                            <div imagedrop on-image-drop="c.imageDropped()">
+                                <table class="speech" style="width: 100%">
+                                    <tbody>
+                                    <tr>
+                                        <td style="white-space: nowrap;"><a href="#" class="media-heading"
+                                                                            ng-bind-html="c.alias">Me</a></td>
+                                        <td style="text-align: right; vertical-align: top; width: 99%">
+                                            <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" style="width: 99%">
+                                        <textarea ng-show="c.contact.pubkey" class="autosize postfield new_chat_msg"
+                                                  id="new_chat_msg"
+                                                  placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox"
+                                                  rows="1" required
+                                                  ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
+                                        </textarea>
+                                        <span ng-hide="c.contact.pubkey">
+                                            Chat disabled. No public key found for this contact at ZeroNet.
+                                            Could be an old inactive contact. Data on ZeroNet are deleted after {{c.no_days_before_cleanup}} days.
+                                            Keep contact and chat if you think that contact will return to Money Network later.
+                                            Delete contact and chat if you think that user has left Money Network for good.
+                                        </span>
+                                        </td>
+                                    </tr>
+                                    <tr ng-show="c.new_chat_src">
+                                        <td colspan="2">
+                                            <div style="position: relative; display: inline-block;">
+                                                <span ng-click="c.new_char_src_remove()"
+                                                      class="glyphicon glyphicon-remove"
+                                                      style="position: absolute; right: 0;"></span>
+                                                <img ng-src="{{c.new_chat_src}}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" style="width: 99%; text-align: right">
+                                            <button type="submit" ng-click="c.send_chat_msg()"
+                                                    ng-disabled="new_chat_msg_form.$invalid">Send
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </form>
+                    </div>
+                </li>
+
+                <li ng-repeat="m in c.messages|filter:c.filter|orderBy:c.chat_order_by" class="mar-btm">
+
+                    <div ng-show="(m.message.folder == 'outbox')" class="media-left">
+                        <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Click to chat"
+                             title="Click to chat" ng-click="c.chat_contact(m.contact)">
+                    </div>
+                    <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
+
+                        <!-- show outgoing message -->
+                        <table class="speech" ng-hide="m.edit_chat_message">
+                            <tr>
+                                <td><a href="#" class="media-heading" ng-bind-html="c.alias">Me</a></td>
+                                <td style="text-align: right; vertical-align: top">
+                                    <span class="speech-time" alt="Message size in browser and on ZeroNet"
+                                          title="Message size in browser and on ZeroNet"> {{m.message|formatMsgSize}}</span>
+                                    <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
+                                            class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
+                                    <a class="icon icon-edit" href="" ng-show="m.message.msgtype = 'chat msg'"
+                                       ng-click="c.edit_chat_msg(m)"></a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><span ng-bind-html="m|formatChatMessage"></span></td>
+                            </tr>
+                            <tr ng-show="c.show_image(m)">
+                                <td colspan="2">
+                                    <img ng-src="{{m.message.message.image}}">
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- edit outgoing message -->
+                        <form name="{{m|chatEditFormName}}" ng-show="m.edit_chat_message" class="css-form" novalidate>
+
+                            <table class="speech" style="width: 100%">
+                                <tr>
+                                    <td style="white-space: nowrap;"><a href="#" class="media-heading"
+                                                                        ng-bind-html="c.alias">Me</a></td>
+                                    <td style="text-align: right; vertical-align: top; width: 99%">
+                                        <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="width: 99%">
+                                        <textarea class="autosize postfield new_chat_msg" id="{{m|chatEditTextAreaId}}"
+                                                  placeholder="Write something..." rows="1" required
+                                                  ng-keyup="c.handleTextAreaHeight($event)">
+                                        </textarea>
+                                    </td>
+                                </tr>
+                                <tr ng-show="c.show_image(m)">
+                                    <td colspan="2">
+                                        <div style="position: relative; display: inline-block;">
+                                            <span ng-click="c.edit_chat_message_remove_image(m)"
+                                                  class="glyphicon glyphicon-remove"
+                                                  style="position: absolute; right: 0;">
+                                            </span>
+                                            <img id="{{m|chatEditImgId}}">
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="width: 99%; text-align: right">
+                                        <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
+                                        <button type="submit" ng-click="c.delete_edit_chat_msg(m)">Delete</button>
+                                        <button type="submit" ng-click="c.save_chat_msg(m)"
+                                                ng-disabled="{{m|chatEditFormDisabled}}">Send
+                                        </button>
+                                    </td>
+                                </tr>
+                            </table>
+
+                        </form>
+                    </div>
+
+                    <div ng-show="(m.message.folder == 'inbox')" class="media-right">
+                        <img ng-src="{{m.contact|findContactAvatar}}" class="img-circle img-sm" alt="Click to chat"
+                             title="Click to chat" ng-click="c.chat_contact(m.contact)">
+                    </div>
+                    <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
+                        <table class="speech">
+                            <tr>
+                                <td style="text-align: left"><a href="#" class="media-heading"
+                                                                ng-bind-html="m.contact|aliasOrShortCertUserId"></a>
+                                </td>
+                                <td style="text-align: right; vertical-align: top">
+                                    <span class="speech-time" alt="Message size in browser"
+                                          title="Message size in browser"> {{m.message|formatMsgSize}}</span>
+                                    <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
+                                            class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
+                                    <a class="icon icon-edit" href="" ng-click="c.edit_chat_msg(m)"
+                                       alt="Click to delete" title="Click to delete"></a>
+                                    <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
+                                       ng-click="c.enter_password(m)" alt="Click to verify" title="Click to verify"></a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td ng-bind-html="m|formatChatMessage" colspan="2"></td>
+                            </tr>
+                            <tr ng-show="c.show_image(m)">
+                                <td colspan="2">
+                                    <img ng-src="{{m.message.message.image}}">
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </li>
+            </ul>
+
+
+        </div>
+        <!-- end chat2.html -->
+    </script>
+
+
+    <script type="text/ng-template" id="user.html">
+        <p ng-show="u.show_welcome_msg()">
+            Welcome to Money Network. You are new here and you must have a network.
+            Tags in this page (Account) are used when searching for contacts (Network) and for personal information
+            (real or fake values).
+            <ul ng-show="u.show_welcome_msg()" style="list-style-type: disc;">
+                <li>Tags. Tag and value pairs: Examples: Name: Donald Duck, Location: US, Phone: 1234567890.</li>
+                <li>Wildcards can be used in Tag and Value. "%" = many characters. "_" = one character.</li>
+                <li>Privacy: Hidden. 100% private. Total private search. No one can see your search.</li>
+                <li>Privacy: Search. 100% public. Other users can see your "Search" tag words and find you.</li>
+                <li>Private: Unverified. Some info send encrypted to untrusted contact when adding contact to your contact list.</li>
+                <li>Private: Verified. More info send encrypted to trusted contact after end verification.</li>
+                <li><b>Quick start: Enter %, % and Hidden, save and check out "Network" page.</b> Use tab to add extra lines. Have fun.</li>
+            </ul>
+        <p>
+
+        <p ng-hide="u.show_welcome_msg()">
+            It is not required but you should add some info to identify you as user in
+            the Money Network.
+            It could be name, email, phone number, foto, company name, url, GPS location or whatever.
+            Real or fake values.
+            Wildcards can be used in Tag and Value. "%" = many characters. "_" = one character.
+            User info are stored locally in your browser / on your device and are validated by
+            anyone.
+            The user identification is used when searching for contacts, verifying contacts and is displayed in contact
+            list.
+            You decide what information that is revealed to other users in the Money Network.
+            You decide when to trust other users in the Money Network.
+            Thank you for using this Money Network demo.
+        </p>
+
+        <p>
+            User identification:
+            <button type="submit" disabled ng-show="user_info_form.$invalid">
+                <span title="Please correct errors" class="glyphicon glyphicon-ok"
+                      style="color: green; font-size: larger"></span>
+            </button>
+            <button type="submit" ng-click="u.update_user_info()" ng-show="user_info_form.$valid">
+                <span title="Save changes" class="glyphicon glyphicon-ok"
+                      style="color: green; font-size: larger"></span>
+            </button>
+            <button type="submit" ng-click="u.revert_user_info()">
+                <span title="Revert changes" class="glyphicon glyphicon-refresh"
+                      style="color: red; font-size: larger"></span>
+            </button>
+            <img ng-src="{{u.avatar.src}}" ng-click="u.upload_avatar()" title="Click to change avatar">
+            <span ng-hide="u.editing_alias" ng-bind-html="u.alias" title="Click to edit your alias"
+                  ng-click="u.edit_alias()"></span>
+            <span ng-show="u.editing_alias" title="Edit alias. Press ENTER to save. Press ESC to cancel">
+                <input type="text" ng-model="u.alias" style="width: 110px" id="alias_id"
+                       on-key-enter="u.save_alias()" on-key-escape="u.cancel_edit_alias()">
+            </span>
+
+        </p>
+        <form name="user_info_form" class="css-form" novalidate>
+            <table border="1">
+                <thead>
+                <tr>
+                    <th style="text-align: center"
+                        title="Tag: Name, Email, Phone, Photo, Company, URL and/or GPS. Tags are shared anonymous in tag cloud">
+                        Tag
+                    </th>
+                    <th style="text-align: center" title="Tag value: Username, email address, profile picture etc.">
+                        Value
+                    </th>
+                    <th style="text-align: center"
+                        title="Privacy: Search, Public, Unverified, Verified or Hidden. See mouseover texts or click checkbox for more info">
+                        Privacy
+                        <input type="checkbox" ng-model="u.show_privacy_title"
+                               ng-change="u.show_privacy_title_changed()">
+                    </th>
+                    <th style="text-align: center" ng-show="u.show_privacy_title">Privacy details</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr ng-repeat="x in u.user_info">
+                    <td title="Start typing. Select tag. Name, Email, Phone etc.">
+                        <input type="text" placeholder="Start typing"
+                               ng-model="x.tag" ng-required="u.is_tag_required(x)"
+                               uib-typeahead="tag for tag in u.tags | filter:$viewValue | limitTo:8"
+                               class="user_info" style="width: 80px">
+                    </td>
+                    <td title="Enter tag value. Name, email-address, phone number etc">
+                        <input type="text"
+                               ng-model="x.value" ng-required="u.is_value_required(x)"
+                               class="user_info">
+                    </td>
+                    <td title="{{x.privacy|privacyTitle}}">
+                        <input type="text" placeholder="Start typing"
+                               ng-model="x.privacy"
+                               ng-required="u.is_privacy_required(x)" on-key-enter="u.insert_row(x)"
+                               uib-typeahead="privacy for privacy in u.privacy_options | filter:$viewValue | limitTo:8"
+                               typeahead-editable="false"
+                               class="user_info" style="width: 80px">
+                    </td>
+                    <td ng-show="u.show_privacy_title">{{x.privacy|privacyTitle}}</td>
+                    <td title="Delete row">
+                    <span ng-click="u.delete_row(x)"
+                          class="glyphicon glyphicon-remove" style="color: red; font-size: larger"></span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <p>
+                Update:
+                <button type="submit" disabled ng-show="user_info_form.$invalid">
+                <span title="Please correct errors" class="glyphicon glyphicon-ok"
+                      style="color: green; font-size: larger"></span>
+                </button>
+                <button type="submit" ng-click="u.update_user_info()" ng-show="user_info_form.$valid">
+                <span title="Save changes" class="glyphicon glyphicon-ok"
+                      style="color: green; font-size: larger"></span>
+                </button>
+                <button type="submit" ng-click="u.revert_user_info()">
+                <span title="Revert changes" class="glyphicon glyphicon-refresh"
+                      style="color: red; font-size: larger"></span>
+                </button>
+            </p>
+        </form>
+
+        <p>
+            <b>todo:</b> add a delete user data button. Delete user data from data.json. Data user data from localStorage. Log
+            out.
+        </p>
+
+        <!-- end user.html -->
+    </script>
+
+    <script type="text/ng-template" id="auth.html">
+        <p>
+            Login is used to protect data stored in your browser. Password and your data is stored encrypted in your
+            browser / on
+            your device. Not on a server.
+        </p>
+
+        <form ng-hide="a.is_logged_in()" name="device_login_form" ng-submit="a.login_or_register()">
+            <table>
+                <thead>
+                <tr>
+                    <th></th>
+                    <th style="width:52px"></th>
+                    <th style="width:52px"></th>
+                    <th style="width:52px"></th>
+                    <th></th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr>
+                    <td></td>
+                    <td colspan="4">
+                        Log in <input type="radio" ng-model="a.register" value="N"> &nbsp;&nbsp;
+                        Register <input type="radio" ng-model="a.register" value="Y">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Password</td>
+                    <td colspan="3">
+                        <input id="auth_password" type="password" name="device_password" ng-model="a.device_password"
+                               required ng-minlength="10" ng-maxlength="50" placeholder="Enter password"
+                               style="width: 120px">
+                    </td>
+                    <td><input ng-show="a.register == 'N'" type="submit" value="Log in" ng-hide="ctrl.register" ng-disabled="a.login_disabled()">
+                    </td>
+                </tr>
+                <tr ng-show="device_login_form.device_password.$error.required">
+                    <td colspan="5">Password is a required field</td>
+                </tr>
+                <tr ng-show="device_login_form.device_password.$error.minlength">
+                    <td colspan="5">Minimum password length is 10</td>
+                </tr>
+                <tr ng-show="device_login_form.device_password.$error.maxlength">
+                    <td colspan="5">Maximum password length is 50</td>
+                </tr>
+                </tbody>
+
+                <tbody ng-show="a.register == 'Y'">
+                <tr>
+                    <td>Confirm<br>password</td>
+                    <td colspan="3">
+                        <input type='password' name="confirm_device_password" ng-model="a.confirm_device_password"
+                               on-key-enter="a.login_or_register()" placeholder="Confirm password"
+                               style="width: 120px">
+                    </td>
+                    <td><input ng-show="a.register" type="submit" value="Register" ng-disabled="a.register_disabled()">
+                    </td>
+                </tr>
+                <tr ng-show="a.confirm_device_password != a.device_password">
+                    <td colspan="5">Passwords do not match</td>
+                </tr>
+                </tbody>
+
+            </table>
+        </form>
+        <p ng-show="a.register == 'Y'">
+            Please choose a secure password (10-50 characters) and do <b>NOT</b> forget or lose it.
+            Remember your password. There is <b>NO</b> help if you forget your password.
+            Use "Register" after forgotten password to create a new empty account.
+            Register takes a few seconds while generating private and public key for encrypted communication.
+        </p>
+        <div style="width: 100%">
+            <hr>
+        </div>
+        <!-- end auth.html -->
+    </script>
+
+    <!-- end angularJS templates -->
+
+</head>
+<body ng-controller="NavCtrl as n">
+
+<div class="navbar"> <!-- navbar navbar-default navbar-fixed-top  -->
+
+    <div class="navbar-inner">
+        <div class="container-fluid">
+            <a class="btn btn-navbar" data-target=".nav-collapse" data-toggle="collapse">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </a>
+            <a class="brand" href="#/about">About</a>
+
+            <div class="container-fluid nav-collapse">
+                <table class="main-menu-1-line">
+                    <tbody>
+                    <tr>
+                        <td>
+                            <ul class="nav">
+                                <li><a href="#/money">Money</a></li>
+                                <li><a href="#/network">Network</a></li>
+                                <li><a href="#/chat">Chat</a></li>
+                                <li><a href="">todo</a></li>
+                                <li><a href="#/user">Account</a></li>
+                                <li ng-hide="n.is_logged_in()"><a href="#/auth">Log in</a></li>
+                                <li ng-show="n.is_logged_in()"><a href="" ng-click="n.logout()">Log out</a></li>
+                            </ul>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <table class="main-menu-2-lines">
+                    <tbody>
+                    <tr>
+                        <td>
+                            <ul class="nav">
+                                <li><a href="#/money">Money</a></li>
+                                <li><a href="#/network">Network</a></li>
+                                <li><a href="#/chat">Chat</a></li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <ul class="nav">
+                                <li><a href="">todo</a></li>
+                                <li><a href="#/user">Account</a></li>
+                                <li ng-hide="n.is_logged_in()"><a href="#/auth">Log in</a></li>
+                                <li ng-show="n.is_logged_in()"><a href="#/logout">Log out</a></li>
+                            </ul>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+            </div>
+            <!--/.nav-collapse -->
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid" style="width: 100%">
+    <div class="row-fluid">
+        <div ng-view style="width: 100%"></div>
+    </div>
+    <!--/row-->
+
+</div>
+
+<script type="text/javascript" src="js/all.js" async></script>
+
+</body>
+</html>

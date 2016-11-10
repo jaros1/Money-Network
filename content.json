@@ -1,0 +1,114 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "description": "Complementary & alternative money demo",
+ "files": {
+  "css/all.css": {
+   "sha512": "9aa91724464849256c3e7571a2aff5288233157acd17317ee1e855d2b215dfd5",
+   "size": 400771
+  },
+  "dbschema.json": {
+   "sha512": "7e0a8eccf0b6aec2c8bcf96ecb2572cbd3e45afa3153ec91d4b5bee1ff34a015",
+   "size": 2329
+  },
+  "index.html": {
+   "sha512": "0107fb29c4fddcebf9c05cacbfd1d0365b51a8eb4f2ae4c12ecadc684f21182f",
+   "size": 60291
+  },
+  "js-external/pngencoder.js": {
+   "sha512": "ecaadaad552d2610336995b48360253cd6d847b6aa590fc3d96e7245a5d5fe11",
+   "size": 53602
+  },
+  "js/all.js": {
+   "sha512": "7a70517c27df3526a4ecdbb0832e64ae9aea863a48ed3734dd587af78082bef5",
+   "size": 2765716
+  },
+  "public/css/fonts/glyphicons-halflings-regular.eot": {
+   "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
+   "size": 20127
+  },
+  "public/css/fonts/glyphicons-halflings-regular.svg": {
+   "sha512": "c2e77eab327af1469097c31bc0daf820c066b0222059d8ff0ecebca974b62b75",
+   "size": 108738
+  },
+  "public/css/fonts/glyphicons-halflings-regular.ttf": {
+   "sha512": "2b066e06506ef20d69698d37cdec552176ef3f64a1151a99a1d02d72d39ce12c",
+   "size": 45404
+  },
+  "public/css/fonts/glyphicons-halflings-regular.woff": {
+   "sha512": "f5366ab255afefe3fe06150e8509e776b5618ff50fe3e0fa8e4d715d645b1e44",
+   "size": 23424
+  },
+  "public/css/fonts/glyphicons-halflings-regular.woff2": {
+   "sha512": "3811804f56ec3c82f0bef35de0a9250e546a1e357fb59e2784f610d638fec355",
+   "size": 18028
+  },
+  "public/images/avatar1.png": {
+   "sha512": "9145522f1d399f0526d83b1af008f004130ac5e8fb49e15030f0e53df7a3dbbb",
+   "size": 3108
+  },
+  "public/images/avatar10.png": {
+   "sha512": "b1a56e153b7b708d3f1aed52733efeda1cff0d0710228501ef001d04cc0b27a1",
+   "size": 5639
+  },
+  "public/images/avatar2.png": {
+   "sha512": "e1865597a523a2f69d73dcb4e322356ac147431f91b0af42a6ee04c1cd9f9f01",
+   "size": 3742
+  },
+  "public/images/avatar3.png": {
+   "sha512": "6f1dd63f81e12cffc410412f543c607794231cc2be160f2d99f552ff295cf81b",
+   "size": 4130
+  },
+  "public/images/avatar4.png": {
+   "sha512": "3df1a0ad9a0c1fa121e748a7ac151540d4dd7349ef5be3f6ca8e7a1bcecabcbd",
+   "size": 4683
+  },
+  "public/images/avatar5.png": {
+   "sha512": "68d9273c788b4b015904bbb7875d7d74054d14500ce8167179b226cd9ee411f3",
+   "size": 6493
+  },
+  "public/images/avatar6.png": {
+   "sha512": "150f0feb5f9985e4f47c4b6e983eea990de14d5fea946d33dc90030a79608324",
+   "size": 3558
+  },
+  "public/images/avatar7.png": {
+   "sha512": "d757d8445aed70dc44e9e1b214d5c1567289ce132b462e463a5b02390434266f",
+   "size": 3489
+  },
+  "public/images/avatar8.png": {
+   "sha512": "1f01bf033c8075e389f3ec1e1b0134fdeb25aadabc6360c22251ce5752e7c33e",
+   "size": 2870
+  },
+  "public/images/avatar9.png": {
+   "sha512": "9c83f18082fbc50566dbb6684feb95ae5d0f83b951063280c9a7314be0115653",
+   "size": 4256
+  },
+  "source.zip": {
+   "sha512": "f1fea7205d9906a4bde08b7b88d8175fdc595661ed500f37df00581b838af399",
+   "size": 913502
+  }
+ },
+ "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*)",
+ "includes": {
+  "data/users/content.json": {
+   "signers": [
+    "1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF"
+   ],
+   "signers_required": 1
+  }
+ },
+ "inner_path": "content.json",
+ "modified": 1478712691.439234,
+ "postmessage_nonce_security": true,
+ "sign": [
+  52777267474401798046373531303552033968075925335863985227883275494927562383844,
+  9914814704742042383150273675608344169862114732752140423309921608513530502489
+ ],
+ "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
+ "signs": {
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HEuet2DL59pSXFocNFC/1hrblZIot0/rtiJQL9pjFLISYnz19x2jbAegukTrRquHKOePNLJ2hC8FrM7Y9fzWhec="
+ },
+ "signs_required": 1,
+ "title": "Money Network",
+ "viewport": "width=device-width, initial-scale=1.0",
+ "zeronet_version": "0.5.0"
+}

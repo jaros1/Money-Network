@@ -1,0 +1,447 @@
+/*
+  max/min-width breakpoints: 320, 360, 480, 533, 600, 640, 768, 800, 1024 and 1280.
+*/
+
+
+html {
+    overflow-x: hidden;
+}
+
+body {
+    max-width: 1024px;
+    height: 100%;
+    margin: 0;
+}
+.bodyfull {
+    width: inherit;
+    height: 100%;
+    position: fixed;
+    overflow-y: scroll;
+}
+.bodyleft {
+    width: 250px;
+    height: 100%;
+    position: fixed;
+    overflow-y: scroll;
+}
+.bodyright {
+    width: 86%;
+    height: 100%;
+    position: absolute;
+    left: 270px;
+    overflow-y: scroll;
+}
+
+div {
+    margin-left: 0px;
+    margin-left: 0px;
+}
+
+.wrapper {
+    width: 100%;
+}
+
+header {
+    width: 100%
+}
+
+.cookie_note {
+    width: 100%;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+form {
+    width: 100%
+}
+
+/* cross browser break word - not working for opera 12 - see JS methods find_overflow & hyphenate_div */
+.wrapword {
+    white-space: -moz-pre-wrap !important; /* Mozilla, since 1999 */
+    white-space: -o-pre-wrap; /* Opera 7 */
+    white-space: pre-wrap; /* css-3 */
+    word-wrap: break-word; /* Internet Explorer 5.5+ */
+    word-break: break-all;
+    white-space: normal;
+}
+
+/* bigger links on smartphones and tables
+@media screen and (max-width: 799px) {
+    a {
+        font-size: 135%
+    }
+}
+*/
+
+/* responsive main menu in page header. 1*6 (big screens) or 2*3 (small screens) */
+
+.main-menu-2-lines {
+    display: none
+}
+
+.main-menu-1-line {
+    display: inline;
+    width: 56%;
+}
+
+@media screen and (max-width: 440px) {
+    .main-menu-2-lines {
+        display: inline;
+        width: 83%;
+    }
+
+    .main-menu-1-line {
+        display: none
+    }
+
+    .bodyfull {
+        top: 90px;
+    }
+}
+
+@media screen and (min-width: 441px) and (max-width: 532px) {
+    .main-menu-2-lines {
+        display: inline;
+        width: 67%;
+    }
+
+    .main-menu-1-line {
+        display: none
+    }
+
+    .bodyfull {
+        top: 90px;
+    }
+
+}
+
+@media screen and (min-width: 533px) and (max-width: 599px) {
+    .main-menu-2-lines {
+        display: inline;
+        width: 60%;
+    }
+
+    .main-menu-1-line {
+        display: none
+    }
+
+    .bodyfull {
+        top: 90px;
+    }
+
+}
+
+@media screen and (min-width: 600px) {
+    .main-menu-2-lines {
+        display: none
+    }
+
+    .main-menu-1-line {
+        display: inline;
+        width: 56%;
+    }
+
+    .bodyfull {
+        top: 55px;
+    }
+
+}
+
+/* normal one panel page */
+@media screen and (max-width: 399px) {
+    .bodyfull { width: 92.5% }
+}
+@media screen and (min-width: 400px) and (max-width: 499px) {
+    .bodyfull { width: 93% }
+}
+@media screen and (min-width: 500px) and (max-width: 599px) {
+    .bodyfull { width: 93.5% }
+}
+@media screen and (min-width: 600px) and (max-width: 699px) {
+    .bodyfull { width: 94% }
+}
+@media screen and (min-width: 700px) and (max-width: 767px) {
+    .bodyfull { width: 94.5% }
+}
+@media screen and (min-width: 768px) and (max-width: 1015px) {
+    .bodyfull { width: 98% }
+}
+@media screen and (min-width: 1016px) {
+    .bodyfull { width: 1000px }
+}
+
+/* two panel chat page */
+@media screen and (max-width: 399px) {
+    .bodyleft { display: none}
+    .bodyright {
+        width: 92.5% ;
+        position: absolute;
+        left: 18px;
+    }
+    .two_panel_chat { display: none}
+}
+@media screen and (min-width: 400px) and (max-width: 499px) {
+    .bodyleft { display: none}
+    .bodyright {
+        width: 93% ;
+        position: absolute;
+        left: 18px;
+    }
+    .two_panel_chat { display: none}
+}
+@media screen and (min-width: 500px) and (max-width: 549px) {
+    .bodyleft { display: none}
+    .bodyright {
+        width: 93.5% ;
+        position: absolute;
+        left: 18px;
+    }
+    .two_panel_chat { display: none}
+}
+@media screen and (min-width: 550px) and (max-width: 559px) {
+    .bodyright { width: 45% }
+}
+@media screen and (min-width: 560px) and (max-width: 569px) {
+    .bodyright { width: 46% }
+}
+@media screen and (min-width: 570px) and (max-width: 579px) {
+    .bodyright { width: 47% }
+}
+@media screen and (min-width: 580px) and (max-width: 589px) {
+    .bodyright { width: 48% }
+}
+@media screen and (min-width: 590px) and (max-width: 599px) {
+    .bodyright { width: 49% }
+}
+@media screen and (min-width: 600px) and (max-width: 609px) {
+    .bodyright { width: 50% }
+}
+@media screen and (min-width: 610px) and (max-width: 619px) {
+    .bodyright { width: 51% }
+}
+@media screen and (min-width: 620px) and (max-width: 629px) {
+    .bodyright { width: 51.5% }
+}
+@media screen and (min-width: 630px) and (max-width: 639px) {
+    .bodyright { width: 52% }
+}
+@media screen and (min-width: 640px) and (max-width: 649px) {
+    .bodyright { width: 53% }
+}
+@media screen and (min-width: 650px) and (max-width: 659px) {
+    .bodyright { width: 54% }
+}
+@media screen and (min-width: 660px) and (max-width: 669px) {
+    .bodyright { width: 55% }
+}
+@media screen and (min-width: 670px) and (max-width: 679px) {
+    .bodyright { width: 56% }
+}
+@media screen and (min-width: 680px) and (max-width: 689px) {
+    .bodyright { width: 57% }
+}
+@media screen and (min-width: 690px) and (max-width: 709px) {
+    .bodyright { width: 58% }
+}
+@media screen and (min-width: 710px) and (max-width: 729px) {
+    .bodyright { width: 59% }
+}
+@media screen and (min-width: 730px) and (max-width: 759px) {
+    .bodyright { width: 60% }
+}
+@media screen and (min-width: 760px) and (max-width: 767px) {
+    .bodyright { width: 61% }
+}
+@media screen and (min-width: 768px) and (max-width: 789px) {
+    .bodyright { width: 67% }
+}
+@media screen and (min-width: 790px) and (max-width: 819px) {
+    .bodyright { width: 68% }
+}
+@media screen and (min-width: 820px) and (max-width: 849px) {
+    .bodyright { width: 69% }
+}
+@media screen and (min-width: 850px) and (max-width: 879px) {
+    .bodyright { width: 70% }
+}
+@media screen and (min-width: 880px) and (max-width: 909px) {
+    .bodyright { width: 71% }
+}
+@media screen and (min-width: 910px) and (max-width: 959px) {
+    .bodyright { width: 72% }
+}
+@media screen and (min-width: 960px) and (max-width: 979px) {
+    .bodyright { width: 73% }
+}
+@media screen and (min-width: 980px) and (max-width: 1034px) {
+    .bodyright { width: 74% }
+}
+@media screen and (min-width: 1035px) {
+    .bodyright { width: 750px }
+}
+
+
+
+#betatest {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 16px;
+    background-color: rgba(255, 255, 255, 1);
+    background-image: url('/images/betatest.png');
+}
+
+/* angularJS form validations */
+.user_info.ng-invalid {
+    background-color: red;
+}
+
+/* css for chat page. copy/paste from http://bootdey.com/snippets/view/messages-chat-widget */
+.mar-btm {
+    margin-bottom: 15px;
+}
+.media-block .media-left {
+    display: block;
+    float: left;
+}
+.img-sm {
+    width: 46px;
+    height: 46px;
+}
+.media-block .media-body {
+    display: block;
+    overflow: hidden;
+    width: auto;
+}
+.pad-hor {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+.speech {
+    position: relative;
+    background: #b7dcfe;
+    color: #317787;
+    display: inline-block;
+    border-radius: 0;
+    padding: 8px 8px;
+}
+.speech:before {
+    content: "";
+    display: block;
+    position: absolute;
+    width: 0;
+    height: 0;
+    left: 0;
+    top: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-right: 7px solid #b7dcfe;
+    margin: 15px 0 0 -6px;
+}
+.speech-right>.speech:before {
+    left: auto;
+    right: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-left: 7px solid #ffdc91;
+    border-right: 0;
+    margin: 15px -6px 0 0;
+}
+.speech .media-heading {
+    font-size: 1.2em;
+    color: #317787;
+    display: block;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    font-weight: 300;
+}
+.speech-time {
+    margin-top: 20px;
+    margin-bottom: 0;
+    padding-left: 5px;
+    font-size: .8em;
+    font-weight: 300;
+}
+.media-block .media-right {
+    float: right;
+}
+.speech-right {
+    text-align: right;
+}
+.pad-hor {
+    padding-left: 7px;
+    padding-right: 7px;
+}
+.speech-right>.speech {
+    background: #ffda87;
+    color: #a07617;
+    text-align: right;
+}
+.speech-right>.speech .media-heading {
+    color: #a07617;
+}
+.list-unstyled {
+  list-style-type: none; padding: 0; margin: 0
+}
+
+
+/* for chat */
+.new_chat_msg {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+
+    width: 100%;
+}
+
+/* test icons from ZeroMePlus */
+
+.icon {
+    display: inline-block;
+    vertical-align: text-bottom;
+    background-repeat: no-repeat;
+    height: 30px;
+    vertical-align: middle;
+    line-height: 30px;
+    color: #AAA;
+    font-size: 12px;
+    -webkit-transition: background-color 0.3s;
+    -moz-transition: background-color 0.3s;
+    -o-transition: background-color 0.3s;
+    -ms-transition: background-color 0.3s;
+    transition: background-color 0.3s;
+}
+
+.icon-comment {
+    padding-left: 30px;
+    padding-right: 10px;
+    background-position: 5px 7px;
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAASBAMAAABGPIgdAAAAG1BMVEUAAACurq6urq6urq6urq6urq6urq6urq6urq4asLPtAAAACHRSTlMAxOurFsllVoVPYlAAAAAySURBVAjXY0ABEh1g0Ahid0ABmA2Rpg+7oyEJZq9ERyvcPQwcHSZwh3KoIxzN7MCACQDJKxqoZp3x4wAAAABJRU5ErkJggg==');
+}
+
+.icon-edit {
+    width: 16px;
+    height: 16px;
+    background-repeat: no-repeat;
+    background-position: 0px center;
+    background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAOVBMVEUAAAC9w8e9w8e9w8e9w8e/xMi9w8e9w8e+w8e9w8e9w8e9w8e9w8e9w8e9w8e+w8e/xMi9w8e9w8fvY4+KAAAAEnRSTlMASPv3WQbwOTCkt4/psX4YDMWr+RRCAAAAUUlEQVQY06XLORKAMAxDUTs7kA3d/7AYGju0UfffjIgoHkxm0vB5bZyxKHx9eX0FJw0Y4bcXKQ4/CTtS5yqp5GFFOjGpVGl00k1pNDIb3Nv9AHC7BOZC4ZjvAAAAAElFTkSuQmCC+d0ckOwyAMRVGHUOO0gUyd+P8f7WApz4Iki9wFmyOEATrXLZcFp5LrGogPOxKp6zfFf9fZ1/I/cY7YZSS3U6S3XFZJmGBwL+FuJX/F1K0wUUlZyZGlXgXESthTEs4B8fh7xoVUDPGYJnsfkCRarKAgz8cAKbpD6pqDPz3XB8K6HdUEeN9NAAAAAElFTkSuQmCC);
+}
+
+.icon-verify {
+    padding-left: 20px;
+    padding-right: 0px;
+    background-position: 0px center;
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASBAMAAACp/uMjAAAAMFBMVEUAAACqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqobnPPZAAAAD3RSTlMADcS4pt/IwK9qXE9ELRXt9n51AAAAaElEQVQI12PABRhtGRguC4CZQl8f8MUrggX1/yeK/f8kABL8//+L////imBBEAAJM/+HAgMGHhjzAAPDfgjrN1AbF4S5AGTafBDrJ9gKFhDTAWJz////P6COYAaZBAX13+FuY1JAcywAx1BERa6oCoIAAAAASUVORK5CYII=')
+}
+
+
+/* http://wisercoder.com/drag-drop-image-upload-directive-angular-js/ */
+body.dragOver #file-drop{display:block;} /* During drag */
+body #file-drop{z-index:1000;position:fixed;top:0;left:0;width:100%;height:100%;display:none;} /* No drag */
+
+
