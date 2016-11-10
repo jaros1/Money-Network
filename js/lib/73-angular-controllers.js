@@ -39,7 +39,9 @@ angular.module('MoneyNetwork')
     }])
 
 
-    .controller('NetworkCtrl', ['MoneyNetworkService', '$scope', '$timeout', '$location', function (moneyNetworkService, $scope, $timeout, $location) {
+    .controller('NetworkCtrl', ['MoneyNetworkService', '$scope', '$timeout', '$location', 'dateFilter',
+                        function (moneyNetworkService, $scope, $timeout, $location, date)
+    {
         var self = this;
         var controller = 'NetworkCtrl';
         if (!MoneyNetworkHelper.getItem('userid')) return ; // not logged in - skip initialization of controller
@@ -220,16 +222,11 @@ angular.module('MoneyNetwork')
         self.contact_verify = function (contact) {
             moneyNetworkService.contact_verify(contact);
         };
+        // todo: also chat_contact method in chat controller. refactor
         self.chat_contact = function (contact) {
-            var pgm = controller + '.chat_contact: ' ;
-            console.log(pgm + 'start');
-
-            console.log(pgm + 'todo: must check if this contact is latest updated contact with identical cert_user_id or public key');
-            var last_updated, last_updated2, i, j ;
-            for (i=0 ; i<contact.search.length ; i++) if (typeof contact.search[i].value == 'number') last_updated = contact.search[i].value ;
-            console.log(pgm + 'last_updated = ' + last_updated) ;
-
-            $location.path('/chat/' + contact.unique_id);
+            // notification if starting chat with an older contact (Last updated timestamp)
+            moneyNetworkService.notification_if_old_contact(contact);
+            $location.path('/chat2/' + contact.unique_id);
             $location.replace();
         };
         self.contact_remove = function (contact) {
@@ -600,12 +597,15 @@ angular.module('MoneyNetwork')
                 return -message.message.sent_at
             };
 
+            // todo: also chat_contact method in network controller. refactor
             self.chat_contact = function (contact) {
-                var pgm = controller + '.chat_contact: ';
-                console.log(pgm + 'start');
+                // var pgm = controller + '.chat_contact: ';
                 if (self.contact && !self.two_panel_chat) return; // already chatting with contact
+                // notification if starting chat with an older contact (Last updated timestamp)
+                moneyNetworkService.notification_if_old_contact(contact);
+                // redirect
                 var new_path = '/chat' + (self.two_panel_chat ? '2' : '') + '/' + contact.unique_id ;
-                console.log(pgm + 'new_path = ' + new_path);
+                // console.log(pgm + 'new_path = ' + new_path);
                 $location.path(new_path);
                 $location.replace();
             }; // chat_contact

@@ -1,7 +1,8 @@
 angular.module('MoneyNetwork')
 
     .factory('MoneyNetworkService', ['$timeout', '$rootScope', '$location', 'dateFilter',
-                             function($timeout, $rootScope, $location, date) {
+                             function($timeout, $rootScope, $location, date)
+    {
         var self = this;
         var service = 'MoneyNetworkService' ;
         console.log(service + ' loaded') ;
@@ -2077,8 +2078,8 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'No ZeroNet login' + info);
                 return;
             }
-            if (ZeroFrame.site_info.cert_user_id != '1CCiJ97XHgVeJ@moneynetwork') {
-                console.log(pgm + 'not administrator');
+            if (ZeroFrame.site_info.cert_user_id != '16R2WrLv3rRrx@moneynetwork') {
+                // console.log(pgm + 'not administrator');
                 return;
             }
 
@@ -2491,6 +2492,46 @@ angular.module('MoneyNetwork')
             save_user_setup() ;
         }
 
+        // start chat. write a notification if starting a chat with old contact (Last updated timestamp)
+        // used in chat_contact methods in network and chat controllers
+        function notification_if_old_contact (contact) {
+            // find last updated for this contact
+            var last_updated, last_updated2, i, j, newer_contacts, contact2 ;
+            for (i=0 ; i<contact.search.length ; i++) if (typeof contact.search[i].value == 'number') last_updated = contact.search[i].value ;
+            // console.log(pgm + 'last_updated = ' + last_updated + ', contact = ' + JSON.stringify(contact)) ;
+
+            // check last updated for contacts with identical cert_user_id or pubkey
+            newer_contacts = [] ;
+            for (i=0 ; i<local_storage_contacts.length ; i++) {
+                contact2 = local_storage_contacts[i] ;
+                if ((contact2.cert_user_id != contact.cert_user_id) && (contact2.pubkey != contact.pubkey)) continue ;
+                if (contact2.unique_id == contact.unique_id) continue ;
+                last_updated2 = null ;
+                for (j=0 ; j<contact2.search.length ; j++) if (typeof contact.search[j].value == 'number') last_updated2 = contact2.search[j].value ;
+                // console.log(pgm + 'last_updated2 = ' + last_updated2 + ', contact2 = ' + JSON.stringify(contact2));
+                if (last_updated2 > last_updated) newer_contacts.push(contact2);
+            } // for i (self.contacts)
+
+            if (newer_contacts.length > 0) {
+                // add warning.
+                var msg ;
+                msg =
+                    'Warning. You maybe starting chat with an old inactive contact.<br>' +
+                    'Found ' + newer_contacts.length + ' newer updated contact' +
+                    ((newer_contacts.length > 1) ? 's' : '') + '.';
+                for (i=0 ; i<newer_contacts.length ; i++) {
+                    contact2 = newer_contacts[i] ;
+                    for (j=0 ; j<contact2.search.length ; j++) if (typeof contact2.search[j].value == 'number') last_updated2 = contact2.search[j].value ;
+                    msg += '<br>' + (i+1) + ' : Last updated ' + date(last_updated2*1000, 'short') + '. ';
+                    msg += 'Identical ' + ((contact.cert_user_id == contact2.cert_user_id) ? 'zeronet user' : 'browser public key') + '.' ;
+                }
+                ZeroFrame.cmd("wrapperNotification", ["info", msg, 5000]);
+            } // notification_if_old_contact
+
+
+        }
+
+
         // export MoneyNetworkService API
         return {
             get_tags: get_tags,
@@ -2528,6 +2569,7 @@ angular.module('MoneyNetwork')
             set_contact_filters: set_contact_filters,
             get_chat_sort: get_chat_sort,
             set_chat_sort: set_chat_sort,
+            notification_if_old_contact: notification_if_old_contact
         };
 
         // end MoneyNetworkService
