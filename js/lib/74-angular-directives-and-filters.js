@@ -96,7 +96,6 @@ angular.module('MoneyNetwork')
         };
     })
 
-
     .filter('toJSON', [function () {
         // debug: return object as a JSON string
         return function (object) {

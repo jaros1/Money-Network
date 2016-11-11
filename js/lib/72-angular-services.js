@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
 
-    .factory('MoneyNetworkService', ['$timeout', '$rootScope', '$location', 'dateFilter',
-                             function($timeout, $rootScope, $location, date)
+    .factory('MoneyNetworkService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter',
+                             function($timeout, $rootScope, $window, $location, date)
     {
         var self = this;
         var service = 'MoneyNetworkService' ;
@@ -15,7 +15,7 @@ angular.module('MoneyNetwork')
         }
 
         // convert data.json to newest version. compare dbschema.schema_changed and data.version.
-        var dbschema_version = 5 ;
+        var dbschema_version = 6 ;
         function zeronet_migrate_data (json) {
             var pgm = service + '.zeronet_migrate_data: ' ;
             if (!json.version) json.version = 1 ;
@@ -90,6 +90,8 @@ angular.module('MoneyNetwork')
             }
             if (json.version == 5) {
                 // convert from version 5 to 6
+                // just added guest to users table
+                json.version = 6 ;
             }
             // etc
             console.log(pgm + 'json version ' + json.version + ' = ' + JSON.stringify(json)) ;
@@ -312,7 +314,7 @@ angular.module('MoneyNetwork')
                         zeronet_migrate_data(data);
                     }
                     else data = {
-                        version: 4,
+                        version: dbschema_version,
                         users: [],
                         search: [],
                         msg: []
@@ -330,7 +332,8 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'avatar.src = ' + avatar.src + ', short_avatar = ' + short_avatar);
 
                     // find current user in users array
-                    var max_user_seq = 0, i, user_i, user_seq ;
+                    var max_user_seq = 0, i, user_i, user_seq, new_user_row ;
+                    var guest_id, guest, old_guest_user_seq, old_guest_user_index ;
                     for (i=0 ; i<data.users.length ; i++) {
                         if (pubkey == data.users[i].pubkey) {
                             user_i = i ;
@@ -342,11 +345,22 @@ angular.module('MoneyNetwork')
                     else {
                         // add current user to data.users array
                         user_seq = max_user_seq + 1 ;
-                        data.users.push({
+                        new_user_row = {
                             user_seq: user_seq,
                             pubkey: pubkey,
                             avatar: short_avatar
-                        }) ;
+                        };
+                        guest_id = MoneyNetworkHelper.getItem('guestid');
+                        guest = (guest_id == '' + user_id) ;
+                        if (guest) {
+                            new_user_row.guest = true;
+                            for (i=0 ; i<data.users.length ; i++) if (data.users[i].guest) old_guest_user_index = i ;
+                            if (old_guest_user_index) {
+                                old_guest_user_seq = data.users[old_guest_user_index].user_seq ;
+                                data.users.splice(old_guest_user_index,1);
+                            }
+                        }
+                        data.users.push(new_user_row) ;
                         // console.log(pgm + 'added user to data.users. data = ' + JSON.stringify(data)) ;
                     }
                     // console.log(pgm + 'pubkey = ' + pubkey + ', user_seq = ' + user_seq);
@@ -355,7 +369,7 @@ angular.module('MoneyNetwork')
                     var user_no_search_words = {} ;
                     for (i=data.search.length-1 ; i>=0 ; i--) {
                         row = data.search[i] ;
-                        if (row.user_seq == user_seq) data.search.splice(i,1);
+                        if (row.user_seq == user_seq || (row.user_seq == old_guest_user_seq)) data.search.splice(i,1);
                         else {
                             if (!user_no_search_words.hasOwnProperty(row.user_seq)) user_no_search_words[row.user_seq] = 0 ;
                             user_no_search_words[row.user_seq]++ ;
@@ -375,22 +389,12 @@ angular.module('MoneyNetwork')
                     } // for i
                     // console.log(pgm + 'user_no_search_words = ' + JSON.stringify(user_no_search_words));
 
-                    //// remove users without any search words
-                    //// can be deleted users (clear local storage) or can be users done searching for contacts
-                    //for (i=data.users.length-1 ; i >= 0 ; i--) {
-                    //    user_seq = data.users[i].user_seq ;
-                    //    if (!user_no_search_words.hasOwnProperty(user_seq) || (user_no_search_words[user_seq] == 0)) {
-                    //        data.users.splice(i, 1);
-                    //        // console.log(pgm + 'removed user ' + user_seq + ' from users array');
-                    //    }
-                    //}
-
-                    // set to true if localStorage information if updated (contacts, messages)
+                    // set to true if localStorage information if updated (contacts, contact.messages, ...)
                     var local_storage_updated = false ;
 
-                    // fix problem with false/0 keys in msg array / messages table (cannot be decrypted). See also "insert new message" below
                     var j, k, contact ;
                     for (i=data.msg.length-1 ; i>=0 ; i--) {
+                        // fix problem with false/0 keys in msg array / messages table (cannot be decrypted). See also "insert new message" below
                         if (!data.msg[i].key) {
                             console.log(pgm + 'deleting message with invalid key. data.msg[' + i + '] = ' + JSON.stringify(data.msg[i]));
                             // cleanup zeronet_msg_id references in localStorage
@@ -406,7 +410,10 @@ angular.module('MoneyNetwork')
                                 } // for k (messages)
                             } // for j (contacts)
                             data.msg.splice(i,1);
+                            continue ;
                         } // if
+                        // delete any messages from deleted guest account
+                        if (data.msg[i].user_seq == old_guest_user_seq) data.msg.splice(i,1);
                     } // for i (data.msg)
 
                     // insert & delete outgoing messages in data.msg array in data.json file on ZeroNet
@@ -717,17 +724,35 @@ angular.module('MoneyNetwork')
         function empty_user_info_line() {
             return { tag: '', value: '', privacy: ''} ;
         }
-        function load_user_info () {
+        function guest_account_user_info() {
+            var pgm = service + '.guest_account_user_info: ' ;
+            // todo: add more info to new guest account
+            // - a) could not get html5 geolocation to work. Could be angularJS, ZeroNet or ?
+            var timezone = (new Date()).getTimezoneOffset()/60 ;
+            var language = navigator.languages ? navigator.languages[0] : navigator.language;
+            return [
+                { tag: 'Name', value: 'Guest', privacy: 'Search'},
+                { tag: '%', value: '%', privacy: 'Search'},
+                { tag: 'Timezone', value: '' + timezone, privacy: 'Hidden'},
+                { tag: 'Language', value: '' + language, privacy: 'Hidden'}
+            ] ;
+        }
+        function load_user_info (new_guest_account) {
             var pgm = service + '.load_user_info: ';
             // load user info from local storage
-            var user_info_str, new_user_info ;
+            var user_info_str, new_user_info, guest_id, is_guest ;
             user_info_str = MoneyNetworkHelper.getItem('user_info') ;
             // console.log(pgm + 'user_info loaded from localStorage: ' + user_info_str) ;
             // console.log(pgm + 'user_info_str = ' + user_info_str) ;
-            if (user_info_str) new_user_info = JSON.parse(user_info_str) ;
+            if (user_info_str) {
+                new_user_info = JSON.parse(user_info_str) ;
+                new_guest_account = false ;
+            }
+            else if (new_guest_account) new_user_info = guest_account_user_info();
             else new_user_info = [empty_user_info_line()] ;
             user_info.splice(0,user_info.length) ;
             for (var i=0 ; i<new_user_info.length ; i++) user_info.push(new_user_info[i]) ;
+            if (new_guest_account) save_user_info() ;
             // load user info from ZeroNet
             // compare
             console.log(pgm + 'todo: user info loaded from localStorage. must compare with user_info stored in data.json') ;
@@ -2164,14 +2189,16 @@ angular.module('MoneyNetwork')
         }; // cleanup_inactive_users
 
         var user_id = 0 ;
-        function client_login(password, create_new_account) {
+        function client_login(password, create_new_account, guest) {
             // login or register. update sessionStorage and localStorage
             var setup, avatar, alias, setup_updated ;
+            if (!create_new_account) guest = false ;
             user_id = MoneyNetworkHelper.client_login(password, create_new_account);
             if (user_id) {
+                if (create_new_account && guest) MoneyNetworkHelper.setItem('guestid', user_id); // todo: ls_save()?
                 // load user information from localStorage
                 load_user_setup() ;
-                load_user_info() ;
+                load_user_info(guest) ;
                 ls_load_contacts() ;
                 local_storage_read_messages() ;
 

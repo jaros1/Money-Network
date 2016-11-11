@@ -30,13 +30,14 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX search_i1 ON search(value, tag)"],
-      "schema_changed": 5
+      "schema_changed": 6
     },
     "users": {
       "cols": [
         ["user_seq", "INTEGER"],
         ["pubkey", "TEXT"],
         ["avatar", "TEXT"],
+        ["guest", "TEXT"],
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": [
@@ -44,7 +45,7 @@
         "CREATE INDEX users_i2 ON users(json_id)",
         "CREATE INDEX json_i1 ON json(directory)"
       ],
-      "schema_changed": 5
+      "schema_changed": 6
     },
     "files": {
       "cols": [
@@ -54,7 +55,7 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX files_i1 ON files(json_id)"],
-      "schema_changed": 5
+      "schema_changed": 6
     },
     "messages": {
       "cols": [
@@ -69,7 +70,7 @@
       "indexes": [
         "CREATE INDEX messages_i1 ON messages(user_seq, message_sha256)",
         "CREATE INDEX messages_i2 ON messages(receiver_sha256)"],
-      "schema_changed": 5
+      "schema_changed": 6
     },
     "status": {
       "cols": [
@@ -78,7 +79,7 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX status_i1 ON status(json_id)"],
-      "schema_changed": 5
+      "schema_changed": 6
     }
   }
 }

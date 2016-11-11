@@ -29,15 +29,28 @@ angular.module('MoneyNetwork')
         // end AboutCtrl
     }])
 
-
-    .controller('MoneyCtrl', [function () {
+    .controller('MoneyCtrl', ['$window', function ($window) {
         var self = this;
         var controller = 'MoneyCtrl';
         console.log(controller + ' loaded');
 
+        var x = document.getElementById("demo");
+
+        self.getLocation = function () {
+            if ($window.navigator.geolocation) {
+                $window.navigator.geolocation.getCurrentPosition(showPosition);
+            } else {
+                x.innerHTML = "Geolocation is not supported by this browser.";
+            }
+        }
+
+        function showPosition(position) {
+            x.innerHTML = "Latitude: " + position.coords.latitude +
+                "<br>Longitude: " + position.coords.longitude;
+        }
+
         // end MoneyCtrl
     }])
-
 
     .controller('NetworkCtrl', ['MoneyNetworkService', '$scope', '$timeout', '$location', 'dateFilter',
                         function (moneyNetworkService, $scope, $timeout, $location, date)
@@ -839,7 +852,6 @@ angular.module('MoneyNetwork')
         self.privacy_options = moneyNetworkService.get_privacy_options() ; // select options with privacy settings for user info
         self.show_privacy_title = moneyNetworkService.get_show_privacy_title() ; // checkbox - display column with privacy descriptions?
 
-
         // search for new ZeroNet contacts and add avatars for new contacts
         var contacts = moneyNetworkService.local_storage_get_contacts();
         self.zeronet_search_contacts = function () {
@@ -1030,18 +1042,14 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.login_or_register: ';
             console.log(pgm + 'click');
             var create_new_account = (self.register != 'N');
-            if (self.register == 'G') {
+            var create_guest_account = (self.register == 'G');
+            if (create_guest_account) {
                 self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
                 MoneyNetworkHelper.delete_guest_account() ;
             }
-            var userid = moneyNetworkService.client_login(self.device_password, create_new_account);
+            var userid = moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account);
             // console.log(pgm + 'userid = ' + JSON.stringify(userid));
             if (userid) {
-                if (self.register == 'G') {
-                    // Mark user as a guest account
-                    MoneyNetworkHelper.setItem('guestid', userid);
-                    MoneyNetworkHelper.ls_save() ;
-                }
                 // log in OK - clear login form and redirect
                 ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
                 self.device_password = '';
@@ -1049,8 +1057,8 @@ angular.module('MoneyNetwork')
                 self.register = 'N';
                 var user_info = moneyNetworkService.get_user_info() ;
                 var empty_user_info_str = JSON.stringify([moneyNetworkService.empty_user_info_line()]) ;
-                if (JSON.stringify(user_info) == empty_user_info_str) $location.path('/user');
-                else $location.path('/home');
+                if ((JSON.stringify(user_info) == empty_user_info_str) || create_guest_account) $location.path('/user');
+                else $location.path('/chat2');
                 $location.replace();
             }
             else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
