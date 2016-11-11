@@ -685,98 +685,6 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("wrapperConfirm", ['Delete "' + msg_text + '" message?', "Delete"], function (confirmed) {
                         if (!confirmed) return;
                         // console.log(pgm + 'delete message. message = ' + JSON.stringify(message));
-                        //message = {
-                        //    "contact": {
-                        //        "unique_id": "1fd4b6355f6720f3288523026da0d84b4714c40baa764cf7263389f438bf845d",
-                        //        "type": "unverified",
-                        //        "auth_address": "1G6eMEv1AT9iGETcfvpLZayGHwS1DtU1rx",
-                        //        "cert_user_id": "1G6eMEv1AT9iG@moneynetwork",
-                        //        "avatar": "1.png",
-                        //        "search": [{
-                        //            "tag": "Last updated",
-                        //            "value": 1478530860,
-                        //            "privacy": "Search",
-                        //            "row": 1
-                        //        }, {"tag": "Name", "value": "onlyzero.net", "privacy": "Search", "row": 2}],
-                        //        "messages": [{
-                        //            "folder": "outbox",
-                        //            "message": {"msgtype": "contact added", "search": []},
-                        //            "local_msg_seq": 1,
-                        //            "sender_sha256": "ce2dced194e600c54e348d32b64de85a3f2cf3e9a9ddd2bf0ee18b93a645df6a",
-                        //            "zeronet_msg_id": "ae556fe598a1be5bebcbc3dcf716c358715a519a6a655e44a701a713f1980491",
-                        //            "sent_at": 1478530721272,
-                        //            "zeronet_msg_size": 792,
-                        //            "msgtype": "chat msg",
-                        //            "ls_msg_size": 322
-                        //        }, {
-                        //            "folder": "outbox",
-                        //            "message": {"msgtype": "chat msg", "message": "hi"},
-                        //            "msgtype": "chat msg",
-                        //            "local_msg_seq": 4,
-                        //            "sender_sha256": "ae0ab028c0ecb20a493d64fd0f28c343db8a6dd4376b7cfc9fdab4e0acf89ca4",
-                        //            "sent_at": 1478530734549,
-                        //            "ls_msg_size": 213
-                        //        }, {
-                        //            "local_msg_seq": 6,
-                        //            "folder": "inbox",
-                        //            "message": {"msgtype": "chat msg", "message": "Hi", "local_msg_seq": 5},
-                        //            "zeronet_msg_id": "71fd10975d328724256aa80bb584dea0a5598525296a6e889111abc64895cc13",
-                        //            "sender_sha256": "523aebd8f9a47f39fee01a9395afddf53bbae722825e5376a3e0bbb587c23f04",
-                        //            "sent_at": 1478530859426,
-                        //            "receiver_sha256": "ae0ab028c0ecb20a493d64fd0f28c343db8a6dd4376b7cfc9fdab4e0acf89ca4",
-                        //            "received_at": 1478530860624,
-                        //            "msgtype": "chat msg",
-                        //            "ls_msg_size": 427
-                        //        }, {
-                        //            "folder": "outbox",
-                        //            "message": {
-                        //                "msgtype": "chat msg",
-                        //                "message": "Money Network is a demo about money. With inspiration from Charles Eisenstein and Bernard Lietaer. Money is everywhere, money is everything and everything is money. This is an attempt to make money free. Make is easier to use complementare and alternative money. No more Hammerville.\n\n\nSummary:\n\nNo registration. User account is created in browser client. A anonymous ZeroNet cert is being for client communication.\nSearch for contacts in Money Network. Server returns possible contacts. Verify contacts.\nChat with contacts. Quick dialog. Small picture supported. todo: group chat.\nFree money definition. Use existing money definitions from network or create your own type of money.\nUse money to exchange goods and services. Transactions are stored encrypted in todo: block chains, clients or on ZeroNet.\nFull client side encryption. Only very little information is shared public and unencrypted.\nA client network. Data on clients. Minimum data on servers. Servers are used for communication between clients.\nOpen source. Feel free to clone, download, modify and make your own website or app.\nYou may want to use TOR when using Money Network on ZeroNet. You may NOT want to use a public ZeroNet proxy on clearnet.\nYou may want to make a backup todo: link of your local data. Everything is lost if you clear browser data or switches to an other browser client.\nYou may want to delete your data todo: link from ZeroNet and browser client when finished used this demo.\nData from inactive user accounts will be deleted from ZeroNet after 14 days. The data is still in client and will be restored from client to ZeroNet after next user login."
-                        //            },
-                        //            "msgtype": "chat msg",
-                        //            "local_msg_seq": 7,
-                        //            "sender_sha256": "5ebd760da144c8a1ec2801c12e89519c6509f04112246f38e983fba226927715",
-                        //            "zeronet_msg_id": "e0931b2f2e561f5defa3b4de1a51296b7c3919cb6af14080cc5425b1f9264292",
-                        //            "sent_at": 1478614714241,
-                        //            "zeronet_msg_size": 2988,
-                        //            "ls_msg_size": 1972
-                        //        }, {
-                        //            "folder": "outbox",
-                        //            "message": {"msgtype": "chat msg", "message": "xxxx"},
-                        //            "msgtype": "chat msg",
-                        //            "local_msg_seq": 8,
-                        //            "sender_sha256": "ef23446ae835de4674a0329f485f80a1ec1153004fe685fe0372a32963569dbd",
-                        //            "zeronet_msg_id": "def5fb19b19f89f68285afa817eb5bd78fdc457a49d698d6a149830fece93677",
-                        //            "sent_at": 1478670296121,
-                        //            "zeronet_msg_size": 792,
-                        //            "ls_msg_size": 322
-                        //        }],
-                        //        "outbox_sender_sha256": {
-                        //            "ae0ab028c0ecb20a493d64fd0f28c343db8a6dd4376b7cfc9fdab4e0acf89ca4": {
-                        //                "sent_at": 1478530734549,
-                        //                "last_used_at": 1478530859426
-                        //            }
-                        //        },
-                        //        "inbox_zeronet_msg_id": [],
-                        //        "inbox_last_sender_sha256": "523aebd8f9a47f39fee01a9395afddf53bbae722825e5376a3e0bbb587c23f04",
-                        //        "inbox_last_sender_sha256_at": 1478530859426,
-                        //        "user_seq": 1,
-                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQB+WvexgFHjf9N7bkF7rnzi\n2SWpex7WfyuEiQc5dyi/HXJW1fXGCsVdBMuynFjUsj4Ka6+aX4bFfrE6OLhhYkZ/\nwrkOqlPp9I2USIoGl3Yy+xGMvkQzwKxiICZFtGcl9LBgJk3Zj6GlB8KxWFHveN9j\n1MAyEEntlsc5XP3z7kW9ECpIcn+3eXhSQYwZ9uhp6oWzlNSxx+JX3KVIb4dUisho\nlT1DpDvTqWukWkmiuJa2aiDmAkiiK5Hwnof+shJtpKRa/xnqVDOR6YOt1mw3CpiE\n8dMYStxSvsQryAecSHXi1D+ebzKX/tyF8gftzHoMqKK2Je8nsE2exxZSLGi1JDwZ\nAgMBAAE=\n-----END PUBLIC KEY-----"
-                        //    },
-                        //    "message": {
-                        //        "local_msg_seq": 6,
-                        //        "folder": "inbox",
-                        //        "message": {"msgtype": "chat msg", "message": "Hi", "local_msg_seq": 5},
-                        //        "zeronet_msg_id": "71fd10975d328724256aa80bb584dea0a5598525296a6e889111abc64895cc13",
-                        //        "sender_sha256": "523aebd8f9a47f39fee01a9395afddf53bbae722825e5376a3e0bbb587c23f04",
-                        //        "sent_at": 1478530859426,
-                        //        "receiver_sha256": "ae0ab028c0ecb20a493d64fd0f28c343db8a6dd4376b7cfc9fdab4e0acf89ca4",
-                        //        "received_at": 1478530860624,
-                        //        "msgtype": "chat msg",
-                        //        "ls_msg_size": 427
-                        //    },
-                        //    "$$hashKey": "object:71"
-                        //};
                         message.message.deleted_at = new Date().getTime(); // logical delete
                         var index = null;
                         for (var i = 0; i < self.messages.length; i++) if (self.messages[i]["$$hashKey"] == message["$$hashKey"]) index = i;
@@ -1083,7 +991,10 @@ angular.module('MoneyNetwork')
         self.is_logged_in = function () {
             return MoneyNetworkHelper.getUserId();
         };
-        self.register = 'N' ;
+
+        // startup. ZeroFrame's localStorage API is a little slow.
+        // Y is users in localStorage. N if users in localStorage.
+        self.register = 'Y' ;
         function set_register_yn() {
             var pgm = controller + '.login_or_register: ' ;
             var passwords, no_users ;
@@ -1092,7 +1003,7 @@ angular.module('MoneyNetwork')
             else no_users = JSON.parse(passwords).length ;
             self.register = (no_users == 0) ? 'Y' : 'N';
         }
-        MoneyNetworkHelper.ls_bind(set_register_yn) ;
+        MoneyNetworkHelper.ls_bind(set_register_yn) ; // called when localStorage is ready
 
         // focus
         if (!self.is_logged_in()) {
@@ -1106,23 +1017,31 @@ angular.module('MoneyNetwork')
             if (self.register != 'N') return true;
             if (!self.device_password) return true;
             if (self.device_password.length < 10) return true;
-            if (self.device_password.length > 50) return true;
             return false;
         };
         self.register_disabled = function () {
             if (self.register != 'Y') return true;
             if (!self.device_password) return true;
             if (self.device_password.length < 10) return true;
-            if (self.device_password.length > 50) return true;
             if (!self.confirm_device_password) return true;
             return (self.device_password != self.confirm_device_password);
         };
         self.login_or_register = function () {
             var pgm = controller + '.login_or_register: ';
-            var create_new_account = (self.register == 'Y');
+            console.log(pgm + 'click');
+            var create_new_account = (self.register != 'N');
+            if (self.register == 'G') {
+                self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
+                MoneyNetworkHelper.delete_guest_account() ;
+            }
             var userid = moneyNetworkService.client_login(self.device_password, create_new_account);
             // console.log(pgm + 'userid = ' + JSON.stringify(userid));
             if (userid) {
+                if (self.register == 'G') {
+                    // Mark user as a guest account
+                    MoneyNetworkHelper.setItem('guestid', userid);
+                    MoneyNetworkHelper.ls_save() ;
+                }
                 // log in OK - clear login form and redirect
                 ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
                 self.device_password = '';

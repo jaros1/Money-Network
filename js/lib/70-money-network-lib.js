@@ -407,11 +407,12 @@ var MoneyNetworkHelper = (function () {
         prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
         pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text.
+        guestid: {session: false, userid: false, compress: false, encrypt: false}, // guest userid (1, 2, etc). in clear text. Used for cleanup operation
         // user data
         user_info: {session: false, userid: true, compress: true, encrypt: true}, // array with user_info. See user sub page / userCtrl
         contacts: {session: false, userid: true, compress: true, encrypt: true}, // array with contacts. See contacts sub page / contactCtrl
         msg_seq: {session: false, userid: true, compress: true, encrypt: true}, // local msg seq. Sequence. Used in contact.messages
-        // todo: should move avatar and alias to setup
+        // todo: avatar and alias is moved to setup but is still used in js code
         avatar: {session: false, userid: true, compress: true, encrypt: false}, // temporary public avatar image. user should upload a custom avatar image
         alias: {session: false, userid: true, compress: true, encrypt: true}, // user alias. Used in chat page
         setup: {session: false, userid: true, compress: true, encrypt: true} // hash with user setup (avatar, alias, sort, filter etc)
@@ -910,12 +911,29 @@ var MoneyNetworkHelper = (function () {
         return 0;
     } // client_login
 
-
     // client logout - clear all data in sessisonStorage (userid and password)
     function client_logout() {
         for (var key in session_storage) delete session_storage[key] ;
     } // client_logout
 
+    // delete any existing guest account before creating a new guest account
+    function delete_guest_account () {
+        var pgm = module + '.delete_guest_account: ' ;
+        var guestid, passwords, key_prefix, lng, key ;
+        guestid = getItem('guestid') ;
+        if (!guestid) return ; // no guest account
+        // set password to null
+        guestid = parseInt(guestid) ;
+        passwords = JSON.parse(getItem('passwords'));
+        passwords[guestid-1] = null ;
+        setItem('passwords', JSON.stringify(passwords));
+        // delete all keys starting with <guestid>_
+        removeItem('guestid');
+        key_prefix = guestid + '_' ;
+        lng = key_prefix.length ;
+        for (key in local_storage) if (key.substr(0,lng) == key_prefix) delete local_storage[key] ;
+        ls_save();
+    } // delete_guest_account
 
     // validate JSON before send and after receive using https://github.com/geraintluff/tv4
     var json_schemas = {} ;
@@ -1049,6 +1067,7 @@ var MoneyNetworkHelper = (function () {
         getUserId: getUserId,
         client_login: client_login,
         client_logout: client_logout,
+        delete_guest_account: delete_guest_account,
         generate_random_password: generate_random_password,
         encrypt: encrypt,
         decrypt: decrypt,

@@ -886,9 +886,8 @@
 
     <script type="text/ng-template" id="auth.html">
         <p>
-            Login is used to protect data stored in your browser. Password and your data is stored encrypted in your
-            browser / on
-            your device. Not on a server.
+            Login is used to protect data stored in your browser.
+            Password and your data is stored encrypted in your browser. Not on a server.
         </p>
 
         <form ng-hide="a.is_logged_in()" name="device_login_form" ng-submit="a.login_or_register()">
@@ -905,17 +904,22 @@
 
                 <tbody>
                 <tr>
-                    <td></td>
-                    <td colspan="4">
+                    <td colspan="5" style="text-align: center">
                         Log in <input type="radio" ng-model="a.register" value="N"> &nbsp;&nbsp;
-                        Register <input type="radio" ng-model="a.register" value="Y">
+                        Register <input type="radio" ng-model="a.register" value="Y"> &nbsp;&nbsp;
+                        Guest <input type="radio" ng-model="a.register" value="G"> &nbsp;&nbsp;
                     </td>
                 </tr>
+                <tr>
+                    <td colspan="5">&nbsp;</td>
+                </tr>
+                </tbody>
+                <tbody ng-hide="a.register == 'G'">
                 <tr>
                     <td>Password</td>
                     <td colspan="3">
                         <input id="auth_password" type="password" name="device_password" ng-model="a.device_password"
-                               required ng-minlength="10" ng-maxlength="50" placeholder="Enter password"
+                               required ng-minlength="10" placeholder="Enter password"
                                style="width: 120px">
                     </td>
                     <td><input ng-show="a.register == 'N'" type="submit" value="Log in" ng-hide="ctrl.register" ng-disabled="a.login_disabled()">
@@ -926,9 +930,6 @@
                 </tr>
                 <tr ng-show="device_login_form.device_password.$error.minlength">
                     <td colspan="5">Minimum password length is 10</td>
-                </tr>
-                <tr ng-show="device_login_form.device_password.$error.maxlength">
-                    <td colspan="5">Maximum password length is 50</td>
                 </tr>
                 </tbody>
 
@@ -947,18 +948,34 @@
                     <td colspan="5">Passwords do not match</td>
                 </tr>
                 </tbody>
-
+                <tbody ng-show="a.register == 'G'">
+                <tr>
+                    <td colspan="5" style="text-align: center">
+                        <input type="button" value="Log in" ng-click="a.login_or_register()">
+                    </td>
+                </tr>
+                </tbody>
             </table>
         </form>
+
         <p ng-show="a.register == 'Y'">
-            Please choose a secure password (10-50 characters) and do <b>NOT</b> forget or lose it.
-            Remember your password. There is <b>NO</b> help if you forget your password.
+            Please choose a secure password (minimum 10 characters) and do <b style="font-size: 150%">NOT</b> forget or lose it.
+            Remember your password. There is <b style="font-size: 150%">NO</b> help if you forget your password.
             Use "Register" after forgotten password to create a new empty account.
             Register takes a few seconds while generating private and public key for encrypted communication.
         </p>
-        <div style="width: 100%">
-            <hr>
-        </div>
+
+        <p ng-show="a.register == 'G'">
+            Click "Log in" if you wish to visit Money Network as a guest.
+            A temporary guest account with a random password and a dummy setup will be created for you.
+            Note that there can only be one guest account in a browser. Any existing guest account is deleted at next guest log in.
+            And that access to a guest account is very easy lost:
+            do not log out without writing down password and do not use guest log in twice.
+            <br>
+            You can use most functions in here but will probably only be communicating with other guests.
+            Most non guest accounts will ignore communication from quests.
+        </p>
+
         <!-- end auth.html -->
     </script>
 
