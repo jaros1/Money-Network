@@ -31,7 +31,7 @@ The primary goal of the Money Network is to make complementary and alternative m
 regular conventional money. 
 
 ## Software 
-- html5, ccs3, javascript. Simple code, lots of comments and code should be easy to follow. 
+- html5, ccs3, javascript and some sql. Simple code, lots of comments and code should be easy to follow. 
 - [AngularJS v1.5.8](https://angularjs.org/) (very well documented).
 - [ZeroNet 5.0](https://zeronet.readthedocs.io/en/latest/site_development/zeroframe_api_reference/) (documentation could be better).
 - Test: for now no testing framework. Just testing manually.

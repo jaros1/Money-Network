@@ -224,7 +224,7 @@ var MoneyNetworkHelper = (function () {
                 "where (my_search.tag like search.tag and  my_search.value like search.value " +
                 "or search.tag like my_search.tag and search.value like my_search.value) " +
                 "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " +
-                "and contacts.data_json_id = search.json_id " ;
+                "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq" ;
             // console.log(pgm + 'query = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = module + '.z_contact_search dbQuery callback 2: ';

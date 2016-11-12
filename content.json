@@ -3,8 +3,8 @@
  "description": "Complementary & alternative money demo",
  "files": {
   "README.md": {
-   "sha512": "3e521904449e2cd5e0f066ebf631aa903cf266608c86356df69606c382179239",
-   "size": 2690
+   "sha512": "96eee8fb81b7ec94430a3fe06aa348f73529ac25c9b5a1111a7fef273cbb7437",
+   "size": 2898
   },
   "css/all.css": {
    "sha512": "9aa91724464849256c3e7571a2aff5288233157acd17317ee1e855d2b215dfd5",
@@ -23,8 +23,8 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "27ebfdb448cc53d5f3c28c0af1e5273c426c55b192e66aad92ad99ac7220eb3f",
-   "size": 2765271
+   "sha512": "3b6a2b78d821fe908b507aea4106717af1f4ad4af8d2c78e2b371eddf8c4080c",
+   "size": 2765310
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -101,15 +101,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1478951847.931181,
+ "modified": 1478956701.501859,
  "postmessage_nonce_security": true,
  "sign": [
-  101847774951263150078370066623822848073630316625167795638707782571571294801985,
-  73361163488443954851732884963054543454970824571913599284031799016097885325103
+  87178301385355664219130390180943364935620640732510738767177408994665559788995,
+  54145620045822990664043431417618452212097301016603916223165866471322980824473
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G3byo0JISKU4o8hvlLCas1yVh+2HE1q7C+UP2vW+W8wIGrK7JOPimSlj2DC2S8ShWI9pOmk5FzhdjxSdipLrWGY="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HGaCliuJ69zf9G8lqT3rJ+3XgIhuP4jKWPhXbAD2GWoZCtA2685Q67+FswAvPLqDfVwaCesidlV/KW3kPGns7+8="
  },
  "signs_required": 1,
  "title": "Money Network",
