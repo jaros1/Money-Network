@@ -41,5 +41,5 @@ Test help would by nice. Create an issue if you find something that should be fi
 
 Css help would be nice. I am not a css person. I am having some problem with fixed menu and scroll in pages.
 
-Ideas and inspiration are welcome. Specially on wallet and money API path that have not yet been started. Fell free to create an issue with your inputs,
+Ideas and inspiration are welcome. Specially on wallet and money API parts that have not yet been started. Fell free to create an issue with your inputs,
 
