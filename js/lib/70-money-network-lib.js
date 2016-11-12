@@ -221,7 +221,7 @@ var MoneyNetworkHelper = (function () {
                 "  contacts.users_avatar as other_users_avatar, contacts.files_avatar as other_files_avatar " +
                 "from (" + my_search_query + ") as my_search, " +
                 "     search, (" + contacts_query + ") as contacts " +
-                "where (my_search.tag like search.tag and  my_search.value like search.value " +
+                "where (my_search.tag like search.tag and search.tag <> '%' and my_search.value like search.value and search.value <> '%' " +
                 "or search.tag like my_search.tag and search.value like my_search.value) " +
                 "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " +
                 "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq" ;
@@ -269,13 +269,20 @@ var MoneyNetworkHelper = (function () {
                         cert_user_id: res[i].other_cert_user_id,
                         pubkey: res[i].other_pubkey,
                         avatar: res[i].other_files_avatar || res[i].other_users_avatar,
-                        search: [{ tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1}]
+                        search: [{ tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
                     };
                     res_hash[unique_id].search.push({
                         tag: res[i].other_tag,
                         value: res[i].other_value,
                         privacy: 'Search',
-                        row: res_hash[unique_id].search.length+1
+                        row: res_hash[unique_id].search.length+1,
+                        // issue #10# - debug info
+                        debug_info: {
+                            my_tag: res[i].my_tag,
+                            my_value: res[i].my_value,
+                            other_tag: res[i].other_tag,
+                            other_value: res[i].other_value
+                        }
                     }) ;
                 }
 
@@ -287,13 +294,9 @@ var MoneyNetworkHelper = (function () {
                     console.log(pgm + 'Modified_deprecated. ' + modified_deprecated + ' contacts from search does not have a status timestamp (status != new).') ;
                 }
 
-
-                // skipping UI notifications.
-                // if (unique_ids.length == 1) console.log(pgm + "1 new contact");
-                // else console.log(pgm + unique_ids.length + " new contacts");
-
                 // insert/update/delete new contacts in local_storage_contacts (type=new)
-                var found_unique_ids = [] ;
+                // console.log(pgm + 'issue #10#: user_info = ' + JSON.stringify(user_info));
+                var found_unique_ids = [], debug_info ;
                 for (i=local_storage_contacts.length-1 ; i>= 0 ; i--) {
                     // if (local_storage_contacts[i].type != 'new') continue ;
                     unique_id = local_storage_contacts[i].unique_id ;
@@ -303,7 +306,21 @@ var MoneyNetworkHelper = (function () {
                         continue ;
                     }
                     found_unique_ids.push(unique_id) ;
+
                     // update contact with new search words
+
+                    // issue #10 - problem with wildcards in search. debug info
+                    debug_info = [] ;
+                    for (j=0 ; j<res_hash[unique_id].search.length ; j++) {
+                        debug_info.push({
+                            row: res_hash[unique_id].search[j].row,
+                            my_tag: res_hash[unique_id].search[j].debug_info.my_tag,
+                            my_value: res_hash[unique_id].search[j].debug_info.my_value,
+                            other_tag: res_hash[unique_id].search[j].debug_info.other_tag,
+                            other_value: res_hash[unique_id].search[j].debug_info.other_value
+                        }) ;
+                    }
+                    // console.log(pgm + 'issue #10: contact.search.debug_info = ' + JSON.stringify(debug_info)) ;
                     local_storage_contacts[i].cert_user_id = res_hash[unique_id].cert_user_id ;
                     if (res_hash[unique_id].avatar) local_storage_contacts[i].avatar = res_hash[unique_id].avatar ;
                     for (j=local_storage_contacts[i].search.length-1 ; j >= 0 ; j--) {
@@ -316,6 +333,192 @@ var MoneyNetworkHelper = (function () {
                     }
                     for (j=0 ; j<local_storage_contacts[i].search.length ; j++) local_storage_contacts[i].search[j].row = j+1 ;
                 } // i
+
+                // issue #10# output:
+                //
+                // MoneyNetworkHelper.z_contact_search dbQuery callback 2: issue #10#:
+                //user_info = [
+                //    {"tag": "Name", "value": "Guest", "privacy": "Search"},
+                //    {"tag": "%", "value": "%", "privacy": "Search"},
+                //    {"tag": "Timezone", "value": "-1", "privacy": "Hidden"},
+                //    {"tag": "Language", "value": "en-US", "privacy": "Hidden"}
+                //];
+                //
+                // expected search result for other default guest account is:
+                //expected_guest_search = [
+                //    {"my tag": "Name", "my_value": "Guest", "other_tag": "Name", "other_value": "Guest"},
+                //    {"my tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}
+                //    // and no hits for Hidden values as other guest Hidden values also are Hidden ...
+                //];
+                //
+                // contact 1:
+                // received debug_info = [
+                //    {"row": 2, "my_tag": "Name", "my_value": "Guest", "other_tag": "Name", "other_value": "Guest"},
+                //    {"row": 3, "my_tag": "Name", "my_value": "Guest", "other_tag": "%", "other_value": "%"},
+                //    {"row": 4, "my_tag": "%", "my_value": "%", "other_tag": "Name", "other_value": "Guest"},
+                //    {"row": 5, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"},
+                //    {"row": 6, "my_tag": "Timezone", "my_value": "-1", "other_tag": "%", "other_value": "%"},
+                //    {"row": 7, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}
+                //];
+                // must be transformed to debug_info = [
+                //    {"row": 2, "my_tag": "Name", "my_value": "Guest", "other_tag": "Name", "other_value": "Guest"},
+                //    {"row": 5, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}
+                //];
+                //
+                // contact 2:
+                // received debug_info = [
+                //    {"row": 2, "my_tag": "Name", "my_value": "Guest", "other_tag": "%", "other_value": "%"},
+                //    {"row": 3, "my_tag": "%", "my_value": "%", "other_tag": "name", "other_value": "localhost / google chrome"},
+                //    {"row": 4, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"},
+                //    {"row": 5, "my_tag": "Timezone", "my_value": "-1", "other_tag": "%", "other_value": "%"},
+                //    {"row": 6, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}
+                //];
+                // must be transformed to debug_info = [
+                //    {"row": 3, "my_tag": "%", "my_value": "%", "other_tag": "name", "other_value": "localhost / google chrome"}
+                //];
+                //
+                // contact 3:
+                //// MoneyNetworkHelper.z_contact_search dbQuery callback 2: issue #10: contact.search.
+                //debug_info = [{"row": 1}, {
+                //    "row": 2,
+                //    "my_tag": "Name",
+                //    "my_value": "Guest",
+                //    "other_tag": "Name",
+                //    "other_value": "Guest"
+                //}, {"row": 3, "my_tag": "Name", "my_value": "Guest", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 4,
+                //    "my_tag": "%",
+                //    "my_value": "%",
+                //    "other_tag": "Name",
+                //    "other_value": "Guest"
+                //}, {"row": 5, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 6,
+                //    "my_tag": "Timezone",
+                //    "my_value": "-1",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {"row": 7, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}];
+                //// MoneyNetworkHelper.z_contact_search dbQuery callback 2: issue #10: contact.search.
+                //debug_info = [{"row": 1}, {
+                //    "row": 2,
+                //    "my_tag": "Name",
+                //    "my_value": "Guest",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {
+                //    "row": 3,
+                //    "my_tag": "%",
+                //    "my_value": "%",
+                //    "other_tag": "Name",
+                //    "other_value": "bit.no.com - y"
+                //}, {"row": 4, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 5,
+                //    "my_tag": "Timezone",
+                //    "my_value": "-1",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {"row": 6, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}];
+                //// MoneyNetworkHelper.z_contact_search dbQuery callback 2: issue #10: contact.search.
+                //debug_info = [{"row": 1}, {
+                //    "row": 2,
+                //    "my_tag": "Name",
+                //    "my_value": "Guest",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {
+                //    "row": 3,
+                //    "my_tag": "%",
+                //    "my_value": "%",
+                //    "other_tag": "Name",
+                //    "other_value": "bit.no.com - x"
+                //}, {"row": 4, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 5,
+                //    "my_tag": "Timezone",
+                //    "my_value": "-1",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {"row": 6, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}];
+                //// MoneyNetworkHelper.z_contact_search dbQuery callback 2: issue #10: contact.search.
+                //debug_info = [{"row": 1}, {
+                //    "row": 2,
+                //    "my_tag": "Name",
+                //    "my_value": "Guest",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {
+                //    "row": 3,
+                //    "my_tag": "%",
+                //    "my_value": "%",
+                //    "other_tag": "Name",
+                //    "other_value": "bit.no.com"
+                //}, {"row": 4, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 5,
+                //    "my_tag": "Timezone",
+                //    "my_value": "-1",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {"row": 6, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}];
+                //// MoneyNetworkHelper.z_contact_search dbQuery callback 2: issue #10: contact.search.
+                //debug_info = [{"row": 1}, {
+                //    "row": 2,
+                //    "my_tag": "Name",
+                //    "my_value": "Guest",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {
+                //    "row": 3,
+                //    "my_tag": "%",
+                //    "my_value": "%",
+                //    "other_tag": "Name",
+                //    "other_value": "proxy1.zn.kindlyfire.me"
+                //}, {"row": 4, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 5,
+                //    "my_tag": "Timezone",
+                //    "my_value": "-1",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {"row": 6, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}];
+                //// MoneyNetworkHelper.z_contact_search dbQuery callback 2: issue #10: contact.search.
+                //debug_info = [{"row": 1}, {
+                //    "row": 2,
+                //    "my_tag": "Name",
+                //    "my_value": "Guest",
+                //    "other_tag": "Name",
+                //    "other_value": "Guest"
+                //}, {"row": 3, "my_tag": "Name", "my_value": "Guest", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 4,
+                //    "my_tag": "%",
+                //    "my_value": "%",
+                //    "other_tag": "Name",
+                //    "other_value": "Guest"
+                //}, {"row": 5, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 6,
+                //    "my_tag": "Timezone",
+                //    "my_value": "-1",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {"row": 7, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}];
+                //// MoneyNetworkHelper.z_contact_search dbQuery callback 2: issue #10: contact.search.
+                //debug_info = [{"row": 1}, {
+                //    "row": 2,
+                //    "my_tag": "Name",
+                //    "my_value": "Guest",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {
+                //    "row": 3,
+                //    "my_tag": "%",
+                //    "my_value": "%",
+                //    "other_tag": "Name",
+                //    "other_value": "zeronet.korso.win"
+                //}, {"row": 4, "my_tag": "%", "my_value": "%", "other_tag": "%", "other_value": "%"}, {
+                //    "row": 5,
+                //    "my_tag": "Timezone",
+                //    "my_value": "-1",
+                //    "other_tag": "%",
+                //    "other_value": "%"
+                //}, {"row": 6, "my_tag": "Language", "my_value": "en-US", "other_tag": "%", "other_value": "%"}];
+
                 var new_contact ;
                 for (unique_id in res_hash) {
                     if (found_unique_ids.indexOf(unique_id) != -1) continue ;

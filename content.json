@@ -2,6 +2,10 @@
  "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
  "description": "Complementary & alternative money demo",
  "files": {
+  "LICENSE": {
+   "sha512": "d281feecb7d1218e1aea8269f288fcd63385da1a130681fadae77262637cb65f",
+   "size": 18027
+  },
   "README.md": {
    "sha512": "96eee8fb81b7ec94430a3fe06aa348f73529ac25c9b5a1111a7fef273cbb7437",
    "size": 2898
@@ -15,16 +19,16 @@
    "size": 2356
   },
   "index.html": {
-   "sha512": "f5b2ed043f1b68eeb08208b5e9beb7de687155b154cdee7960cda340e6a3a0b3",
-   "size": 58677
+   "sha512": "9c0ce8c98c3dab13c4fdfd726ec454d6cfa6b6f11546e1412c2b9a35ca3b7f04",
+   "size": 58740
   },
   "js-external/pngencoder.js": {
    "sha512": "ecaadaad552d2610336995b48360253cd6d847b6aa590fc3d96e7245a5d5fe11",
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "3b6a2b78d821fe908b507aea4106717af1f4ad4af8d2c78e2b371eddf8c4080c",
-   "size": 2765310
+   "sha512": "49224d3bcf88700f8616d59dbbd9dbe3768ce2fb858b3b0798afd29a158a8da4",
+   "size": 2776554
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -85,10 +89,6 @@
   "public/images/avatar9.png": {
    "sha512": "9c83f18082fbc50566dbb6684feb95ae5d0f83b951063280c9a7314be0115653",
    "size": 4256
-  },
-  "source.zip": {
-   "sha512": "da3142576e27b3b1889df6bbdca9f191a34978dd31b422e6e20b0fbd4b2d95f0",
-   "size": 913694
   }
  },
  "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*)",
@@ -101,15 +101,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1478956701.501859,
+ "modified": 1478971325.390727,
  "postmessage_nonce_security": true,
  "sign": [
-  87178301385355664219130390180943364935620640732510738767177408994665559788995,
-  54145620045822990664043431417618452212097301016603916223165866471322980824473
+  109451246243088813035783803438032421047331431678391981959540885905940724914158,
+  46424747026587176480664645069075920304077810397965386532382338189086751822581
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HGaCliuJ69zf9G8lqT3rJ+3XgIhuP4jKWPhXbAD2GWoZCtA2685Q67+FswAvPLqDfVwaCesidlV/KW3kPGns7+8="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G1VdmP6euY2oUPx3tmS60gKpyyCrgPGkbBDwi5f3xG4GVKNxG5n93qcRQlcw6qZ78O7gXikxhGyJnG9BUYPgiy8="
  },
  "signs_required": 1,
  "title": "Money Network",
