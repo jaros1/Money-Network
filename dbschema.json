@@ -10,7 +10,7 @@
         { "node": "msg",    "table": "messages" } ]
     },
     "users/.+/content.json": {
-      "to_keyvalue": [ "cert_user_id", "modified" ],
+      "to_keyvalue": [ "cert_user_id" ],
       "to_table": [
         { "node": "files", "table": "files", "key_col": "filename"}
       ]

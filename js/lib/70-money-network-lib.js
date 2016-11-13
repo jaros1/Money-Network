@@ -177,45 +177,67 @@ var MoneyNetworkHelper = (function () {
 
             // console.log(pgm + 'my_search = ' + my_search) ;
             // get contact info: user_seq, pubkey, auth_address, cert_user_id, modified and avatars (users & files)
-            // notes:
-            // -  modified is from content.json - identical for users with identical cert id - deprecated
-            // -  timestamp is from status.json - one timestamp for each user - preferred if exists
-            // todo: should remove modified usage when all active users have a timestamp. after 5/12-16
+            // old query with modified (from content.json) and timestamp (from status)
+            //var contacts_query =
+            //    "select" +
+            //    "  users.user_seq, users.pubkey, users.avatar as users_avatar, users.guest," +
+            //    "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
+            //    "  content_json.json_id as content_json_id," +
+            //    "  keyvalue1.value as cert_user_id," +
+            //    "  keyvalue2.value as modified," +
+            //    "  (select substr(files.filename,8)" +
+            //    "   from files, json as avatar_json " +
+            //    "   where files.filename like 'avatar%'" +
+            //    "   and avatar_json.json_id = files.json_id" +
+            //    "   and avatar_json.directory = data_json.directory) as files_avatar," +
+            //    "  (select status.timestamp" +
+            //    "   from json as status_json, status" +
+            //    "   where status_json.directory = content_json.directory" +
+            //    "   and status_json.file_name = 'status.json'"+
+            //    "   and status.json_id = status_json.json_id" +
+            //    "   and status.user_seq = users.user_seq) as timestamp " +
+            //    "from users, json as data_json, json as content_json, keyvalue as keyvalue1, keyvalue as keyvalue2 " +
+            //    "where users.pubkey <> '" + pubkey + "'" +
+            //    "and data_json.json_id = users.json_id " +
+            //    "and content_json.directory = data_json.directory " +
+            //    "and content_json.file_name = 'content.json' " +
+            //    "and keyvalue1.json_id = content_json.json_id " +
+            //    "and keyvalue1.key = 'cert_user_id' " +
+            //    "and keyvalue2.json_id = content_json.json_id " +
+            //    "and keyvalue2.key = 'modified'" ;
+
+            // new contacts query without modified timestamp from content.json (keyvalue)
             var contacts_query =
                 "select" +
-                "  users.user_seq, users.pubkey, users.avatar as users_avatar," +
+                "  users.user_seq, users.pubkey, users.avatar as users_avatar, users.guest," +
                 "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
                 "  content_json.json_id as content_json_id," +
-                "  keyvalue1.value as cert_user_id," +
-                "  keyvalue2.value as modified," +
+                "  keyvalue.value as cert_user_id," +
                 "  (select substr(files.filename,8)" +
                 "   from files, json as avatar_json " +
                 "   where files.filename like 'avatar%'" +
                 "   and avatar_json.json_id = files.json_id" +
                 "   and avatar_json.directory = data_json.directory) as files_avatar," +
-                "  (select status.timestamp" +
-                "   from json as status_json, status" +
-                "   where status_json.directory = content_json.directory" +
-                "   and status_json.file_name = 'status.json'"+
-                "   and status.json_id = status_json.json_id" +
-                "   and status.user_seq = users.user_seq) as timestamp " +
-                "from users, json as data_json, json as content_json, keyvalue as keyvalue1, keyvalue as keyvalue2 " +
+                "  status.timestamp " +
+                "from users, json as data_json, json as content_json, keyvalue, json as status_json, status " +
                 "where users.pubkey <> '" + pubkey + "'" +
                 "and data_json.json_id = users.json_id " +
                 "and content_json.directory = data_json.directory " +
                 "and content_json.file_name = 'content.json' " +
-                "and keyvalue1.json_id = content_json.json_id " +
-                "and keyvalue1.key = 'cert_user_id' " +
-                "and keyvalue2.json_id = content_json.json_id " +
-                "and keyvalue2.key = 'modified'" ;
+                "and keyvalue.json_id = content_json.json_id " +
+                "and keyvalue.key = 'cert_user_id' " +
+                "and status_json.directory = data_json.directory " +
+                "and status_json.file_name = 'status.json' " +
+                "and status.json_id = status_json.json_id " +
+                "and status.user_seq = users.user_seq" ;
             // console.log(pgm + 'contacts_query = ' + contacts_query) ;
 
-            // new query with cert_user_id
+            // find contacts with matching tags
             query =
                 "select" +
                 "  my_search.tag as my_tag, my_search.value as my_value," +
-                "  contacts.pubkey as other_pubkey, contacts.auth_address as other_auth_address," +
-                "  contacts.cert_user_id as other_cert_user_id, contacts.modified as other_user_modified," +
+                "  contacts.pubkey as other_pubkey, contacts.guest as other_guest, contacts.auth_address as other_auth_address," +
+                "  contacts.cert_user_id as other_cert_user_id," +
                 "  contacts.timestamp as other_user_timestamp," +
                 "  search.tag as other_tag, search.value as other_value, " +
                 "  contacts.users_avatar as other_users_avatar, contacts.files_avatar as other_files_avatar " +
@@ -226,6 +248,7 @@ var MoneyNetworkHelper = (function () {
                 "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " +
                 "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq" ;
             // console.log(pgm + 'query = ' + query) ;
+
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = module + '.z_contact_search dbQuery callback 2: ';
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
@@ -240,7 +263,7 @@ var MoneyNetworkHelper = (function () {
                     ZeroFrame.cmd("wrapperNotification", ["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
                     return;
                 }
-                var unique_id, unique_ids = [], res_hash = {}, ignore, j, last_updated, modified_deprecated = 0 ;
+                var unique_id, unique_ids = [], res_hash = {}, ignore, j, last_updated ;
                 for (var i=0 ; i<res.length ; i++) {
                     // check contacts on ignore list
                     ignore=false ;
@@ -257,11 +280,7 @@ var MoneyNetworkHelper = (function () {
                     // - public/private localStorage key pairs can have been exported to other devices
                     unique_id = CryptoJS.SHA256(res[i].other_auth_address + '/'  + res[i].other_pubkey).toString();
                     res[i].other_unique_id = unique_id;
-                    if (res[i].other_user_timestamp) last_updated = Math.round(res[i].other_user_timestamp / 1000) ;
-                    else {
-                        last_updated = res[i].other_user_modified ;
-                        modified_deprecated++ ;
-                    }
+                    last_updated = Math.round(res[i].other_user_timestamp / 1000) ;
                     if (unique_ids.indexOf(res[i].other_unique_id)==-1) unique_ids.push(res[i].other_unique_id) ;
                     if (!res_hash.hasOwnProperty(unique_id)) res_hash[unique_id] = {
                         type: 'new',
@@ -284,14 +303,6 @@ var MoneyNetworkHelper = (function () {
                             other_value: res[i].other_value
                         }
                     }) ;
-                }
-
-                if (modified_deprecated == 0) {
-                    console.log(pgm + 'Modified_deprecated. All contacts from search have a status timestamp (status != new). Must also check ls_load_contacts (type != new)') ;
-                    // console.log(pgm + 'res = ' + JSON.stringify(res));
-                }
-                else {
-                    console.log(pgm + 'Modified_deprecated. ' + modified_deprecated + ' contacts from search does not have a status timestamp (status != new).') ;
                 }
 
                 // insert/update/delete new contacts in local_storage_contacts (type=new)

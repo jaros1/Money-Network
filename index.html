@@ -32,7 +32,7 @@
             <li>A client network. Data on clients. Minimum data on servers. Servers are used for communication between
                 clients.
             </li>
-            <li>Open source on <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_blank" rel="noopener noreferrer">GitHub</a>.
+            <li>Open source on <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_top" rel="noopener noreferrer">GitHub</a>.
                 URL: https://github.com/jaros1/Zeronet-Money-Network<br>
                 Feel free to clone, download, modify and make your own website or app.
             </li>
@@ -794,7 +794,7 @@
             <span ng-hide="u.editing_alias" ng-bind-html="u.setup.alias" title="Click to edit your alias"
                   ng-click="u.edit_alias()"></span>
             <span ng-show="u.editing_alias" title="Edit alias. Press ENTER to save. Press ESC to cancel">
-                <input type="text" ng-model="u.alias_copy" style="width: 110px" id="alias_id"
+                <input type="text" ng-model="u.setup_copy.alias" style="width: 110px" id="alias_id"
                        on-key-enter="u.save_alias()" on-key-escape="u.cancel_edit_alias()">
             </span>
 
@@ -871,12 +871,12 @@
             <tbody>
             <tr><td colspan="3">Spam filters:</td></tr>
             <tr>
-                <td>Allow messages from Guests?</td>
+                <td>Block messages from Guests?</td>
                 <td>&nbsp;&nbsp;</td>
                 <td><input type="checkbox" ng-model="u.setup.block_guests" ng-change="u.spam_settings_changed()"></td>
             </tr>
             <tr>
-                <td>Allow messages from Ignored list?</td>
+                <td>Block messages from Ignored list?</td>
                 <td></td>
                 <td><input type="checkbox" ng-model="u.setup.block_ignored" ng-change="u.spam_settings_changed()"></td>
             </tr>

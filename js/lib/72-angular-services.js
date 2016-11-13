@@ -993,17 +993,12 @@ angular.module('MoneyNetwork')
                 //    "and users.json_id = json.json_id";
                 //console.log(pgm + 'query = ' + query);
 
-                // new query with modified and timestamp columns
+                // new query with timestamp columns
                 query =
                     "select" +
                     "  substr(data_json.directory,7) as auth_address, users.user_seq, users.pubkey," +
-                    "  keyvalue.value as modified," +
-                    "  (select status.timestamp from json as status_json, status" +
-                    "   where status_json.directory = content_json.directory" +
-                    "   and status_json.file_name = 'status.json'" +
-                    "   and status.json_id = status_json.json_id" +
-                    "   and status.user_seq = users.user_seq) as timestamp " +
-                    "from json as data_json, json as content_json, users, keyvalue as keyvalue " +
+                    "  status.timestamp " +
+                    "from json as data_json, json as content_json, users, json as status_json, status " +
                     "where data_json.directory in " ;
                 for (i = 0; i < auth_addresses.length; i++) {
                     if (i == 0) query += '(' ;
@@ -1012,11 +1007,13 @@ angular.module('MoneyNetwork')
                 } // for i
                 query += ") " +
                     "and data_json.file_name = 'data.json' " +
-                    "and users.json_id = data_json.json_id " +
+                    "and data_json.json_id = users.json_id " +
                     "and content_json.directory = data_json.directory " +
                     "and content_json.file_name = 'content.json' " +
-                    "and keyvalue.json_id = content_json.json_id " +
-                    "and keyvalue.key = 'modified'" ;
+                    "and status_json.directory = data_json.directory " +
+                    "and status_json.file_name = 'status.json' " +
+                    "and status.json_id = status_json.json_id " +
+                    "and status.user_seq = users.user_seq" ;
                 // console.log(pgm + 'query = ' + query);
 
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
@@ -1028,25 +1025,16 @@ angular.module('MoneyNetwork')
                     }
                     else {
                         // console.log(pgm + 'res = ' + JSON.stringify(res));
-                        var res_hash = {}, last_updated, modified_deprecated = 0 ;
+                        var res_hash = {} ;
                         for (var i=0 ; i<res.length ; i++) {
-                            if (res[i].timestamp) last_updated = Math.round(res[i].timestamp / 1000) ;
-                            else {
-                                last_updated = res[i].modified ;
-                                modified_deprecated++ ;
-                            }
                             if (!res_hash.hasOwnProperty(res[i].auth_address)) res_hash[res[i].auth_address] = [] ;
                             res_hash[res[i].auth_address].push({
                                 user_seq: res[i].user_seq,
                                 pubkey: res[i].pubkey,
-                                last_updated: last_updated
+                                last_updated: Math.round(res[i].timestamp / 1000)
                             }) ;
                         } // for i
                         // console.log(pgm + 'res_hash = ' + JSON.stringify(res_hash));
-                        if (modified_deprecated == 0) {
-                            console.log(pgm + 'Modified_deprecated. All contacts from localStorage have a status timestamp (status != new). Must also check z_contact_search (new contacts)') ;
-                            // console.log(pgm + 'res = ' + JSON.stringify(res));
-                        }
 
                         // control. check that pubkey in contacts are identical with pubkeys from this query
                         var auth_address, unique_id, found_user_seq, found_pubkey, found_last_updated ;
@@ -1212,7 +1200,18 @@ angular.module('MoneyNetwork')
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256, error ;
             var local_msg_seq, message ;
 
-            // find contact from unique_id
+            // todo: check spam filters block_guests and block_ignored from user setup
+            //setup = {
+            //    ...
+            //    "block_guests": false,
+            //    "block_ignored": false,
+            //    "block_guests_at": 1479033958082,
+            //    "block_ignored_at": 1479033949514
+            //};
+
+
+
+            // find contact from unique_id. will decrypt but only buffer messages with unknown contact
             contact = null ;
             for (i=0 ; i<local_storage_contacts.length ; i++) {
                 if (local_storage_contacts[i].unique_id == unique_id) contact = local_storage_contacts[i] ;
@@ -1480,14 +1479,14 @@ angular.module('MoneyNetwork')
                 "  users.user_seq, users.pubkey, users.avatar as users_avatar," +
                 "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
                 "  content_json.json_id as content_json_id," +
-                "  keyvalue1.value as cert_user_id," +
-                "  keyvalue2.value as modified," +
+                "  keyvalue.value as cert_user_id," +
                 "  (select substr(files.filename,8)" +
                 "   from files, json as avatar_json " +
                 "   where files.filename like 'avatar%'" +
                 "   and avatar_json.json_id = files.json_id" +
-                "   and avatar_json.directory = data_json.directory) as files_avatar " +
-                "from users, json as data_json, json as content_json, keyvalue as keyvalue1, keyvalue as keyvalue2 " +
+                "   and avatar_json.directory = data_json.directory) as files_avatar, " +
+                "  status.timestamp " +
+                "from users, json as data_json, json as content_json, keyvalue as keyvalue, json as status_json, status " +
                 "where data_json.json_id = users.json_id " +
                 "and substr(data_json.directory, 7) in " ;
             for (i=0 ; i<expected_auth_addresses.length ; i++) {
@@ -1498,20 +1497,22 @@ angular.module('MoneyNetwork')
             contacts_query = contacts_query + ") " +
                 "and content_json.directory = data_json.directory " +
                 "and content_json.file_name = 'content.json' " +
-                "and keyvalue1.json_id = content_json.json_id " +
-                "and keyvalue1.key = 'cert_user_id' " +
-                "and keyvalue2.json_id = content_json.json_id " +
-                "and keyvalue2.key = 'modified'" ;
+                "and keyvalue.json_id = content_json.json_id " +
+                "and keyvalue.key = 'cert_user_id' " +
+                "and status_json.directory = data_json.directory " +
+                "and status_json.file_name = 'status.json' " +
+                "and status.json_id = status_json.json_id " +
+                "and status.user_seq = users.user_seq" ;
             // console.log(pgm + 'contacts_query = ' + contacts_query) ;
 
             ZeroFrame.cmd("dbQuery", [contacts_query], function (res) {
                 var pgm = service  + '.create_unknown_contacts dbQuery callback: ';
-                var found_auth_addresses = [], i, unique_id, new_contact, public_avatars, index, j ;
+                var found_auth_addresses = [], i, unique_id, new_contact, public_avatars, index, j, last_updated ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 if (res.error) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for new unknown contacts failed: " + res.error, 5000]);
                     console.log(pgm + "Search for new contacts failed: " + res.error) ;
-                    console.log(pgm + 'query = ' + query) ;
+                    console.log(pgm + 'contacts_query = ' + contacts_query) ;
                     new_unknown_contacts.splice(0,new_unknown_contacts.length)
                     return;
                 }
@@ -1519,7 +1520,7 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for new unknown contacts failed. No contacts were found", 5000]);
                     new_unknown_contacts.splice(0,new_unknown_contacts.length)
                     console.log(pgm + "Search for new unknown contacts failed. No contacts were found") ;
-                    console.log(pgm + 'query = ' + query) ;
+                    console.log(pgm + 'contacts_query = ' + contacts_query) ;
                     return;
                 }
 
@@ -1527,7 +1528,8 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<res.length ; i++) {
                     found_auth_addresses.push(res[i].auth_address);
                     // create new contact
-                    unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString(); ;
+                    unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
+                    last_updated = Math.round(res[i].timestamp / 1000);
                     new_contact = {
                         unique_id: unique_id,
                         type: 'new',
@@ -1535,7 +1537,7 @@ angular.module('MoneyNetwork')
                         cert_user_id: res[i].cert_user_id,
                         avatar: res[i].avatar,
                         pubkey: res[i].pubkey,
-                        search: [{ tag: 'Last updated', value: res[i].modified, privacy: 'Search', row: 1}],
+                        search: [{ tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1}],
                         messages: [],
                         outbox_sender_sha256: {},
                         inbox_zeronet_msg_id: [],
@@ -1998,7 +2000,7 @@ angular.module('MoneyNetwork')
                     } // for i (res.msg)
                     // console.log(pgm + 'res.msg.length after = ' + res.msg.length) ;
 
-                    // there should not be any unprocessed messages expect messages with unknown contacts here
+                    // there should not be any unprocessed messages except messages with unknown contacts here
                     if ((res.msg.length > 0) && (res.msg.length != new_unknown_contacts.length)) {
                         if (res.msg.length == 1) {
                             console.log(pgm + filename + ': 1 message could not be processed');
@@ -2556,7 +2558,7 @@ angular.module('MoneyNetwork')
                 if ((contact2.cert_user_id != contact.cert_user_id) && (contact2.pubkey != contact.pubkey)) continue ;
                 if (contact2.unique_id == contact.unique_id) continue ;
                 last_updated2 = null ;
-                for (j=0 ; j<contact2.search.length ; j++) if (typeof contact.search[j].value == 'number') last_updated2 = contact2.search[j].value ;
+                for (j=0 ; j<contact2.search.length ; j++) if (typeof contact2.search[j].value == 'number') last_updated2 = contact2.search[j].value ;
                 // console.log(pgm + 'last_updated2 = ' + last_updated2 + ', contact2 = ' + JSON.stringify(contact2));
                 if (last_updated2 > last_updated) newer_contacts.push(contact2);
             } // for i (self.contacts)

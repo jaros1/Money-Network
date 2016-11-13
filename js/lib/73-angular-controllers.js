@@ -931,12 +931,20 @@ angular.module('MoneyNetwork')
             uploadable_avatar.handleUploadClick() ;
         };
 
+        // get setup with alias and spam settings
+        function load_setup () {
+            self.setup = moneyNetworkService.get_user_setup();
+        }
+        load_setup() ;
+        function copy_setup() {
+            self.setup_copy = JSON.parse(JSON.stringify(self.setup)) ;
+        }
+        copy_setup() ;
+
         // manage user alias
-        self.setup = moneyNetworkService.get_user_setup();
         self.editing_alias = false ;
         var edit_alias_notifications = 1 ;
         self.edit_alias = function () {
-            self.alias_copy = self.setup.alias ;
             self.editing_alias = true;
             if (edit_alias_notifications > 0) {
                 ZeroFrame.cmd("wrapperNotification", ["info", "Edit alias. Press ENTER to save. Press ESC to cancel", 5000]);
@@ -949,20 +957,43 @@ angular.module('MoneyNetwork')
         };
         self.save_alias = function () {
             self.editing_alias = false ;
-            self.setup.alias = self.alias_copy ;
-            MoneyNetworkHelper.save_user_setup() ;
+            self.setup.alias = self.setup_copy.alias ;
+            moneyNetworkService.save_user_setup() ;
+            copy_setup() ;
             $scope.$apply() ;
         };
         self.cancel_edit_alias = function () {
             self.editing_alias = false ;
+            copy_setup();
             $scope.$apply() ;
         };
 
         // manage spam filter settings: block messages from guests and/or list of ignored contacts
         self.spam_settings_changed = function () {
+            var pgm = controller + '.spam_settings_changed: ' ;
+            if (self.setup_copy.block_guests != self.setup.block_guests) self.setup.block_guests_at = new Date().getTime() ;
+            if (self.setup_copy.block_ignored != self.setup.block_ignored) self.setup.block_ignored_at = new Date().getTime() ;
             moneyNetworkService.save_user_setup() ;
+            // console.log(pgm + 'setup = ' + JSON.stringify(self.setup));
+            //setup = {
+            //    "alias": "jro",
+            //    "avatar": "8.png",
+            //    "contact_sort": "Last chat msg",
+            //    "chat_sort": "Last message",
+            //    "contact_filters": {
+            //        "all": "red",
+            //        "new": "green",
+            //        "unverified": "green",
+            //        "verified": "green",
+            //        "ignore": "green"
+            //    },
+            //    "block_guests": false,
+            //    "block_ignored": false,
+            //    "block_guests_at": 1479033958082,
+            //    "block_ignored_at": 1479033949514
+            //};
+            copy_setup() ;
         };
-
 
         // end UserCtrl
     }])
