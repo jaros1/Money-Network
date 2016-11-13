@@ -2520,8 +2520,6 @@ angular.module('MoneyNetwork')
             for (var key in user_setup) delete user_setup[key] ;
             for (key in new_user_setup) user_setup[key] = new_user_setup[key] ;
             // add missing defaults
-            if (!user_setup.contact_sort) user_setup.contact_sort = contact_sort_options[0] ;
-            if (!user_setup.chat_sort) user_setup.chat_sort = chat_sort_options[0] ;
             if (!user_setup.contact_filters) user_setup.contact_filters = {
                 all: 'red',
                 new: 'green',
@@ -2529,6 +2527,10 @@ angular.module('MoneyNetwork')
                 verified: 'green',
                 ignore: 'red'
             } ;
+            if (!user_setup.contact_sort) user_setup.contact_sort = contact_sort_options[0] ;
+            if (!user_setup.chat_sort) user_setup.chat_sort = chat_sort_options[0] ;
+            if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = true ;
+            if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
         }
         function save_user_setup () {
             MoneyNetworkHelper.setItem('setup', JSON.stringify(user_setup));
@@ -2536,42 +2538,6 @@ angular.module('MoneyNetwork')
         }
         function get_user_setup () {
             return user_setup ;
-        }
-
-
-        function get_contact_sort () {
-            var pgm = service + '.get_contact_sort: ' ;
-            console.log(pgm + 'Deprecated. Please use get_user_setup') ;
-            return user_setup.contact_sort ;
-        }
-        function set_contact_sort (sort) {
-            var pgm = service + '.set_contact_sort: ' ;
-            console.log(pgm + 'Deprecated. Please use save_user_setup') ;
-            user_setup.contact_sort = sort ;
-            save_user_setup() ;
-        }
-        function get_chat_sort() {
-            var pgm = service + '.get_chat_sort: ' ;
-            console.log(pgm + 'Deprecated. Please use get_user_setup') ;
-            return user_setup.chat_sort;
-        }
-        function set_chat_sort(sort) {
-            var pgm = service + '.set_chat_sort: ' ;
-            console.log(pgm + 'Deprecated. Please use save_user_setup') ;
-            user_setup.chat_sort = sort;
-            save_user_setup();
-        }
-
-        function get_contact_filters () {
-            var pgm = service + '.get_contact_filters: ' ;
-            console.log(pgm + 'Deprecated. Please use get_user_setup') ;
-            return user_setup.contact_filters
-        }
-        function set_contact_filters (filters) {
-            var pgm = service + '.set_contact_filters: ' ;
-            console.log(pgm + 'Deprecated. Please use save_user_setup') ;
-            user_setup.contact_filters = filters ;
-            save_user_setup() ;
         }
 
 
@@ -2649,14 +2615,8 @@ angular.module('MoneyNetwork')
             load_user_setup: load_user_setup,
             get_user_setup: get_user_setup,
             save_user_setup: save_user_setup,
-            get_contact_sort: get_contact_sort,
-            set_contact_sort: set_contact_sort,
             get_contact_sort_options: get_contact_sort_options,
             get_contact_sort_title: get_contact_sort_title,
-            get_contact_filters: get_contact_filters,
-            set_contact_filters: set_contact_filters,
-            get_chat_sort: get_chat_sort,
-            set_chat_sort: set_chat_sort,
             get_chat_sort_options: get_chat_sort_options,
             get_chat_sort_title: get_chat_sort_title,
             notification_if_old_contact: notification_if_old_contact

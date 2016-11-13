@@ -794,7 +794,7 @@
             <span ng-hide="u.editing_alias" ng-bind-html="u.setup.alias" title="Click to edit your alias"
                   ng-click="u.edit_alias()"></span>
             <span ng-show="u.editing_alias" title="Edit alias. Press ENTER to save. Press ESC to cancel">
-                <input type="text" ng-model="u.setup.alias" style="width: 110px" id="alias_id"
+                <input type="text" ng-model="u.alias_copy" style="width: 110px" id="alias_id"
                        on-key-enter="u.save_alias()" on-key-escape="u.cancel_edit_alias()">
             </span>
 
@@ -873,12 +873,12 @@
             <tr>
                 <td>Allow messages from Guests?</td>
                 <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.block_guests" ng-change="u.spam_settings_changed"></td>
+                <td><input type="checkbox" ng-model="u.setup.block_guests" ng-change="u.spam_settings_changed()"></td>
             </tr>
             <tr>
                 <td>Allow messages from Ignored list?</td>
                 <td></td>
-                <td><input type="checkbox" ng-model="u.block_ignore" ng-change="u.spam_settings_changed"></td>
+                <td><input type="checkbox" ng-model="u.setup.block_ignored" ng-change="u.spam_settings_changed()"></td>
             </tr>
             </tbody>
         </table>

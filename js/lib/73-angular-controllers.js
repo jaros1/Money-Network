@@ -932,10 +932,11 @@ angular.module('MoneyNetwork')
         };
 
         // manage user alias
-        self.setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
+        self.setup = moneyNetworkService.get_user_setup();
         self.editing_alias = false ;
         var edit_alias_notifications = 1 ;
         self.edit_alias = function () {
+            self.alias_copy = self.setup.alias ;
             self.editing_alias = true;
             if (edit_alias_notifications > 0) {
                 ZeroFrame.cmd("wrapperNotification", ["info", "Edit alias. Press ENTER to save. Press ESC to cancel", 5000]);
@@ -948,17 +949,20 @@ angular.module('MoneyNetwork')
         };
         self.save_alias = function () {
             self.editing_alias = false ;
+            self.setup.alias = self.alias_copy ;
+            MoneyNetworkHelper.save_user_setup() ;
             $scope.$apply() ;
-            MoneyNetworkHelper.setItem('setup', JSON.stringify(self.setup));
-            MoneyNetworkHelper.ls_save() ;
         };
         self.cancel_edit_alias = function () {
             self.editing_alias = false ;
-            // restore alias from setup
-            var old_setup = JSON.parse(MoneyNetworkHelper.getItem('setup'));
-            self.setup.alias = old_setup.alias ;
             $scope.$apply() ;
         };
+
+        // manage spam filter settings: block messages from guests and/or list of ignored contacts
+        self.spam_settings_changed = function () {
+            moneyNetworkService.save_user_setup() ;
+        };
+
 
         // end UserCtrl
     }])
