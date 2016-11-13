@@ -25,6 +25,7 @@ Todo:
 - https://bit.no.com:43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
 - https://zeronet.korso.win/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
 - https://proxy1.zn.kindlyfire.me/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
+- https://onlyzero.net/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
 
 This demo should be safe to check out on a ZeroNet proxy server. 
 You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server.
