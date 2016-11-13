@@ -10,10 +10,12 @@ regular conventional money. One client wallet with everything in it.
 
 ## Project status
 Spare time project, work in progress, no money in here yet. For now just a social network chat app on a very promising platform (ZeroNet). 
+
 Implemented:
 - End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags are stored in clear on ZeroNet. 
 - Contact list: Categories: New, Unverified, Verified and Ignored.
 - Chat: One and two panel chat. Contact list in left side and chat in right.
+
 Todo:
 - Group chat. More social network like.
 - Wallet, Money API and interface to external money systems.  
