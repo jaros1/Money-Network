@@ -87,7 +87,7 @@ angular.module('MoneyNetwork')
             return null ;
         };
 
-        // edit alias functions
+        // edit contact alias functions
         // todo: almost identical code in Chat. Refactor to MoneyNetworkService
         self.edit_alias_title = "Edit alias. Press ENTER to save. Press ESC to cancel" ;
         var edit_alias_notifications = 1 ;
@@ -126,82 +126,70 @@ angular.module('MoneyNetwork')
             moneyNetworkService.local_storage_save_contacts(false) ;
         };
 
-        // filter contacts. show contacts with green filter. hide contacts with red filter
-        // saved in localStorage.setup.contact_filters (per user)
-        // todo: refactor: same functions are used in chat controller
-        self.filters = moneyNetworkService.get_contact_filters() || {
-                all: 'red',
-                new: 'green',
-                unverified: 'green',
-                verified: 'green',
-                ignore: 'red'
-            } ;
-        self.toogle_filter = function (filter) {
-            var pgm = controller + '.toogle_filter: ' ;
-            if (self.filters[filter] == 'green') self.filters[filter] = 'red' ;
-            else self.filters[filter] = 'green' ;
+        // get user setup. contact_filters and contact_sort are used in this controller
+        self.setup = moneyNetworkService.get_user_setup() ;
+
+        // toggle contact filter. red <=> green
+        self.toggle_filter = function (filter) {
+            var pgm = controller + '.toggle_filter: ' ;
+            if (self.setup.contact_filters[filter] == 'green') self.setup.contact_filters[filter] = 'red' ;
+            else self.setup.contact_filters[filter] = 'green' ;
             // special action for all
             if (filter == 'all') {
-                if (self.filters['all'] == 'green') {
+                if (self.setup.contact_filters['all'] == 'green') {
                     // all: red => green. set all filters to green
-                    for (filter in self.filters) self.filters[filter] = 'green' ;
+                    for (filter in self.setup.contact_filters) self.setup.contact_filters[filter] = 'green' ;
                 }
                 else {
                     // all: green => red. set all filters to red if all filters are green
-                    if (self.filters.new == 'red') return ;
-                    if (self.filters.unverified == 'red') return ;
-                    if (self.filters.verified == 'red') return ;
-                    if (self.filters.ignore == 'red') return ;
-                    for (filter in self.filters) self.filters[filter] = 'red' ;
+                    if (self.setup.contact_filters.new == 'red') return ;
+                    if (self.setup.contact_filters.unverified == 'red') return ;
+                    if (self.setup.contact_filters.verified == 'red') return ;
+                    if (self.setup.contact_filters.ignore == 'red') return ;
+                    for (filter in self.setup.contact_filters) self.setup.contact_filters[filter] = 'red' ;
                 }
             }
-            else if ((self.filters[filter] == 'red') && (self.filters.all == 'green')) self.filters.all = 'red' ;
-            moneyNetworkService.set_contact_filters(self.filters) ;
+            else if ((self.setup.contact_filters[filter] == 'red') && (self.setup.contact_filters.all == 'green')) self.setup.contact_filters.all = 'red' ;
+            moneyNetworkService.save_user_setup() ;
         };
         self.filter_contacts = function (value, index, array) {
             var pgm = controller + '.filter_contacts: ' ;
-            return (self.filters[value.type] == 'green');
+            return (self.setup.contact_filters[value.type] == 'green');
         };
 
         // contacts sort options - typeahead auto complete functionality
         // todo: refactor - also used in chat controller
-        self.contact_sort_options = ['Last updated', 'User name', 'Last chat msg', 'Number chat msg', 'ZeroNet disk usage', 'Browser disk usage'] ;
-        self.contact_sort = moneyNetworkService.get_contact_sort() || self.contact_sort_options[0];
-        self.contact_sort_title = self.contact_sort_options[0];
-        for (var i=1 ; i<self.contact_sort_options.length ; i++) {
-            if (i<self.contact_sort_options.length-1) self.contact_sort_title += ", " ;
-            else self.contact_sort_title += " or " ;
-            self.contact_sort_title += self.contact_sort_options[i] ;
-        }
+        self.contact_sort_options = moneyNetworkService.get_contact_sort_options() ;
+        self.contact_sort_title = moneyNetworkService.get_contact_sort_title() ;
         self.contact_sort_changed = function () {
             var pgm = controller + '.sort_changed: ' ;
             // console.log(pgm + 'sort = ' + self.sort) ;
-            moneyNetworkService.set_contact_sort(self.contact_sort);
+            moneyNetworkService.save_user_setup();
         };
 
         self.contact_order_by = function (contact) {
             var pgm = controller + '.order_by: ';
             var i, last_updated, row, bytes, message ;
-            if (self.contact_sort == 'Last updated') {
+            if (self.setup.contact_sort == 'Last updated') {
                 for (i=0 ; i<contact.search.length ; i++) {
                     row = contact.search[i] ;
                     if (typeof row.value == 'number') return -row.value ;
                 }
                 return 0 ;
             }
-            if (self.contact_sort == 'User name') {
+            if (self.setup.contact_sort == 'User name') {
                 if (contact.alias) return '1' + contact.alias ;
                 return '2' + contact.cert_user_id ;
             }
-            if (self.contact_sort == 'Last chat msg') {
+            if (self.setup.contact_sort == 'Last chat msg') {
                 if (!contact.messages || (contact.messages.length == 0)) return 0 ;
                 return -contact.messages[contact.messages.length-1].sent_at ;
             }
-            if (self.contact_sort == 'Number chat msg') {
+            if (self.setup.contact_sort == 'Number chat msg') {
                 if (!contact.messages) return 0 ;
                 return -contact.messages.length ;
             }
-            if (self.contact_sort == 'ZeroNet disk usage') {
+            if (self.setup.contact_sort == 'ZeroNet disk usage') {
                 if (!contact.messages) return 0 ;
                 bytes = 0 ;
                 for (i=0 ; i<contact.messages.length ; i++) {
@@ -210,7 +198,7 @@ angular.module('MoneyNetwork')
                 }
                 return bytes ;
             }
-            if (self.contact_sort == 'Browser disk usage') { // localStorage
+            if (self.setup.contact_sort == 'Browser disk usage') { // localStorage
                 if (!contact.messages) return 0 ;
                 bytes = 0 ;
                 for (i=0 ; i<contact.messages.length ; i++) {
@@ -252,6 +240,7 @@ angular.module('MoneyNetwork')
 
     .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$timeout', '$routeParams', '$location', 'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', '$window',
         function (moneyNetworkService, $scope, $timeout, $routeParams, $location, chatEditTextAreaId, chatEditImgId, formatChatMessage, $window) {
+            
             var self = this;
             var controller = 'ChatCtrl';
             if (!MoneyNetworkHelper.getItem('userid')) {
@@ -312,9 +301,6 @@ angular.module('MoneyNetwork')
                 $timeout(focus_new_chat_msg);
             }
 
-            // my chat info
-            var setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
-            self.alias = setup.alias;
             self.avatar = moneyNetworkService.get_avatar();
 
             // quick instructions for newcomers
@@ -386,37 +372,33 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.local_storage_save_contacts(false) ;
             }; // save_user_info
 
+            // get user setup. Use here: contact_filters
+            self.setup = moneyNetworkService.get_user_setup() ;
+
             // filter contacts in chat. show chat from contacts with green filter. hide chat from contacts with red filter
             // saved in localStorage.setup.contact_filters (per user)
             // todo: refactor: same functions are used in network controller
-            self.filters = moneyNetworkService.get_contact_filters() || {
-                    all: 'red',
-                    new: 'green',
-                    unverified: 'green',
-                    verified: 'green',
-                    ignore: 'red'
-                } ;
-            self.toogle_filter = function (filter) {
-                var pgm = controller + '.toogle_filter: ' ;
-                if (self.filters[filter] == 'green') self.filters[filter] = 'red' ;
-                else self.filters[filter] = 'green' ;
+            self.toggle_filter = function (filter) {
+                var pgm = controller + '.toggle_filter: ' ;
+                if (self.setup.contact_filters[filter] == 'green') self.setup.contact_filters[filter] = 'red' ;
+                else self.setup.contact_filters[filter] = 'green' ;
                 // special action for all
                 if (filter == 'all') {
-                    if (self.filters['all'] == 'green') {
+                    if (self.setup.contact_filters['all'] == 'green') {
                         // all: red => green. set all filters to green
-                        for (filter in self.filters) self.filters[filter] = 'green' ;
+                        for (filter in self.setup.contact_filters) self.setup.contact_filters[filter] = 'green' ;
                     }
                     else {
                         // all: green => red. set all filters to red if all filters are green
-                        if (self.filters.new == 'red') return ;
-                        if (self.filters.unverified == 'red') return ;
-                        if (self.filters.verified == 'red') return ;
-                        if (self.filters.ignore == 'red') return ;
-                        for (filter in self.filters) self.filters[filter] = 'red' ;
+                        if (self.setup.contact_filters.new == 'red') return ;
+                        if (self.setup.contact_filters.unverified == 'red') return ;
+                        if (self.setup.contact_filters.verified == 'red') return ;
+                        if (self.setup.contact_filters.ignore == 'red') return ;
+                        for (filter in self.setup.contact_filters) self.setup.contact_filters[filter] = 'red' ;
                     }
                 }
-                else if ((self.filters[filter] == 'red') && (self.filters.all == 'green')) self.filters.all = 'red' ;
-                moneyNetworkService.set_contact_filters(self.filters) ;
+                else if ((self.setup.contact_filters[filter] == 'red') && (self.setup.contact_filters.all == 'green')) self.setup.contact_filters.all = 'red' ;
+                moneyNetworkService.save_user_setup() ;
             };
 
             // contact actions: add, ignore, verify, remove, chat
@@ -506,14 +488,14 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.contact_remove(self.contact);
             };
 
-            // filter and order by used in ng-repeat filter
+            // filter and order by used in ng-repeat messages filter
             self.filter = function (message, index, messages) {
                 var pgm = controller + '.filter: ';
                 var match ;
                 if (message.message.deleted_at) match = false ;
                 else if (!self.contact) {
                     // show chat for all contacts. Use green/red filter in top of page
-                    match = (self.filters[message.contact.type] == 'green');
+                    match = (self.setup.contact_filters[message.contact.type] == 'green');
                 }
                 else match = (self.contact.unique_id == message.contact.unique_id); // show chat for one contact
                 // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder + ', match = ' + match);
@@ -522,43 +504,36 @@ angular.module('MoneyNetwork')
 
             // contacts sort options - typeahead auto complete functionality
             // todo: refactor - also used in network controller
-            self.contact_sort_options = ['Last updated', 'User name', 'Last chat msg', 'Number chat msg', 'ZeroNet disk usage', 'Browser disk usage'] ;
-            self.contact_sort = moneyNetworkService.get_contact_sort() || self.contact_sort_options[0];
-            self.contact_sort_title = self.contact_sort_options[0];
-            for (var i=1 ; i<self.contact_sort_options.length ; i++) {
-                if (i<self.contact_sort_options.length-1) self.contact_sort_title += ", " ;
-                else self.contact_sort_title += " or " ;
-                self.contact_sort_title += self.contact_sort_options[i] ;
-            }
+            self.contact_sort_options = moneyNetworkService.get_contact_sort_options();
+            self.contact_sort_title = moneyNetworkService.get_contact_sort_title();
             self.contact_sort_changed = function () {
                 var pgm = controller + '.sort_changed: ' ;
-                // console.log(pgm + 'sort = ' + self.sort) ;
-                moneyNetworkService.set_contact_sort(self.contact_sort);
+                moneyNetworkService.save_user_info();
             };
 
             self.contact_order_by = function (contact) {
                 var pgm = controller + '.order_by: ';
                 var i, last_updated, row, bytes, message ;
-                if (self.contact_sort == 'Last updated') {
+                if (self.setup.contact_sort== 'Last updated') {
                     for (i=0 ; i<contact.search.length ; i++) {
                         row = contact.search[i] ;
                         if (typeof row.value == 'number') return -row.value ;
                     }
                     return 0 ;
                 }
-                if (self.contact_sort == 'User name') {
+                if (self.setup.contact_sort== 'User name') {
                     if (contact.alias) return '1' + contact.alias ;
                     return '2' + contact.cert_user_id ;
                 }
-                if (self.contact_sort == 'Last chat msg') {
+                if (self.setup.contact_sort== 'Last chat msg') {
                     if (!contact.messages || (contact.messages.length == 0)) return 0 ;
                     return -contact.messages[contact.messages.length-1].sent_at ;
                 }
-                if (self.contact_sort == 'Number chat msg') {
+                if (self.setup.contact_sort== 'Number chat msg') {
                     if (!contact.messages) return 0 ;
                     return -contact.messages.length ;
                 }
-                if (self.contact_sort == 'ZeroNet disk usage') {
+                if (self.setup.contact_sort== 'ZeroNet disk usage') {
                     if (!contact.messages) return 0 ;
                     bytes = 0 ;
                     for (i=0 ; i<contact.messages.length ; i++) {
@@ -567,7 +542,7 @@ angular.module('MoneyNetwork')
                     }
                     return bytes ;
                 }
-                if (self.contact_sort == 'Browser disk usage') { // localStorage
+                if (self.setup.contact_sort== 'Browser disk usage') { // localStorage
                     if (!contact.messages) return 0 ;
                     bytes = 0 ;
                     for (i=0 ; i<contact.messages.length ; i++) {
@@ -580,30 +555,24 @@ angular.module('MoneyNetwork')
             }; // contact_order_by
 
             // chat sort options - typeahead auto complete functionality
-            self.chat_sort_options = ['Last message', 'ZeroNet disk usage', 'Browser disk usage'] ;
-            self.chat_sort = moneyNetworkService.get_chat_sort() || self.chat_sort_options[0];
-            self.chat_sort_title = self.chat_sort_options[0];
-            for (var i=1 ; i<self.chat_sort_options.length ; i++) {
-                if (i<self.chat_sort_options.length-1) self.chat_sort_title += ", " ;
-                else self.chat_sort_title += " or " ;
-                self.chat_sort_title += self.chat_sort_options[i] ;
-            }
+            self.chat_sort_options = moneyNetworkService.get_chat_sort_options() ; 
+            self.chat_sort_title = moneyNetworkService.get_chat_sort_title() ;
             self.chat_sort_changed = function () {
                 var pgm = controller + '.sort_changed: ' ;
                 console.log(pgm + 'chat_sort = ' + self.chat_sort) ;
-                moneyNetworkService.set_chat_sort(self.chat_sort);
+                moneyNetworkService.save_user_setup();
             };
             self.chat_order_by = function (message) {
                 var pgm = controller + '.order_by: ';
                 // console.log(pgm + 'chat_sort = ' + self.chat_sort);
-                if (self.chat_sort == 'Last message') {
+                if (self.setup.chat_sort== 'Last message') {
                     return -message.message.sent_at ;
                 }
-                if (self.chat_sort == 'ZeroNet disk usage') {
+                if (self.setup.chat_sort== 'ZeroNet disk usage') {
                     if (!message.message.zeronet_msg_size) return 0 ;
                     return -message.message.zeronet_msg_size ;
                 }
-                if (self.chat_sort == 'Browser disk usage') {
+                if (self.setup.chat_sort== 'Browser disk usage') {
                     if (!message.message.ls_msg_size) return 0 ;
                     return -message.message.ls_msg_size ;
                 }
@@ -963,8 +932,7 @@ angular.module('MoneyNetwork')
         };
 
         // manage user alias
-        var setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
-        self.alias = setup.alias;
+        self.setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
         self.editing_alias = false ;
         var edit_alias_notifications = 1 ;
         self.edit_alias = function () {
@@ -981,13 +949,14 @@ angular.module('MoneyNetwork')
         self.save_alias = function () {
             self.editing_alias = false ;
             $scope.$apply() ;
-            setup.alias = self.alias ;
-            MoneyNetworkHelper.setItem('setup', JSON.stringify(setup));
+            MoneyNetworkHelper.setItem('setup', JSON.stringify(self.setup));
             MoneyNetworkHelper.ls_save() ;
         };
         self.cancel_edit_alias = function () {
             self.editing_alias = false ;
-            self.alias = setup.alias;
+            // restore alias from setup
+            var old_setup = JSON.parse(MoneyNetworkHelper.getItem('setup'));
+            self.setup.alias = old_setup.alias ;
             $scope.$apply() ;
         };
 

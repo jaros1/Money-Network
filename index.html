@@ -5,7 +5,6 @@
     <link rel="stylesheet" media="all" href="css/all.css"/>
 
     <!-- angularJS templates - subpages in single page site - same sequence as in main menu -->
-
     <script type="text/ng-template" id="about.html">
         <p>
             Money Network is a demo about money.
@@ -33,7 +32,7 @@
             <li>A client network. Data on clients. Minimum data on servers. Servers are used for communication between
                 clients.
             </li>
-            <li>Open source on <a href="https://github.com/jaros1/Zeronet-Money-Network" target="_blank" rel="noopener noreferrer">GitHub</a>.
+            <li>Open source on <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_blank" rel="noopener noreferrer">GitHub</a>.
                 URL: https://github.com/jaros1/Zeronet-Money-Network<br>
                 Feel free to clone, download, modify and make your own website or app.
             </li>
@@ -79,17 +78,17 @@
             </p>
             <p>
                 Filter:
-                <input type="button" value="All" ng-click="c.toogle_filter('all')" style="color: {{c.filters.all}}"/>&nbsp;
-                <input type="button" value="New" ng-click="c.toogle_filter('new')" style="color: {{c.filters.new}}"/>&nbsp;
-                <input type="button" value="Unverified" ng-click="c.toogle_filter('unverified')"
-                       style="color: {{c.filters.unverified}}"/>&nbsp;
-                <input type="button" value="Verified" ng-click="c.toogle_filter('verified')"
-                       style="color: {{c.filters.verified}}"/>&nbsp;
-                <input type="button" value="Ignored" ng-click="c.toogle_filter('ignore')"
-                       style="color: {{c.filters.ignore}}"/>&nbsp;
+                <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
+                <input type="button" value="New" ng-click="c.toggle_filter('new')" style="color: {{c.setup.contact_filters.new}}"/>&nbsp;
+                <input type="button" value="Unverified" ng-click="c.toggle_filter('unverified')"
+                       style="color: {{c.setup.contact_filters.unverified}}"/>&nbsp;
+                <input type="button" value="Verified" ng-click="c.toggle_filter('verified')"
+                       style="color: {{c.setup.contact_filters.verified}}"/>&nbsp;
+                <input type="button" value="Ignored" ng-click="c.toggle_filter('ignore')"
+                       style="color: {{c.setup.contact_filters.ignore}}"/>&nbsp;
 
                 Sort:
-                <input type="text" placeholder="Start typing" ng-model="c.contact_sort" class="user_info" style="width: 140px"
+                <input type="text" placeholder="Start typing" ng-model="c.setup.contact_sort" class="user_info" style="width: 140px"
                        uib-typeahead="sort for sort in c.contact_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
                        alt="{{c.contact_sort_title}}" title="{{c.contact_sort_title}}" typeahead-on-select="c.contact_sort_changed()">
             </p>
@@ -174,17 +173,17 @@
 
             <p ng-hide="c.contact">
                 Filter:
-                <input type="button" value="All" ng-click="c.toogle_filter('all')" style="color: {{c.filters.all}}"/>&nbsp;
-                <input type="button" value="New" ng-click="c.toogle_filter('new')" style="color: {{c.filters.new}}"/>&nbsp;
-                <input type="button" value="Unverified" ng-click="c.toogle_filter('unverified')"
-                       style="color: {{c.filters.unverified}}"/>&nbsp;
-                <input type="button" value="Verified" ng-click="c.toogle_filter('verified')"
-                       style="color: {{c.filters.verified}}"/>&nbsp;
-                <input type="button" value="Ignored" ng-click="c.toogle_filter('ignore')"
-                       style="color: {{c.filters.ignore}}"/>&nbsp;
+                <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
+                <input type="button" value="New" ng-click="c.toggle_filter('new')" style="color: {{c.setup.contact_filters.new}}"/>&nbsp;
+                <input type="button" value="Unverified" ng-click="c.toggle_filter('unverified')"
+                       style="color: {{c.setup.contact_filters.unverified}}"/>&nbsp;
+                <input type="button" value="Verified" ng-click="c.toggle_filter('verified')"
+                       style="color: {{c.setup.contact_filters.verified}}"/>&nbsp;
+                <input type="button" value="Ignored" ng-click="c.toggle_filter('ignore')"
+                       style="color: {{c.setup.contact_filters.ignore}}"/>&nbsp;
 
                 Sort:
-                <input type="text" placeholder="Start typing" ng-model="c.chat_sort" class="user_info" style="width: 140px"
+                <input type="text" placeholder="Start typing" ng-model="c.setup.chat_sort" class="user_info" style="width: 140px"
                        uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
                        alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
 
@@ -194,7 +193,7 @@
             </p>
             <p ng-show="c.contact">
                 Sort:
-                <input type="text" placeholder="Start typing" ng-model="c.chat_sort" class="user_info" style="width: 140px"
+                <input type="text" placeholder="Start typing" ng-model="c.setup.chat_sort" class="user_info" style="width: 140px"
                        uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
                        alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
             </p>
@@ -274,7 +273,7 @@
                                     <tbody>
                                     <tr>
                                         <td style="white-space: nowrap;"><a href="#" class="media-heading"
-                                                                            ng-bind-html="c.alias">Me</a></td>
+                                                                            ng-bind-html="c.setup.alias">Me</a></td>
                                         <td style="text-align: right; vertical-align: top; width: 99%">
                                             <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
                                         </td>
@@ -323,7 +322,7 @@
                         <!-- show outgoing message -->
                         <table class="speech" ng-hide="m.edit_chat_message">
                             <tr>
-                                <td><a href="#" class="media-heading" ng-bind-html="c.alias">Me</a></td>
+                                <td><a href="#" class="media-heading" ng-bind-html="c.setup.alias">Me</a></td>
                                 <td style="text-align: right; vertical-align: top">
                                     <span class="speech-time" alt="Message size in browser and on ZeroNet" title="Message size in browser and on ZeroNet"> {{m.message|formatMsgSize}}</span>
                                     <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
@@ -346,7 +345,7 @@
                             <table class="speech" style="width: 100%">
                                 <tr>
                                     <td style="white-space: nowrap;"><a href="#" class="media-heading"
-                                                                        ng-bind-html="c.alias">Me</a></td>
+                                                                        ng-bind-html="c.setup.alias">Me</a></td>
                                     <td style="text-align: right; vertical-align: top; width: 99%">
                                         <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
                                     </td>
@@ -422,7 +421,7 @@
         <div class="bodyleft">
             <p>
                 Sort:
-                <input type="text" placeholder="Start typing" ng-model="c.contact_sort" class="user_info" style="width: 140px"
+                <input type="text" placeholder="Start typing" ng-model="c.setup.contact_sort" class="user_info" style="width: 140px"
                        uib-typeahead="sort for sort in c.contact_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
                        alt="{{c.contact_sort_title}}" title="{{c.contact_sort_title}}" typeahead-on-select="c.contact_sort_changed()">
             </p>
@@ -477,17 +476,17 @@
 
             <p ng-hide="(c.contact && !c.two_panel_chat)">
                 Filter:
-                <input type="button" value="All" ng-click="c.toogle_filter('all')" style="color: {{c.filters.all}}"/>&nbsp;
-                <input type="button" value="New" ng-click="c.toogle_filter('new')" style="color: {{c.filters.new}}"/>&nbsp;
-                <input type="button" value="Unverified" ng-click="c.toogle_filter('unverified')"
-                       style="color: {{c.filters.unverified}}"/>&nbsp;
-                <input type="button" value="Verified" ng-click="c.toogle_filter('verified')"
-                       style="color: {{c.filters.verified}}"/>&nbsp;
-                <input type="button" value="Ignored" ng-click="c.toogle_filter('ignore')"
-                       style="color: {{c.filters.ignore}}"/>&nbsp;
+                <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
+                <input type="button" value="New" ng-click="c.toggle_filter('new')" style="color: {{c.setup.contact_filters.new}}"/>&nbsp;
+                <input type="button" value="Unverified" ng-click="c.toggle_filter('unverified')"
+                       style="color: {{c.setup.contact_filters.unverified}}"/>&nbsp;
+                <input type="button" value="Verified" ng-click="c.toggle_filter('verified')"
+                       style="color: {{c.setup.contact_filters.verified}}"/>&nbsp;
+                <input type="button" value="Ignored" ng-click="c.toggle_filter('ignore')"
+                       style="color: {{c.setup.contact_filters.ignore}}"/>&nbsp;
 
                 Sort:
-                <input type="text" placeholder="Start typing" ng-model="c.chat_sort" class="user_info" style="width: 140px"
+                <input type="text" placeholder="Start typing" ng-model="c.setup.chat_sort" class="user_info" style="width: 140px"
                        uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8"
                        typeahead-editable="false"
                        alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
@@ -500,7 +499,7 @@
             </p>
             <p ng-show="c.contact">
                 Sort:
-                <input type="text" placeholder="Start typing" ng-model="c.chat_sort" class="user_info" style="width: 140px"
+                <input type="text" placeholder="Start typing" ng-model="c.setup.chat_sort" class="user_info" style="width: 140px"
                        uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8"
                        typeahead-editable="false"
                        alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
@@ -586,7 +585,7 @@
                                     <tbody>
                                     <tr>
                                         <td style="white-space: nowrap;"><a href="#" class="media-heading"
-                                                                            ng-bind-html="c.alias">Me</a></td>
+                                                                            ng-bind-html="c.setup.alias">Me</a></td>
                                         <td style="text-align: right; vertical-align: top; width: 99%">
                                             <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
                                         </td>
@@ -642,7 +641,7 @@
                         <!-- show outgoing message -->
                         <table class="speech" ng-hide="m.edit_chat_message">
                             <tr>
-                                <td><a href="#" class="media-heading" ng-bind-html="c.alias">Me</a></td>
+                                <td><a href="#" class="media-heading" ng-bind-html="c.setup.alias">Me</a></td>
                                 <td style="text-align: right; vertical-align: top">
                                     <span class="speech-time" alt="Message size in browser and on ZeroNet"
                                           title="Message size in browser and on ZeroNet"> {{m.message|formatMsgSize}}</span>
@@ -668,7 +667,7 @@
                             <table class="speech" style="width: 100%">
                                 <tr>
                                     <td style="white-space: nowrap;"><a href="#" class="media-heading"
-                                                                        ng-bind-html="c.alias">Me</a></td>
+                                                                        ng-bind-html="c.setup.alias">Me</a></td>
                                     <td style="text-align: right; vertical-align: top; width: 99%">
                                         <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
                                     </td>
@@ -792,10 +791,10 @@
                       style="color: red; font-size: larger"></span>
             </button>
             <img ng-src="{{u.avatar.src}}" ng-click="u.upload_avatar()" title="Click to change avatar">
-            <span ng-hide="u.editing_alias" ng-bind-html="u.alias" title="Click to edit your alias"
+            <span ng-hide="u.editing_alias" ng-bind-html="u.setup.alias" title="Click to edit your alias"
                   ng-click="u.edit_alias()"></span>
             <span ng-show="u.editing_alias" title="Edit alias. Press ENTER to save. Press ESC to cancel">
-                <input type="text" ng-model="u.alias" style="width: 110px" id="alias_id"
+                <input type="text" ng-model="u.setup.alias" style="width: 110px" id="alias_id"
                        on-key-enter="u.save_alias()" on-key-escape="u.cancel_edit_alias()">
             </span>
 
@@ -850,8 +849,9 @@
                 </tr>
                 </tbody>
             </table>
+            <br>
             <p>
-                Update:
+                Update user info:
                 <button type="submit" disabled ng-show="user_info_form.$invalid">
                 <span title="Please correct errors" class="glyphicon glyphicon-ok"
                       style="color: green; font-size: larger"></span>
@@ -866,6 +866,23 @@
                 </button>
             </p>
         </form>
+
+        <table>
+            <tbody>
+            <tr><td colspan="3">Spam filters:</td></tr>
+            <tr>
+                <td>Allow messages from Guests?</td>
+                <td>&nbsp;&nbsp;</td>
+                <td><input type="checkbox" ng-model="u.block_guests" ng-change="u.spam_settings_changed"></td>
+            </tr>
+            <tr>
+                <td>Allow messages from Ignored list?</td>
+                <td></td>
+                <td><input type="checkbox" ng-model="u.block_ignore" ng-change="u.spam_settings_changed"></td>
+            </tr>
+            </tbody>
+        </table>
+        <br>
 
         <p>
             <b>todo:</b> add a delete user data button. Delete user data from data.json. Data user data from localStorage. Log
