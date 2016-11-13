@@ -1,6 +1,23 @@
 # Zeronet-Money-Network
 Demo with complementary and alternative money. Implemented in ZeroFrame and AngularJS. Focus on privacy, encryption, max data on client and min data on server. 
 
+Alternative and complementary money systems can in greater or less extent, replace or support the current monetary system and 
+prevent some bad things for happening in the future. There exists many alternative and complementary money systems, but they are not as 
+accessible and real for people as good old conventional money. 
+
+The primary goal of the Money Network is to make complementary and alternative monetary systems just as real and accessible as 
+regular conventional money. One client wallet with everything in it.
+
+## Project status
+Spare time project, work in progress, no money in here yet. For now just a social network chat app on a very promising platform (ZeroNet). 
+Implemented:
+- End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags are stored in clear on ZeroNet. 
+- Contact list: Categories: New, Unverified, Verified and Ignored.
+- Chat: One and two panel chat. Contact list in left side and chat in right.
+Todo:
+- Group chat. More social network like.
+- Wallet, Money API and interface to external money systems.  
+
 ## Demo
 - http://127.0.0.1:43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
 - https://bit.no.com:43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
@@ -9,26 +26,6 @@ Demo with complementary and alternative money. Implemented in ZeroFrame and Angu
 
 This demo should be safe to check out on a ZeroNet proxy server. 
 You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server.
-
-## Project status
-Spare time project, work in progress, no money in here yet, for now just a honey trap in the form of a social network 
-chat app on a very promising platform (ZeroNet). Plan to add a wallet and an API to conventional, alternative and complementary 
-monetary systems. 
-
-## Vision
-For too many people in this world money is only one thing, namely old-fashioned conventional money created at the beginning of 
-the 1700 century. This money system growth engine (interest) has worked "well" for about 300 years but falls short in a world with
-limited resources, climate and environmental issues and jobs being taken over by robots and artificial intelligence.
-
-With the current monetary system we will within a few years end up in a world with few ultra-rich, many poor, few with a paid 
-job and many unemployed and national economies that will not function any more. A world of great social unrest and maybe wars.
-
-Alternative and complementary money systems can in greater or less extent, replace or support the current monetary system and 
-prevent some of the bad things from happening. There exists many alternative and complementary money systems, but they are not as 
-accessible and real for people as good old conventional money. 
-
-The primary goal of the Money Network is to make complementary and alternative monetary systems just as real and accessible as 
-regular conventional money. 
 
 ## Software 
 - html5, ccs3, javascript and some sql. Simple code, lots of comments and code should be easy to follow. 
