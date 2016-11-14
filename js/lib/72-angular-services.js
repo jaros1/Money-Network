@@ -2402,7 +2402,7 @@ angular.module('MoneyNetwork')
         } // contact_unplonk
 
         function contact_verify (contact) {
-            var pgm = service + '.contact_verify' ;
+            var pgm = service + '.contact_verify: ' ;
             // send verify message
             var password = MoneyNetworkHelper.generate_random_password(10);
             var message = { msgtype: 'verify', password_sha256: CryptoJS.SHA256(password).toString() };
@@ -2518,8 +2518,9 @@ angular.module('MoneyNetwork')
         // user setup: avatar, alias, contact sort, contact filters, chat sort, spam filters
         var user_setup = {} ;
         function load_user_setup () {
-            var new_user_setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
-            for (var key in user_setup) delete user_setup[key] ;
+            var new_user_setup, key, guest_id, guest ;
+            new_user_setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
+            for (key in user_setup) delete user_setup[key] ;
             for (key in new_user_setup) user_setup[key] = new_user_setup[key] ;
             // add missing defaults
             if (!user_setup.contact_filters) user_setup.contact_filters = {
@@ -2529,6 +2530,12 @@ angular.module('MoneyNetwork')
                 verified: 'green',
                 ignore: 'red'
             } ;
+            if (!user_setup.contact_filters.hasOwnProperty('guest')) {
+                // green or red filter button? is current user a guest or a normal user?
+                guest_id = MoneyNetworkHelper.getItem('guestid');
+                guest = (guest_id == '' + user_id) ;
+                user_setup.contact_filters.guest = guest ? 'green' : 'red' ;
+            }
             if (!user_setup.contact_sort) user_setup.contact_sort = contact_sort_options[0] ;
             if (!user_setup.chat_sort) user_setup.chat_sort = chat_sort_options[0] ;
             if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = true ;

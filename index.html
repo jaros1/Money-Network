@@ -79,6 +79,7 @@
             <p>
                 Filter:
                 <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
+                <input type="button" value="Guest" ng-click="c.toggle_filter('guest')" style="color: {{c.setup.contact_filters.guest}}"/>&nbsp;
                 <input type="button" value="New" ng-click="c.toggle_filter('new')" style="color: {{c.setup.contact_filters.new}}"/>&nbsp;
                 <input type="button" value="Unverified" ng-click="c.toggle_filter('unverified')"
                        style="color: {{c.setup.contact_filters.unverified}}"/>&nbsp;
@@ -131,15 +132,12 @@
                     <td>&nbsp;</td>
                     <td>
                     <span ng-show="y.row == 1">
-                    <input ng-show="x.type == 'new'" type="button" value="Ignore" ng-click="c.contact_ignore(x)"/>
-                    <input ng-show="x.type == 'ignore'" type="button" value="Unplonk" ng-click="c.contact_unplonk(x)"/>
-                    <input ng-show="x.type == 'new'" type="button" value="Add" ng-click="c.contact_add(x)"/>
-                    <input ng-show="x.type == 'ignore'" type="button" value="Add" ng-click="c.contact_add(x)"/>
-                    <input ng-show="x.type == 'unverified'" type="button" value="Remove"
-                           ng-click="c.contact_remove(x)"/>
-                    <input ng-show="x.type == 'unverified'" type="button" value="Verify"
-                           ng-click="c.contact_verify(x)"/>
-                    <input ng-show="x.type != 'ignore'" type="button" value="Chat" ng-click="c.chat_contact(x)"/>
+                    <input ng-show="x|showContactAction:'ignore'"  type="button" value="Ignore"  ng-click="c.contact_ignore(x)"/>
+                    <input ng-show="x|showContactAction:'unplonk'" type="button" value="Unplonk" ng-click="c.contact_unplonk(x)"/>
+                    <input ng-show="x|showContactAction:'add'"     type="button" value="Add"     ng-click="c.contact_add(x)"/>
+                    <input ng-show="x|showContactAction:'remove'"  type="button" value="Remove"  ng-click="c.contact_remove(x)"/>
+                    <input ng-show="x|showContactAction:'verify'"  type="button" value="Verify"  ng-click="c.contact_verify(x)"/>
+                    <input ng-show="x|showContactAction:'chat'"    type="button" value="Chat"    ng-click="c.chat_contact(x)"/>
                     </span>
                     </td>
                 </tr>
@@ -174,6 +172,7 @@
             <p ng-hide="c.contact">
                 Filter:
                 <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
+                <input type="button" value="Guest" ng-click="c.toggle_filter('guest')" style="color: {{c.setup.contact_filters.guest}}"/>&nbsp;
                 <input type="button" value="New" ng-click="c.toggle_filter('new')" style="color: {{c.setup.contact_filters.new}}"/>&nbsp;
                 <input type="button" value="Unverified" ng-click="c.toggle_filter('unverified')"
                        style="color: {{c.setup.contact_filters.unverified}}"/>&nbsp;
@@ -228,14 +227,11 @@
                     <td>&nbsp;</td>
                     <td>-</td>
                     <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
-                        <input ng-show="c.contact.type == 'new'" type="button" value="Ignore" ng-click="c.contact_ignore()"/>
-                        <input ng-show="c.contact.type == 'ignore'" type="button" value="Unplonk" ng-click="c.contact_unplonk()"/>
-                        <input ng-show="c.contact.type == 'new'" type="button" value="Add" ng-click="c.contact_add()"/>
-                        <input ng-show="c.contact.type == 'ignore'" type="button" value="Add" ng-click="c.contact_add()"/>
-                        <input ng-show="c.contact.type == 'unverified'" type="button" value="Remove"
-                               ng-click="c.contact_remove()"/>
-                        <input ng-show="c.contact.type == 'unverified'" type="button" value="Verify"
-                               ng-click="c.contact_verify()" alt="Send verification request to contact" title="Send verification request to contact"/>
+                        <input ng-show="c.contact|showContactAction:'ignore'"  type="button" value="Ignore"  ng-click="c.contact_ignore(x)"/>
+                        <input ng-show="c.contact|showContactAction:'unplonk'" type="button" value="Unplonk" ng-click="c.contact_unplonk(x)"/>
+                        <input ng-show="c.contact|showContactAction:'add'"     type="button" value="Add"     ng-click="c.contact_add(x)"/>
+                        <input ng-show="c.contact|showContactAction:'remove'"  type="button" value="Remove"  ng-click="c.contact_remove(x)"/>
+                        <input ng-show="c.contact|showContactAction:'verify'"  type="button" value="Verify"  ng-click="c.contact_verify(x)"/>
                         <input ng-show="c.show_contact_delete()" type="button" value="Delete" ng-click="c.contact_delete()"/>
                     </td>
                 </tr>
@@ -477,6 +473,7 @@
             <p ng-hide="(c.contact && !c.two_panel_chat)">
                 Filter:
                 <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
+                <input type="button" value="Guest" ng-click="c.toggle_filter('guest')" style="color: {{c.setup.contact_filters.guest}}"/>&nbsp;
                 <input type="button" value="New" ng-click="c.toggle_filter('new')" style="color: {{c.setup.contact_filters.new}}"/>&nbsp;
                 <input type="button" value="Unverified" ng-click="c.toggle_filter('unverified')"
                        style="color: {{c.setup.contact_filters.unverified}}"/>&nbsp;
@@ -535,20 +532,12 @@
                     <td>&nbsp;</td>
                     <td>-</td>
                     <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
-                        <input ng-show="c.contact.type == 'new'" type="button" value="Ignore"
-                               ng-click="c.contact_ignore()"/>
-                        <input ng-show="c.contact.type == 'ignore'" type="button" value="Unplonk"
-                               ng-click="c.contact_unplonk()"/>
-                        <input ng-show="c.contact.type == 'new'" type="button" value="Add" ng-click="c.contact_add()"/>
-                        <input ng-show="c.contact.type == 'ignore'" type="button" value="Add"
-                               ng-click="c.contact_add()"/>
-                        <input ng-show="c.contact.type == 'unverified'" type="button" value="Remove"
-                               ng-click="c.contact_remove()"/>
-                        <input ng-show="c.contact.type == 'unverified'" type="button" value="Verify"
-                               ng-click="c.contact_verify()" alt="Send verification request to contact"
-                               title="Send verification request to contact"/>
-                        <input ng-show="c.show_contact_delete()" type="button" value="Delete"
-                               ng-click="c.contact_delete()"/>
+                        <input ng-show="c.contact|showContactAction:'ignore'"  type="button" value="Ignore"  ng-click="c.contact_ignore()"/>
+                        <input ng-show="c.contact|showContactAction:'unplonk'" type="button" value="Unplonk" ng-click="c.contact_unplonk()"/>
+                        <input ng-show="c.contact|showContactAction:'add'"     type="button" value="Add"     ng-click="c.contact_add()"/>
+                        <input ng-show="c.contact|showContactAction:'remove'"  type="button" value="Remove"  ng-click="c.contact_remove()"/>
+                        <input ng-show="c.contact|showContactAction:'verify'"  type="button" value="Verify"  ng-click="c.contact_verify()"/>
+                        <input ng-show="c.show_contact_delete()" type="button" value="Delete" ng-click="c.contact_delete()"/>
                     </td>
                 </tr>
                 <tr>

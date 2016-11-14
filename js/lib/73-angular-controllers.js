@@ -401,7 +401,6 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.save_user_setup() ;
             };
 
-            // contact actions: add, ignore, verify, remove, chat
             self.contact_add = function () {
                 moneyNetworkService.contact_add(self.contact);
             };

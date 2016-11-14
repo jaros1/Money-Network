@@ -401,5 +401,19 @@ angular.module('MoneyNetwork')
         // end privacyTitle filter
     }])
 
+    .filter('showContactAction', [function () {
+        // show/hide contact action buttons in network and chat pages
+        var pgm = 'showContactAction filter: ';
+        var allowed_actions = [
+            "new=>ignore", "guest=>ignore", "ignore=>unplonk", "new=>add", "guest=>add",
+            "ignore=>add", "unverified=>remove", "unverified=>verify",
+            "new=>chat", "guest=>chat", "unverified=>chat", "verified=>chat"
+        ] ;
+        return function (contact, action) {
+            return (allowed_actions.indexOf(contact.type + '=>' + action) != -1) ;
+        } ;
+        // end privacyTitle filter
+    }])
+
 ;
 // angularJS app end
