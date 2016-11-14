@@ -2111,7 +2111,7 @@ angular.module('MoneyNetwork')
 
 
         // admin only: delete files for inactive users
-        var days_before_cleanup_users = 14 ;
+        var days_before_cleanup_users = 30;
         function get_no_days_before_cleanup () {
             return days_before_cleanup_users ;
         }

@@ -504,10 +504,12 @@
 
             <div ng-show="c.contact" style="width: 99%; border-style: solid; border-width: 2px;">
 
-                <span id="see_chat_all_x" class="glyphicon glyphicon-remove"
-                      title="Click to see all chat" alt="Click to see all chat" ng-click="c.see_all_chat()">
-
-                </span>
+                <div id="contact_box_icons">
+                <span class="glyphicon glyphicon-pushpin" ng-click="c.see_all_chat()"
+                      title="Click to update participants" alt="Click to update participants"></span>
+                <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
+                      title="Click to see all chat" alt="Click to see all chat"></span>
+                </div>
 
                 <table>
                     <thead>
