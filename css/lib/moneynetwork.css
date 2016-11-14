@@ -444,4 +444,54 @@ form {
 body.dragOver #file-drop{display:block;} /* During drag */
 body #file-drop{z-index:1000;position:fixed;top:0;left:0;width:100%;height:100%;display:none;} /* No drag */
 
+/* glyphicon glyphicon-remove for contact in chat page. press X to see all chat */
+#see_chat_all_x {
+    position: relative;
+}
 
+
+@media screen and (max-width: 509px) {
+    #see_chat_all_x {
+        right: -96.5%;
+    }
+}
+@media screen and (min-width: 510px) and (max-width: 549px) {
+    #see_chat_all_x {
+        right: -97%;
+    }
+}
+@media screen and (min-width: 550px) and (max-width: 589px) {
+    #see_chat_all_x {
+        right: -94.5%;
+    }
+}
+@media screen and (min-width: 590px) and (max-width: 619px) {
+    #see_chat_all_x {
+        right: -95%;
+    }
+}
+@media screen and (min-width: 620px) and (max-width: 649px) {
+    #see_chat_all_x {
+        right: -95.5%;
+    }
+}
+@media screen and (min-width: 650px) and (max-width: 699px) {
+    #see_chat_all_x {
+        right: -96%;
+    }
+}
+@media screen and (min-width: 700px) and (max-width: 759px) {
+    #see_chat_all_x {
+        right: -96.5%;
+    }
+}
+@media screen and (min-width: 760px) and (max-width: 809px) {
+    #see_chat_all_x {
+        right: -97%;
+    }
+}
+@media screen and (min-width: 810px) {
+    #see_chat_all_x {
+        right: -97.5%;
+    }
+}

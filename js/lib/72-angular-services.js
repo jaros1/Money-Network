@@ -1456,7 +1456,7 @@ angular.module('MoneyNetwork')
         function create_new_unknown_contacts() {
             var pgm = service + '.create_unknown_contacts: ' ;
             if (new_unknown_contacts.length == 0) return ;
-            // console.log(pgm + 'new_unknown_contacts = ' + JSON.stringify(new_unknown_contacts));
+            console.log(pgm + 'new_unknown_contacts = ' + JSON.stringify(new_unknown_contacts));
             //new_unknown_contacts = [{
             //    "res": {
             //        "user_seq": 1,
@@ -1476,7 +1476,7 @@ angular.module('MoneyNetwork')
             //        "timestamp": 1477658594123
             //    }, "unique_id": "f6c38cdbd1efa33783471a7186ebd21ef3afbc666955823da4275afc0474463c"
             //}];
-            var auth_address, expected_auth_addresses = [] ;
+            var auth_address, expected_auth_addresses = [], unique_id, expected_unique_ids = [] ;
             for (var i=0 ; i<new_unknown_contacts.length ; i++) {
                 auth_address = new_unknown_contacts[i].res.auth_address ;
                 if (!auth_address) {
@@ -1484,6 +1484,8 @@ angular.module('MoneyNetwork')
                     continue ;
                 }
                 if (expected_auth_addresses.indexOf(auth_address) == -1) expected_auth_addresses.push(auth_address) ;
+                unique_id = new_unknown_contacts[i].unique_id ;
+                if (expected_unique_ids.indexOf(unique_id) == -1) expected_unique_ids.push(unique_id) ;
             }
             if (expected_auth_addresses.length == 0) {
                 console.log(pgm + 'Error. No auth_addresses were found in new_unknown_contacts array');
@@ -1491,7 +1493,9 @@ angular.module('MoneyNetwork')
                 return ;
             }
 
-            // build query for contact information
+            // build query for contact information.
+            // auth_address is used is where condition and select will sometimes return more than one user for each auth_address
+            // only users with correct unique_id are relevant
             var contacts_query =
                 "select" +
                 "  users.user_seq, users.pubkey, users.avatar as users_avatar," +
@@ -1533,6 +1537,11 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'contacts_query = ' + contacts_query) ;
                     new_unknown_contacts.splice(0,new_unknown_contacts.length)
                     return;
+                }
+                // drop contacts with other unique ids (multiple users with identical cert_user_id / auth_address)
+                for (i=res.length-1 ; i >= 0 ; i--) {
+                    unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
+                    if (expected_unique_ids.indexOf(unique_id) == -1) res.splice(i,1);
                 }
                 if (res.length == 0) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for new unknown contacts failed. No contacts were found", 5000]);

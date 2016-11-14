@@ -262,6 +262,13 @@ angular.module('MoneyNetwork')
                 $location.replace();
             };
 
+            // contact removed from top of chat. see chat for all
+            self.see_all_chat = function () {
+                if (self.two_panel_chat) $location.path('/chat2');
+                else $location.path('/chat');
+                $location.replace();
+            };
+
             // get contacts. two different types of contacts:
             // a) contacts stored in localStorage
             self.contacts = moneyNetworkService.local_storage_get_contacts() ; // array with contacts from localStorage
@@ -975,17 +982,7 @@ angular.module('MoneyNetwork')
             moneyNetworkService.save_user_setup() ;
             // console.log(pgm + 'setup = ' + JSON.stringify(self.setup));
             //setup = {
-            //    "alias": "jro",
-            //    "avatar": "8.png",
-            //    "contact_sort": "Last chat msg",
-            //    "chat_sort": "Last message",
-            //    "contact_filters": {
-            //        "all": "red",
-            //        "new": "green",
-            //        "unverified": "green",
-            //        "verified": "green",
-            //        "ignore": "green"
-            //    },
+            //    ...
             //    "block_guests": false,
             //    "block_ignored": false,
             //    "block_guests_at": 1479033958082,

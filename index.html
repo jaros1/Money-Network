@@ -502,25 +502,33 @@
                        alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
             </p>
 
-            <table ng-show="c.contact">
-                <thead>
-                <tr>
-                    <th></th>
-                    <th>Tag</th>
-                    <th></th>
-                    <th>Value</th>
-                    <th></th>
-                    <th>Privacy</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
-                        <img ng-src="{{c.contact|findContactAvatar}}" class="img-circle img-sm">
-                    </td>
-                    <td>User Id</td>
-                    <td>&nbsp;</td>
-                    <td>
+            <div ng-show="c.contact" style="width: 99%; border-style: solid; border-width: 2px;">
+
+                <span id="see_chat_all_x" class="glyphicon glyphicon-remove"
+                      title="Click to see all chat" alt="Click to see all chat" ng-click="c.see_all_chat()">
+
+                </span>
+
+                <table>
+                    <thead>
+                    <tr>
+                        <th></th>
+                        <th>Tag</th>
+                        <th></th>
+                        <th>Value</th>
+                        <th></th>
+                        <th>Privacy</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                            <img ng-src="{{c.contact|findContactAvatar}}" class="img-circle img-sm">
+                        </td>
+                        <td>User Id</td>
+                        <td>&nbsp;</td>
+                        <td>
                     <span ng-hide="c.contact.edit_alias" ng-bind-html="c.contact|aliasOrShortCertUserId"
                           title="{{c.contact.cert_user_id}}. Click to edit" ng-click="c.edit_alias()">
                     </span>
@@ -528,34 +536,44 @@
                         <input type="text" ng-model="c.contact.new_alias" style="width: 110px" id="contact_alias_id"
                                on-key-enter="c.save_user_info()" on-key-escape="c.cancel_edit_alias()">
                     </span>
-                    </td>
-                    <td>&nbsp;</td>
-                    <td>-</td>
-                    <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
-                        <input ng-show="c.contact|showContactAction:'ignore'"  type="button" value="Ignore"  ng-click="c.contact_ignore()"/>
-                        <input ng-show="c.contact|showContactAction:'unplonk'" type="button" value="Unplonk" ng-click="c.contact_unplonk()"/>
-                        <input ng-show="c.contact|showContactAction:'add'"     type="button" value="Add"     ng-click="c.contact_add()"/>
-                        <input ng-show="c.contact|showContactAction:'remove'"  type="button" value="Remove"  ng-click="c.contact_remove()"/>
-                        <input ng-show="c.contact|showContactAction:'verify'"  type="button" value="Verify"  ng-click="c.contact_verify()"/>
-                        <input ng-show="c.show_contact_delete()" type="button" value="Delete" ng-click="c.contact_delete()"/>
-                    </td>
-                </tr>
-                <tr>
-                    <td>User type</td>
-                    <td>&nbsp;</td>
-                    <td ng-bind="c.contact.type"></td>
-                    <td>&nbsp;</td>
-                    <td>-</td>
-                </tr>
-                <tr ng-repeat="s in c.contact.search">
-                    <td ng-bind-html="s.tag"></td>
-                    <td></td>
-                    <td ng-bind-html="s|formatSearchValue" title="{{s|formatSearchTitle}}"></td>
-                    <td></td>
-                    <td ng-bind-html="s.privacy"></td>
-                </tr>
-                </tbody>
-            </table>
+                        </td>
+                        <td>&nbsp;</td>
+                        <td>-</td>
+                        <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                            <input ng-show="c.contact|showContactAction:'ignore'" type="button" value="Ignore"
+                                   ng-click="c.contact_ignore()"/>
+                            <input ng-show="c.contact|showContactAction:'unplonk'" type="button" value="Unplonk"
+                                   ng-click="c.contact_unplonk()"/>
+                            <input ng-show="c.contact|showContactAction:'add'" type="button" value="Add"
+                                   ng-click="c.contact_add()"/>
+                            <input ng-show="c.contact|showContactAction:'remove'" type="button" value="Remove"
+                                   ng-click="c.contact_remove()"/>
+                            <input ng-show="c.contact|showContactAction:'verify'" type="button" value="Verify"
+                                   ng-click="c.contact_verify()"/>
+                            <input ng-show="c.show_contact_delete()" type="button" value="Delete"
+                                   ng-click="c.contact_delete()"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>User type</td>
+                        <td>&nbsp;</td>
+                        <td ng-bind="c.contact.type"></td>
+                        <td>&nbsp;</td>
+                        <td>-</td>
+                    </tr>
+                    <tr ng-repeat="s in c.contact.search">
+                        <td ng-bind-html="s.tag"></td>
+                        <td></td>
+                        <td ng-bind-html="s|formatSearchValue" title="{{s|formatSearchTitle}}"></td>
+                        <td></td>
+                        <td ng-bind-html="s.privacy"></td>
+                    </tr>
+                    </tbody>
+                </table>
+
+
+            </div>
+
 
             <br>
 
