@@ -401,16 +401,30 @@ angular.module('MoneyNetwork')
         // end privacyTitle filter
     }])
 
-    .filter('showContactAction', [function () {
+    .filter('showContactAction', ['MoneyNetworkService', function (moneyNetworkService) {
         // show/hide contact action buttons in network and chat pages
         var pgm = 'showContactAction filter: ';
-        var allowed_actions = [
+        var allowed_type_actions, allowed_types, allowed_actions, i, array, index ;
+        allowed_type_actions = [
             "new=>ignore", "guest=>ignore", "ignore=>unplonk", "new=>add", "guest=>add",
             "ignore=>add", "unverified=>remove", "unverified=>verify",
             "new=>chat", "guest=>chat", "unverified=>chat", "verified=>chat"
         ] ;
+        allowed_types = [] ;
+        allowed_actions = [] ;
+        for (i=0 ; i<allowed_type_actions.length ; i++) {
+            array = allowed_type_actions[i].split('=>');
+            if (allowed_types.indexOf(array[0]) == -1) allowed_types.push(array[0]) ;
+            if (allowed_actions.indexOf(array[1]) == -1) allowed_actions.push(array[1]) ;
+        }
+        var setup = moneyNetworkService.get_user_setup() ;
+        var debug = (setup && setup.debug && setup.debug.enabled && setup.debug.show_contact_action_filter);
         return function (contact, action) {
-            return (allowed_actions.indexOf(contact.type + '=>' + action) != -1) ;
+            if (!contact || (allowed_types.indexOf(contact.type) == -1) || (allowed_actions.indexOf(action) == -1)) {
+                if (debug) console.log(pgm + 'invalid call. contact = ' + JSON.stringify(contact) + ', action = ' + JSON.stringify(action)) ;
+                return false ;
+            }
+            return (allowed_type_actions.indexOf(contact.type + '=>' + action) != -1) ;
         } ;
         // end privacyTitle filter
     }])

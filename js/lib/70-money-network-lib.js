@@ -151,7 +151,7 @@ var MoneyNetworkHelper = (function () {
             "where json.directory = '" + directory + "' " +
             "and users.json_id = json.json_id " +
             "and users.pubkey = '" + pubkey + "'";
-        // console.log(pgm + 'query 1 = ' + query) ;
+        debug('select', pgm + 'query 1 = ' + query) ;
         ZeroFrame.cmd("dbQuery", [query], function(res) {
             var pgm = module + '.z_contact_search dbQuery callback 1: ' ;
             var error ;
@@ -230,7 +230,7 @@ var MoneyNetworkHelper = (function () {
                 "and status_json.file_name = 'status.json' " +
                 "and status.json_id = status_json.json_id " +
                 "and status.user_seq = users.user_seq" ;
-            // console.log(pgm + 'contacts_query = ' + contacts_query) ;
+            debug('select', pgm + 'contacts_query = ' + contacts_query) ;
 
             // find contacts with matching tags
             query =
@@ -247,7 +247,7 @@ var MoneyNetworkHelper = (function () {
                 "or search.tag like my_search.tag and search.value like my_search.value) " +
                 "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " +
                 "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq" ;
-            // console.log(pgm + 'query = ' + query) ;
+            debug('select', pgm + 'query = ' + query) ;
 
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = module + '.z_contact_search dbQuery callback 2: ';
@@ -910,6 +910,7 @@ var MoneyNetworkHelper = (function () {
                 // save login
                 setItem('userid', userid);
                 setItem('password', password);
+                load_user_setup() ;
                 return userid;
             }
         }
@@ -953,6 +954,7 @@ var MoneyNetworkHelper = (function () {
     // client logout - clear all data in sessisonStorage (userid and password)
     function client_logout() {
         for (var key in session_storage) delete session_storage[key] ;
+        for (var key in user_setup) delete user_setup[key] ;
     } // client_logout
 
     // delete any existing guest account before creating a new guest account
@@ -1091,6 +1093,21 @@ var MoneyNetworkHelper = (function () {
         return error + '.<br>Error ' + json_errors ;
     } // validate_json
 
+    // for debug. copy of user settings from Account page
+    var user_setup = {} ;
+    function load_user_setup() {
+        var setup = getItem('setup') ;
+        if (!setup) return ;
+        setup = JSON.parse(setup);
+        for (var key in user_setup) delete user_setup[key] ;
+        for (key in setup) user_setup[key] = setup[key] ;
+    } // load_user_setup
+
+    // output debug info in log. For key, see user page and setup.debug hash
+    function debug (key, text) {
+        if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
+        if (user_setup.debug[key]) console.log(text) ;
+    } // debug
 
     // export helpers
     return {
@@ -1110,7 +1127,8 @@ var MoneyNetworkHelper = (function () {
         generate_random_password: generate_random_password,
         encrypt: encrypt,
         decrypt: decrypt,
-        validate_json: validate_json
+        validate_json: validate_json,
+        load_user_setup: load_user_setup
     };
 })();
 // MoneyNetworkHelper end

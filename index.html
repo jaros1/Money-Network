@@ -873,6 +873,32 @@
         </table>
         <br>
 
+        <table>
+            <tbody>
+            <tr>
+                <td>Enable debug info?</td>
+                <td>&nbsp;&nbsp;</td>
+                <td><input type="checkbox" ng-model="u.setup.debug.enabled" ng-change="u.debug_settings_changed()"></td>
+            </tr>
+            </tbody>
+            <tbody ng-show="u.setup.debug.enabled">
+            <tr>
+                <td>Show sql selects?</td>
+                <td>&nbsp;&nbsp;</td>
+                <td><input type="checkbox" ng-model="u.setup.debug.select" ng-change="u.debug_settings_changed()"></td>
+            </tr>
+            <tr>
+                <td colspan="3">Filters:</td>
+            </tr>
+            <tr>
+                <td>showContactAction?</td>
+                <td>&nbsp;&nbsp;</td>
+                <td><input type="checkbox" ng-model="u.setup.debug.show_contact_action_filter" ng-change="u.debug_settings_changed()"></td>
+            </tr>
+            </tbody>
+        </table>
+        <br>
+
         <p>
             <b>todo:</b> add a delete user data button. Delete user data from data.json. Data user data from localStorage. Log
             out.

@@ -994,6 +994,11 @@ angular.module('MoneyNetwork')
             copy_setup() ;
         };
 
+        self.debug_settings_changed = function () {
+            moneyNetworkService.save_user_setup() ;
+            MoneyNetworkHelper.load_user_setup() ;
+        };
+
         // end UserCtrl
     }])
 

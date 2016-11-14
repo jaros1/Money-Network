@@ -275,7 +275,7 @@ angular.module('MoneyNetwork')
                 "where json.directory = 'users/" + ZeroFrame.site_info.auth_address + "' " +
                 "and json.file_name = 'content.json' " +
                 "and files.json_id = json.json_id" ;
-            // console.log(pgm + 'query = ' + query);
+            debug('select', pgm + 'query = ' + query);
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.z_update_data_json dbQuery callback: ';
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
@@ -915,7 +915,7 @@ angular.module('MoneyNetwork')
                 "from users, json " +
                 "where users.avatar is not null " +
                 "and json.json_id = users.json_id" ;
-            // console.log(pgm + 'query = ' + query) ;
+            debug('select', pgm + 'query = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.ls_load_contacts dbQuery callback 1: ' ;
                 var i, unique_id, source1_avatars, source2_avatars, contact ;
@@ -1014,7 +1014,7 @@ angular.module('MoneyNetwork')
                     "and status_json.file_name = 'status.json' " +
                     "and status.json_id = status_json.json_id " +
                     "and status.user_seq = users.user_seq" ;
-                // console.log(pgm + 'query = ' + query);
+                debug('select', pgm + 'query = ' + query);
 
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = service + '.ls_load_contacts dbQuery callback 2: ';
@@ -1200,18 +1200,7 @@ angular.module('MoneyNetwork')
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256, error ;
             var local_msg_seq, message ;
 
-            // todo: check spam filters block_guests and block_ignored from user setup
-            //setup = {
-            //    ...
-            //    "block_guests": false,
-            //    "block_ignored": false,
-            //    "block_guests_at": 1479033958082,
-            //    "block_ignored_at": 1479033949514
-            //};
-
-
-
-            // find contact from unique_id. will decrypt but only buffer messages with unknown contact
+            // find contact from unique_id. will decrypt to test message but only buffer messages with unknown contact
             contact = null ;
             for (i=0 ; i<local_storage_contacts.length ; i++) {
                 if (local_storage_contacts[i].unique_id == unique_id) contact = local_storage_contacts[i] ;
@@ -1239,6 +1228,35 @@ angular.module('MoneyNetwork')
                     unique_id: unique_id
                 });
                 return false ;
+            }
+
+            // todo: check spam filters block_guests and block_ignored from user setup
+            //setup = {
+            //    ...
+            //    "block_guests": false,
+            //    "block_ignored": false,
+            //    "block_guests_at": 1479033958082,
+            //    "block_ignored_at": 1479033949514
+            //};
+            if (contact.type == 'guest') {
+                if (user_setup.block_guests) {
+                    // console.log(pgm + 'blocking quests and ignoring message from guest ' + JSON.stringify(contact));
+                    return false ;
+                }
+                if (user_setup.block_guests_at && (res.timestamp < user_setup.block_guests_at)) {
+                    // console.log(pgm + 'no longer blocking quests but ignoring old blocked message from guest ' + JSON.stringify(contact));
+                    return false ;
+                }
+            }
+            if (contact.type == 'ignored') {
+                if (user_setup.block_ignored) {
+                    // console.log(pgm + 'blocking message from contact on ignored list ' + JSON.stringify(contact));
+                    return false ;
+                }
+                if (user_setup.block_ignored_at && (res.timestamp < user_setup.block_ignored_at)) {
+                    // console.log(pgm + 'no longer blocking messages from ignored list but ignoring old blocked message from contact ' + JSON.stringify(contact));
+                    return false ;
+                }
             }
 
             // validate incoming message.
@@ -1503,7 +1521,7 @@ angular.module('MoneyNetwork')
                 "and status_json.file_name = 'status.json' " +
                 "and status.json_id = status_json.json_id " +
                 "and status.user_seq = users.user_seq" ;
-            // console.log(pgm + 'contacts_query = ' + contacts_query) ;
+            debug('select', pgm + 'contacts_query = ' + contacts_query) ;
 
             ZeroFrame.cmd("dbQuery", [contacts_query], function (res) {
                 var pgm = service  + '.create_unknown_contacts dbQuery callback: ';
@@ -1665,7 +1683,7 @@ angular.module('MoneyNetwork')
                 "and users.json_id = messages.json_id " +
                 "and users.user_seq = messages.user_seq " +
                 "and json.json_id = messages.json_id" ;
-            // console.log(pgm + 'query = ' + query) ;
+            debug('select', pgm + 'query = ' + query) ;
 
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.local_storage_read_messages dbQuery callback: ';
@@ -2123,7 +2141,7 @@ angular.module('MoneyNetwork')
                 "and json.json_id = keyvalue.json_id " +
                 "and files.json_id = keyvalue.json_id " +
                 "order by keyvalue.value, keyvalue.json_id";
-            // console.log(pgm + 'query = ' + query);
+            debug('select', 'query = ' + query);
 
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.cleanup_inactive_users dbQuery callback: ';
@@ -2523,6 +2541,8 @@ angular.module('MoneyNetwork')
             for (key in user_setup) delete user_setup[key] ;
             for (key in new_user_setup) user_setup[key] = new_user_setup[key] ;
             // add missing defaults
+            guest_id = MoneyNetworkHelper.getItem('guestid');
+            guest = (guest_id == '' + user_id) ;
             if (!user_setup.contact_filters) user_setup.contact_filters = {
                 all: 'red',
                 new: 'green',
@@ -2531,14 +2551,11 @@ angular.module('MoneyNetwork')
                 ignore: 'red'
             } ;
             if (!user_setup.contact_filters.hasOwnProperty('guest')) {
-                // green or red filter button? is current user a guest or a normal user?
-                guest_id = MoneyNetworkHelper.getItem('guestid');
-                guest = (guest_id == '' + user_id) ;
                 user_setup.contact_filters.guest = guest ? 'green' : 'red' ;
             }
             if (!user_setup.contact_sort) user_setup.contact_sort = contact_sort_options[0] ;
             if (!user_setup.chat_sort) user_setup.chat_sort = chat_sort_options[0] ;
-            if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = true ;
+            if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = !guest ;
             if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
         }
         function save_user_setup () {
@@ -2584,11 +2601,15 @@ angular.module('MoneyNetwork')
                     msg += 'Identical ' + ((contact.cert_user_id == contact2.cert_user_id) ? 'zeronet user' : 'browser public key') + '.' ;
                 }
                 ZeroFrame.cmd("wrapperNotification", ["info", msg, 5000]);
-            } // notification_if_old_contact
+            }
 
+        } // notification_if_old_contact
 
-        }
-
+        // output debug info in log. For key, see user page and setup.debug hash
+        function debug (key, text) {
+            if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
+            if (user_setup.debug[key]) console.log(text) ;
+        } // debug
 
         // export MoneyNetworkService API
         return {
