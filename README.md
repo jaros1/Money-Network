@@ -2,7 +2,7 @@
 Demo with complementary and alternative money. Implemented in ZeroFrame and AngularJS. Focus on privacy, encryption, max data on client and min data on server. 
 
 Alternative and complementary money systems can in greater or less extent, replace or support the current monetary system and 
-prevent some bad things for happening in the future. There exists many alternative and complementary money systems, but they are not as 
+prevent some bad things from happening in the future. There exists many alternative and complementary money systems, but they are not as 
 accessible and real for people as good old conventional money. 
 
 The primary goal of the Money Network is to make complementary and alternative monetary systems just as real and accessible as 
