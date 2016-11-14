@@ -17,7 +17,7 @@ Implemented:
 - Chat: One and two panel chat. Contact list in left side and chat in right.
 
 Todo:
-- Group chat. More social network like.
+- Group chat. More social network like UI.
 - Wallet, Money API and interface to external money systems.  
 
 ## Demo
