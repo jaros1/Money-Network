@@ -736,7 +736,8 @@
                                             <label for="{{m|chatFileInputId}}">
                                                 <span class="glyphicon glyphicon-camera"></span>
                                             </label>
-                                            <input id="{{m|chatFileInputId}}" type="file" accept=".png, .jpg, .jpeg, .gif, .tif"/>
+                                            <input id="{{m|chatFileInputId}}" type="file" accept=".png, .jpg, .jpeg, .gif, .tif"
+                                                   custom-on-change="c.uploadImage"/>
                                         </div>
 
                                         <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>

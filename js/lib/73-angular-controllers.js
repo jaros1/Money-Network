@@ -794,7 +794,7 @@ angular.module('MoneyNetwork')
                 var reader  = new FileReader();
                 reader.addEventListener("load", function () {
                     var image_base64uri = reader.result ;
-                    console.log(pgm + 'reader.result = ' + image_base64uri);
+                    // console.log(pgm + 'reader.result = ' + image_base64uri);
                     var ext = moneyNetworkService.get_image_ext_from_base64uri(image_base64uri);
                     if (!ext) {
                         ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
@@ -817,15 +817,15 @@ angular.module('MoneyNetwork')
             // input file browse image - todo: refactor
             self.uploadImage = function(event){
                 var pgm = controller + '.uploadImage: ' ;
-                var filename = event.target.files[0].name;
-                console.log(pgm + 'file was selected: ' + filename);
-                console.log(pgm + 'files[0] = ' + JSON.stringify(event.target.files[0]) ) ;
+                // what is the target for file upload? new_chat_src in top of page or edit chat message img scr
+                var input_file_id = event.target.id ; // file-input, file-input2 or edit_chat_file_input_id_115
+                console.log(pgm + 'input_file_id = ' + input_file_id);
 
                 // https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
                 var reader  = new FileReader();
                 reader.addEventListener("load", function () {
                     var image_base64uri = reader.result ;
-                    console.log(pgm + 'reader.result = ' + image_base64uri);
+                    // console.log(pgm + 'reader.result = ' + image_base64uri);
                     var ext = moneyNetworkService.get_image_ext_from_base64uri(image_base64uri);
                     if (!ext) {
                         ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
@@ -837,8 +837,23 @@ angular.module('MoneyNetwork')
                         return;
                     }
 
-                    self.new_chat_src = image_base64uri ;
-                    $scope.$apply() ;
+                    if (['file-input', 'file-input2'].indexOf(input_file_id) != -1) {
+                        // image upload in new chat message form
+                        self.new_chat_src = image_base64uri ;
+                        $scope.$apply() ;
+                    }
+                    else {
+                        // image upload in edit outgoing message (ng-repeat section)
+                        // input_file_id = edit_chat_file_input_id_115
+                        // copy uploaded image to img with id "m|chatEditImgId"
+                        // now var id = 'edit_chat_file_input_id_' + object_id ;
+                        // copy to id = 'edit_chat_msg_img_id_' + object_id ;
+                        var input_file_id_array = input_file_id.split('_');
+                        var edit_chat_msg_img_id = 'edit_chat_msg_img_id_' + input_file_id_array[input_file_id_array.length-1] ;
+                        console.log(pgm + 'edit_chat_msg_img_id = ' + edit_chat_msg_img_id) ;
+                        document.getElementById(edit_chat_msg_img_id).src = image_base64uri ;
+                        $scope.$apply() ;
+                    }
 
                 }, false);
                 reader.readAsDataURL(event.target.files[0]);
