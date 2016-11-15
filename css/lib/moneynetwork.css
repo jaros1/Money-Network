@@ -557,7 +557,6 @@ form {
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
     box-sizing: border-box;
-
     width: 100%;
 }
 
@@ -600,6 +599,7 @@ form {
     background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASBAMAAACp/uMjAAAAMFBMVEUAAACqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqobnPPZAAAAD3RSTlMADcS4pt/IwK9qXE9ELRXt9n51AAAAaElEQVQI12PABRhtGRguC4CZQl8f8MUrggX1/yeK/f8kABL8//+L////imBBEAAJM/+HAgMGHhjzAAPDfgjrN1AbF4S5AGTafBDrJ9gKFhDTAWJz////P6COYAaZBAX13+FuY1JAcywAx1BERa6oCoIAAAAASUVORK5CYII=')
 }
 
+/* image drag and drop to chat */
 /* http://wisercoder.com/drag-drop-image-upload-directive-angular-js/ */
 body.dragOver #file-drop {
     display: block;
@@ -615,8 +615,25 @@ body #file-drop {
     height: 100%;
     display: none;
 }
-
 /* No drag */
+
+/* image upload - file browse */
+.image-upload {
+    display: inline-block;
+    padding-right: 5px;
+}
+.image-upload > input
+{
+    display: none;
+}
+.image-upload img
+{
+    width: 80px;
+    cursor: pointer;
+}
+
+
+
 /* glyphicon glyphicon-remove for contact in chat page. press X to see all chat */
 #contact_box_icons {
     position: relative;
@@ -687,3 +704,5 @@ body #file-drop {
         right: -95.5%;
     }
 }
+
+/* */

@@ -28,12 +28,13 @@
                 Transactions are stored encrypted in <b>todo:</b> block chains, clients or
                 on <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
             </li>
-            <li>Full client side encryption. Only very little information is shared public and unencrypted.</li>
+            <li>Full client side encryption. Only very little information is shared public and unencrypted.
+                Public private encryption using <a href="https://github.com/travist/jsencrypt" target="_top" rel="noopener noreferrer">JSEncrypt</a>.
+            </li>
             <li>A client network. Data on clients. Minimum data on servers. Servers are used for communication between
                 clients.
             </li>
             <li>Open source on <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_top" rel="noopener noreferrer">GitHub</a>.
-                URL: https://github.com/jaros1/Zeronet-Money-Network<br>
                 Feel free to clone, download, modify and make your own website or app.
             </li>
             <li>You may want to use <a href="https://www.torproject.org/" target="_blank" rel="noopener noreferrer">TOR</a>
@@ -266,7 +267,7 @@
                         <form name="new_chat_msg_form" class="css-form" novalidate>
                             <div imagedrop on-image-drop="c.imageDropped()">
                                 <table class="speech" style="width: 100%">
-                                    <tbody>
+                                    <tbody style="display: table; width: inherit;">
                                     <tr>
                                         <td style="white-space: nowrap;"><a href="#" class="media-heading"
                                                                             ng-bind-html="c.setup.alias">Me</a></td>
@@ -276,16 +277,18 @@
                                     </tr>
                                     <tr>
                                         <td colspan="2" style="width: 99%">
-                                        <textarea ng-show="c.contact.pubkey" class="autosize postfield new_chat_msg" id="new_chat_msg"
-                                                  placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox" rows="1" required
-                                                  ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
-                                        </textarea>
-                                        <span ng-hide="c.contact.pubkey">
-                                            Chat disabled. No public key found for this contact at ZeroNet.
-                                            Could be an old inactive contact. Data on ZeroNet are deleted after {{c.no_days_before_cleanup}} days.
-                                            Keep contact and chat if you think that contact will return to Money Network later.
-                                            Delete contact and chat if you think that user has left Money Network for good.
-                                        </span>
+
+                                            <textarea ng-show="c.contact.pubkey" class="autosize postfield new_chat_msg" id="new_chat_msg"
+                                                      placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox" rows="1" required
+                                                      ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
+                                            </textarea>
+                                            <span ng-hide="c.contact.pubkey">
+                                                Chat disabled. No public key found for this contact at ZeroNet.
+                                                Could be an old inactive contact. Data on ZeroNet are deleted after {{c.no_days_before_cleanup}} days.
+                                                Keep contact and chat if you think that contact will return to Money Network later.
+                                                Delete contact and chat if you think that user has left Money Network for good.
+                                            </span>
+
                                         </td>
                                     </tr>
                                     <tr ng-show="c.new_chat_src">
@@ -298,6 +301,14 @@
                                     </tr>
                                     <tr>
                                         <td colspan="2" style="width: 99%; text-align: right">
+
+                                            <div class="image-upload">
+                                                <label for="file-input">
+                                                    <span class="glyphicon glyphicon-camera"></span>
+                                                </label>
+                                                <input id="file-input" type="file"/>
+                                            </div>
+
                                             <button type="submit" ng-click="c.send_chat_msg()" ng-disabled="new_chat_msg_form.$invalid">Send</button>
                                         </td>
                                     </tr>
@@ -505,10 +516,10 @@
             <div ng-show="c.contact" style="width: 99%; border-style: solid; border-width: 2px;">
 
                 <div id="contact_box_icons">
-                <span class="glyphicon glyphicon-pushpin" ng-click="c.see_all_chat()"
-                      title="Click to update participants" alt="Click to update participants"></span>
+                <span class="glyphicon glyphicon-pushpin" ng-click="c.edit_chat_participants()"
+                      title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
                 <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
-                      title="Click to see all chat" alt="Click to see all chat"></span>
+                      title="Click to see all chat messages" alt="Click to see all chat messages"></span>
                 </div>
 
                 <table>
@@ -591,7 +602,7 @@
                         <form name="new_chat_msg_form" class="css-form" novalidate>
                             <div imagedrop on-image-drop="c.imageDropped()">
                                 <table class="speech" style="width: 100%">
-                                    <tbody>
+                                    <tbody style="display: table; width: inherit;">
                                     <tr>
                                         <td style="white-space: nowrap;"><a href="#" class="media-heading"
                                                                             ng-bind-html="c.setup.alias">Me</a></td>
@@ -627,6 +638,14 @@
                                     </tr>
                                     <tr>
                                         <td colspan="2" style="width: 99%; text-align: right">
+
+                                            <div class="image-upload">
+                                                <label for="file-input">
+                                                    <span class="glyphicon glyphicon-camera"></span>
+                                                </label>
+                                                <input id="file-input" type="file"/>
+                                            </div>
+
                                             <button type="submit" ng-click="c.send_chat_msg()"
                                                     ng-disabled="new_chat_msg_form.$invalid">Send
                                             </button>

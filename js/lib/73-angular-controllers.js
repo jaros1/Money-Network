@@ -269,6 +269,11 @@ angular.module('MoneyNetwork')
                 $location.replace();
             };
 
+            // enable adding/removing contacts to chat
+            self.edit_chat_participants = function () {
+                ZeroFrame.cmd("wrapperNotification", ["info", "Group chat is not yet implemented", 5000]);
+            };
+
             // get contacts. two different types of contacts:
             // a) contacts stored in localStorage
             self.contacts = moneyNetworkService.local_storage_get_contacts() ; // array with contacts from localStorage
