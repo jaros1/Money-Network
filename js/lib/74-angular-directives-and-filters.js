@@ -96,6 +96,19 @@ angular.module('MoneyNetwork')
         };
     })
 
+
+    // http://stackoverflow.com/questions/17922557/angularjs-how-to-check-for-changes-in-file-input-fields
+    .directive('customOnChange', function() {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var onChangeFunc = scope.$eval(attrs.customOnChange);
+                element.bind('change', onChangeFunc);
+            }
+        };
+    })
+
+
     .filter('toJSON', [function () {
         // debug: return object as a JSON string
         return function (object) {

@@ -813,6 +813,15 @@ angular.module('MoneyNetwork')
                 reader.readAsDataURL($scope.uploadedFile);
 
             }; // imageDropped
+
+            // input file browse image
+            self.uploadImage = function(event){
+                var pgm = controller + '.uploadImage: ' ;
+                var filename = event.target.files[0].name;
+                console.log(pgm + 'file was selected: ' + filename);
+                console.log(pgm + 'files[0] = ' + JSON.stringify(event.target.files[0]) ) ;
+            };
+
             self.new_char_src_remove = function() {
                 self.new_chat_src = '' ;
             } ;

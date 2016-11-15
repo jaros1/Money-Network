@@ -306,7 +306,7 @@
                                                 <label for="file-input">
                                                     <span class="glyphicon glyphicon-camera"></span>
                                                 </label>
-                                                <input id="file-input" type="file"/>
+                                                <input id="file-input" type="file" accept=".png, .jpg, .jpeg, .gif, .tif"/>
                                             </div>
 
                                             <button type="submit" ng-click="c.send_chat_msg()" ng-disabled="new_chat_msg_form.$invalid">Send</button>
@@ -383,7 +383,7 @@
                                             <label for="{{m|chatFileInputId}}">
                                                 <span class="glyphicon glyphicon-camera"></span>
                                             </label>
-                                            <input id="{{m|chatFileInputId}}" type="file"/>
+                                            <input id="{{m|chatFileInputId}}" type="file" accept=".png, .jpg, .jpeg, .gif, .tif"/>
                                         </div>
 
                                         <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
@@ -550,13 +550,13 @@
                         <td>User Id</td>
                         <td>&nbsp;</td>
                         <td>
-                    <span ng-hide="c.contact.edit_alias" ng-bind-html="c.contact|aliasOrShortCertUserId"
-                          title="{{c.contact.cert_user_id}}. Click to edit" ng-click="c.edit_alias()">
-                    </span>
-                    <span ng-show="c.contact.edit_alias">
-                        <input type="text" ng-model="c.contact.new_alias" style="width: 110px" id="contact_alias_id"
-                               on-key-enter="c.save_user_info()" on-key-escape="c.cancel_edit_alias()">
-                    </span>
+                            <span ng-hide="c.contact.edit_alias" ng-bind-html="c.contact|aliasOrShortCertUserId"
+                                  title="{{c.contact.cert_user_id}}. Click to edit" ng-click="c.edit_alias()">
+                            </span>
+                            <span ng-show="c.contact.edit_alias">
+                                <input type="text" ng-model="c.contact.new_alias" style="width: 110px" id="contact_alias_id"
+                                       on-key-enter="c.save_user_info()" on-key-escape="c.cancel_edit_alias()">
+                            </span>
                         </td>
                         <td>&nbsp;</td>
                         <td>-</td>
@@ -651,7 +651,8 @@
                                                 <label for="file-input2">
                                                     <span class="glyphicon glyphicon-camera"></span>
                                                 </label>
-                                                <input id="file-input2" type="file"/>
+                                                <input id="file-input2" type="file" accept=".png, .jpg, .jpeg, .gif, .tif"
+                                                       custom-on-change="c.uploadImage"/>
                                             </div>
 
                                             <button type="submit" ng-click="c.send_chat_msg()"
@@ -701,6 +702,7 @@
                         <form name="{{m|chatEditFormName}}" ng-show="m.edit_chat_message" class="css-form" novalidate>
 
                             <table class="speech" style="width: 100%">
+                                <tbody style="display: table; width: inherit;">
                                 <tr>
                                     <td style="white-space: nowrap;"><a href="#" class="media-heading"
                                                                         ng-bind-html="c.setup.alias">Me</a></td>
@@ -734,7 +736,7 @@
                                             <label for="{{m|chatFileInputId}}">
                                                 <span class="glyphicon glyphicon-camera"></span>
                                             </label>
-                                            <input id="{{m|chatFileInputId}}" type="file"/>
+                                            <input id="{{m|chatFileInputId}}" type="file" accept=".png, .jpg, .jpeg, .gif, .tif"/>
                                         </div>
 
                                         <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
@@ -744,6 +746,8 @@
                                         </button>
                                     </td>
                                 </tr>
+
+                                </tbody>
                             </table>
 
                         </form>
