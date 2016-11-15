@@ -378,6 +378,14 @@
                                 </tr>
                                 <tr>
                                     <td colspan="2" style="width: 99%; text-align: right">
+
+                                        <div class="image-upload">
+                                            <label for="{{m|chatFileInputId}}">
+                                                <span class="glyphicon glyphicon-camera"></span>
+                                            </label>
+                                            <input id="{{m|chatFileInputId}}" type="file"/>
+                                        </div>
+
                                         <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
                                         <button type="submit" ng-click="c.delete_edit_chat_msg(m)">Delete</button>
                                         <button type="submit" ng-click="c.save_chat_msg(m)"
@@ -640,10 +648,10 @@
                                         <td colspan="2" style="width: 99%; text-align: right">
 
                                             <div class="image-upload">
-                                                <label for="file-input">
+                                                <label for="file-input2">
                                                     <span class="glyphicon glyphicon-camera"></span>
                                                 </label>
-                                                <input id="file-input" type="file"/>
+                                                <input id="file-input2" type="file"/>
                                             </div>
 
                                             <button type="submit" ng-click="c.send_chat_msg()"
@@ -721,6 +729,14 @@
                                 </tr>
                                 <tr>
                                     <td colspan="2" style="width: 99%; text-align: right">
+
+                                        <div class="image-upload">
+                                            <label for="{{m|chatFileInputId}}">
+                                                <span class="glyphicon glyphicon-camera"></span>
+                                            </label>
+                                            <input id="{{m|chatFileInputId}}" type="file"/>
+                                        </div>
+
                                         <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
                                         <button type="submit" ng-click="c.delete_edit_chat_msg(m)">Delete</button>
                                         <button type="submit" ng-click="c.save_chat_msg(m)"

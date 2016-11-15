@@ -368,6 +368,17 @@ angular.module('MoneyNetwork')
         // end chatEditImgId filter
     }])
 
+    .filter('chatFileInputId', [function () {
+        // return part of cert_user_id before @
+        return function (message) {
+            // find receiver
+            var hash_key = message['$$hashKey'] ;
+            var object_id = hash_key.split(':')[1] ;
+            var id = 'edit_chat_file_input_id_' + object_id ;
+            return id ;
+        } ;
+        // end chatEditImgId filter
+    }])
     .filter('chatEditFormDisabled', [function () {
         // return part of cert_user_id before @
         return function (message) {
