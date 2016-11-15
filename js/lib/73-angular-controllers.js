@@ -786,7 +786,7 @@ angular.module('MoneyNetwork')
                 }); // wrapperConfrm
             }; // delete_edit_chat_msg
 
-            // catch drag and drop new chat message image. see imagedrop directive
+            // catch drag and drop new chat message image. see imagedrop directive. todo: refactor
             self.imageDropped = function () {
                 var pgm = controller + '.imageDropped: ' ;
 
@@ -814,13 +814,36 @@ angular.module('MoneyNetwork')
 
             }; // imageDropped
 
-            // input file browse image
+            // input file browse image - todo: refactor
             self.uploadImage = function(event){
                 var pgm = controller + '.uploadImage: ' ;
                 var filename = event.target.files[0].name;
                 console.log(pgm + 'file was selected: ' + filename);
                 console.log(pgm + 'files[0] = ' + JSON.stringify(event.target.files[0]) ) ;
-            };
+
+                // https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
+                var reader  = new FileReader();
+                reader.addEventListener("load", function () {
+                    var image_base64uri = reader.result ;
+                    console.log(pgm + 'reader.result = ' + image_base64uri);
+                    var ext = moneyNetworkService.get_image_ext_from_base64uri(image_base64uri);
+                    if (!ext) {
+                        ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
+                        return;
+                    }
+                    var max_image_size = moneyNetworkService.get_max_image_size() ;
+                    if (image_base64uri.length * 0.75 > max_image_size) {
+                        ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Image is too big. Max allowed size is about " + max_image_size + " bytes.", 5000]);
+                        return;
+                    }
+
+                    self.new_chat_src = image_base64uri ;
+                    $scope.$apply() ;
+
+                }, false);
+                reader.readAsDataURL(event.target.files[0]);
+
+            }; // uploadImage
 
             self.new_char_src_remove = function() {
                 self.new_chat_src = '' ;
