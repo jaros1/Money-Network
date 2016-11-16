@@ -417,7 +417,7 @@ angular.module('MoneyNetwork')
 
                     // insert & delete outgoing messages in data.msg array in data.json file on ZeroNet
                     var encrypt, password, key, message_with_envelope, message, encrypted_message_str, message_deleted,
-                        error, receiver_sha256, local_msg_seq, sender_sha256 ;
+                        error, receiver_sha256, local_msg_seq, sender_sha256, image ;
                     for (i=0 ; i<local_storage_contacts.length ; i++) {
                         contact = local_storage_contacts[i] ;
                         encrypt = null ;
@@ -459,10 +459,19 @@ angular.module('MoneyNetwork')
                                     throw pgm + 'System error. Encryption error. key = ' + key + ', password = ' + password ;
                                     continue ;
                                 }
+                                image = null ;
+                                if (message.replace_unchanged_image_with_x) {
+                                    // x = 'unchanged image'
+                                    delete message.replace_unchanged_image_with_x ;
+                                    image = message.image ;
+                                    message.image = 'x' ;
+                                }
                                 //console.log(pgm + 'debug - some messages are not delivered');
                                 //console.log(pgm + 'sending ' + message.msgtype + ' to ' + receiver_sha256) ;
-                                console.log(pgm + 'sending message = ' + JSON.stringify(message));
+                                debug('outbox && unencrypted', pgm + 'sending message = ' + JSON.stringify(message));
                                 encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(message), password);
+                                debug('outbox && encrypted', pgm + 'sending encrypted message = ' + encrypted_message_str);
+                                if (image) message.image = image ; // restore image
                                 delete message.sender_sha256 ; // info is in message_with_envelope
                                 delete message.local_msg_seq ; // info is in message_with_envelope
                                 message_with_envelope.zeronet_msg_id = CryptoJS.SHA256(encrypted_message_str).toString();
@@ -573,7 +582,7 @@ angular.module('MoneyNetwork')
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                         if (json_raw.length < 10000) break ; // OK - small file
 
-                        console.log(pgm + 'data.json is big. size ' + json_raw.length + '. removing old data ...') ;
+                        debug('data_cleanup', pgm + 'data.json is big. size ' + json_raw.length + '. removing old data ...') ;
                         // todo: looping forever with message - MoneyNetworkService.z_update_data_json fileGet callback: data.json is big. size 14762. removing old data ...
                         count = count + 1 ;
                         if (count > 1000) {
@@ -598,7 +607,7 @@ angular.module('MoneyNetwork')
                             }
                             // remove user and recheck file size
                             data.users.splice(i,1);
-                            console.log(pgm + 'data.json is big. removed user without any messages') ;
+                            debug('data_cleanup', pgm + 'data.json is big. removed user without any messages') ;
                             data_removed = true ;
                             break ;
                         } // for i (users)
@@ -617,7 +626,7 @@ angular.module('MoneyNetwork')
                                 if (!inbox_message.receiver_sha256) continue ;
                                 if (inbox_message.receiver_sha256 == my_pubkey_sha256) continue ; // todo: drop. No reason to save receiver_sha256 == my_pubkey_sha256 in inbox messages
                                 // found a message in inbox folder with a receiver_sha256. Find corresponding outbox message
-                                console.log(pgm + 'inbox_message = ' + JSON.stringify(inbox_message));
+                                debug('data_cleanup', pgm + 'inbox_message = ' + JSON.stringify(inbox_message));
                                 outbox_message = null ;
                                 for (k=0; k<contact.messages.length ; k++) {
                                     if (contact.messages[k].folder != 'outbox') continue ;
@@ -630,7 +639,7 @@ angular.module('MoneyNetwork')
                                 if (!outbox_message) {
                                     if (contact.outbox_sender_sha256 && contact.outbox_sender_sha256[inbox_message.receiver_sha256]) {
                                         // OK. must be an outbox message deleted by user. Has already been removed from data.json
-                                        console.log(pgm + 'OK. must be an outbox message deleted by user. Has already been removed from data.json') ;
+                                        debug('data_cleanup', pgm + 'OK. must be an outbox message deleted by user. Has already been removed from data.json') ;
                                         continue ;
                                     }
                                     else {
@@ -643,7 +652,7 @@ angular.module('MoneyNetwork')
                                 for (k=data.msg.length-1 ; k >= 0 ; k--) {
                                     if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
                                     // found a message that can be deleted from ZeroNet (received by contact)
-                                    console.log(pgm + 'found a message that can be deleted from ZeroNet (received by contact)') ;
+                                    debug('data_cleanup', pgm + 'found a message that can be deleted from ZeroNet (received by contact)') ;
                                     data.msg.splice(k,1);
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
@@ -652,7 +661,7 @@ angular.module('MoneyNetwork')
                                     break ;
                                 }
                                 if (data_removed) {
-                                    console.log(pgm + 'data.json is big. removed outbox message received by contact') ;
+                                    debug('data_cleanup', pgm + 'data.json is big. removed outbox message received by contact') ;
                                     break ;
                                 }
                             } // for j (messages)
@@ -662,13 +671,13 @@ angular.module('MoneyNetwork')
 
                         // c) delete old msg
                         if ((data.msg.length == 0) || (data.msg[0].timestamp > one_hour_ago)) {
-                            console.log(pgm + 'no more old data to remove');
+                            debug('data_cleanup', pgm + 'no more old data to remove');
                             break ;
                         }
 
                         // remove old message and recheck data.json size
                         data.msg.splice(0,1);
-                        console.log(pgm + 'data.json is big. deleted old message') ;
+                        debug('data_cleanup', pgm + 'data.json is big. deleted old message') ;
                     } // while true
 
                     // console.log(pgm + 'localStorage.messages (3) = ' + JSON.stringify(local_storage_messages));
@@ -686,7 +695,7 @@ angular.module('MoneyNetwork')
                         ZeroFrame.cmd("wrapperNotification", ["error", error]);
                         return ;
                     }
-                    else console.log(pgm + 'OK. ' + available + ' bytes free in user directory on ZeroNet');
+                    else debug('data_cleanup', pgm + 'OK. ' + available + ' bytes free in user directory on ZeroNet');
 
                     // console.log(pgm + 'added new rows for user_seq ' + user_seq + ', data = ' + JSON.stringify(data)) ;
                     // console.log(pgm + 'calling fileWrite: inner_path = ' + data_inner_path + ', data = ' + JSON.stringify(btoa(json_raw)));
@@ -1941,7 +1950,7 @@ angular.module('MoneyNetwork')
             if (filename.substr(0,11) != 'data/users/') return ;
             if (!filename.match(/json$/)) return ;
             // must be content.json or data.json
-            console.log(pgm + 'filename = ' + filename) ;
+            debug('file_done', pgm + 'filename = ' + filename) ;
 
             // read json file
             ZeroFrame.cmd("fileGet", [filename, false], function (res) {
@@ -2038,10 +2047,10 @@ angular.module('MoneyNetwork')
                     // there should not be any unprocessed messages except messages with unknown contacts here
                     if ((res.msg.length > 0) && (res.msg.length != new_unknown_contacts.length)) {
                         if (res.msg.length == 1) {
-                            console.log(pgm + filename + ': 1 message could not be processed');
+                            debug('file_done', pgm + filename + ': 1 message could not be processed');
                         }
                         else {
-                            console.log(pgm + filename + ': ' + res.msg.length + ' messages could not be processed');
+                            debug('file_done', pgm + filename + ': ' + res.msg.length + ' messages could not be processed');
                         }
                     }
 
@@ -2623,11 +2632,32 @@ angular.module('MoneyNetwork')
 
         } // notification_if_old_contact
 
+
         // output debug info in log. For key, see user page and setup.debug hash
-        function debug (key, text) {
+        // keys: simple expressions are supported. For example inbox && unencrypted
+        function debug (keys, text) {
+            var pgm = service + '. debug: ' ;
             if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
-            if (user_setup.debug[key]) console.log(text) ;
+            // console.log(pgm + 'old keys = ' + keys);
+            // console.log(pgm + 'user_setup = ' + JSON.stringify(user_setup));
+            var debug_keys = ['show_contact_action_filter', 'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup'];
+            var i, key, debug_value, regexp ;
+            for (i=0 ; i<debug_keys.length ; i++) {
+                key = debug_keys[i] ;
+                if (user_setup.debug[key]) debug_value = 'true' ;
+                else debug_value = 'false' ;
+                regexp = new RegExp(key, 'g');
+                keys = keys.replace(regexp, debug_value) ;
+            }
+            // console.log(pgm + 'new keys = ' + keys);
+            try {
+                if (eval(keys)) console.log(text) ;
+            }
+            catch (err) {
+                console.log(pgm + 'invalid call. keys = ' + keys + ', text = ' + text + ', error = ' + err.message) ;
+            }
         } // debug
+
 
         // export MoneyNetworkService API
         return {

@@ -734,6 +734,8 @@ angular.module('MoneyNetwork')
                     old_local_msg_seq: message.message.local_msg_seq,
                     message: new_value
                 };
+                // add image.
+                // unchanged image will be replaced with a "x" in communication. See z_update_data_json and process_incoming_message
                 if (new_image) changed_message.image = new_image ;
                 console.log(pgm + 'changed_message = ' + JSON.stringify(changed_message));
                 // validate json
@@ -742,6 +744,7 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("wrapperNotification", ["Error", error]);
                     return;
                 }
+                if (new_image && (old_image == new_image)) changed_message.replace_unchanged_image_with_x = true ;
                 // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                 // send message
                 moneyNetworkService.add_msg(message.contact, changed_message);

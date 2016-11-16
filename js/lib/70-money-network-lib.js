@@ -1104,9 +1104,28 @@ var MoneyNetworkHelper = (function () {
     } // load_user_setup
 
     // output debug info in log. For key, see user page and setup.debug hash
-    function debug (key, text) {
+    // keys: simple expressions are supported. For example inbox && unencrypted
+    function debug (keys, text) {
+        var pgm = module + '. debug: ' ;
         if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
-        if (user_setup.debug[key]) console.log(text) ;
+        // console.log(pgm + 'old keys = ' + keys);
+        // console.log(pgm + 'user_setup = ' + JSON.stringify(user_setup));
+        var debug_keys = ['show_contact_action_filter', 'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup'];
+        var i, key, debug_value, regexp ;
+        for (i=0 ; i<debug_keys.length ; i++) {
+            key = debug_keys[i] ;
+            if (user_setup.debug[key]) debug_value = 'true' ;
+            else debug_value = 'false' ;
+            regexp = new RegExp(key, 'g');
+            keys = keys.replace(regexp, debug_value) ;
+        }
+        // console.log(pgm + 'new keys = ' + keys);
+        try {
+            if (eval(keys)) console.log(text) ;
+        }
+        catch (err) {
+            console.log(pgm + 'invalid call. keys = ' + keys + ', text = ' + text + ', error = ' + err.message) ;
+        }
     } // debug
 
     // export helpers
