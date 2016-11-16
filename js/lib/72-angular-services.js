@@ -1209,6 +1209,8 @@ angular.module('MoneyNetwork')
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256, error ;
             var local_msg_seq, message ;
 
+            debug('inbox && encrypted', pgm + 'new incoming encrypted message = ' + JSON.stringify(res));
+
             // find contact from unique_id. will decrypt to test message but only buffer messages with unknown contact
             contact = null ;
             for (i=0 ; i<local_storage_contacts.length ; i++) {
@@ -1227,6 +1229,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'Ignoring message with invalid encryption. error = ' + err.message) ;
                 return false
             }
+
             // console.log(pgm + 'decrypted message = ' + decrypted_message_str) ;
             decrypted_message = JSON.parse(decrypted_message_str);
 
@@ -1320,7 +1323,7 @@ angular.module('MoneyNetwork')
                 contact.inbox_last_sender_sha256_at = res.timestamp ;
             }
 
-            console.log(pgm + 'new incoming message = ' + JSON.stringify(message));
+            debug('inbox && unencrypted', pgm + 'new incoming message = ' + JSON.stringify(message));
 
             contact.messages.push(message) ;
             javascript_messages.push({
@@ -1390,8 +1393,8 @@ angular.module('MoneyNetwork')
                     break ;
                 } // for i
                 if (index == -1) {
-                    console.log(pgm + 'Received update to old chat message with local_msg_seq ' + decrypted_message.old_local_msg_seq + ' that does not exist') ;
-                    console.log(pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
+                    debug('inbox && unencrypted', pgm + 'Received update to old chat message with local_msg_seq ' + decrypted_message.old_local_msg_seq + ' that does not exist') ;
+                    debug('inbox && unencrypted', pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
                     delete decrypted_message.old_local_msg_seq ;
                     old_message_envelope = null ;
                     if (decrypted_message.image == 'x') delete decrypted_message.image ; // x = image unchanged but old message was not found
@@ -1399,9 +1402,9 @@ angular.module('MoneyNetwork')
                 else {
                     old_message_envelope = contact.messages[index];
                     old_message_envelope.deleted_at = message.sent_at ;
-                    console.log(pgm + 'received OK update to an old chat msg') ;
-                    console.log(pgm + 'new decrypted_message = ' + JSON.stringify(decrypted_message));
-                    console.log(pgm + 'old_message_envelope  = ' + JSON.stringify(old_message_envelope));
+                    debug('inbox && unencrypted', pgm + 'received OK update to an old chat msg') ;
+                    debug('inbox && unencrypted', pgm + 'new decrypted_message = ' + JSON.stringify(decrypted_message));
+                    debug('inbox && unencrypted', pgm + 'old_message_envelope  = ' + JSON.stringify(old_message_envelope));
                 }
                 // empty chat msg update => delete chat message
                 if (!decrypted_message.message) message.deleted_at = message.sent_at ;
@@ -1427,8 +1430,8 @@ angular.module('MoneyNetwork')
                 // received receipt for outgoing chat message with image.
                 // remove chat message from ZeroNet to free disk space
                 // must update zeronet
-                console.log(pgm + 'received receipt from contact. expects old outgoing chat message with image to be removed from data.json and zeronet_msg_size to be updatedz_updated') ;
-                console.log(pgm + 'contact.messages = ' + JSON.stringify(contact.messages));
+                debug('inbox && unencrypted', pgm + 'received receipt from contact. expects old outgoing chat message with image to be removed from data.json and zeronet_msg_size to be updated') ;
+                debug('inbox && unencrypted', pgm + 'contact.messages = ' + JSON.stringify(contact.messages));
                 new_incoming_receipts++ ;
             }
 
@@ -1436,7 +1439,7 @@ angular.module('MoneyNetwork')
                 // received response to a verify contact request.
                 // password has already been sha256 validated by contact. Just double check and change contact status to Verified
                 index = -1 ;
-                console.log(pgm + 'contact.messages = ' + JSON.stringify(contact.messages));
+                debug('inbox && unencrypted', pgm + 'contact.messages = ' + JSON.stringify(contact.messages));
                 for (i=0 ; i<contact.messages.length ; i++) {
                     old_message_envelope = contact.messages[i] ;
                     old_message = old_message_envelope.message ;
@@ -1446,8 +1449,8 @@ angular.module('MoneyNetwork')
                     index = i ;
                     break ;
                 }
-                if (index == -1) console.log(pgm + 'Received verified message but original verify request is not longer in outbox or password is not correct') ;
-                else if (contact.type != 'unverified') console.log(pgm + 'Received verified message with correct passowrd but contact is not (any longer) an unverified contact') ;
+                if (index == -1) debug('inbox && unencrypted', pgm + 'Received verified message but original verify request is not longer in outbox or password is not correct') ;
+                else if (contact.type != 'unverified') debug('inbox && unencrypted', pgm + 'Received verified message with correct passowrd but contact is not (any longer) an unverified contact') ;
                 else contact.type = 'verified' ;
             }
 
