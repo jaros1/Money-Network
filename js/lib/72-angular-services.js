@@ -1376,7 +1376,7 @@ angular.module('MoneyNetwork')
                     old_message = old_message_envelope.message ;
                     if (old_message_envelope.folder != 'inbox') continue ;
                     if (old_message.msgtype != 'chat msg') continue ;
-                    if (old_message.local_msg_seq != decrypted_message.local_msg_seq) continue ;
+                    if (old_message.local_msg_seq != decrypted_message.old_local_msg_seq) continue ;
                     index = i ;
                     break ;
                 } // for i
@@ -1384,6 +1384,8 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'Received update to old chat message with local_msg_seq ' + decrypted_message.old_local_msg_seq + ' that does not exist') ;
                     console.log(pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
                     delete decrypted_message.old_local_msg_seq ;
+                    old_message_envelope = null ;
+                    if (decrypted_message.image == 'x') delete decrypted_message.image ; // x = image unchanged but old message was not found
                 }
                 else {
                     old_message_envelope = contact.messages[index];
@@ -1397,13 +1399,19 @@ angular.module('MoneyNetwork')
             } // end chat msg
 
             if ((decrypted_message.msgtype == 'chat msg') && decrypted_message.image) {
-                // received a chat message with an image. Send receipt so that other user can delete msg from data.json and free disk space
-                // todo: privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt will make this easier.
-                var receipt = { msgtype: 'received', remote_msg_seq: decrypted_message.local_msg_seq };
-                // validate json
-                var error = MoneyNetworkHelper.validate_json(pgm, receipt, receipt.msgtype, 'Cannot send receipt for chat message');
-                if (error) console(pgm + error) ;
-                else new_outgoing_receipts.push({ contact: contact, message: receipt}) ;
+                if (decrypted_message.image == 'x') {
+                    // x = edit chat message with unchanged image
+                    decrypted_message.image = old_message_envelope.message.image ;
+                }
+                else {
+                    // received a chat message with an image. Send receipt so that other user can delete msg from data.json and free disk space
+                    // todo: privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt will make this easier.
+                    var receipt = { msgtype: 'received', remote_msg_seq: decrypted_message.local_msg_seq };
+                    // validate json
+                    var error = MoneyNetworkHelper.validate_json(pgm, receipt, receipt.msgtype, 'Cannot send receipt for chat message');
+                    if (error) console(pgm + error) ;
+                    else new_outgoing_receipts.push({ contact: contact, message: receipt}) ;
+                }
             } // end chat msg
 
             if (decrypted_message.msgtype == 'received') {
@@ -2118,6 +2126,7 @@ angular.module('MoneyNetwork')
 
         function cleanup_inactive_users() {
             var pgm = service + '.cleanup_old_users: ';
+            var info = '. Skipping cleanup_inactive_users check';
             // check Zeronet status
             if (!user_id) {
                 console.log(pgm + 'No client login' + info);

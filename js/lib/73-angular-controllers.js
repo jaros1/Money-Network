@@ -843,9 +843,7 @@ angular.module('MoneyNetwork')
                         $scope.$apply() ;
                     }
                     else {
-                        // image upload in edit outgoing message (ng-repeat section)
-                        // input_file_id = edit_chat_file_input_id_115
-                        // copy uploaded image to img with id "m|chatEditImgId"
+                        // image upload in edit outgoing message (messages ng-repeat section)
                         // now var id = 'edit_chat_file_input_id_' + object_id ;
                         // copy to id = 'edit_chat_msg_img_id_' + object_id ;
                         var input_file_id_array = input_file_id.split('_');
