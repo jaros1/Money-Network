@@ -272,43 +272,68 @@ angular.module('MoneyNetwork')
             // group contact functions.
             // click on glyphicon-pushpin to edit participants in group chat
             // click on glyphicon-ok or send chat message when done editing chat group
-            self.group_chat = [] ;
-            self.edit_grp_chat = false ;
-            self.start_edit_grp_chat = function () {
+            self.group_chat = false ;
+            self.group_chat_contacts = [] ;
+            self.editing_grp_chat = false ;
+            self.start_editing_grp_chat = function () {
                 var pgm = controller + 'start_edit_grp_chat: ';
+                if (!self.contact) {
+                    // start, stop, start editing group chat
+                    self.group_chat = true ;
+                    self.editing_grp_chat = true ;
+                    return ;
+                }
+                if (!self.contact.pubkey) {
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Cannot chat with this contact. Public key is missing", 5000]);
+                    return ;
+                }
                 // ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat.", 5000]);
                 ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat<br>Not yet implemented. Just UI changes for now", 5000]);
-                self.edit_grp_chat = true ;
+                self.group_chat = true ;
+                self.editing_grp_chat = true ;
                 for (var i=0 ; i<self.contacts.length ; i++) {
                     if (self.contacts[i].unique_id == self.contact.unique_id) {
-                        self.group_chat = [self.contacts[i]["$$hashKey"]] ;
+                        self.group_chat_contacts = [self.contacts[i]["$$hashKey"]] ;
                         self.contact = null ;
                         return ;
                     }
                 }
             };
-            self.stop_edit_grp_chat = function () {
+            self.stop_editing_grp_chat = function () {
                 var pgm = controller + '.stop_edit_grp_chat: ' ;
-                self.edit_grp_chat = false ;
+                self.editing_grp_chat = false ;
+                if (self.group_chat_contacts.length != 1) return ;
+                // one and only one contact in chat group. return to normal contact information
+                for (var i=0 ; i<self.contacts.length ; i++) {
+                    if (self.contacts[i]["$$hashKey"] == self.group_chat_contacts[0]) self.contact = self.contacts[i] ;
+                }
+                self.group_chat = false ;
+                self.group_chat_contacts = [] ;
+
             };
             self.grp_chat_add = function (contact) {
                 var pgm = controller + '.grp_chat_add: ' ;
-                var index = self.group_chat.indexOf(contact["$$hashKey"]) ;
+                if (!contact.pubkey) {
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Cannot chat with this contact. Public key is missing", 5000]);
+                    return ;
+                }
+                var index = self.group_chat_contacts.indexOf(contact["$$hashKey"]) ;
                 if (index == -1) {
-                    console.log(pgm + 'adding contact with hashkey ' + contact["$$hashKey"] + ' to this group chat') ;
-                    self.group_chat.push(contact["$$hashKey"]) ;
+                    // console.log(pgm + 'adding contact with hashkey ' + contact["$$hashKey"] + ' to this group chat') ;
+                    self.group_chat_contacts.push(contact["$$hashKey"]) ;
                 }
                 else {
-                    console.log(pgm + 'removing contact with hashkey ' + contact["$$hashKey"] + ' from this group chat') ;
-                    self.group_chat.splice(index,1) ;
+                    // console.log(pgm + 'removing contact with hashkey ' + contact["$$hashKey"] + ' from this group chat') ;
+                    self.group_chat_contacts.splice(index,1) ;
                 }
-                console.log(pgm + 'self.group_chat = ' + JSON.stringify(self.group_chat)) ;
+                // console.log(pgm + 'self.group_chat_contacts = ' + JSON.stringify(self.group_chat_contacts)) ;
             };
-            self.background_color = function (contact) {
+            // chat group participants - aquamarine background color for selected participants.
+            self.contact_background_color = function (contact) {
                 var pgm = controller + '.background_color: ' ;
                 var style ;
-                if (!self.group_chat) style = {} ;
-                else if (self.group_chat.indexOf(contact["$$hashKey"]) == -1) style = {} ;
+                if (!self.editing_grp_chat) style = {} ;
+                else if (self.group_chat_contacts.indexOf(contact["$$hashKey"]) == -1) style = {} ;
                 else style = {'background-color':'aquamarine'};
                 // console.log(pgm + 'hashkey = ' + contact["$$hashKey"] + ', style = ' + JSON.stringify(style)) ;
                 return style ;
@@ -347,6 +372,8 @@ angular.module('MoneyNetwork')
             if ($routeParams.unique_id) find_contact();
             if (self.contact) {
                 // set focus if chatting with a selected contact
+                if (self.contact.pubkey) console.log(controller + ': contact with a public key') ;
+                else console.log(controller + ': contact without a public key. Chat not possible');
                 var focus_new_chat_msg = function() {
                     document.getElementById('new_chat_msg').focus() ;
                 };
@@ -637,8 +664,8 @@ angular.module('MoneyNetwork')
                 // notification if starting chat with an older contact (Last updated timestamp)
                 moneyNetworkService.notification_if_old_contact(contact);
                 // reset group chat
-                self.group_chat = [] ;
-                self.edit_grp_chat = false ;
+                self.group_chat_contacts = [] ;
+                self.editing_grp_chat = false ;
                 // redirect
                 var new_path = '/chat' + (self.two_panel_chat ? '2' : '') + '/' + contact.unique_id ;
                 // console.log(pgm + 'new_path = ' + new_path);
