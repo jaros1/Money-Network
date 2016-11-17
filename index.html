@@ -595,17 +595,24 @@
                 </table>
             </div>
 
-            <div ng-show="(c.group_chat_contacts.length>0) || c.editing_grp_chat" style="width: 99%; border-style: solid; border-width: 2px;">
+            <div ng-show="(c.group_chat_contacts.length>0) || c.editing_grp_chat" style="width: 99%; min-height: 134px; border-style: solid; border-width: 2px;">
 
-                <div id="contact_box_icons">
-                <span ng-hide="c.editing_grp_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_editing_grp_chat()"
-                      title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
-                <span ng-show="c.editing_grp_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_editing_grp_chat()"
-                      title="Click when finished updating participants in this chat"
-                      alt="Click when finished updating participants in this chat"></span>
-                <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
-                      title="Click to see all chat messages" alt="Click to see all chat messages"></span>
-                </div>
+                <table style="width: 100%">
+                    <tbody>
+                    <tr>
+                        <td>Group chat. Click on avatar to add/remove participants<td>
+                        <td style="text-align: right; vertical-align: top; white-space: nowrap;">
+                            <span ng-hide="c.editing_grp_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_editing_grp_chat()"
+                                  title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
+                            <span ng-show="c.editing_grp_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_editing_grp_chat()"
+                                  title="Click when finished updating participants in this chat"
+                                  alt="Click when finished updating participants in this chat"></span>
+                            <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
+                                  title="Click to see all chat messages" alt="Click to see all chat messages"></span>
+                    </td>
+                    </tr>
+                    </tbody>
+                </table>
 
                 <div style="width: 100%">
                 <span ng-repeat="hashkey in c.group_chat_contacts" style="padding-left: 5px; padding-bottom: 5px;">
