@@ -143,7 +143,7 @@ var MoneyNetworkHelper = (function () {
         var contact ;
         for (i=0 ; i<local_storage_contacts.length ; i++) {
             contact = local_storage_contacts[i] ;
-            if (!contact.avatar) console.log(pgm + 'Error. Pre search check. Contact without avatar ' + JSON.stringify(contact)) ;
+            if (!contact.avatar) debug('invalid_avatars', pgm + 'Error. Pre search check. Contact without avatar ' + JSON.stringify(contact)) ;
         } // for i
 
         // find json_id and user_seq for current user.
@@ -274,7 +274,7 @@ var MoneyNetworkHelper = (function () {
                     if (res[i].other_users_avatar == 'jpg') continue ;
                     if (res[i].other_users_avatar == 'png') continue ;
                     if (public_avatars.indexOf(res[i].other_users_avatar) != -1) continue ;
-                    console.log(pgm, 'Error. Removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
+                    debug('invalid_avatars', 'Error. Removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
                     delete res[i].other_users_avatar ;
                 } // for i
 
@@ -1133,7 +1133,9 @@ var MoneyNetworkHelper = (function () {
         if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
         // console.log(pgm + 'old keys = ' + keys);
         // console.log(pgm + 'user_setup = ' + JSON.stringify(user_setup));
-        var debug_keys = ['show_contact_action_filter', 'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup'];
+        var debug_keys = [
+            'show_contact_action_filter', 'invalid_avatars', 'unencrypted', 'encrypted', 'file_done', 'select',
+            'inbox', 'outbox', 'data_cleanup'];
         var i, key, debug_value, regexp ;
         for (i=0 ; i<debug_keys.length ; i++) {
             key = debug_keys[i] ;
@@ -1170,7 +1172,9 @@ var MoneyNetworkHelper = (function () {
         encrypt: encrypt,
         decrypt: decrypt,
         validate_json: validate_json,
-        load_user_setup: load_user_setup
+        load_user_setup: load_user_setup,
+        debug: debug
+
     };
 })();
 // MoneyNetworkHelper end

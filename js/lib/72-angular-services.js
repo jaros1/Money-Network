@@ -952,7 +952,7 @@ angular.module('MoneyNetwork')
 
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.ls_load_contacts dbQuery callback 1: ';
-                console.log(pgm + 'res.length = ' + res.length);
+                // console.log(pgm + 'res.length = ' + res.length);
                 if (res.error) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for public keys: " + res.error, 5000]);
                     console.log(pgm + "Search for pubkeys failed: " + res.error);
@@ -1046,7 +1046,7 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.ls_load_contacts dbQuery callback 2: ' ;
                     var i, unique_id, source1_avatars, source2_avatars, contact ;
 
-                    console.log(pgm + 'res.length = ' + res.length);
+                    // console.log(pgm + 'res.length = ' + res.length);
 
                     // error is somewhere else but remove invalid avatars from query result
                     var public_avatars = MoneyNetworkHelper.get_public_avatars();
@@ -1054,7 +1054,7 @@ angular.module('MoneyNetwork')
                         if (res[i].avatar == 'jpg') continue ;
                         if (res[i].avatar == 'png') continue ;
                         if (public_avatars.indexOf(res[i].avatar) != -1) continue ;
-                        console.log(pgm + 'Error. removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
+                        debug('invalid_avatars', pgm + 'Error. removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
                         res.splice(i,1) ;
                     } // for i
 
@@ -1089,7 +1089,7 @@ angular.module('MoneyNetwork')
                         }
                         // check old avatar
                         if (contact.avatar && (contact.avatar != 'jpg') && (contact.avatar != 'png') && (public_avatars.indexOf(contact.avatar) == -1)) {
-                            console.log(pgm + 'Removing invalid avatar from old contact. avatar was ' + contact.avatar) ;
+                            debug('invalid_avatars', pgm + 'Removing invalid avatar from old contact. avatar was ' + contact.avatar) ;
                             delete contact.avatar ;
                         }
                         if (contact.avatar) continue ;
@@ -1110,7 +1110,7 @@ angular.module('MoneyNetwork')
                         if (contact.avatar == 'jpg') continue ;
                         if (contact.avatar == 'png') continue ;
                         if (public_avatars.indexOf(contact.avatar) != -1) continue ;
-                        console.log(pgm + 'system error. contact without an avatar. ' + JSON.stringify(contact));
+                        debug('invalid_avatars', pgm + 'system error. contact without an avatar. ' + JSON.stringify(contact));
                     }
 
                     local_storage_save_contacts(false);
@@ -2651,26 +2651,7 @@ angular.module('MoneyNetwork')
         // output debug info in log. For key, see user page and setup.debug hash
         // keys: simple expressions are supported. For example inbox && unencrypted
         function debug (keys, text) {
-            var pgm = service + '. debug: ' ;
-            if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
-            // console.log(pgm + 'old keys = ' + keys);
-            // console.log(pgm + 'user_setup = ' + JSON.stringify(user_setup));
-            var debug_keys = ['show_contact_action_filter', 'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup'];
-            var i, key, debug_value, regexp ;
-            for (i=0 ; i<debug_keys.length ; i++) {
-                key = debug_keys[i] ;
-                if (user_setup.debug[key]) debug_value = 'true' ;
-                else debug_value = 'false' ;
-                regexp = new RegExp(key, 'g');
-                keys = keys.replace(regexp, debug_value) ;
-            }
-            // console.log(pgm + 'new keys = ' + keys);
-            try {
-                if (eval(keys)) console.log(text) ;
-            }
-            catch (err) {
-                console.log(pgm + 'invalid call. keys = ' + keys + ', text = ' + text + ', error = ' + err.message) ;
-            }
+            MoneyNetworkHelper.debug(keys, text) ;
         } // debug
 
 

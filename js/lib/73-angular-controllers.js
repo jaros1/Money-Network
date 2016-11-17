@@ -269,22 +269,27 @@ angular.module('MoneyNetwork')
                 $location.replace();
             };
 
-            // enable adding/removing contacts to chat
-            self.group_chat = null ;
+            // group contact functions.
+            // click on glyphicon-pushpin to edit participants in group chat
+            // click on glyphicon-ok or send chat message when done editing chat group
+            self.group_chat = [] ;
+            self.edit_grp_chat = false ;
             self.start_edit_grp_chat = function () {
                 var pgm = controller + 'start_edit_grp_chat: ';
                 // ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat.", 5000]);
                 ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat<br>Not yet implemented. Just UI changes for now", 5000]);
+                self.edit_grp_chat = true ;
                 for (var i=0 ; i<self.contacts.length ; i++) {
                     if (self.contacts[i].unique_id == self.contact.unique_id) {
                         self.group_chat = [self.contacts[i]["$$hashKey"]] ;
+                        self.contact = null ;
                         return ;
                     }
                 }
             };
             self.stop_edit_grp_chat = function () {
                 var pgm = controller + '.stop_edit_grp_chat: ' ;
-                self.group_chat = null ;
+                self.edit_grp_chat = false ;
             };
             self.grp_chat_add = function (contact) {
                 var pgm = controller + '.grp_chat_add: ' ;
@@ -631,6 +636,9 @@ angular.module('MoneyNetwork')
                 if (self.contact && !self.two_panel_chat) return; // already chatting with contact
                 // notification if starting chat with an older contact (Last updated timestamp)
                 moneyNetworkService.notification_if_old_contact(contact);
+                // reset group chat
+                self.group_chat = [] ;
+                self.edit_grp_chat = false ;
                 // redirect
                 var new_path = '/chat' + (self.two_panel_chat ? '2' : '') + '/' + contact.unique_id ;
                 // console.log(pgm + 'new_path = ' + new_path);

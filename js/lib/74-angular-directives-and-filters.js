@@ -453,5 +453,38 @@ angular.module('MoneyNetwork')
         // end privacyTitle filter
     }])
 
+    .filter('hashkeyToContact', ['MoneyNetworkService', function (moneyNetworkService) {
+        var pgm = 'hashkeyToContact filter: ';
+        var contacts = moneyNetworkService.local_storage_get_contacts() ;
+        return function (hashkey) {
+            for (var i=0 ; i<contacts.length ; i++) {
+                if (contacts[i]["$$hashKey"] == hashkey) return contacts[i] ;
+            }
+            return {} ;
+        } ;
+        // end privacyTitle filter
+    }])
+
+    // format contact Last Updated
+    .filter('getLastUpdated', ['shortChatTimeFilter', function (shortChatTime) {
+        // short format for unix timestamp used in chat
+        return function (contact) {
+            var pgm = 'formatSearchValue: ' ;
+            var timestamp ;
+            for (var i=0 ; i<contact.search.length ; i++) if (typeof contact.search[i].value == 'number') timestamp = contact.search[i].value ;
+            return shortChatTime(timestamp*1000) ;
+        } ;
+        // end formatSearchTitle filter
+    }])
+
+    // format contact Last Updated
+    .filter('contactType', [ function () {
+        // short format for unix timestamp used in chat
+        return function (contact) {
+            return '(' + contact.type + ')' ;
+        } ;
+        // end formatSearchTitle filter
+    }])
+
 ;
 // angularJS app end

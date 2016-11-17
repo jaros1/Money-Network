@@ -462,10 +462,10 @@
                        ng-style="c.background_color(x)">
                 <tr>
                     <td rowspan="{{x.search.length+1}}" style="vertical-align: top">
-                        <span ng-hide="c.group_chat">
+                        <span ng-hide="c.edit_grp_chat">
                         <img ng-src="{{x|findContactAvatar}}" title="Click to chat with contact" ng-click="c.chat_contact(x)">
                         </span>
-                        <span ng-show="c.group_chat">
+                        <span ng-show="c.edit_grp_chat">
                         <img ng-src="{{x|findContactAvatar}}" title="Click to add/remove contact to/from group chat" ng-click="c.grp_chat_add(x)">
                         </span>
                     </td>
@@ -530,9 +530,9 @@
             <div ng-show="c.contact" style="width: 99%; border-style: solid; border-width: 2px;">
 
                 <div id="contact_box_icons">
-                <span ng-hide="c.group_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_edit_grp_chat()"
+                <span ng-hide="c.edit_grp_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_edit_grp_chat()"
                       title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
-                <span ng-show="c.group_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_edit_grp_chat()"
+                <span ng-show="c.edit_grp_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_edit_grp_chat()"
                       title="Click when finished updating participants in this chat"
                       alt="Click when finished updating participants in this chat"></span>
                 <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
@@ -603,6 +603,44 @@
 
 
             </div>
+
+
+            <div ng-show="(c.group_chat.length>0) || c.edit_grp_chat" style="width: 99%; border-style: solid; border-width: 2px;">
+
+                <div id="contact_box_icons">
+                <span ng-hide="c.edit_grp_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_edit_grp_chat()"
+                      title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
+                <span ng-show="c.edit_grp_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_edit_grp_chat()"
+                      title="Click when finished updating participants in this chat"
+                      alt="Click when finished updating participants in this chat"></span>
+                <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
+                      title="Click to see all chat messages" alt="Click to see all chat messages"></span>
+                </div>
+
+                <span ng-repeat="hashkey in c.group_chat" style="padding-left: 5px; padding-bottom: 5px;">
+                    <table style="display: inline">
+                        <tbody>
+                        <tr>
+                            <td>
+                                <img ng-src="{{hashkey|hashkeyToContact|findContactAvatar}}" ng-click="c.grp_chat_add(hashkey|hashkeyToContact)"
+                                     title="Click to remove contact from group chat">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td ng-bind-html="hashkey|hashkeyToContact|aliasOrShortCertUserId">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td ng-bind="hashkey|hashkeyToContact|getLastUpdated"></td>
+                        </tr>
+                        <tr>
+                            <td ng-bind="hashkey|hashkeyToContact|contactType"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </span>
+            </div>
+
 
 
             <br>
@@ -985,6 +1023,11 @@
                 <td>Show data.json cleanup?</td>
                 <td>&nbsp;&nbsp;</td>
                 <td><input type="checkbox" ng-model="u.setup.debug.data_cleanup" ng-change="u.debug_settings_changed()"></td>
+            </tr>
+            <tr>
+                <td>Show invalid avatars?</td>
+                <td>&nbsp;&nbsp;</td>
+                <td><input type="checkbox" ng-model="u.setup.debug.invalid_avatars" ng-change="u.debug_settings_changed()"></td>
             </tr>
             <tr>
                 <td colspan="3">Filters:</td>
