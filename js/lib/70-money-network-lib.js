@@ -74,8 +74,6 @@ var MoneyNetworkHelper = (function () {
         }) ;
     } // ls_save
 
-
-
     // initialize array with public avatars from public/images/avatar
     var public_avatars = [] ;
     function load_public_avatars () {
@@ -94,7 +92,6 @@ var MoneyNetworkHelper = (function () {
     function get_public_avatars () {
         return public_avatars ;
     }
-
 
     // search ZeroNet for new potential contacts with matching search words
     // add/remove new potential contacts to/from local_storage_contacts array (MoneyNetworkService and ContactCtrl)
@@ -141,6 +138,13 @@ var MoneyNetworkHelper = (function () {
             setTimeout(retry_z_contact_search,60000);// outside angularjS - using normal setTimeout function
             return ;
         }
+
+        // check avatars. All contacts must have a valid avatar
+        var contact ;
+        for (i=0 ; i<local_storage_contacts.length ; i++) {
+            contact = local_storage_contacts[i] ;
+            if (!contact.avatar) console.log(pgm + 'Error. Pre search check. Contact without avatar ' + JSON.stringify(contact)) ;
+        } // for i
 
         // find json_id and user_seq for current user.
         // must use search words for current user
@@ -263,6 +267,17 @@ var MoneyNetworkHelper = (function () {
                     ZeroFrame.cmd("wrapperNotification", ["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
                     return;
                 }
+
+                // error elsewhere in code but remove invalid avatars from query result
+                for (i=0 ; i<res.length ; i++) {
+                    if (!res[i].other_users_avatar) continue ;
+                    if (res[i].other_users_avatar == 'jpg') continue ;
+                    if (res[i].other_users_avatar == 'png') continue ;
+                    if (public_avatars.indexOf(res[i].other_users_avatar) != -1) continue ;
+                    console.log(pgm, 'Error. Removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
+                    delete res[i].other_users_avatar ;
+                } // for i
+
                 var unique_id, unique_ids = [], res_hash = {}, ignore, j, last_updated ;
                 for (var i=0 ; i<res.length ; i++) {
                     // check contacts on ignore list
@@ -282,15 +297,17 @@ var MoneyNetworkHelper = (function () {
                     res[i].other_unique_id = unique_id;
                     last_updated = Math.round(res[i].other_user_timestamp / 1000) ;
                     if (unique_ids.indexOf(res[i].other_unique_id)==-1) unique_ids.push(res[i].other_unique_id) ;
-                    if (!res_hash.hasOwnProperty(unique_id)) res_hash[unique_id] = {
-                        type: 'new',
-                        auth_address: res[i].other_auth_address,
-                        cert_user_id: res[i].other_cert_user_id,
-                        pubkey: res[i].other_pubkey,
-                        guest: res[i].other_guest,
-                        avatar: res[i].other_files_avatar || res[i].other_users_avatar,
-                        search: [{ tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
-                    };
+                    if (!res_hash.hasOwnProperty(unique_id)) {
+                        res_hash[unique_id] = {
+                            type: 'new',
+                            auth_address: res[i].other_auth_address,
+                            cert_user_id: res[i].other_cert_user_id,
+                            pubkey: res[i].other_pubkey,
+                            guest: res[i].other_guest,
+                            avatar: res[i].other_files_avatar || res[i].other_users_avatar,
+                            search: [{ tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
+                        };
+                    }
                     res_hash[unique_id].search.push({
                         tag: res[i].other_tag,
                         value: res[i].other_value,
@@ -413,6 +430,12 @@ var MoneyNetworkHelper = (function () {
                 //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiANtVIyOC+MIeEhnkVfS\nn/CBDt0GWCba4U6EeUDbvf+HQGfY61e9cU+XMbI8sX7b9R5G7T+zdVqbmEIZwNEb\nDn9NIs4PVA/xqemrQUrm3qEHK8iq/+5CUwVeKeb6879FgPL8fSj1E3nNQPnmuh8N\nE+/04PraakAj9A6Z1OE5m+sfC59IDwYTKupB53kX3ZzHMmWtdYYEr08Zq9XHuYMM\nA4ykOqENGvquGjPnTB4ASKfRTLCUC+TsG5Pd+2ZswxxU3zG5v/dczj+l3GKaaxP7\nxEqA8nFYiU7LiA1MUzQlQDYj/t7ckRdjGH51GvZxlGFFaGQv3yqzs7WddZg8sqMM\nUQIDAQAB\n-----END PUBLIC KEY-----",
                 //    "search": [{"my_tag": "Name", "my_value": "%x%", "other_tag": "Name", "other_value": "xxx"}]
                 //}];
+
+                // check avatars. All contacts must have a avatar
+                for (i=0 ; i<local_storage_contacts.length ; i++) {
+                    contact = local_storage_contacts[i] ;
+                    if (!contact.avatar) console.log(pgm + 'Error. Post search check. Contact without avatar ' + JSON.stringify(contact)) ;
+                }
 
                 // refresh contacts in angularJS UI
                 fnc_when_ready() ;

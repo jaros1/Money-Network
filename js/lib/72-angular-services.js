@@ -910,202 +910,214 @@ angular.module('MoneyNetwork')
             //    ', ls_contacts_size (encrypted and compressed) = ' + ls_contacts_size +
             //    ', ls_msg_factor = ' + ls_msg_factor) ;
 
-            // refresh contact avatars
-            // source 1: uploaded avatars from files table (users/.../content.json) - pubkey is null - jpg or png
-            // source 2: avatar from users table (random assigned avatar) - pubkey is not null - jpg, png or short ref to /public/images/avatar* images
-            // source 3: contacts without an avatar will be assigned a random public avatar
+
+            // two queries. 1) get public key and user seq. 2) refresh avatars
+
+            // get pubkey from ZeroNet. Use auth_address and check unique id. also set user_seq
+            var contact, auth_addresses = [] ;
+            for (i=0 ; i<local_storage_contacts.length ; i++) {
+                contact = local_storage_contacts[i] ;
+                // console.log(pgm + i + ': contact.type = ' + contact.type + ', contact.auth_address = ' + contact.auth_address)
+                if (auth_addresses.indexOf(contact.auth_address) == -1) auth_addresses.push(contact.auth_address);
+            }
+            // console.log(pgm + 'auth_addresses = ' + JSON.stringify(auth_addresses)) ;
+            if (auth_addresses.length == 0) {
+                // new user - no contacts - user must enter some search tags to find contacts
+                local_storage_save_contacts(false);
+                return ;
+            }
+
+            // new query with timestamp columns
             var query =
-                "select substr(json.directory,7) as auth_address, null as pubkey, substr(files.filename,8) as avatar " +
-                "from files, json " +
-                "where files.filename like 'avatar%' " +
-                "and json.json_id = files.json_id" +
-                "  union all " +
-                "select substr(json.directory,7) as auth_address, users.pubkey, users.avatar " +
-                "from users, json " +
-                "where users.avatar is not null " +
-                "and json.json_id = users.json_id" ;
-            debug('select', pgm + 'query = ' + query) ;
+                "select" +
+                "  substr(data_json.directory,7) as auth_address, users.user_seq, users.pubkey," +
+                "  status.timestamp " +
+                "from json as data_json, json as content_json, users, json as status_json, status " +
+                "where data_json.directory in " ;
+            for (i = 0; i < auth_addresses.length; i++) {
+                if (i == 0) query += '(' ;
+                else query += ',';
+                query += "'users/" + auth_addresses[i] + "'";
+            } // for i
+            query += ") " +
+                "and data_json.file_name = 'data.json' " +
+                "and data_json.json_id = users.json_id " +
+                "and content_json.directory = data_json.directory " +
+                "and content_json.file_name = 'content.json' " +
+                "and status_json.directory = data_json.directory " +
+                "and status_json.file_name = 'status.json' " +
+                "and status.json_id = status_json.json_id " +
+                "and status.user_seq = users.user_seq" ;
+            debug('select', pgm + 'query = ' + query);
+
             ZeroFrame.cmd("dbQuery", [query], function (res) {
-                var pgm = service + '.ls_load_contacts dbQuery callback 1: ' ;
-                var i, unique_id, source1_avatars, source2_avatars, contact ;
-                var missing_avatars ;
-
-                // console.log(pgm + 'res = ' + JSON.stringify(res));
-
-                // find source 1 and 2 avatars. Avatars from source 1 (uploaded avatars) has 1. priority
-                source1_avatars = {} ;
-                source2_avatars = {} ;
-                for (i=0 ; i<res.length ; i++) if (!res[i].pubkey) source1_avatars[res[i].auth_address] = res[i].avatar;
-                for (i=res.length-1 ; i>=0; i--) {
-                    if (!res[i].public) continue ; // source 1
-                    // source 2
-                    if (source1_avatars.hasOwnProperty(res[i].auth_address)) continue ;
-                    unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
-                    source2_avatars[unique_id] = res[i].avatar ;
+                var pgm = service + '.ls_load_contacts dbQuery callback 1: ';
+                console.log(pgm + 'res.length = ' + res.length);
+                if (res.error) {
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for public keys: " + res.error, 5000]);
+                    console.log(pgm + "Search for pubkeys failed: " + res.error);
+                    console.log(pgm + 'query = ' + query);
                 }
-                // console.log(pgm + 'source1_avatars = ' + JSON.stringify(source1_avatars));
-                // console.log(pgm + 'source2_avatars = ' + JSON.stringify(source2_avatars));
+                else {
+                    // console.log(pgm + 'res = ' + JSON.stringify(res));
+                    var res_hash = {} ;
+                    for (var i=0 ; i<res.length ; i++) {
+                        if (!res_hash.hasOwnProperty(res[i].auth_address)) res_hash[res[i].auth_address] = [] ;
+                        res_hash[res[i].auth_address].push({
+                            user_seq: res[i].user_seq,
+                            pubkey: res[i].pubkey,
+                            last_updated: Math.round(res[i].timestamp / 1000)
+                        }) ;
+                    } // for i
+                    // console.log(pgm + 'res_hash = ' + JSON.stringify(res_hash));
 
-                // apply avatars
-                missing_avatars = 0 ;
-                var index, public_avatars ;
-                for (i=0 ; i<local_storage_contacts.length ; i++) {
-                    contact = local_storage_contacts[i] ;
-                    if (source1_avatars.hasOwnProperty(contact.auth_address)) {
-                        contact.avatar = source1_avatars[contact.auth_address] ;
-                        continue ;
-                    }
-                    unique_id = CryptoJS.SHA256(contact.auth_address + '/'  + contact.pubkey).toString();
-                    if (source2_avatars.hasOwnProperty(unique_id)) {
-                        contact.avatar = source1_avatars[unique_id] ;
-                        continue ;
-                    }
-                    if (contact.avatar) continue ;
-                    if (!public_avatars) public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                    if (public_avatars.length == 0) {
-                        console.log(pgm + 'Error. Public avatars array are not ready. Using 1.png as avatar') ;
-                        contact.avatar = '1.png' ;
-                    }
-                    else {
-                        index = Math.floor(Math.random() * public_avatars.length);
-                        contact.avatar = public_avatars[index] ;
-                    }
-                } // for i (contacts)
-                // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
+                    // control. check that pubkey in contacts are identical with pubkeys from this query
+                    var auth_address, unique_id, found_user_seq, found_pubkey, found_last_updated ;
+                    // delete contact helper. keep or delete contact without public key?
+                    var delete_contact = function (contact, i) {
+                        var msg = 'Public key was not found for contact with auth_address ' + contact.auth_address + ' and unique id ' + contact.unique_id ;
+                        var last_updated, j, no_msg ;
+                        for (j=0 ; j<contact.search.length ; j++) {
+                            if (typeof contact.search[j].value == 'number') last_updated = contact.search[j].value ;
+                        }
+                        if (last_updated) msg += '. Last updated ' + date(last_updated*1000, 'short') ;
+                        if (contact.type == 'new') {
+                            no_msg = 0 ;
+                            for (j=0 ; j<contact.messages.length ; j++) {
+                                if (!contact.contact.messages[j].deleted_at) no_msg++ ;
+                            }
+                        }
+                        if ((contact.type == 'ignore') || ((contact.type == 'new') && (no_msg == 0))) {
+                            msg += '. Contact was deleted' ;
+                            local_storage_contacts.splice(i,1);
+                        }
+                        else msg += '. Contact was not deleted' ;
+                        console.log(pgm + msg);
+                    }; // delete_contact
+                    for (i=local_storage_contacts.length-1 ; i>=0 ; i--) {
+                        contact = local_storage_contacts[i] ;
+                        auth_address = contact.auth_address ;
+                        if (!res_hash.hasOwnProperty(auth_address)) {
+                            delete_contact(contact,i) ;
+                            continue ;
+                        }
+                        found_user_seq = null ;
+                        found_pubkey = null ;
+                        found_last_updated = null ;
+                        for (j=0 ; j<res_hash[auth_address].length ; j++) {
+                            unique_id = CryptoJS.SHA256(auth_address + '/'  + res_hash[auth_address][j].pubkey).toString() ;
+                            if (contact.unique_id == unique_id) {
+                                found_user_seq = res_hash[auth_address][j].user_seq ;
+                                found_pubkey = res_hash[auth_address][j].pubkey ;
+                                found_last_updated = res_hash[auth_address][j].last_updated ;
+                            }
+                        }
+                        if (!found_pubkey) {
+                            delete_contact(contact,i) ;
+                            continue ;
+                        }
+                        contact.user_seq = found_user_seq ;
+                        contact.pubkey = found_pubkey ;
+                        // update "Last updated"
+                        for (j=0 ; j<contact.search.length ; j++) {
+                            if (typeof contact.search[j].value == 'number') contact.search[j].value = found_last_updated ;
+                        }
 
-                // get pubkey from ZeroNet. Use auth_address and check unique id. also set user_seq
-                var auth_addresses = [] ;
-                for (i=0 ; i<local_storage_contacts.length ; i++) {
-                    contact = local_storage_contacts[i] ;
-                    // console.log(pgm + i + ': contact.type = ' + contact.type + ', contact.auth_address = ' + contact.auth_address)
-                    if (auth_addresses.indexOf(contact.auth_address) == -1) auth_addresses.push(contact.auth_address);
-                }
-                // console.log(pgm + 'auth_addresses = ' + JSON.stringify(auth_addresses)) ;
-                if (auth_addresses.length == 0) {
-                    // new user - no contacts - user must enter some search tags to find contacts
-                    local_storage_save_contacts(false);
-                    return ;
-                }
+                        // console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                    } // for i
+                } // else
 
-                //// old query without modified/timestamp columns
-                //query =
-                //    "select substr(json.directory,7) as auth_address , users.user_seq, users.pubkey " +
-                //    "from json, users " +
-                //    "where json.directory in ";
-                //for (i = 0; i < auth_addresses.length; i++) {
-                //    if (i == 0) query += '(' ;
-                //    else query += ',';
-                //    query += "'users/" + auth_addresses[i] + "'";
-                //} // for i
-                //query += ") " +
-                //    "and json.file_name = 'data.json' " +
-                //    "and users.json_id = json.json_id";
-                //console.log(pgm + 'query = ' + query);
-
-                // new query with timestamp columns
+                // refresh contact avatars
+                // source 1: uploaded avatars from files table (users/.../content.json) - pubkey is null - jpg or png
+                // source 2: avatar from users table (random assigned avatar) - pubkey is not null - jpg, png or short ref to /public/images/avatar* images
+                // source 3: contacts without an avatar will be assigned a random public avatar
                 query =
-                    "select" +
-                    "  substr(data_json.directory,7) as auth_address, users.user_seq, users.pubkey," +
-                    "  status.timestamp " +
-                    "from json as data_json, json as content_json, users, json as status_json, status " +
-                    "where data_json.directory in " ;
-                for (i = 0; i < auth_addresses.length; i++) {
-                    if (i == 0) query += '(' ;
-                    else query += ',';
-                    query += "'users/" + auth_addresses[i] + "'";
-                } // for i
-                query += ") " +
-                    "and data_json.file_name = 'data.json' " +
-                    "and data_json.json_id = users.json_id " +
-                    "and content_json.directory = data_json.directory " +
-                    "and content_json.file_name = 'content.json' " +
-                    "and status_json.directory = data_json.directory " +
-                    "and status_json.file_name = 'status.json' " +
-                    "and status.json_id = status_json.json_id " +
-                    "and status.user_seq = users.user_seq" ;
-                debug('select', pgm + 'query = ' + query);
-
+                    "select substr(json.directory,7) as auth_address, null as pubkey, substr(files.filename,8) as avatar " +
+                    "from files, json " +
+                    "where files.filename like 'avatar%' " +
+                    "and json.json_id = files.json_id" +
+                    "  union all " +
+                    "select substr(json.directory,7) as auth_address, users.pubkey, users.avatar " +
+                    "from users, json " +
+                    "where users.avatar is not null " +
+                    "and json.json_id = users.json_id" ;
+                debug('select', pgm + 'query = ' + query) ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
-                    var pgm = service + '.ls_load_contacts dbQuery callback 2: ';
-                    if (res.error) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Search for public keys: " + res.error, 5000]);
-                        console.log(pgm + "Search for pubkeys failed: " + res.error);
-                        console.log(pgm + 'query = ' + query);
+                    var pgm = service + '.ls_load_contacts dbQuery callback 2: ' ;
+                    var i, unique_id, source1_avatars, source2_avatars, contact ;
+
+                    console.log(pgm + 'res.length = ' + res.length);
+
+                    // error is somewhere else but remove invalid avatars from query result
+                    var public_avatars = MoneyNetworkHelper.get_public_avatars();
+                    for (i=res.length-1 ; i >= 0 ; i--) {
+                        if (res[i].avatar == 'jpg') continue ;
+                        if (res[i].avatar == 'png') continue ;
+                        if (public_avatars.indexOf(res[i].avatar) != -1) continue ;
+                        console.log(pgm + 'Error. removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
+                        res.splice(i,1) ;
+                    } // for i
+
+                    // find source 1 and 2 avatars. Avatars from source 1 (uploaded avatars) has 1. priority
+                    source1_avatars = {} ;
+                    source2_avatars = {} ;
+                    for (i=0 ; i<res.length ; i++) if (!res[i].pubkey) source1_avatars[res[i].auth_address] = res[i].avatar;
+                    for (i=res.length-1 ; i>=0; i--) {
+                        if (!res[i].public) continue ; // source 1
+                        // source 2
+                        if (source1_avatars.hasOwnProperty(res[i].auth_address)) continue ;
+                        unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
+                        source2_avatars[unique_id] = res[i].avatar ;
                     }
-                    else {
-                        // console.log(pgm + 'res = ' + JSON.stringify(res));
-                        var res_hash = {} ;
-                        for (var i=0 ; i<res.length ; i++) {
-                            if (!res_hash.hasOwnProperty(res[i].auth_address)) res_hash[res[i].auth_address] = [] ;
-                            res_hash[res[i].auth_address].push({
-                                user_seq: res[i].user_seq,
-                                pubkey: res[i].pubkey,
-                                last_updated: Math.round(res[i].timestamp / 1000)
-                            }) ;
-                        } // for i
-                        // console.log(pgm + 'res_hash = ' + JSON.stringify(res_hash));
+                    // console.log(pgm + 'source1_avatars = ' + JSON.stringify(source1_avatars));
+                    // console.log(pgm + 'source2_avatars = ' + JSON.stringify(source2_avatars));
 
-                        // control. check that pubkey in contacts are identical with pubkeys from this query
-                        var auth_address, unique_id, found_user_seq, found_pubkey, found_last_updated ;
-                        // delete contact helper. keep or delete contact without public key?
-                        var delete_contact = function (contact, i) {
-                            var msg = 'Public key was not found for contact with auth_address ' + contact.auth_address + ' and unique id ' + contact.unique_id ;
-                            var last_updated, j, no_msg ;
-                            for (j=0 ; j<contact.search.length ; j++) {
-                                if (typeof contact.search[j].value == 'number') last_updated = contact.search[j].value ;
-                            }
-                            if (last_updated) msg += '. Last updated ' + date(last_updated*1000, 'short') ;
-                            if (contact.type == 'new') {
-                                no_msg = 0 ;
-                                for (j=0 ; j<contact.messages.length ; j++) {
-                                    if (!contact.contact.messages[j].deleted_at) no_msg++ ;
-                                }
-                            }
-                            if ((contact.type == 'ignore') || ((contact.type == 'new') && (no_msg == 0))) {
-                                msg += '. Contact was deleted' ;
-                                local_storage_contacts.splice(i,1);
-                            }
-                            else msg += '. Contact was not deleted' ;
-                            console.log(pgm + msg);
-                        }; // delete_contact
-                        for (i=local_storage_contacts.length-1 ; i>=0 ; i--) {
-                            contact = local_storage_contacts[i] ;
-                            auth_address = contact.auth_address ;
-                            if (!res_hash.hasOwnProperty(auth_address)) {
-                                delete_contact(contact,i) ;
+                    // apply avatars
+                    var index ;
+                    for (i=0 ; i<local_storage_contacts.length ; i++) {
+                        contact = local_storage_contacts[i] ;
+                        if (source1_avatars.hasOwnProperty(contact.auth_address)) {
+                            contact.avatar = source1_avatars[contact.auth_address] ;
+                            continue ;
+                        }
+                        if (contact.pubkey) {
+                            unique_id = CryptoJS.SHA256(contact.auth_address + '/'  + contact.pubkey).toString();
+                            if (source2_avatars.hasOwnProperty(unique_id)) {
+                                contact.avatar = source1_avatars[unique_id] ;
                                 continue ;
                             }
-                            found_user_seq = null ;
-                            found_pubkey = null ;
-                            found_last_updated = null ;
-                            for (j=0 ; j<res_hash[auth_address].length ; j++) {
-                                unique_id = CryptoJS.SHA256(auth_address + '/'  + res_hash[auth_address][j].pubkey).toString() ;
-                                if (contact.unique_id == unique_id) {
-                                    found_user_seq = res_hash[auth_address][j].user_seq ;
-                                    found_pubkey = res_hash[auth_address][j].pubkey ;
-                                    found_last_updated = res_hash[auth_address][j].last_updated ;
-                                }
-                            }
-                            if (!found_pubkey) {
-                                delete_contact(contact,i) ;
-                                continue ;
-                            }
-                            contact.user_seq = found_user_seq ;
-                            contact.pubkey = found_pubkey ;
-                            // update "Last updated"
-                            for (j=0 ; j<contact.search.length ; j++) {
-                                if (typeof contact.search[j].value == 'number') contact.search[j].value = found_last_updated ;
-                            }
+                        }
+                        // check old avatar
+                        if (contact.avatar && (contact.avatar != 'jpg') && (contact.avatar != 'png') && (public_avatars.indexOf(contact.avatar) == -1)) {
+                            console.log(pgm + 'Removing invalid avatar from old contact. avatar was ' + contact.avatar) ;
+                            delete contact.avatar ;
+                        }
+                        if (contact.avatar) continue ;
+                        if (public_avatars.length == 0) {
+                            console.log(pgm + 'Error. Public avatars array are not ready. Using 1.png as avatar') ;
+                            contact.avatar = '1.png' ;
+                        }
+                        else {
+                            index = Math.floor(Math.random() * public_avatars.length);
+                            contact.avatar = public_avatars[index] ;
+                        }
+                    } // for i (contacts)
+                    // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
 
-                            // console.log(pgm + 'contact = ' + JSON.stringify(contact));
-                        } // for i
-                    } // else
+                    // control. all contacts must have a valid avatar now
+                    for (i=0 ; i<local_storage_contacts.length ; i++) {
+                        contact = local_storage_contacts[i] ;
+                        if (contact.avatar == 'jpg') continue ;
+                        if (contact.avatar == 'png') continue ;
+                        if (public_avatars.indexOf(contact.avatar) != -1) continue ;
+                        console.log(pgm + 'system error. contact without an avatar. ' + JSON.stringify(contact));
+                    }
 
                     local_storage_save_contacts(false);
 
-                }) ; // end dbQuery callback 2
+                }); // end dbQuery callback 2 (refresh avatars)
 
-            }); // end dbQuery callback 1
+            }) ; // end dbQuery callback 1 (get public, user_seq and timestamp)
 
         } // end local_storage_load_contacts
         function local_storage_get_contacts() {

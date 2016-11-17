@@ -270,8 +270,43 @@ angular.module('MoneyNetwork')
             };
 
             // enable adding/removing contacts to chat
-            self.edit_chat_participants = function () {
-                ZeroFrame.cmd("wrapperNotification", ["info", "Group chat is not yet implemented", 5000]);
+            self.group_chat = null ;
+            self.start_edit_grp_chat = function () {
+                var pgm = controller + 'start_edit_grp_chat: ';
+                // ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat.", 5000]);
+                ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat<br>Not yet implemented. Just UI changes for now", 5000]);
+                for (var i=0 ; i<self.contacts.length ; i++) {
+                    if (self.contacts[i].unique_id == self.contact.unique_id) {
+                        self.group_chat = [self.contacts[i]["$$hashKey"]] ;
+                        return ;
+                    }
+                }
+            };
+            self.stop_edit_grp_chat = function () {
+                var pgm = controller + '.stop_edit_grp_chat: ' ;
+                self.group_chat = null ;
+            };
+            self.grp_chat_add = function (contact) {
+                var pgm = controller + '.grp_chat_add: ' ;
+                var index = self.group_chat.indexOf(contact["$$hashKey"]) ;
+                if (index == -1) {
+                    console.log(pgm + 'adding contact with hashkey ' + contact["$$hashKey"] + ' to this group chat') ;
+                    self.group_chat.push(contact["$$hashKey"]) ;
+                }
+                else {
+                    console.log(pgm + 'removing contact with hashkey ' + contact["$$hashKey"] + ' from this group chat') ;
+                    self.group_chat.splice(index,1) ;
+                }
+                console.log(pgm + 'self.group_chat = ' + JSON.stringify(self.group_chat)) ;
+            };
+            self.background_color = function (contact) {
+                var pgm = controller + '.background_color: ' ;
+                var style ;
+                if (!self.group_chat) style = {} ;
+                else if (self.group_chat.indexOf(contact["$$hashKey"]) == -1) style = {} ;
+                else style = {'background-color':'aquamarine'};
+                // console.log(pgm + 'hashkey = ' + contact["$$hashKey"] + ', style = ' + JSON.stringify(style)) ;
+                return style ;
             };
 
             // get contacts. two different types of contacts:
@@ -1126,3 +1161,40 @@ angular.module('MoneyNetwork')
     }])
 
 ;
+
+// http://htmlpreview.github.io/?https://github.com/fatlinesofcode/ngDraggable/blob/master/example.html
+//angular.module('ExampleApp', ['ngDraggable']).
+//    controller('MainCtrl', function ($scope) {
+//        $scope.centerAnchor = true;
+//        $scope.toggleCenterAnchor = function () {$scope.centerAnchor = !$scope.centerAnchor}
+//        $scope.draggableObjects = [{name:'one'}, {name:'two'}, {name:'three'}];
+//        $scope.droppedObjects1 = [];
+//        $scope.droppedObjects2= [];
+//        $scope.onDropComplete1=function(data,evt){
+//            var index = $scope.droppedObjects1.indexOf(data);
+//            if (index == -1)
+//                $scope.droppedObjects1.push(data);
+//        }
+//        $scope.onDragSuccess1=function(data,evt){
+//            console.log("133","$scope","onDragSuccess1", "", evt);
+//            var index = $scope.droppedObjects1.indexOf(data);
+//            if (index > -1) {
+//                $scope.droppedObjects1.splice(index, 1);
+//            }
+//        }
+//        $scope.onDragSuccess2=function(data,evt){
+//            var index = $scope.droppedObjects2.indexOf(data);
+//            if (index > -1) {
+//                $scope.droppedObjects2.splice(index, 1);
+//            }
+//        }
+//        $scope.onDropComplete2=function(data,evt){
+//            var index = $scope.droppedObjects2.indexOf(data);
+//            if (index == -1) {
+//                $scope.droppedObjects2.push(data);
+//            }
+//        }
+//        var inArray = function(array, obj) {
+//            var index = array.indexOf(obj);
+//        }
+//    });

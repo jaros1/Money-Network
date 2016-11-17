@@ -444,7 +444,7 @@
             <table>
                 <thead>
                 <tr>
-                    <th colspan="2" style="text-align: center"
+                    <th colspan="1" style="text-align: center"
                         title="User id (ZeroNet or alias) and contact status (new, added, unverfied, verified and ignore). Click to User id to edit">
                         User
                     </th>
@@ -455,13 +455,19 @@
                 </thead>
                 <tbody>
                 <tr>
-                    <td colspan="3">&nbsp;</td>
+                    <td colspan="4">&nbsp;</td>
                 </tr>
                 </tbody>
-                <tbody ng-repeat="x in c.contacts|filter:c.filter_contacts|orderBy:c.contact_order_by">
+                <tbody ng-repeat="x in c.contacts|filter:c.filter_contacts|orderBy:c.contact_order_by"
+                       ng-style="c.background_color(x)">
                 <tr>
                     <td rowspan="{{x.search.length+1}}" style="vertical-align: top">
-                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat" ng-click="c.chat_contact(x)">
+                        <span ng-hide="c.group_chat">
+                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat with contact" ng-click="c.chat_contact(x)">
+                        </span>
+                        <span ng-show="c.group_chat">
+                        <img ng-src="{{x|findContactAvatar}}" title="Click to add/remove contact to/from group chat" ng-click="c.grp_chat_add(x)">
+                        </span>
                     </td>
                     <td>User</td>
                     <td>:</td>
@@ -478,8 +484,8 @@
                     <td>:</td>
                     <td ng-bind-html="y|formatSearchValue" title="{{y|formatSearchTitle}}"></td>
                 </tr>
-                <tr>
-                    <td colspan="3">&nbsp;</td>
+                <tr style="background-color: white">
+                    <td colspan="4">&nbsp;</td>
                 </tr>
                 </tbody>
             </table>
@@ -524,8 +530,11 @@
             <div ng-show="c.contact" style="width: 99%; border-style: solid; border-width: 2px;">
 
                 <div id="contact_box_icons">
-                <span class="glyphicon glyphicon-pushpin" ng-click="c.edit_chat_participants()"
+                <span ng-hide="c.group_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_edit_grp_chat()"
                       title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
+                <span ng-show="c.group_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_edit_grp_chat()"
+                      title="Click when finished updating participants in this chat"
+                      alt="Click when finished updating participants in this chat"></span>
                 <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
                       title="Click to see all chat messages" alt="Click to see all chat messages"></span>
                 </div>
