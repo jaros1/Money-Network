@@ -391,24 +391,31 @@ angular.module('MoneyNetwork')
                     // set to true if localStorage information if updated (contacts, contact.messages, ...)
                     var local_storage_updated = false ;
 
-                    var j, k, contact ;
+                    var j, k, contact, group_chat ;
                     for (i=data.msg.length-1 ; i>=0 ; i--) {
                         // fix problem with false/0 keys in msg array / messages table (cannot be decrypted). See also "insert new message" below
+                        // null keys are allowed in group chat
                         if (!data.msg[i].key) {
-                            console.log(pgm + 'deleting message with invalid key. data.msg[' + i + '] = ' + JSON.stringify(data.msg[i]));
                             // cleanup zeronet_msg_id references in localStorage
+                            group_chat = false ;
                             for (j=0 ; j<local_storage_contacts.length ; j++) {
                                 contact = local_storage_contacts[j] ;
                                 for (k=0 ; k<contact.messages.length ; k++) {
-                                    if (contact.messages[j].folder != 'outbox') continue ;
+                                    if (contact.messages[k].folder != 'outbox') continue ;
                                     if (contact.messages[k].zeronet_msg_id == data.msg[i].message_sha256) {
-                                        delete contact.messages[k].zeronet_msg_id;
-                                        delete contact.messages[k].zeronet_msg_size;
-                                        local_storage_updated = true;
+                                        if (contact.type == 'group') group_chat = true ;
+                                        else {
+                                            delete contact.messages[k].zeronet_msg_id;
+                                            delete contact.messages[k].zeronet_msg_size;
+                                            local_storage_updated = true;
+                                        }
                                     }
                                 } // for k (messages)
                             } // for j (contacts)
-                            data.msg.splice(i,1);
+                            if (!group_chat) {
+                                console.log(pgm + 'deleting message with invalid key. data.msg[' + i + '] = ' + JSON.stringify(data.msg[i]));
+                                data.msg.splice(i,1);
+                            }
                             continue ;
                         } // if
                         // delete any messages from deleted guest account
@@ -431,33 +438,46 @@ angular.module('MoneyNetwork')
                                 local_msg_seq = next_local_msg_seq() ;
                                 message_with_envelope.local_msg_seq = local_msg_seq;
                                 message.local_msg_seq = local_msg_seq ;
-                                // symmetric encrypt message with random password. rsa encrypt password with contact.pubkey
-                                if (!encrypt) {
-                                    if (!contact.pubkey) {
-                                        throw pgm + 'Contact without pubkey. Encryption is not possible' ;
+                                if (contact.type == 'group') {
+                                    // simple symmetric encryption only using contact.password
+                                    // problem. too easy to identify group chat messages
+                                    //   a) no key - could add a random key
+                                    //   b) identical receiver_sha256 for all messages in chat group. could add a pseudo random receiver_sha256
+                                    key = null ;
+                                    password = contact.password ;
+                                    receiver_sha256 = CryptoJS.SHA256(password).toString();
+                                }
+                                else {
+                                    // RSA encryption + symmetric encryption with random password
+                                    if (!encrypt) {
+                                        if (!contact.pubkey) {
+                                            throw pgm + 'Contact without pubkey. Encryption is not possible' ;
+                                            continue ;
+                                        }
+                                        encrypt = new JSEncrypt();
+                                        encrypt.setPublicKey(contact.pubkey);
+                                    }
+                                    // find receiver_sha256. Use last received sender_sha256 address from contact
+                                    // exception: remove + add contact messages can be used to reset communication
+                                    if (message.msgtype != 'contact added') receiver_sha256 = contact.inbox_last_sender_sha256 ;
+                                    if (!receiver_sha256) receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
+                                    // add random sender_sha256 address
+                                    sender_sha256 = CryptoJS.SHA256(generate_random_password()).toString();
+                                    message_with_envelope.sender_sha256 = sender_sha256;
+                                    message.sender_sha256 = sender_sha256 ;
+                                    // check this new sha256 address in incoming data.json files (file done event / process_incoming_message)
+                                    watch_receiver_sha256.push(sender_sha256) ;
+                                    // rsa encrypted key, symmetric encrypted message
+                                    password = generate_random_password();
+
+                                    key = encrypt.encrypt(password);
+
+                                    // console.log(pgm + 'password = ' + password + ', key = ' + key);
+                                    if (!key) {
+                                        delete zeronet_file_locked[data_json_path] ;
+                                        throw pgm + 'System error. Encryption error. key = ' + key + ', password = ' + password ;
                                         continue ;
                                     }
-                                    encrypt = new JSEncrypt();
-                                    encrypt.setPublicKey(contact.pubkey);
-                                }
-                                // find receiver_sha256. Use last received sender_sha256 address from contact
-                                // exception: remove + add contact messages can be used to reset communication
-                                if (message.msgtype != 'contact added') receiver_sha256 = contact.inbox_last_sender_sha256 ;
-                                if (!receiver_sha256) receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
-                                // add random sender_sha256 address
-                                sender_sha256 = CryptoJS.SHA256(generate_random_password()).toString();
-                                message_with_envelope.sender_sha256 = sender_sha256;
-                                message.sender_sha256 = sender_sha256 ;
-                                // check this new sha256 address in incoming data.json files (file done event / process_incoming_message)
-                                watch_receiver_sha256.push(sender_sha256) ;
-                                // rsa encrypted key, symmetric encrypted message
-                                password = generate_random_password();
-                                key = encrypt.encrypt(password);
-                                // console.log(pgm + 'password = ' + password + ', key = ' + key);
-                                if (!key) {
-                                    delete zeronet_file_locked[data_json_path] ;
-                                    throw pgm + 'System error. Encryption error. key = ' + key + ', password = ' + password ;
-                                    continue ;
                                 }
                                 image = null ;
                                 if (message.replace_unchanged_image_with_x) {
@@ -872,6 +892,9 @@ angular.module('MoneyNetwork')
                    contacts_updated = true ;
                 }
 
+                // group chat. add empty search array
+                if (new_contact.type == 'group') new_contact.search = [] ;
+
                 // add "row" sequence to search array
                 if (new_contact) for (j=0 ; j<new_contact.search.length ; j++) new_contact.search[j].row = j+1 ;
 
@@ -913,10 +936,11 @@ angular.module('MoneyNetwork')
 
             // two queries. 1) get public key and user seq. 2) refresh avatars
 
-            // get pubkey from ZeroNet. Use auth_address and check unique id. also set user_seq
+            // get pubkey from ZeroNet. Use auth_address and check unique id. also set user_seq and timestamp
             var contact, auth_addresses = [] ;
             for (i=0 ; i<local_storage_contacts.length ; i++) {
                 contact = local_storage_contacts[i] ;
+                if (contact.type == 'group') continue ; // pseudo contact used for group chat. no public key
                 // console.log(pgm + i + ': contact.type = ' + contact.type + ', contact.auth_address = ' + contact.auth_address)
                 if (auth_addresses.indexOf(contact.auth_address) == -1) auth_addresses.push(contact.auth_address);
             }
@@ -996,6 +1020,7 @@ angular.module('MoneyNetwork')
                     }; // delete_contact
                     for (i=local_storage_contacts.length-1 ; i>=0 ; i--) {
                         contact = local_storage_contacts[i] ;
+                        if (contact.type == 'group') continue ;
                         auth_address = contact.auth_address ;
                         if (!res_hash.hasOwnProperty(auth_address)) {
                             delete_contact(contact,i) ;
@@ -1846,7 +1871,7 @@ angular.module('MoneyNetwork')
                 message: message
             }) ;
             // console.log(pgm + 'sending ' + message.msgtype + ' message. My auth_address is ' + ZeroFrame.site_info.auth_address);
-            console.log(pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
+            debug('outbox && unencrypted', 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
             javascript_messages.push({
                 contact: contact,
                 message: contact.messages[contact.messages.length-1]

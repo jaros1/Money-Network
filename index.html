@@ -520,38 +520,48 @@
 
             </p>
 
-            <div ng-show="c.contact" style="width: 99%; border-style: solid; border-width: 2px;">
 
-                <div id="contact_box_icons">
-                <span ng-hide="c.editing_grp_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_editing_grp_chat()"
-                      title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
-                <span ng-show="c.editing_grp_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_editing_grp_chat()"
-                      title="Click when finished updating participants in this chat"
-                      alt="Click when finished updating participants in this chat"></span>
-                <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
-                      title="Click to see all chat messages" alt="Click to see all chat messages"></span>
-                </div>
+            <div style="width: 99%; border-style: solid; border-width: 2px;">
 
-                <table>
-                    <thead>
-                    <tr>
-                        <th></th>
-                        <th>Tag</th>
-                        <th></th>
-                        <th>Value</th>
-                        <th></th>
-                        <th>Privacy</th>
-                        <th></th>
-                    </tr>
-                    </thead>
+                <table style="width: 100%">
                     <tbody>
                     <tr>
-                        <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
-                            <img ng-src="{{c.contact|findContactAvatar}}" class="img-circle img-sm">
+                        <td ng-bind="c.chat_hint()"><td>
+                        <td style="text-align: right; vertical-align: top; white-space: nowrap;">
+                            <span ng-hide="c.editing_grp_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_editing_grp_chat()"
+                                  title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
+                            <span ng-show="c.editing_grp_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_editing_grp_chat()"
+                                  title="Click when finished updating participants in group chat"
+                                  alt="Click when finished updating participants in group chat"></span>
+                            <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
+                                  title="Click to see all chat messages" alt="Click to see all chat messages"></span>
                         </td>
-                        <td>User Id</td>
-                        <td>&nbsp;</td>
-                        <td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <div ng-show="c.contact && !c.group_chat">
+
+                    <table>
+                        <thead>
+                        <tr>
+                            <th></th>
+                            <th>Tag</th>
+                            <th></th>
+                            <th>Value</th>
+                            <th></th>
+                            <th>Privacy</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                                <img ng-src="{{c.contact|findContactAvatar}}" class="img-circle img-sm">
+                            </td>
+                            <td>User Id</td>
+                            <td>&nbsp;</td>
+                            <td>
                             <span ng-hide="c.contact.edit_alias" ng-bind-html="c.contact|aliasOrShortCertUserId"
                                   title="{{c.contact.cert_user_id}}. Click to edit" ng-click="c.edit_alias()">
                             </span>
@@ -559,86 +569,73 @@
                                 <input type="text" ng-model="c.contact.new_alias" style="width: 110px" id="contact_alias_id"
                                        on-key-enter="c.save_user_info()" on-key-escape="c.cancel_edit_alias()">
                             </span>
-                        </td>
-                        <td>&nbsp;</td>
-                        <td>-</td>
-                        <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
-                            <input ng-show="c.contact|showContactAction:'ignore'" type="button" value="Ignore"
-                                   ng-click="c.contact_ignore()"/>
-                            <input ng-show="c.contact|showContactAction:'unplonk'" type="button" value="Unplonk"
-                                   ng-click="c.contact_unplonk()"/>
-                            <input ng-show="c.contact|showContactAction:'add'" type="button" value="Add"
-                                   ng-click="c.contact_add()"/>
-                            <input ng-show="c.contact|showContactAction:'remove'" type="button" value="Remove"
-                                   ng-click="c.contact_remove()"/>
-                            <input ng-show="c.contact|showContactAction:'verify'" type="button" value="Verify"
-                                   ng-click="c.contact_verify()"/>
-                            <input ng-show="c.show_contact_delete()" type="button" value="Delete"
-                                   ng-click="c.contact_delete()"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>User type</td>
-                        <td>&nbsp;</td>
-                        <td ng-bind="c.contact.type"></td>
-                        <td>&nbsp;</td>
-                        <td>-</td>
-                    </tr>
-                    <tr ng-repeat="s in c.contact.search">
-                        <td ng-bind-html="s.tag"></td>
-                        <td></td>
-                        <td ng-bind-html="s|formatSearchValue" title="{{s|formatSearchTitle}}"></td>
-                        <td></td>
-                        <td ng-bind-html="s.privacy"></td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div ng-show="(c.group_chat_contacts.length>0) || c.editing_grp_chat" style="width: 99%; min-height: 134px; border-style: solid; border-width: 2px;">
-
-                <table style="width: 100%">
-                    <tbody>
-                    <tr>
-                        <td>Group chat. Click on avatar to add/remove participants<td>
-                        <td style="text-align: right; vertical-align: top; white-space: nowrap;">
-                            <span ng-hide="c.editing_grp_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_editing_grp_chat()"
-                                  title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
-                            <span ng-show="c.editing_grp_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_editing_grp_chat()"
-                                  title="Click when finished updating participants in this chat"
-                                  alt="Click when finished updating participants in this chat"></span>
-                            <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
-                                  title="Click to see all chat messages" alt="Click to see all chat messages"></span>
-                    </td>
-                    </tr>
-                    </tbody>
-                </table>
-
-                <div style="width: 100%">
-                <span ng-repeat="hashkey in c.group_chat_contacts" style="padding-left: 5px; padding-bottom: 5px;">
-                    <table style="display: inline">
-                        <tbody>
-                        <tr>
-                            <td>
-                                <img ng-src="{{hashkey|hashkeyToContact|findContactAvatar}}" ng-click="c.grp_chat_add(hashkey|hashkeyToContact)"
-                                     title="Click to remove contact from group chat">
+                            </td>
+                            <td>&nbsp;</td>
+                            <td>-</td>
+                            <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                                <input ng-show="c.contact|showContactAction:'ignore'" type="button" value="Ignore"
+                                       ng-click="c.contact_ignore()"/>
+                                <input ng-show="c.contact|showContactAction:'unplonk'" type="button" value="Unplonk"
+                                       ng-click="c.contact_unplonk()"/>
+                                <input ng-show="c.contact|showContactAction:'add'" type="button" value="Add"
+                                       ng-click="c.contact_add()"/>
+                                <input ng-show="c.contact|showContactAction:'remove'" type="button" value="Remove"
+                                       ng-click="c.contact_remove()"/>
+                                <input ng-show="c.contact|showContactAction:'verify'" type="button" value="Verify"
+                                       ng-click="c.contact_verify()"/>
+                                <input ng-show="c.show_contact_delete()" type="button" value="Delete"
+                                       ng-click="c.contact_delete()"/>
                             </td>
                         </tr>
                         <tr>
-                            <td ng-bind-html="hashkey|hashkeyToContact|aliasOrShortCertUserId">
-                            </td>
+                            <td>User type</td>
+                            <td>&nbsp;</td>
+                            <td ng-bind="c.contact.type"></td>
+                            <td>&nbsp;</td>
+                            <td>-</td>
                         </tr>
-                        <tr>
-                            <td ng-bind="hashkey|hashkeyToContact|getLastUpdated"></td>
-                        </tr>
-                        <tr>
-                            <td ng-bind="hashkey|hashkeyToContact|contactType"></td>
+                        <tr ng-repeat="s in c.contact.search">
+                            <td ng-bind-html="s.tag"></td>
+                            <td></td>
+                            <td ng-bind-html="s|formatSearchValue" title="{{s|formatSearchTitle}}"></td>
+                            <td></td>
+                            <td ng-bind-html="s.privacy"></td>
                         </tr>
                         </tbody>
                     </table>
-                </span>
                 </div>
+
+                <div ng-show="c.group_chat" style="width: 100%">
+                    <span ng-repeat="x in c.group_chat_contacts" style="padding-left: 5px; padding-bottom: 5px;">
+                        <table style="display: inline">
+                            <tbody>
+                            <tr>
+                                <td>
+                                    <img ng-show="c.editing_grp_chat" ng-src="{{x|findContactAvatar}}"
+                                         ng-click="c.grp_chat_add(x)" title="Click to remove contact from group chat">
+                                    <img ng-hide="c.editing_grp_chat" ng-src="{{x|findContactAvatar}}"
+                                         ng-click="c.chat_contact(x)" title="Click to chat with contact">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td ng-bind-html="x|aliasOrShortCertUserId">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td ng-bind="x|getLastUpdated"></td>
+                            </tr>
+                            <tr>
+                                <td ng-bind="x.type"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </span>
+                </div>
+
+
             </div>
+
+
 
             <br>
 
@@ -670,7 +667,7 @@
                                                   rows="1" required
                                                   ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
                                         </textarea>
-                                        <span ng-show="c.contact && !c.contact.pubkey">
+                                        <span ng-show="c.contact && !c.contact.pubkey && (c.contact.type != 'group')">
                                             Chat disabled. No public key found for this contact at ZeroNet.
                                             Could be an old inactive contact. Data on ZeroNet are deleted after {{c.no_days_before_cleanup}} days.
                                             Keep contact and chat if you think that contact will return to Money Network later.
@@ -703,7 +700,7 @@
                                             </div>
 
                                             <button type="submit" ng-click="c.send_chat_msg()"
-                                                    ng-disabled="new_chat_msg_form.$invalid">Send
+                                                    ng-disabled="new_chat_msg_form.$invalid || c.group_chat && (c.group_chat_contacts.length == 0)">Send
                                             </button>
                                         </td>
                                     </tr>

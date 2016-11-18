@@ -95,6 +95,7 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.edit_alias: ', i ;
             if (search.row != 1) return ;
             if (contact.alias) contact.new_alias = contact.alias ;
+            else if (contact.type == 'group') contact.new_alias = contact.unique_id.substr(0,13);
             else {
                 i = contact.cert_user_id.indexOf('@') ;
                 contact.new_alias = contact.cert_user_id.substr(0,i) ;
@@ -262,11 +263,12 @@ angular.module('MoneyNetwork')
                 $location.replace();
             };
 
-            // contact removed from top of chat. see chat for all
+            // contact removed from top of chat. see all chat messages
             self.see_all_chat = function () {
-                if (self.two_panel_chat) $location.path('/chat2');
-                else $location.path('/chat');
-                $location.replace();
+                self.contact = null ;
+                self.group_chat = false ;
+                self.group_chat_contacts.splice(self.group_chat_contacts.length) ;
+                self.editing_grp_chat = false ;
             };
 
             // group contact functions.
@@ -277,14 +279,14 @@ angular.module('MoneyNetwork')
             self.editing_grp_chat = false ;
             self.start_editing_grp_chat = function () {
                 var pgm = controller + 'start_edit_grp_chat: ';
-                if (!self.contact) {
-                    // start, stop, start editing group chat
+                if (!self.contact || (self.contact.type == 'group')) {
+                    // start, stop, start editing group chat. just continue already group
                     self.group_chat = true ;
                     self.editing_grp_chat = true ;
                     return ;
                 }
                 if (!self.contact.pubkey) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Cannot chat with this contact. Public key is missing", 5000]);
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Cannot start group chat with this contact. Public key is missing", 5000]);
                     return ;
                 }
                 // ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat.", 5000]);
@@ -293,34 +295,78 @@ angular.module('MoneyNetwork')
                 self.editing_grp_chat = true ;
                 for (var i=0 ; i<self.contacts.length ; i++) {
                     if (self.contacts[i].unique_id == self.contact.unique_id) {
-                        self.group_chat_contacts = [self.contacts[i]["$$hashKey"]] ;
-                        self.contact = null ;
+                        self.group_chat_contacts = [self.contacts[i]] ;
                         return ;
                     }
                 }
             };
             self.stop_editing_grp_chat = function () {
                 var pgm = controller + '.stop_edit_grp_chat: ' ;
-                self.editing_grp_chat = false ;
-                if (self.group_chat_contacts.length != 1) return ;
-                // one and only one contact in chat group. return to normal contact information
-                for (var i=0 ; i<self.contacts.length ; i++) {
-                    if (self.contacts[i]["$$hashKey"] == self.group_chat_contacts[0]) self.contact = self.contacts[i] ;
+                if (self.group_chat_contacts.length == 0) {
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Please some participants to chat first", 5000]);
+                    return ;
                 }
-                self.group_chat = false ;
-                self.group_chat_contacts = [] ;
-
+                else if (self.group_chat_contacts.length == 1) {
+                    // one and only one contact in chat group. display normal contact info
+                    self.editing_grp_chat = false ;
+                    self.contact = self.group_chat_contacts[0] ;
+                    self.group_chat = false ;
+                    self.group_chat_contacts = [] ;
+                }
+                else {
+                    // calc new unique id for this chat group and check if contact exists
+                    // todo: refactor. this code also in send_chat_msg
+                    // find unique id for this chat group
+                    self.editing_grp_chat = false ;
+                    var my_pubkey = MoneyNetworkHelper.getItem('pubkey');
+                    var my_auth_address = ZeroFrame.site_info.auth_address ;
+                    var my_unique_id = unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
+                    var i ;
+                    console.log(pgm + 'my_unique_id = ' + my_unique_id);
+                    var group_chat_contact_unique_ids = [my_unique_id] ;
+                    for (i=0 ; i<self.group_chat_contacts.length ; i++) {
+                        group_chat_contact_unique_ids.push(self.group_chat_contacts[i].unique_id) ;
+                    } // for i
+                    group_chat_contact_unique_ids.sort() ;
+                    console.log(pgm + 'group_chat_contact_unique_ids = ' + JSON.stringify(group_chat_contact_unique_ids)) ;
+                    var group_unique_id = CryptoJS.SHA256(JSON.stringify(group_chat_contact_unique_ids)).toString() ;
+                    console.log(pgm + 'group_unique_id = ' + group_unique_id) ;
+                    // find/create pseudo contact for this chat group
+                    var contact ;
+                    for (i=0 ; i<self.contacts.length ; i++) {
+                        if (self.contacts[i].unique_id == group_unique_id) contact = self.contacts[i] ;
+                    }
+                    if (contact) self.contact = contact ;
+                    console.log(pgm + 'found pseudo contact with unique id ' + group_unique_id) ;
+                } ;
             };
             self.grp_chat_add = function (contact) {
                 var pgm = controller + '.grp_chat_add: ' ;
-                if (!contact.pubkey) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Cannot chat with this contact. Public key is missing", 5000]);
+                if (!self.editing_grp_chat) {
+                    // not editing chat grp. simple redirect
+                    moneyNetworkService.notification_if_old_contact(contact);
+                    // redirect. todo: better to keep this chat instance and just update contact info
+                    console.log(pgm + 'better to keep controller instance and not use redirect here');
+
+                    var new_path = '/chat' + (self.two_panel_chat ? '2' : '') + '/' + contact.unique_id ;
+                    // console.log(pgm + 'new_path = ' + new_path);
+                    $location.path(new_path);
+                    $location.replace();
                     return ;
+                } ;
+                if (contact.type == 'group') return ; // todo: allow adding a old chat group to new chat group?
+                // is contact already in self.group_chat_contacts array?
+                var index = -1 ;
+                for (var i=0 ; i<self.group_chat_contacts.length ; i++) {
+                    if (self.group_chat_contacts[i].unique_id == contact.unique_id) index = i ;
                 }
-                var index = self.group_chat_contacts.indexOf(contact["$$hashKey"]) ;
                 if (index == -1) {
                     // console.log(pgm + 'adding contact with hashkey ' + contact["$$hashKey"] + ' to this group chat') ;
-                    self.group_chat_contacts.push(contact["$$hashKey"]) ;
+                    if (!contact.pubkey) {
+                        ZeroFrame.cmd("wrapperNotification", ["error", "Cannot add this contact to group chat. Public key is missing", 5000]);
+                        return ;
+                    }
+                    self.group_chat_contacts.push(contact) ;
                 }
                 else {
                     // console.log(pgm + 'removing contact with hashkey ' + contact["$$hashKey"] + ' from this group chat') ;
@@ -332,12 +378,16 @@ angular.module('MoneyNetwork')
             self.contact_background_color = function (contact) {
                 var pgm = controller + '.background_color: ' ;
                 var style ;
-                if (!self.editing_grp_chat) style = {} ;
-                else if (self.group_chat_contacts.indexOf(contact["$$hashKey"]) == -1) style = {} ;
-                else style = {'background-color':'aquamarine'};
-                // console.log(pgm + 'hashkey = ' + contact["$$hashKey"] + ', style = ' + JSON.stringify(style)) ;
-                return style ;
+                if (!self.editing_grp_chat) return {} ;
+                var index = -1 ;
+                for (var i=0 ; i<self.group_chat_contacts.length ; i++) {
+                    if (self.group_chat_contacts[i].unique_id == contact.unique_id) index = i ;
+                }
+                if (index == -1) return {} ;
+                else return {'background-color':'aquamarine'};
             };
+
+
 
             // get contacts. two different types of contacts:
             // a) contacts stored in localStorage
@@ -370,14 +420,47 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'contact with unique id ' + unique_id + ' was not found');
             } // find_contact
             if ($routeParams.unique_id) find_contact();
+
+            function init_group_chat_contacts (contact) {
+                var pgm = controller + '.init_group_chat_contacts: ' ;
+                // this function should only be used for group contacts
+                if (contact.type != 'group') {
+                    console.log(pgm + 'not a pseudo chat contact') ;
+                    return ;
+                }
+                // initialize group_chat
+                var i, unique_id, index, j ;
+                console.log(controller + ': initialise group chat from group chat pseudo contact');
+                self.group_chat_contacts.splice(0, self.group_chat_contacts.length) ;
+                for (i=0 ; i<self.contact.participants.length ; i++) {
+                    unique_id = self.contact.participants[i] ;
+                    index = -1 ;
+                    for (j=0 ; j<self.contacts.length ; j++) {
+                        if (unique_id == self.contacts[j].unique_id) {
+                            index = j ;
+                            break ;
+                        };
+                    } // for j
+                    if (index == -1) console.log(controller + ': contact with unique id ' + unique_id + ' was not found') ;
+                    else self.group_chat_contacts.push(self.contacts[index]) ;
+                } // for i
+                self.group_chat = true ;
+                // console.log(controller + ': initialize group_chat_contacts. self.group_chat_contacts = ' + JSON.stringify(self.group_chat_contacts)) ;
+            }
+
             if (self.contact) {
-                // set focus if chatting with a selected contact
-                if (self.contact.pubkey) console.log(controller + ': contact with a public key') ;
-                else console.log(controller + ': contact without a public key. Chat not possible');
-                var focus_new_chat_msg = function() {
-                    document.getElementById('new_chat_msg').focus() ;
-                };
-                $timeout(focus_new_chat_msg);
+                (function () {
+                    if (self.contact.type == 'group') init_group_chat_contacts(self.contact) ;
+                    else {
+                        if (self.contact.pubkey) console.log(controller + ': contact with a public key') ;
+                        else console.log(controller + ': contact without a public key. Chat not possible');
+                    }
+                    var focus_new_chat_msg = function() {
+                        document.getElementById('new_chat_msg').focus() ;
+                    };
+                    $timeout(focus_new_chat_msg);
+
+                })() ;
             }
 
             self.avatar = moneyNetworkService.get_avatar();
@@ -401,6 +484,40 @@ angular.module('MoneyNetwork')
                 return true ;
             };
 
+            // a short hint to guide user to next step in chat process
+            self.chat_hint = function () {
+                // any contacts?
+                if (!self.contacts || (self.contacts.length == 0)) {
+                    return 'No contacts were found. Please go to "Account" page and enter/update search tags.' ;
+                }
+                // go to network page or two panel chat?
+                if (!self.two_panel_chat && !self.contact && (self.messages.length == 0)) {
+                    // single panel chat and no messages
+                    return 'Click on "Network page" or enable "Two panel chat" to see contacts' ;
+                }
+                // any chat in focus?
+                if (!self.contact && !self.group_chat) return 'Click on an avatar to start chat';
+
+                // concat hints
+                var send, pubkey, avatar, pushpin, ok, x  ;
+                if ((self.contact && self.contact.pubkey && !self.group_chat) ||
+                    (self.group_chat && (self.group_chat_contacts.length > 0))) send = true ;
+                if (self.contact && (self.contact.type != 'group') && !self.contact.pubkey) pubkey = true ;
+                if (self.editing_grp_chat) avatar = true ;
+                if (!self.editing_grp_chat && !pubkey) pushpin = true ;
+                if (self.editing_grp_chat && (self.group_chat_contacts.length > 0)) ok = true ;
+                x = true ;
+
+                var msg = [] ;
+                if (send) msg.push('Send message') ;
+                if (pubkey) msg.push('Cannot chat with this contact. Public key was not found');
+                if (avatar) msg.push('Click on avatars to update participants') ;
+                if (pushpin) msg.push('Click pushpin to update participants');
+                if (ok) msg.push('Click OK when done');
+                if (x) msg.push('X = all messages') ;
+                return msg.join(' / ') ;
+            };
+
             // edit contact.alias functions
             // todo: almost identical code in NetworkCtrl. Refactor to MoneyNetworkService
             self.edit_alias_title = "Edit alias. Press ENTER to save. Press ESC to cancel" ;
@@ -417,6 +534,7 @@ angular.module('MoneyNetwork')
                     contact = self.contact ;
                 }
                 if (contact.alias) contact.new_alias = contact.alias ;
+                else if (contact.type == 'group') contact.new_alias = contact.unique_id.substr(0,13);
                 else {
                     i = contact.cert_user_id.indexOf('@') ;
                     contact.new_alias = contact.cert_user_id.substr(0,i) ;
@@ -442,7 +560,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.save_user_info: ';
                 if (!contact) contact = self.contact ; // right panel
                 // update angular UI
-                contact.alias = self.contact.new_alias ;
+                contact.alias = contact.new_alias ;
                 delete contact.new_alias ;
                 delete contact.edit_alias ;
                 $scope.$apply() ;
@@ -660,17 +778,22 @@ angular.module('MoneyNetwork')
             // todo: also chat_contact method in network controller. refactor
             self.chat_contact = function (contact) {
                 // var pgm = controller + '.chat_contact: ';
-                if (self.contact && !self.two_panel_chat) return; // already chatting with contact
-                // notification if starting chat with an older contact (Last updated timestamp)
-                moneyNetworkService.notification_if_old_contact(contact);
-                // reset group chat
-                self.group_chat_contacts = [] ;
-                self.editing_grp_chat = false ;
-                // redirect
-                var new_path = '/chat' + (self.two_panel_chat ? '2' : '') + '/' + contact.unique_id ;
-                // console.log(pgm + 'new_path = ' + new_path);
-                $location.path(new_path);
-                $location.replace();
+                if (self.contact && (self.contact.unique_id == contact.unique_id)) return ;
+                self.contact = contact ;
+                if (contact.type == 'group') init_group_chat_contacts(contact) ;
+                else {
+                    moneyNetworkService.notification_if_old_contact(contact);
+                    self.group_chat = false ;
+                    self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
+                }
+                //// reset group chat
+                //self.group_chat_contacts = [] ;
+                //self.editing_grp_chat = false ;
+                //// redirect
+                //var new_path = '/chat' + (self.two_panel_chat ? '2' : '') + '/' + contact.unique_id ;
+                //// console.log(pgm + 'new_path = ' + new_path);
+                //$location.path(new_path);
+                //$location.replace();
             }; // chat_contact
 
             self.new_chat_msg = '';
@@ -684,6 +807,7 @@ angular.module('MoneyNetwork')
             };
             self.send_chat_msg = function () {
                 var pgm = controller + '.send_chat_msg: ';
+                var i, j ;
                 // check image attachment
                 if (self.new_chat_src && !moneyNetworkService.get_image_ext_from_base64uri(self.new_chat_src)) {
                     ZeroFrame.cmd(
@@ -692,13 +816,89 @@ angular.module('MoneyNetwork')
                         "Sending chat message without image", 5000]);
                     self.new_chat_src='';
                 }
+
+                // group chat? find/create pseudo contact for this chat group.
+                if (self.group_chat) {
+                    self.editing_grp_chat = false;
+                    if (self.group_chat_contacts.length == 1) {
+                        // only one contact in group chat. find contact and send normal chat message
+                        for (var i = 0; i < self.contacts.length; i++) {
+                            if (self.contacts[i]["$$hashKey"] == self.group_chat_contacts[0]) self.contact = self.contacts[i];
+                        }
+                        self.group_chat = false;
+                        self.group_chat_contacts = [];
+                    }
+                }
+                if (self.group_chat) {
+                    // find unique id for this chat group
+                    var my_pubkey = MoneyNetworkHelper.getItem('pubkey');
+                    var my_auth_address = ZeroFrame.site_info.auth_address ;
+                    var my_unique_id = unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
+                    console.log(pgm + 'my_unique_id = ' + my_unique_id);
+                    var group_chat_contact_unique_ids = [my_unique_id] ;
+                    for (i=0 ; i<self.group_chat_contacts.length ; i++) {
+                        group_chat_contact_unique_ids.push(self.group_chat_contacts[i].unique_id) ;
+                    } // for i
+                    group_chat_contact_unique_ids.sort() ;
+                    console.log(pgm + 'group_chat_contact_unique_ids = ' + JSON.stringify(group_chat_contact_unique_ids)) ;
+                    var group_unique_id = CryptoJS.SHA256(JSON.stringify(group_chat_contact_unique_ids)).toString() ;
+                    console.log(pgm + 'group_unique_id = ' + group_unique_id) ;
+                    // find/create pseudo contact for this chat group
+                    var contact ;
+                    for (i=0 ; i<self.contacts.length ; i++) {
+                        if (self.contacts[i].unique_id == group_unique_id) contact = self.contacts[i] ;
+                    }
+                    if (!contact) {
+                        // create group contact
+                        var password = MoneyNetworkHelper.generate_random_password(100) ;
+                        contact = {
+                            unique_id: group_unique_id,
+                            type: 'group',
+                            password: password,
+                            participants: [],
+                            search: [],
+                            messages: []
+                        };
+                        for (i=0 ; i<self.group_chat_contacts.length ; i++) {
+                            contact.participants.push(self.group_chat_contacts[i].unique_id) ;
+                        } // for i
+                        self.contacts.push(contact);
+                        // send group chat password to participants
+                        for (var i=0 ; i<self.group_chat_contacts.length ; i++) {
+                            var message = {
+                                msgtype: 'group chat',
+                                participants: [],
+                                password: password
+                            } ;
+                            // add participants. Sender and receiver not included
+                            for (j=0 ; j<group_chat_contact_unique_ids.length ; j++) {
+                                if (group_chat_contact_unique_ids[j] == my_unique_id) continue ;
+                                if (group_chat_contact_unique_ids[j] == self.group_chat_contacts[i].unique_id) continue ;
+                                message.participants.push(group_chat_contact_unique_ids[j]) ;
+                            }
+                            console.log(pgm + 'message = ' + JSON.stringify(message));
+                            // validate json
+                            var error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
+                            if (error) {
+                                ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                                return;
+                            }
+                            // send group chat message
+                            moneyNetworkService.add_msg(self.group_chat_contacts[i], message);
+
+                        } // for i
+                    }
+                    // end group chat
+                }
+                else contact = self.contact ;
+
                 // send chat message to contact
                 var message = {
                     msgtype: 'chat msg',
                     message: self.new_chat_msg
                 };
                 if (self.new_chat_src) message.image = self.new_chat_src ;
-                console.log(pgm + 'message = ' + JSON.stringify(message));
+                MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
                 // validate json
                 var error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
                 if (error) {
@@ -707,7 +907,7 @@ angular.module('MoneyNetwork')
                 }
                 // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                 // send message
-                moneyNetworkService.add_msg(self.contact, message);
+                moneyNetworkService.add_msg(contact, message);
                 // ready for next chat msg
                 self.new_chat_msg = '';
                 self.new_chat_src = null ;

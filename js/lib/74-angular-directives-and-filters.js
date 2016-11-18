@@ -144,6 +144,7 @@ angular.module('MoneyNetwork')
         return function (contact) {
             if (!contact) return '' ;
             if (contact.alias) return contact.alias ;
+            if (contact.type == 'group') return contact.unique_id.substr(0,13) ;
             var i = contact.cert_user_id.indexOf('@') ;
             return contact.cert_user_id.substr(0,i) ;
         } ;
@@ -277,8 +278,11 @@ angular.module('MoneyNetwork')
                 // outbox: send message to contact
                 if (message.contact.alias) alias = message.contact.alias ;
                 else {
-                    i = message.contact.cert_user_id.indexOf('@') ;
-                    alias = message.contact.cert_user_id.substr(0,i) ;
+                    if (message.contact.type == 'group') alias = message.contact.unique_id.substr(0,13) ;
+                    else {
+                        i = message.contact.cert_user_id.indexOf('@') ;
+                        alias = message.contact.cert_user_id.substr(0,i) ;
+                    }
                 }
                 greeting = 'Hello ' + alias;
             }
@@ -336,6 +340,7 @@ angular.module('MoneyNetwork')
                     // received receipt for chat message with image from contact
                 }
             }
+            if (msgtype == 'group chat') return '' ;
             // other "unknown" messages. Just return JSON dump
             str = JSON.stringify(message.message) ;
             str = str.split('":"').join('": "');

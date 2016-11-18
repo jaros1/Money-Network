@@ -11,24 +11,24 @@
    "size": 2627
   },
   "css/all.css": {
-   "sha512": "f815bec933887cbbb9041bac6ee6da0b2c6a8f3dd0af91777e4f505c356f392d",
-   "size": 403893
+   "sha512": "060e117c86a54a0efbebce7814d4dc60e392ea79fd206c6b94fd3727938a0719",
+   "size": 402283
   },
   "dbschema.json": {
    "sha512": "ecceaa8079c5c85a1c30f3ab00b90fe2f4163ba36bc8d9802084a75fd973b9d4",
    "size": 2344
   },
   "index.html": {
-   "sha512": "6dce0b786c41481ee4bcd5aac5054bcef5750a5831591ec5ae065d1b64688b86",
-   "size": 68805
+   "sha512": "87a18bd71d14bf276069eca07c7335d9079f5eabd2ca357af3faa657b2b31152",
+   "size": 68382
   },
   "js-external/pngencoder.js": {
    "sha512": "ecaadaad552d2610336995b48360253cd6d847b6aa590fc3d96e7245a5d5fe11",
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "8c98ab0698dfd99a936adab8c0f9a8c33b195363ce9bd01b840926c53426b33d",
-   "size": 2789479
+   "sha512": "a08a8466775f7e279bd7a01078267fd26f868eaef3988ca92b556ed82721a7a6",
+   "size": 2800316
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -101,15 +101,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1479404065.803576,
+ "modified": 1479492182.478916,
  "postmessage_nonce_security": true,
  "sign": [
-  74963147793894791470285338215822904975253393587489946024468247634899897571853,
-  111733596242999362912541408746176677222547354083018259734807905835394909338773
+  1084306094805747964259881307039864669116496303247536325622033394956065788681,
+  42743728787550575868688682426386927095418183666287947143220012375722439667265
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HDKWVYh0XWrob3XjmghzNtCRe16oyYMFQJpp43RqR4hTGYhKheqwXQX1puAYr5hrQsKiRH7nl3dyIN1do/pUDGQ="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G7hLR6k2NF1LB7glBTk8nnREaUtXzvUlKi+kaH/SdPh+jCVgEGJizdVsb4o28bq6C/Tf8enYKTN7hRdI/6RdtXQ="
  },
  "signs_required": 1,
  "title": "Money Network",

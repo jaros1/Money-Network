@@ -405,31 +405,6 @@ var MoneyNetworkHelper = (function () {
                     // console.log(pgm + 'new_contact = ' + JSON.stringify(new_contact));
                 }
                 // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
-                //local_storage_contacts = [{
-                //    "unique_id": "4fef4f9678487b98baf77c6808f9a67651968534133b570677c9490406c4b5cc",
-                //    "type": "new",
-                //    "auth_address": "1PcU45foygsjzGmGhWSpsa7KMRnZJ4J3tr",
-                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQB4k3F/Trrl31HKwlzhCqui\nEcPlRt1FaIGoeemPJ5rlhGedJfHS3DGkUOZOqgm0lGQHqAeRhktvnZcFAcrQDKkz\nWBA4m1oFBumBM3M/x/aqDDsHNFqZD4fPhz9DpEbpgHMODCZLNLh7Z88I7FOnGtih\nR3Q/h4DSa0NzGdHiYYdN69uLzZQydjByJcM18oaYIdw1xdYEgGBOFKa6gk2si3Je\nHraO9diGqsofLNFyAenVkwvFQzQbFZaJuTllSlDHpCNUFVBnIBWpGak5gxEzS7eH\npW9FXpu96pxV/ACS6EOad05SEr4V02lY5yFs87Edy+Qv6DASg49GP9J6pLOlLeaZ\nAgMBAAE=\n-----END PUBLIC KEY-----",
-                //    "search": [{"my_tag": "Name", "my_value": "%x%", "other_tag": "Name", "other_value": "%x%"}]
-                //}, {
-                //    "unique_id": "12eabf2eeac1e7d21ee219a0e3b6269a1c074062877c8c9afb4d9ef4be4aa973",
-                //    "type": "new",
-                //    "auth_address": "15xxXSPEf1JN4a5Kna5itWbDVEZfaYTUdD",
-                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvXklRnKF3OQgF3htGDnW\nvx4+t9dvJu2gFktNi/C5PI63ej3+fH8zpa2O3o5Vuwh3ma/WyAQe7NPkl2qL3jow\nHh6d/S5o6vJ6BLBRK2/9SGvsAoKmWeRhsjmGZoIrOH5QRGY82giuEbCmtQVWQZZc\nwoBQSxAJJOULF65ebnoylXmGgFNLwj0vwCZIxx/W8W4n8pOOVcmfbRuX3H1eRmgt\nyWp0rF4bByfEjHcMhwidht60cUMSmO6yDyAgrka1LLb1bF4aZZTrAuQXPe4C4WSq\nvMXCBqw8Opik7rMuFtdW/TGKg076997Oe1bHcCFjjYbJY/0/tJfRL8NlGzlYHAKH\nmwIDAQAB\n-----END PUBLIC KEY-----",
-                //    "search": [{"my_tag": "Name", "my_value": "%x%", "other_tag": "Name", "other_value": "xx"}]
-                //}, {
-                //    "unique_id": "ac5b79accaa6da0298d56b674bfede856b8b27993a781bcc02eed41af5a3e37d",
-                //    "type": "new",
-                //    "auth_address": "1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF",
-                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqK1lnagsPFXalq9vlL5K\nqqlWBffQYUGptJH7DlLsRff+tc2W62yEQ9+ibBkerZdwrRWsG/thN0lWxeLxTuw5\nmmuF4eLsKoubH/tQJF3XrhOoUn4M7tVtGwL5aN/BG1W22l2F+Rb8Q7Tjtf3Rqdw/\nSk46CWnEZ2x1lEcj9Gl+7q7oSLocjKWURaC61zJbBmYO4Aet+/MktN0gW1VEjpPU\nr1/yEhX5EfDNwDNgOUN43aIJkv5+WcgkiGZf56ZqEauwoKsg9xB2c8v6LTv8DZlj\n+OJ/L99sVXP+QzA2yO/EQIbaCNa3Gu35GynZPoH/ig2yx0BMPu7+4/QLiIqAT4co\n+QIDAQAB\n-----END PUBLIC KEY-----",
-                //    "search": [{"my_tag": "Name", "my_value": "%x%", "other_tag": "Name", "other_value": "xxx"}]
-                //}, {
-                //    "unique_id": "0613de44bde098145199b94a67f5f6a967c28f2490923af1001c82c611cebcab",
-                //    "type": "new",
-                //    "auth_address": "1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF",
-                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiANtVIyOC+MIeEhnkVfS\nn/CBDt0GWCba4U6EeUDbvf+HQGfY61e9cU+XMbI8sX7b9R5G7T+zdVqbmEIZwNEb\nDn9NIs4PVA/xqemrQUrm3qEHK8iq/+5CUwVeKeb6879FgPL8fSj1E3nNQPnmuh8N\nE+/04PraakAj9A6Z1OE5m+sfC59IDwYTKupB53kX3ZzHMmWtdYYEr08Zq9XHuYMM\nA4ykOqENGvquGjPnTB4ASKfRTLCUC+TsG5Pd+2ZswxxU3zG5v/dczj+l3GKaaxP7\nxEqA8nFYiU7LiA1MUzQlQDYj/t7ckRdjGH51GvZxlGFFaGQv3yqzs7WddZg8sqMM\nUQIDAQAB\n-----END PUBLIC KEY-----",
-                //    "search": [{"my_tag": "Name", "my_value": "%x%", "other_tag": "Name", "other_value": "xxx"}]
-                //}];
 
                 // check avatars. All contacts must have a avatar
                 for (i=0 ; i<local_storage_contacts.length ; i++) {
@@ -1088,6 +1063,24 @@ var MoneyNetworkHelper = (function () {
         "required": ['msgtype', 'remote_msg_seq'],
         "additionalProperties": false
     } ;
+    json_schemas['group chat'] = {
+        "type": 'object',
+        "title": 'Start group chat. Send group chat password to participants in chat',
+        "properties": {
+            "msgtype": { "type": 'string', pattern: '^group chat$'},
+            "participants": {
+                "type": 'array',
+                "items": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+                "minItems": 1
+            },
+            "password": { "type": 'string' },
+            "local_msg_seq": { "type": 'integer'},
+            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+        },
+        "required": ['msgtype', 'participants', 'password'],
+        "additionalProperties": false
+    } ;
+
 
     // validate json:
     // - pgm - calling function. for debug messages
