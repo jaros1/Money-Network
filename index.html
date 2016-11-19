@@ -520,7 +520,6 @@
 
             </p>
 
-
             <div style="width: 99%; border-style: solid; border-width: 2px;">
 
                 <table style="width: 100%">
@@ -528,13 +527,22 @@
                     <tr>
                         <td ng-bind="c.chat_hint()"><td>
                         <td style="text-align: right; vertical-align: top; white-space: nowrap;">
-                            <span ng-hide="c.editing_grp_chat" class="glyphicon glyphicon-pushpin" ng-click="c.start_editing_grp_chat()"
-                                  title="Click to update participants in this chat" alt="Click to update participants in this chat"></span>
-                            <span ng-show="c.editing_grp_chat" class="glyphicon glyphicon-ok" ng-click="c.stop_editing_grp_chat()"
-                                  title="Click when finished updating participants in group chat"
-                                  alt="Click when finished updating participants in group chat"></span>
-                            <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
-                                  title="Click to see all chat messages" alt="Click to see all chat messages"></span>
+                            <span ng-hide="!c.chat_hint_chatting()">
+                                <span ng-hide="c.editing_grp_chat || c.chat_hint_pubkey()"
+                                      class="glyphicon glyphicon-pushpin" ng-click="c.start_editing_grp_chat()"
+                                      title="Click to update participants in this chat"
+                                      alt="Click to update participants in this chat">
+                                </span>
+                                <span ng-show="c.editing_grp_chat"
+                                      class="glyphicon glyphicon-ok" ng-click="c.stop_editing_grp_chat()"
+                                      title="Click when finished updating participants in group chat"
+                                      alt="Click when finished updating participants in group chat">
+                                </span>
+                                <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
+                                      title="Click to see all chat messages" alt="Click to see all chat messages">
+                                </span>
+
+                            </span>
                         </td>
                     </tr>
                     </tbody>
@@ -667,8 +675,8 @@
                                                   rows="1" required
                                                   ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
                                         </textarea>
-                                        <span ng-show="c.contact && !c.contact.pubkey && (c.contact.type != 'group')">
-                                            Chat disabled. No public key found for this contact at ZeroNet.
+                                        <span ng-show="c.chat_hint_pubkey()">
+                                            Chat not possible for this contact. No public key was found on ZeroNet.
                                             Could be an old inactive contact. Data on ZeroNet are deleted after {{c.no_days_before_cleanup}} days.
                                             Keep contact and chat if you think that contact will return to Money Network later.
                                             Delete contact and chat if you think that user has left Money Network for good.
@@ -696,11 +704,11 @@
                                                     <span class="glyphicon glyphicon-camera"></span>
                                                 </label>
                                                 <input id="file-input2" type="file" accept=".png, .jpg, .jpeg, .gif, .tif"
-                                                       custom-on-change="c.uploadImage"/>
+                                                       custom-on-change="c.uploadImage" ng-disabled="c.chat_hint_pubkey()"/>
                                             </div>
 
                                             <button type="submit" ng-click="c.send_chat_msg()"
-                                                    ng-disabled="new_chat_msg_form.$invalid || c.group_chat && (c.group_chat_contacts.length == 0)">Send
+                                                    ng-disabled="new_chat_msg_form.$invalid || !c.chat_hint_send()">Send
                                             </button>
                                         </td>
                                     </tr>

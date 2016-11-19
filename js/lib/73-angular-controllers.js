@@ -484,25 +484,42 @@ angular.module('MoneyNetwork')
                 return true ;
             };
 
-            // a short hint to guide user to next step in chat process
-            self.chat_hint = function () {
-                // any contacts?
-                if (!self.contacts || (self.contacts.length == 0)) {
-                    return 'No contacts were found. Please go to "Account" page and enter/update search tags.' ;
-                }
-                // go to network page or two panel chat?
-                if (!self.two_panel_chat && !self.contact && (self.messages.length == 0)) {
-                    // single panel chat and no messages
-                    return 'Click on "Network page" or enable "Two panel chat" to see contacts' ;
-                }
-                // any chat in focus?
-                if (!self.contact && !self.group_chat) return 'Click on an avatar to start chat';
+            // hints to guide user to next step in chat process + show/hide pushpin, ok and remove glyphicon
+            function chat_hint_account_page () {
+                return (!self.contacts || (self.contacts.length == 0))
+            }
+            function chat_hint_network_page () {
+                return (!self.two_panel_chat && !self.contact && (self.messages.length == 0))
+            }
+            function chat_hint_start_chat () {
+                return (!self.contact && !self.group_chat)
+            }
+            self.chat_hint_chatting = function () {
+                if (chat_hint_account_page() || chat_hint_network_page() || chat_hint_start_chat()) return false ;
+                else return true ;
+            };
+            self.chat_hint_send = function () {
+                if (!self.chat_hint_chatting()) return false ;
+                // send chat message?
+                return ((self.contact && self.contact.pubkey && !self.group_chat) ||
+                        (self.group_chat && (self.group_chat_contacts.length > 0))) ;
 
-                // concat hints
+            };
+            self.chat_hint_pubkey = function () {
+                if (!self.chat_hint_chatting()) return false ;
+                // missing public key for contact?
+                return (self.contact && (self.contact.type != 'group') && !self.contact.pubkey) ;
+            };
+            self.chat_hint = function () {
+                // start up hints - user is not chatting
+                if (chat_hint_account_page()) return 'No contacts were found. Please go to "Account" page and enter/update search tags.' ;
+                if (chat_hint_network_page()) return 'Click on "Network page" or enable "Two panel chat" to see contacts' ;
+                if (chat_hint_start_chat()) return 'Click on an avatar to start chat';
+
+                // user is chatting - concatenate hints
                 var send, pubkey, avatar, pushpin, ok, x  ;
-                if ((self.contact && self.contact.pubkey && !self.group_chat) ||
-                    (self.group_chat && (self.group_chat_contacts.length > 0))) send = true ;
-                if (self.contact && (self.contact.type != 'group') && !self.contact.pubkey) pubkey = true ;
+                if (self.chat_hint_send()) send = true ;
+                if (self.chat_hint_pubkey()) pubkey = true ;
                 if (self.editing_grp_chat) avatar = true ;
                 if (!self.editing_grp_chat && !pubkey) pushpin = true ;
                 if (self.editing_grp_chat && (self.group_chat_contacts.length > 0)) ok = true ;
@@ -779,6 +796,10 @@ angular.module('MoneyNetwork')
             self.chat_contact = function (contact) {
                 // var pgm = controller + '.chat_contact: ';
                 if (self.contact && (self.contact.unique_id == contact.unique_id)) return ;
+                // clear any old not sent chat
+                self.new_chat_msg = '';
+                self.new_chat_src = null ;
+                // new contact
                 self.contact = contact ;
                 if (contact.type == 'group') init_group_chat_contacts(contact) ;
                 else {

@@ -340,7 +340,7 @@ angular.module('MoneyNetwork')
                     // received receipt for chat message with image from contact
                 }
             }
-            if (msgtype == 'group chat') return '' ;
+            if (msgtype == 'group chat') return greeting + '. Started group chat' ;
             // other "unknown" messages. Just return JSON dump
             str = JSON.stringify(message.message) ;
             str = str.split('":"').join('": "');
