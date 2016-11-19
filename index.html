@@ -173,7 +173,9 @@
             <p ng-hide="c.contact">
                 Filter:
                 <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
-                <input type="button" value="Guest" ng-click="c.toggle_filter('guest')" style="color: {{c.setup.contact_filters.guest}}"/>&nbsp;
+                <span ng-hide="c.setup.block_guests">
+                    <input  type="button" value="Guest" ng-click="c.toggle_filter('guest')" style="color: {{c.setup.contact_filters.guest}}"/>&nbsp;
+                </span>
                 <input type="button" value="New" ng-click="c.toggle_filter('new')" style="color: {{c.setup.contact_filters.new}}"/>&nbsp;
                 <input type="button" value="Unverified" ng-click="c.toggle_filter('unverified')"
                        style="color: {{c.setup.contact_filters.unverified}}"/>&nbsp;
@@ -319,7 +321,7 @@
                     </div>
                 </li>
 
-                <li ng-repeat="m in c.messages|filter:c.filter|orderBy:c.chat_order_by" class="mar-btm">
+                <li ng-repeat="m in c.messages|filter:c.chat_filter|orderBy:c.chat_order_by" class="mar-btm">
 
                     <div ng-show="(m.message.folder == 'outbox')" class="media-left">
                         <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Click to chat" title="Click to chat" ng-click="c.chat_contact(m.contact)">
@@ -458,7 +460,7 @@
                     <td colspan="4">&nbsp;</td>
                 </tr>
                 </tbody>
-                <tbody ng-repeat="x in c.contacts|filter:c.filter_contacts|orderBy:c.contact_order_by"
+                <tbody ng-repeat="x in c.contacts|filter:c.contact_filter|orderBy:c.contact_order_by"
                        ng-style="c.contact_background_color(x)">
                 <tr>
                     <td rowspan="{{x.search.length+1}}" style="vertical-align: top">
@@ -498,7 +500,9 @@
             <p>
                 Filter:
                 <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
+                <span ng-hide="c.setup.block_guests">
                 <input type="button" value="Guest" ng-click="c.toggle_filter('guest')" style="color: {{c.setup.contact_filters.guest}}"/>&nbsp;
+                </span>
                 <input type="button" value="New" ng-click="c.toggle_filter('new')" style="color: {{c.setup.contact_filters.new}}"/>&nbsp;
                 <input type="button" value="Unverified" ng-click="c.toggle_filter('unverified')"
                        style="color: {{c.setup.contact_filters.unverified}}"/>&nbsp;
@@ -719,7 +723,7 @@
                     </div>
                 </li>
 
-                <li ng-repeat="m in c.messages|filter:c.filter|orderBy:c.chat_order_by" class="mar-btm">
+                <li ng-repeat="m in c.messages|filter:c.chat_filter|orderBy:c.chat_order_by" class="mar-btm">
 
                     <div ng-show="(m.message.folder == 'outbox')" class="media-left">
                         <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Click to chat"
@@ -968,7 +972,7 @@
             </p>
         </form>
 
-        <table>
+        <table title="Use this section to enable/disable messages from guests and contacts on ignore list">
             <tbody>
             <tr><td colspan="3">Spam filters:</td></tr>
             <tr>
@@ -985,7 +989,7 @@
         </table>
         <br>
 
-        <table>
+        <table title="Use this section to enable/disable debug information in browser console (F12)">
             <tbody>
             <tr>
                 <td>Enable debug info?</td>
@@ -1033,6 +1037,16 @@
                 <td>Show invalid avatars?</td>
                 <td>&nbsp;&nbsp;</td>
                 <td><input type="checkbox" ng-model="u.setup.debug.invalid_avatars" ng-change="u.debug_settings_changed()"></td>
+            </tr>
+            <tr>
+                <td>Show contacts sort?</td>
+                <td>&nbsp;&nbsp;</td>
+                <td><input type="checkbox" ng-model="u.setup.debug.contact_order_by" ng-change="u.debug_settings_changed()"></td>
+            </tr>
+            <tr>
+                <td>Show chat sort?</td>
+                <td>&nbsp;&nbsp;</td>
+                <td><input type="checkbox" ng-model="u.setup.debug.chat_order_by" ng-change="u.debug_settings_changed()"></td>
             </tr>
             <tr>
                 <td colspan="3">Filters:</td>

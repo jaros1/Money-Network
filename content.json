@@ -11,22 +11,6 @@
    "sha512": "090ae067f43a712a9ad5124d07e9c2ebc7ba2a602090b2502d54906accdd6822",
    "size": 2627
   },
-  "apple-touch-icon-114x114-precomposed.png": {
-   "sha512": "060fffad82796e3e7e9e03f863446af575817c49e6133c36e9c08e6bb09bf83f",
-   "size": 6976
-  },
-  "apple-touch-icon-144x144-precomposed.png": {
-   "sha512": "2b593761a2aeb5d25f754172e83dc5e0c139b227be818d06548d3a9c949ada1a",
-   "size": 12016
-  },
-  "apple-touch-icon-72x72-precomposed.png": {
-   "sha512": "55d7b719a970614adce892e6d1d278dd854f0be9c9e7e577d5107c4b13ce370b",
-   "size": 5456
-  },
-  "apple-touch-icon-precomposed.png": {
-   "sha512": "d24c8e9f23d2230e99274131965831f3acf2411b886597bb3f917717cf90412f",
-   "size": 4767
-  },
   "css/all.css": {
    "sha512": "060e117c86a54a0efbebce7814d4dc60e392ea79fd206c6b94fd3727938a0719",
    "size": 402283
@@ -40,16 +24,16 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "68e7b8261b97e1e1f8cca3d283cab09daa121183b23fc5e3dc378d795299132d",
-   "size": 68723
+   "sha512": "f860d3ae5615cb634ef71f8c56e44bdb4d2fb50467da30b4e39c677960107aec",
+   "size": 69559
   },
   "js-external/pngencoder.js": {
    "sha512": "ecaadaad552d2610336995b48360253cd6d847b6aa590fc3d96e7245a5d5fe11",
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "40b98d7e531d6251555161fc6ad9b99464f41c14e7b5b2350e7819a70647b18e",
-   "size": 2801362
+   "sha512": "c0c81cdf770dd8143fe239a4160319ecb18d2ac89bb080007646c425fa8da217",
+   "size": 2802443
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -122,15 +106,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1479551391.692776,
+ "modified": 1479574980.713297,
  "postmessage_nonce_security": true,
  "sign": [
-  34032604459930065414106867427062980882959026103795115429312942990930418351815,
-  40220936195168676645644500780191544939373181748675904583490586338534228800807
+  107458003094520542927854530002848936577874849826871877928550082471426940875866,
+  32166302052923968781309678462661746125401549041443485499543677542570686813246
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HMDadJs7Ryw2JtfjML9d4jZ/bkI53tLGmzKR1i+mAev2nthRiHoyTmwX51gh/uSz+U1aSqMJVFmoxo/j14UX7tU="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "Gyz69YXoKpgnCbwOhxiplP9eMIw0e4FlecuuZl2Xs98Ek8df73KbgZGBrIUzecFY1iY9ZgYqz1pvCQiAdVYhdd8="
  },
  "signs_required": 1,
  "title": "Money Network",

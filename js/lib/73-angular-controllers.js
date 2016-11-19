@@ -169,46 +169,7 @@ angular.module('MoneyNetwork')
         };
 
         self.contact_order_by = function (contact) {
-            var pgm = controller + '.order_by: ';
-            var i, last_updated, row, bytes, message ;
-            if (self.setup.contact_sort == 'Last updated') {
-                for (i=0 ; i<contact.search.length ; i++) {
-                    row = contact.search[i] ;
-                    if (typeof row.value == 'number') return -row.value ;
-                }
-                return 0 ;
-            }
-            if (self.setup.contact_sort == 'User name') {
-                if (contact.alias) return '1' + contact.alias ;
-                return '2' + contact.cert_user_id ;
-            }
-            if (self.setup.contact_sort == 'Last chat msg') {
-                if (!contact.messages || (contact.messages.length == 0)) return 0 ;
-                return -contact.messages[contact.messages.length-1].sent_at ;
-            }
-            if (self.setup.contact_sort == 'Number chat msg') {
-                if (!contact.messages) return 0 ;
-                return -contact.messages.length ;
-            }
-            if (self.setup.contact_sort == 'ZeroNet disk usage') {
-                if (!contact.messages) return 0 ;
-                bytes = 0 ;
-                for (i=0 ; i<contact.messages.length ; i++) {
-                    message = contact.messages[i] ;
-                    if ((message.folder == 'outbox') && message.zeronet_msg_size) bytes -= message.zeronet_msg_size ;
-                }
-                return bytes ;
-            }
-            if (self.setup.contact_sort == 'Browser disk usage') { // localStorage
-                if (!contact.messages) return 0 ;
-                bytes = 0 ;
-                for (i=0 ; i<contact.messages.length ; i++) {
-                    message = contact.messages[i] ;
-                    if (message.ls_msg_size) bytes -= message.ls_msg_size ;
-                }
-                return bytes ;
-            }
-            return 0 ;
+            return moneyNetworkService.contact_order_by(contact) ;
         }; // contact_order_by
 
         // contact actions: add, ignore, verify, remove, chat
@@ -702,8 +663,8 @@ angular.module('MoneyNetwork')
             };
 
             // filter and order by used in ng-repeat messages filter
-            self.filter = function (message, index, messages) {
-                var pgm = controller + '.filter: ';
+            self.chat_filter = function (message, index, messages) {
+                var pgm = controller + '.chat_filter: ';
                 var match ;
                 if (message.message.deleted_at) match = false ;
                 else if (!self.contact) {
@@ -713,6 +674,29 @@ angular.module('MoneyNetwork')
                 else match = (self.contact.unique_id == message.contact.unique_id); // show chat for one contact
                 // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder + ', match = ' + match);
                 return match;
+            }; // chat_filter
+
+            self.contact_filter = function (contact, index, contacts) {
+                var pgm = controller + '.contact_filter: ';
+                var i, unique_id, j ;
+                if (contact.type == 'group') {
+                    // display group if one participant is within current filter
+                    for (var i=0 ; i<contact.participants.length ; i++) {
+                        unique_id = contact.participants[i] ;
+                        for (j=0 ; j<contacts.length ; j++) {
+                            if (contacts[j].unique_id == unique_id) {
+                                if (self.setup.contact_filters[contacts[j].type] == 'green') return true ;
+                                break ;
+                            }
+                        }
+                    }
+                    return false ;
+                }
+                else {
+                    // simpel contact filter
+                    return (self.setup.contact_filters[contact.type] == 'green');
+                }
+                return match ;
             };
 
             // contacts sort options - typeahead auto complete functionality
@@ -721,50 +705,11 @@ angular.module('MoneyNetwork')
             self.contact_sort_title = moneyNetworkService.get_contact_sort_title();
             self.contact_sort_changed = function () {
                 var pgm = controller + '.sort_changed: ' ;
-                moneyNetworkService.save_user_info();
+                moneyNetworkService.save_user_setup();
             };
 
             self.contact_order_by = function (contact) {
-                var pgm = controller + '.order_by: ';
-                var i, last_updated, row, bytes, message ;
-                if (self.setup.contact_sort== 'Last updated') {
-                    for (i=0 ; i<contact.search.length ; i++) {
-                        row = contact.search[i] ;
-                        if (typeof row.value == 'number') return -row.value ;
-                    }
-                    return 0 ;
-                }
-                if (self.setup.contact_sort== 'User name') {
-                    if (contact.alias) return '1' + contact.alias ;
-                    return '2' + contact.cert_user_id ;
-                }
-                if (self.setup.contact_sort== 'Last chat msg') {
-                    if (!contact.messages || (contact.messages.length == 0)) return 0 ;
-                    return -contact.messages[contact.messages.length-1].sent_at ;
-                }
-                if (self.setup.contact_sort== 'Number chat msg') {
-                    if (!contact.messages) return 0 ;
-                    return -contact.messages.length ;
-                }
-                if (self.setup.contact_sort== 'ZeroNet disk usage') {
-                    if (!contact.messages) return 0 ;
-                    bytes = 0 ;
-                    for (i=0 ; i<contact.messages.length ; i++) {
-                        message = contact.messages[i] ;
-                        if ((message.folder == 'outbox') && message.zeronet_msg_size) bytes -= message.zeronet_msg_size ;
-                    }
-                    return bytes ;
-                }
-                if (self.setup.contact_sort== 'Browser disk usage') { // localStorage
-                    if (!contact.messages) return 0 ;
-                    bytes = 0 ;
-                    for (i=0 ; i<contact.messages.length ; i++) {
-                        message = contact.messages[i] ;
-                        if (message.ls_msg_size) bytes -= message.ls_msg_size ;
-                    }
-                    return bytes ;
-                }
-                return 0 ;
+                return moneyNetworkService.contact_order_by(contact);
             }; // contact_order_by
 
             // chat sort options - typeahead auto complete functionality
@@ -776,21 +721,8 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.save_user_setup();
             };
             self.chat_order_by = function (message) {
-                var pgm = controller + '.order_by: ';
-                // console.log(pgm + 'chat_sort = ' + self.chat_sort);
-                if (self.setup.chat_sort== 'Last message') {
-                    return -message.message.sent_at ;
-                }
-                if (self.setup.chat_sort== 'ZeroNet disk usage') {
-                    if (!message.message.zeronet_msg_size) return 0 ;
-                    return -message.message.zeronet_msg_size ;
-                }
-                if (self.setup.chat_sort== 'Browser disk usage') {
-                    if (!message.message.ls_msg_size) return 0 ;
-                    return -message.message.ls_msg_size ;
-                }
-                return -message.message.sent_at
-            };
+                return moneyNetworkService.chat_order_by(message) ;
+            }; // chat_order_by
 
             // todo: also chat_contact method in network controller. refactor
             self.chat_contact = function (contact) {
