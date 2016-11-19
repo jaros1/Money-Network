@@ -6,63 +6,73 @@
 
     <!-- angularJS templates - subpages in single page site - same sequence as in main menu -->
     <script type="text/ng-template" id="about.html">
-        <p>
-            Money Network is a demo about money.
-            With inspiration from <a href="http://charleseisenstein.net/" target="_blank" rel="noopener noreferrer">Charles Eisenstein</a> and
-            <a href="http://www.lietaer.com/" target="_blank" rel="noopener noreferrer">Bernard Lietaer</a>.
-            Money is everywhere, money is everything and everything is money.
-            This is an attempt to make money free. Make is easier to use complementare and alternative money.
-            No more Hammerville.
-        </p>
-        <br/>
-        <p>
-            Summary:
-        <ul style="list-style-type:disc">
-            <li>No registration. User account is created in browser client.
-                A anonymous <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a> cert is being for client communication.
-            </li>
-            <li>Search for contacts in Money Network. Server returns possible contacts. Verify contacts.</li>
-            <li>Chat with contacts. Quick dialog. Small picture supported. todo: group chat.</li>
-            <li>Free money definition. Use existing money definitions from network or create your own type of money.</li>
-            <li>Use money to exchange goods and services.
-                Transactions are stored encrypted in <b>todo:</b> block chains, clients or
-                on <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
-            </li>
-            <li>Full client side encryption. Only very little information is shared public and unencrypted.
-                Public private encryption using <a href="https://github.com/travist/jsencrypt" target="_top" rel="noopener noreferrer">JSEncrypt</a>.
-            </li>
-            <li>A client network. Data on clients. Minimum data on servers. Servers are used for communication between
-                clients.
-            </li>
-            <li>Open source on <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_top" rel="noopener noreferrer">GitHub</a>.
-                Feel free to clone, download, modify and make your own website or app.
-            </li>
-            <li>You may want to use <a href="https://www.torproject.org/" target="_blank" rel="noopener noreferrer">TOR</a>
-                when using Money Network
-                on <a href="https://zeronet.readthedocs.io/en/latest/faq/#how-to-use-zeronet-with-tor" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
-                You may NOT want to use a public ZeroNet proxy on clearnet.
-            </li>
-            <li>
-                You may want to make a backup <b>todo:</b> link of your local data. Everything is lost if you clear
-                browser data or switches to an other browser client.
-            </li>
-            <li>
-                You may want to delete your data <b>todo:</b> link
-                from <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>
-                and browser client when finished used this demo.
-            </li>
-            <li>
-                Data from inactive user accounts will be deleted from ZeroNet after {{a.no_days_before_cleanup}} days.
-                The data is still in client and will be restored from client to ZeroNet after next user login.
-            </li>
-        </ul>
-        </p>
+
+        <div class="bodyfull">
+
+            <p>
+                Money Network is a demo about money.
+                With inspiration from <a href="http://charleseisenstein.net/" target="_blank" rel="noopener noreferrer">Charles Eisenstein</a> and
+                <a href="http://www.lietaer.com/" target="_blank" rel="noopener noreferrer">Bernard Lietaer</a>.
+                Money is everywhere, money is everything and everything is money.
+                This is an attempt to make money free. Make is easier to use complementare and alternative money.
+                No more Hammerville.
+            </p>
+            <br/>
+            <p>
+                Summary:
+            <ul style="list-style-type:disc">
+                <li>No registration. User account is created in browser client.
+                    A anonymous <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a> cert is being for client communication.
+                </li>
+                <li>Search for contacts in Money Network. Server returns possible contacts. Verify contacts.</li>
+                <li>Chat with contacts. Quick dialog. Small picture supported. todo: group chat.</li>
+                <li>Free money definition. Use existing money definitions from network or create your own type of money.</li>
+                <li>Use money to exchange goods and services.
+                    Transactions are stored encrypted in <b>todo:</b> block chains, clients or
+                    on <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
+                </li>
+                <li>Full client side encryption. Only very little information is shared public and unencrypted.
+                    Public private encryption using <a href="https://github.com/travist/jsencrypt" target="_top" rel="noopener noreferrer">JSEncrypt</a>.
+                </li>
+                <li>A client network. Data on clients. Minimum data on servers. Servers are used for communication between
+                    clients.
+                </li>
+                <li>Open source on <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_top" rel="noopener noreferrer">GitHub</a>.
+                    Feel free to clone, download, modify and make your own website or app.
+                </li>
+                <li>You may want to use <a href="https://www.torproject.org/" target="_blank" rel="noopener noreferrer">TOR</a>
+                    when using Money Network
+                    on <a href="https://zeronet.readthedocs.io/en/latest/faq/#how-to-use-zeronet-with-tor" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
+                    You may NOT want to use a public ZeroNet proxy on clearnet.
+                </li>
+                <li>
+                    You may want to make a backup <b>todo:</b> link of your local data. Everything is lost if you clear
+                    browser data or switches to an other browser client.
+                </li>
+                <li>
+                    You may want to delete your data <b>todo:</b> link
+                    from <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>
+                    and browser client when finished used this demo.
+                </li>
+                <li>
+                    Data from inactive user accounts will be deleted from ZeroNet after {{a.no_days_before_cleanup}} days.
+                    The data is still in client and will be restored from client to ZeroNet after next user login.
+                </li>
+            </ul>
+            </p>
+
+        </div>
 
         <!-- end about.html -->
     </script>
 
     <script type="text/ng-template" id="money.html">
-        money.html - page to manage complementare and alternative money
+
+        <div class="bodyfull">
+
+            money.html - page to manage complementare and alternative money
+
+        </div>
 
         <!-- end money.html -->
     </script>
@@ -851,10 +861,13 @@
 
 
     <script type="text/ng-template" id="user.html">
-        <p ng-show="u.show_welcome_msg()">
-            Welcome to Money Network. You are new here and you must have a network.
-            Tags in this page (Account) are used when searching for contacts (Network) and for personal information
-            (real or fake values).
+
+        <div class="bodyfull">
+
+            <p ng-show="u.show_welcome_msg()">
+                Welcome to Money Network. You are new here and you must have a network.
+                Tags in this page (Account) are used when searching for contacts (Network) and for personal information
+                (real or fake values).
             <ul ng-show="u.show_welcome_msg()" style="list-style-type: disc;">
                 <li>Tags. Tag and value pairs: Examples: Name: Donald Duck, Location: US, Phone: 1234567890.</li>
                 <li>Wildcards can be used in Tag and Value. "%" = many characters. "_" = one character.</li>
@@ -864,99 +877,25 @@
                 <li>Private: Verified. More info send encrypted to trusted contact after end verification.</li>
                 <li><b>Quick start: Enter %, % and Hidden, save and check out "Network" page.</b> Use tab to add extra lines. Have fun.</li>
             </ul>
-        <p>
-
-        <p ng-hide="u.show_welcome_msg()">
-            It is not required but you should add some info to identify you as user in
-            the Money Network.
-            It could be name, email, phone number, foto, company name, url, GPS location or whatever.
-            Real or fake values.
-            Wildcards can be used in Tag and Value. "%" = many characters. "_" = one character.
-            User info are stored locally in your browser / on your device and are validated by
-            anyone.
-            The user identification is used when searching for contacts, verifying contacts and is displayed in contact
-            list.
-            You decide what information that is revealed to other users in the Money Network.
-            You decide when to trust other users in the Money Network.
-            Thank you for using this Money Network demo.
-        </p>
-
-        <p>
-            User identification:
-            <button type="submit" disabled ng-show="user_info_form.$invalid">
-                <span title="Please correct errors" class="glyphicon glyphicon-ok"
-                      style="color: green; font-size: larger"></span>
-            </button>
-            <button type="submit" ng-click="u.update_user_info()" ng-show="user_info_form.$valid">
-                <span title="Save changes" class="glyphicon glyphicon-ok"
-                      style="color: green; font-size: larger"></span>
-            </button>
-            <button type="submit" ng-click="u.revert_user_info()">
-                <span title="Revert changes" class="glyphicon glyphicon-refresh"
-                      style="color: red; font-size: larger"></span>
-            </button>
-            <img ng-src="{{u.avatar.src}}" ng-click="u.upload_avatar()" title="Click to change avatar">
-            <span ng-hide="u.editing_alias" ng-bind-html="u.setup.alias" title="Click to edit your alias"
-                  ng-click="u.edit_alias()"></span>
-            <span ng-show="u.editing_alias" title="Edit alias. Press ENTER to save. Press ESC to cancel">
-                <input type="text" ng-model="u.setup_copy.alias" style="width: 110px" id="alias_id"
-                       on-key-enter="u.save_alias()" on-key-escape="u.cancel_edit_alias()">
-            </span>
-
-        </p>
-        <form name="user_info_form" class="css-form" novalidate>
-            <table border="1">
-                <thead>
-                <tr>
-                    <th style="text-align: center"
-                        title="Tag: Name, Email, Phone, Photo, Company, URL and/or GPS. Tags are shared anonymous in tag cloud">
-                        Tag
-                    </th>
-                    <th style="text-align: center" title="Tag value: Username, email address, profile picture etc.">
-                        Value
-                    </th>
-                    <th style="text-align: center"
-                        title="Privacy: Search, Public, Unverified, Verified or Hidden. See mouseover texts or click checkbox for more info">
-                        Privacy
-                        <input type="checkbox" ng-model="u.show_privacy_title"
-                               ng-change="u.show_privacy_title_changed()">
-                    </th>
-                    <th style="text-align: center" ng-show="u.show_privacy_title">Privacy details</th>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr ng-repeat="x in u.user_info">
-                    <td title="Start typing. Select tag. Name, Email, Phone etc.">
-                        <input type="text" placeholder="Start typing"
-                               ng-model="x.tag" ng-required="u.is_tag_required(x)"
-                               uib-typeahead="tag for tag in u.tags | filter:$viewValue | limitTo:8"
-                               class="user_info" style="width: 80px">
-                    </td>
-                    <td title="Enter tag value. Name, email-address, phone number etc">
-                        <input type="text"
-                               ng-model="x.value" ng-required="u.is_value_required(x)"
-                               class="user_info">
-                    </td>
-                    <td title="{{x.privacy|privacyTitle}}">
-                        <input type="text" placeholder="Start typing"
-                               ng-model="x.privacy"
-                               ng-required="u.is_privacy_required(x)" on-key-enter="u.insert_row(x)"
-                               uib-typeahead="privacy for privacy in u.privacy_options | filter:$viewValue | limitTo:8"
-                               typeahead-editable="false"
-                               class="user_info" style="width: 80px">
-                    </td>
-                    <td ng-show="u.show_privacy_title">{{x.privacy|privacyTitle}}</td>
-                    <td title="Delete row">
-                    <span ng-click="u.delete_row(x)"
-                          class="glyphicon glyphicon-remove" style="color: red; font-size: larger"></span>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-            <br>
             <p>
-                Update user info:
+
+            <p ng-hide="u.show_welcome_msg()">
+                It is not required but you should add some info to identify you as user in
+                the Money Network.
+                It could be name, email, phone number, foto, company name, url, GPS location or whatever.
+                Real or fake values.
+                Wildcards can be used in Tag and Value. "%" = many characters. "_" = one character.
+                User info are stored locally in your browser / on your device and are validated by
+                anyone.
+                The user identification is used when searching for contacts, verifying contacts and is displayed in contact
+                list.
+                You decide what information that is revealed to other users in the Money Network.
+                You decide when to trust other users in the Money Network.
+                Thank you for using this Money Network demo.
+            </p>
+
+            <p>
+                User identification:
                 <button type="submit" disabled ng-show="user_info_form.$invalid">
                 <span title="Please correct errors" class="glyphicon glyphicon-ok"
                       style="color: green; font-size: larger"></span>
@@ -969,106 +908,186 @@
                 <span title="Revert changes" class="glyphicon glyphicon-refresh"
                       style="color: red; font-size: larger"></span>
                 </button>
+                <img ng-src="{{u.avatar.src}}" ng-click="u.upload_avatar()" title="Click to change avatar">
+            <span ng-hide="u.editing_alias" ng-bind-html="u.setup.alias" title="Click to edit your alias"
+                  ng-click="u.edit_alias()"></span>
+            <span ng-show="u.editing_alias" title="Edit alias. Press ENTER to save. Press ESC to cancel">
+                <input type="text" ng-model="u.setup_copy.alias" style="width: 110px" id="alias_id"
+                       on-key-enter="u.save_alias()" on-key-escape="u.cancel_edit_alias()">
+            </span>
+
             </p>
-        </form>
+            <form name="user_info_form" class="css-form" novalidate>
+                <table border="1">
+                    <thead>
+                    <tr>
+                        <th style="text-align: center"
+                            title="Tag: Name, Email, Phone, Photo, Company, URL and/or GPS. Tags are shared anonymous in tag cloud">
+                            Tag
+                        </th>
+                        <th style="text-align: center" title="Tag value: Username, email address, profile picture etc.">
+                            Value
+                        </th>
+                        <th style="text-align: center"
+                            title="Privacy: Search, Public, Unverified, Verified or Hidden. See mouseover texts or click checkbox for more info">
+                            Privacy
+                            <input type="checkbox" ng-model="u.show_privacy_title"
+                                   ng-change="u.show_privacy_title_changed()">
+                        </th>
+                        <th style="text-align: center" ng-show="u.show_privacy_title">Privacy details</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr ng-repeat="x in u.user_info">
+                        <td title="Start typing. Select tag. Name, Email, Phone etc.">
+                            <input type="text" placeholder="Start typing"
+                                   ng-model="x.tag" ng-required="u.is_tag_required(x)"
+                                   uib-typeahead="tag for tag in u.tags | filter:$viewValue | limitTo:8"
+                                   class="user_info" style="width: 80px">
+                        </td>
+                        <td title="Enter tag value. Name, email-address, phone number etc">
+                            <input type="text"
+                                   ng-model="x.value" ng-required="u.is_value_required(x)"
+                                   class="user_info">
+                        </td>
+                        <td title="{{x.privacy|privacyTitle}}">
+                            <input type="text" placeholder="Start typing"
+                                   ng-model="x.privacy"
+                                   ng-required="u.is_privacy_required(x)" on-key-enter="u.insert_row(x)"
+                                   uib-typeahead="privacy for privacy in u.privacy_options | filter:$viewValue | limitTo:8"
+                                   typeahead-editable="false"
+                                   class="user_info" style="width: 80px">
+                        </td>
+                        <td ng-show="u.show_privacy_title">{{x.privacy|privacyTitle}}</td>
+                        <td title="Delete row">
+                    <span ng-click="u.delete_row(x)"
+                          class="glyphicon glyphicon-remove" style="color: red; font-size: larger"></span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+                <br>
+                <p>
+                    Update user info:
+                    <button type="submit" disabled ng-show="user_info_form.$invalid">
+                <span title="Please correct errors" class="glyphicon glyphicon-ok"
+                      style="color: green; font-size: larger"></span>
+                    </button>
+                    <button type="submit" ng-click="u.update_user_info()" ng-show="user_info_form.$valid">
+                <span title="Save changes" class="glyphicon glyphicon-ok"
+                      style="color: green; font-size: larger"></span>
+                    </button>
+                    <button type="submit" ng-click="u.revert_user_info()">
+                <span title="Revert changes" class="glyphicon glyphicon-refresh"
+                      style="color: red; font-size: larger"></span>
+                    </button>
+                </p>
+            </form>
 
-        <table title="Use this section to enable/disable messages from guests and contacts on ignore list">
-            <tbody>
-            <tr><td colspan="3">Spam filters:</td></tr>
-            <tr>
-                <td>Block messages from Guests?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.block_guests" ng-change="u.spam_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Block messages from Ignored list?</td>
-                <td></td>
-                <td><input type="checkbox" ng-model="u.setup.block_ignored" ng-change="u.spam_settings_changed()"></td>
-            </tr>
-            </tbody>
-        </table>
-        <br>
+            <table title="Use this section to enable/disable messages from guests and contacts on ignore list">
+                <tbody>
+                <tr><td colspan="3">Spam filters:</td></tr>
+                <tr>
+                    <td>Block messages from Guests?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.block_guests" ng-change="u.spam_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Block messages from Ignored list?</td>
+                    <td></td>
+                    <td><input type="checkbox" ng-model="u.setup.block_ignored" ng-change="u.spam_settings_changed()"></td>
+                </tr>
+                </tbody>
+            </table>
+            <br>
 
-        <table title="Use this section to enable/disable debug information in browser console (F12)">
-            <tbody>
-            <tr>
-                <td>Enable debug info?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.enabled" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            </tbody>
-            <tbody ng-show="u.setup.debug.enabled">
-            <tr>
-                <td>Show sql selects?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.select" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>File done events?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.file_done" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Show ingoing messages?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.inbox" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Show outgoing messages?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.outbox" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Show unencrypted messages?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.unencrypted" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Show encrypted messages?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.encrypted" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Show data.json cleanup?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.data_cleanup" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Show invalid avatars?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.invalid_avatars" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Show contacts sort?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.contact_order_by" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td>Show chat sort?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.chat_order_by" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            <tr>
-                <td colspan="3">Filters:</td>
-            </tr>
-            <tr>
-                <td>showContactAction?</td>
-                <td>&nbsp;&nbsp;</td>
-                <td><input type="checkbox" ng-model="u.setup.debug.show_contact_action_filter" ng-change="u.debug_settings_changed()"></td>
-            </tr>
-            </tbody>
-        </table>
-        <br>
+            <table title="Use this section to enable/disable debug information in browser console (F12)">
+                <tbody>
+                <tr>
+                    <td>Enable debug info?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.enabled" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                </tbody>
+                <tbody ng-show="u.setup.debug.enabled">
+                <tr>
+                    <td>Show sql selects?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.select" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>File done events?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.file_done" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Show ingoing messages?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.inbox" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Show outgoing messages?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.outbox" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Show unencrypted messages?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.unencrypted" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Show encrypted messages?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.encrypted" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Show data.json cleanup?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.data_cleanup" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Show invalid avatars?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.invalid_avatars" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Show contacts sort?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.contact_order_by" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td>Show chat sort?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.chat_order_by" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr>
+                    <td colspan="3">Filters:</td>
+                </tr>
+                <tr>
+                    <td>showContactAction?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.show_contact_action_filter" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                </tbody>
+            </table>
+            <br>
 
-        <p>
-            <b>todo:</b> add a delete user data button. Delete user data from data.json. Data user data from localStorage. Log
-            out.
-        </p>
+            <p>
+                <b>todo:</b> add a delete user data button. Delete user data from data.json. Data user data from localStorage. Log
+                out.
+            </p>
+
+        </div>
+
 
         <!-- end user.html -->
     </script>
 
     <script type="text/ng-template" id="auth.html">
+
+        <div class="bodyfull">
+
         <p>
             Login is used to protect data stored in your browser.
             Password and your data is stored encrypted in your browser. Not on a server.
@@ -1159,6 +1178,8 @@
             You can use most functions in here but will probably only be communicating with other guests.
             Most non guest accounts will ignore communication from quests.
         </p>
+
+        </div>
 
         <!-- end auth.html -->
     </script>
