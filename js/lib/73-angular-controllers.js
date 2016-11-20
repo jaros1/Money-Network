@@ -349,6 +349,7 @@ angular.module('MoneyNetwork')
                 else {
                     // calc new unique id for this chat group and check if contact exists
                     // do not create pseudo group chat contact yet
+                    self.editing_grp_chat = false ;
                     var contact = find_group_chat_contact(false) ;
                     console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
                     if (contact && (typeof contact == 'object')) self.contact = contact ;
@@ -815,9 +816,10 @@ angular.module('MoneyNetwork')
                         "Sending chat message without image", 5000]);
                     self.new_chat_src='';
                 }
-                var i, j, contact, password, password, my_pubkey, my_auth_address, my_unique_id, message, error ;
 
+                var i, j, contact, password, password, my_pubkey, my_auth_address, my_unique_id, message, error ;
                 // group chat? find/create pseudo contact for this chat group.
+                self.editing_grp_chat = false ;
                 if (self.group_chat) {
                     contact = find_group_chat_contact(true) ; // create pseudo group chat contact if not found
                     if (!contact) return ;
@@ -1370,40 +1372,3 @@ angular.module('MoneyNetwork')
     }])
 
 ;
-
-// http://htmlpreview.github.io/?https://github.com/fatlinesofcode/ngDraggable/blob/master/example.html
-//angular.module('ExampleApp', ['ngDraggable']).
-//    controller('MainCtrl', function ($scope) {
-//        $scope.centerAnchor = true;
-//        $scope.toggleCenterAnchor = function () {$scope.centerAnchor = !$scope.centerAnchor}
-//        $scope.draggableObjects = [{name:'one'}, {name:'two'}, {name:'three'}];
-//        $scope.droppedObjects1 = [];
-//        $scope.droppedObjects2= [];
-//        $scope.onDropComplete1=function(data,evt){
-//            var index = $scope.droppedObjects1.indexOf(data);
-//            if (index == -1)
-//                $scope.droppedObjects1.push(data);
-//        }
-//        $scope.onDragSuccess1=function(data,evt){
-//            console.log("133","$scope","onDragSuccess1", "", evt);
-//            var index = $scope.droppedObjects1.indexOf(data);
-//            if (index > -1) {
-//                $scope.droppedObjects1.splice(index, 1);
-//            }
-//        }
-//        $scope.onDragSuccess2=function(data,evt){
-//            var index = $scope.droppedObjects2.indexOf(data);
-//            if (index > -1) {
-//                $scope.droppedObjects2.splice(index, 1);
-//            }
-//        }
-//        $scope.onDropComplete2=function(data,evt){
-//            var index = $scope.droppedObjects2.indexOf(data);
-//            if (index == -1) {
-//                $scope.droppedObjects2.push(data);
-//            }
-//        }
-//        var inArray = function(array, obj) {
-//            var index = array.indexOf(obj);
-//        }
-//    });

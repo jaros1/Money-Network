@@ -451,8 +451,18 @@ angular.module('MoneyNetwork')
                                     // RSA encryption + symmetric encryption with random password
                                     if (!encrypt) {
                                         if (!contact.pubkey) {
+                                            // for example messages to deleted guests
+                                            console.log(pgm + 'Cannot send message ' + JSON.stringify(message_with_envelope) + '. contact does not have a public key');
                                             console.log(pgm + 'contact = ' + JSON.stringify(contact));
-                                            throw pgm + 'Contact without pubkey. Encryption is not possible' ;
+                                            console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
+                                            console.log(pgm + 'deleting message') ;
+                                            // delete invalid message
+                                            contact.messages.splice(j,1);
+                                            for (k=javascript_messages.length-1 ; k>= 0 ; k--) {
+                                                if (javascript_messages[k].message == message_with_envelope) {
+                                                    javascript_messages.splice(k,1) ;
+                                                }
+                                            }
                                             continue ;
                                         }
                                         encrypt = new JSEncrypt();
@@ -1247,25 +1257,43 @@ angular.module('MoneyNetwork')
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256, error ;
             var local_msg_seq, message ;
 
-            debug('inbox && encrypted', pgm + 'new incoming encrypted message = ' + JSON.stringify(res));
+            debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
 
             // find contact from unique_id. will decrypt to test message but only buffer messages with unknown contact
             contact = null ;
             for (i=0 ; i<local_storage_contacts.length ; i++) {
                 if (local_storage_contacts[i].unique_id == unique_id) contact = local_storage_contacts[i] ;
             } // for i
+            if (!res.key && !contact) console.log(pgm + 'received group chat message but no group chat contact with unique_id ' + unique_id + ' was found') ;
 
-            // decrypt message and insert into contacts messages
-            my_prvkey = MoneyNetworkHelper.getItem('prvkey');
-            encrypt = new JSEncrypt();
-            encrypt.setPrivateKey(my_prvkey);
-            try {
-                password = encrypt.decrypt(res.key);
-                decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, password)
+            if (res.key) {
+                // RSA public private key encryption
+                my_prvkey = MoneyNetworkHelper.getItem('prvkey');
+                encrypt = new JSEncrypt();
+                encrypt.setPrivateKey(my_prvkey);
+                try {
+                    password = encrypt.decrypt(res.key);
+                    decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, password)
+                }
+                catch (err) {
+                    console.log(pgm + 'Ignoring message with invalid encryption. error = ' + err.message) ;
+                    return false
+                }
             }
-            catch (err) {
-                console.log(pgm + 'Ignoring message with invalid encryption. error = ' + err.message) ;
-                return false
+            else if (contact && (contact.type == 'group')) {
+                // group chat using symmetric key encryption
+                try {
+                    decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, contact.password)
+                }
+                catch (err) {
+                    console.log(pgm + 'Ignoring message with invalid encryption. error = ' + err.message) ;
+                    return false
+                }
+            }
+            else {
+                // something is wrong here. No RSA key and no group chat password
+                console.log(pgm + 'something is wrong here. No RSA key and no group chat password');
+                return false ;
             }
 
             // console.log(pgm + 'decrypted message = ' + decrypted_message_str) ;
@@ -1491,6 +1519,59 @@ angular.module('MoneyNetwork')
                 else if (contact.type != 'unverified') debug('inbox && unencrypted', pgm + 'Received verified message with correct passowrd but contact is not (any longer) an unverified contact') ;
                 else contact.type = 'verified' ;
             }
+
+            if (decrypted_message.msgtype == 'group chat') {
+                console.log(pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message)) ;
+                // received password for a new group chat.
+                // check for unknown participants
+                var participant, j ;
+                for (i=0 ; i<decrypted_message.participants.length ; i++) {
+                    participant = null ;
+                    for (j=0 ; j<local_storage_contacts.length ; j++) {
+                        if (local_storage_contacts[j].unique_id == decrypted_message.participants[i]) {
+                            participant = local_storage_contacts[j] ;
+                            break ;
+                        }
+                    } // for j
+                    if (!participant) console.log(pgm + 'warning. could not find participant with unique id ' + decrypted_message.participants[i]) ;
+                } // for i
+                // find unique id for pseudo group chat contact.
+                // my unique id, sender unique id + participants in this message
+                var my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
+                var my_auth_address = ZeroFrame.site_info.auth_address ;
+                var my_unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
+                var group_chat_unique_ids = JSON.parse(JSON.stringify(decrypted_message.participants)) ;
+                group_chat_unique_ids.push(my_unique_id) ;
+                group_chat_unique_ids.push(contact.unique_id) ;
+                group_chat_unique_ids.sort() ;
+                console.log(pgm + 'group_chat_unique_ids = ' + JSON.stringify(group_chat_unique_ids)) ;
+                var group_chat_unique_id = CryptoJS.SHA256(JSON.stringify(group_chat_unique_ids)).toString() ;
+                console.log(pgm + 'group_chat_unique_id = ' + group_chat_unique_id) ;
+                var group_chat_contact ;
+                for (i=0 ; i<local_storage_contacts.length ; i++) {
+                    if (local_storage_contacts[i].unique_id == group_chat_unique_id) group_chat_contact = local_storage_contacts[i] ;
+                }
+                if (group_chat_contact) console.log(pgm + 'group_chat_contact = ' + JSON.stringify(group_chat_contact)) ;
+                else console.log(pgm + 'could not find group chat contact with unique id ' + group_chat_unique_id) ;
+                if (!group_chat_contact) {
+                    // create pseudo chat group contact without password. password will be added when sending first chat message in this group
+                    group_chat_contact = {
+                        unique_id: group_chat_unique_id,
+                        type: 'group',
+                        password: decrypted_message.password,
+                        participants: [],
+                        search: [],
+                        messages: []
+                    };
+                    for (i=0 ; i<group_chat_unique_ids.length ; i++) {
+                        if (group_chat_unique_ids[i] == my_unique_id) continue ;
+                        group_chat_contact.participants.push(group_chat_unique_ids[i]) ;
+                    }
+                    local_storage_contacts.push(group_chat_contact) ;
+                    watch_receiver_sha256.push(CryptoJS.SHA256(decrypted_message.password).toString()) ;
+                }
+            }
+
 
             // todo: add more message post processing ...
 
