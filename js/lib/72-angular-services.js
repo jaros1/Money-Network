@@ -1259,13 +1259,6 @@ angular.module('MoneyNetwork')
 
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
 
-            // find contact from unique_id. will decrypt to test message but only buffer messages with unknown contact
-            contact = null ;
-            for (i=0 ; i<local_storage_contacts.length ; i++) {
-                if (local_storage_contacts[i].unique_id == unique_id) contact = local_storage_contacts[i] ;
-            } // for i
-            if (!res.key && !contact) console.log(pgm + 'received group chat message but no group chat contact with unique_id ' + unique_id + ' was found') ;
-
             if (res.key) {
                 // RSA public private key encryption
                 my_prvkey = MoneyNetworkHelper.getItem('prvkey');
@@ -1280,24 +1273,41 @@ angular.module('MoneyNetwork')
                     return false
                 }
             }
-            else if (contact && (contact.type == 'group')) {
+            else {
+                // no RSA key - must be a group chat message.
+
+                // find pseudo group chat contact from receiver_sha256 address
+                group_chat_contact = null ;
+                for (i=0 ; i<local_storage_contacts.length ; i++) {
+                    if (local_storage_contacts[i].type != 'group') continue ;
+                    if (CryptoJS.SHA256(local_storage_contacts[i].password).toString() == res.receiver_sha256) {
+                        group_chat_contact = local_storage_contacts[i] ;
+                        break ;
+                    }
+                }
+                if (!group_chat_contact) {
+                    console.log(pgm + 'could not find any pseudo group chat contact with correct password') ;
+                    return false ;
+                }
+
                 // group chat using symmetric key encryption
                 try {
-                    decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, contact.password)
+                    decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, group_chat_contact.password)
                 }
                 catch (err) {
                     console.log(pgm + 'Ignoring message with invalid encryption. error = ' + err.message) ;
                     return false
                 }
             }
-            else {
-                // something is wrong here. No RSA key and no group chat password
-                console.log(pgm + 'something is wrong here. No RSA key and no group chat password');
-                return false ;
-            }
 
             // console.log(pgm + 'decrypted message = ' + decrypted_message_str) ;
             decrypted_message = JSON.parse(decrypted_message_str);
+
+            // who is message from? find contact from unique_id.
+            contact = null ;
+            for (i=0 ; i<local_storage_contacts.length ; i++) {
+                if (local_storage_contacts[i].unique_id == unique_id) contact = local_storage_contacts[i] ;
+            } // for i
 
             if (!contact) {
                 // buffer incoming message, create contact and try once more
@@ -1381,7 +1391,7 @@ angular.module('MoneyNetwork')
             // check receiver_sha256. sha256(pubkey) or a previous sender_sha256 address sent to contact
             var my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             var my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
-            if (message.receiver_sha256 == my_pubkey_sha256) delete message.receiver_sha256 ;
+            if ((message.receiver_sha256 == my_pubkey_sha256) || !res.key) delete message.receiver_sha256 ;
             message.ls_msg_size = JSON.stringify(message).length ;
             ignore_zeronet_msg_id.push(res.message_sha256) ;
             if (sender_sha256 && (res.timestamp > contact.inbox_last_sender_sha256_at)) {
