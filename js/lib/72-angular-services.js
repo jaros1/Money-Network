@@ -451,6 +451,7 @@ angular.module('MoneyNetwork')
                                     // RSA encryption + symmetric encryption with random password
                                     if (!encrypt) {
                                         if (!contact.pubkey) {
+                                            console.log(pgm + 'contact = ' + JSON.stringify(contact));
                                             throw pgm + 'Contact without pubkey. Encryption is not possible' ;
                                             continue ;
                                         }
@@ -2712,6 +2713,7 @@ angular.module('MoneyNetwork')
             if (!user_setup.chat_sort) user_setup.chat_sort = chat_sort_options[0] ;
             if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = !guest ;
             if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
+            if (!user_setup.hasOwnProperty('two_panel_chat')) user_setup.two_panel_chat = true ;
         }
         function save_user_setup () {
             MoneyNetworkHelper.setItem('setup', JSON.stringify(user_setup));

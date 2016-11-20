@@ -175,12 +175,9 @@
         </p>
 
         <div ng-show="c.show_no_welcome()">
-            <p>
-                Chat with your Money Network contacts. Chat is private and end to end encrypted.
-                <span ng-hide="c.contact">Click on avatar to start a new chat / manage contact.</span>
-            </p>
 
-            <p ng-hide="c.contact">
+            <p>
+                <span ng-hide="c.contact">
                 Filter:
                 <input type="button" value="All" ng-click="c.toggle_filter('all')" style="color: {{c.setup.contact_filters.all}}"/>&nbsp;
                 <span ng-hide="c.setup.block_guests">
@@ -194,41 +191,69 @@
                 <input type="button" value="Ignored" ng-click="c.toggle_filter('ignore')"
                        style="color: {{c.setup.contact_filters.ignore}}"/>&nbsp;
 
+                </span>
+
                 Sort:
                 <input type="text" placeholder="Start typing" ng-model="c.setup.chat_sort" class="user_info" style="width: 140px"
                        uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
                        alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
 
-                Two panel chat:
-                <input type="checkbox" ng-model="c.two_panel_chat" ng-change="c.two_panel_chat_changed()">
+                <span class="two_panel_chat">
+                    Two panel chat:
+                    <input type="checkbox" ng-model="c.setup.two_panel_chat" ng-change="c.two_panel_chat_changed()">
+                </span>
 
             </p>
-            <p ng-show="c.contact">
-                Sort:
-                <input type="text" placeholder="Start typing" ng-model="c.setup.chat_sort" class="user_info" style="width: 140px"
-                       uib-typeahead="sort for sort in c.chat_sort_options | filter:$viewValue | limitTo:8" typeahead-editable="false"
-                       alt="{{c.chat_sort_title}}" title="{{c.chat_sort_title}}" typeahead-on-select="c.chat_sort_changed()">
-            </p>
 
-            <table ng-show="c.contact">
-                <thead>
-                <tr>
-                    <th></th>
-                    <th>Tag</th>
-                    <th></th>
-                    <th>Value</th>
-                    <th></th>
-                    <th>Privacy</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
-                        <img ng-src="{{c.contact|findContactAvatar}}" class="img-circle img-sm">
-                    </td>
-                    <td>User Id</td>
-                    <td>&nbsp;</td>
-                    <td>
+            <div style="width: 99%; border-style: solid; border-width: 2px;">
+
+                <table style="width: 100%">
+                    <tbody>
+                    <tr>
+                        <td ng-bind="c.chat_hint()"><td>
+                        <td style="text-align: right; vertical-align: top; white-space: nowrap;">
+                            <span ng-hide="!c.chat_hint_chatting()">
+                                <span ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
+                                      class="glyphicon glyphicon-pushpin"
+                                      title="Click to remove participants from this chat"
+                                      alt="Click to remove participants from this chat">
+                                </span>
+                                <span ng-show="c.editing_grp_chat" ng-click="c.stop_editing_grp_chat()"
+                                      class="glyphicon glyphicon-ok"
+                                      title="Click when finished removing participants from group chat"
+                                      alt="Click when finished removing participants from group chat">
+                                </span>
+                                <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
+                                      title="Click to see all chat messages" alt="Click to see all chat messages">
+                                </span>
+
+                            </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <div ng-show="c.contact && !c.group_chat">
+
+                    <table>
+                        <thead>
+                        <tr>
+                            <th></th>
+                            <th>Tag</th>
+                            <th></th>
+                            <th>Value</th>
+                            <th></th>
+                            <th>Privacy</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                                <img ng-src="{{c.contact|findContactAvatar}}" class="img-circle img-sm">
+                            </td>
+                            <td>User Id</td>
+                            <td>&nbsp;</td>
+                            <td>
                     <span ng-hide="c.contact.edit_alias" ng-bind-html="c.contact|aliasOrShortCertUserId"
                           title="{{c.contact.cert_user_id}}. Click to edit" ng-click="c.edit_alias()">
                     </span>
@@ -236,40 +261,73 @@
                         <input type="text" ng-model="c.contact.new_alias" style="width: 110px" id="contact_alias_id"
                                on-key-enter="c.save_user_info()" on-key-escape="c.cancel_edit_alias()">
                     </span>
-                    </td>
-                    <td>&nbsp;</td>
-                    <td>-</td>
-                    <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
-                        <input ng-show="c.contact|showContactAction:'ignore'"  type="button" value="Ignore"  ng-click="c.contact_ignore(x)"/>
-                        <input ng-show="c.contact|showContactAction:'unplonk'" type="button" value="Unplonk" ng-click="c.contact_unplonk(x)"/>
-                        <input ng-show="c.contact|showContactAction:'add'"     type="button" value="Add"     ng-click="c.contact_add(x)"/>
-                        <input ng-show="c.contact|showContactAction:'remove'"  type="button" value="Remove"  ng-click="c.contact_remove(x)"/>
-                        <input ng-show="c.contact|showContactAction:'verify'"  type="button" value="Verify"  ng-click="c.contact_verify(x)"/>
-                        <input ng-show="c.show_contact_delete()" type="button" value="Delete" ng-click="c.contact_delete()"/>
-                    </td>
-                </tr>
-                <tr>
-                    <td>User type</td>
-                    <td>&nbsp;</td>
-                    <td ng-bind="c.contact.type"></td>
-                    <td>&nbsp;</td>
-                    <td>-</td>
-                </tr>
-                <tr ng-repeat="s in c.contact.search">
-                    <td ng-bind-html="s.tag"></td>
-                    <td></td>
-                    <td ng-bind-html="s|formatSearchValue" title="{{s|formatSearchTitle}}"></td>
-                    <td></td>
-                    <td ng-bind-html="s.privacy"></td>
-                </tr>
-                </tbody>
-            </table>
+                            </td>
+                            <td>&nbsp;</td>
+                            <td>-</td>
+                            <td rowspan="{{c.contact.search.length+2}}" style="vertical-align: top">
+                                <input ng-show="c.contact|showContactAction:'ignore'"  type="button" value="Ignore"  ng-click="c.contact_ignore(x)"/>
+                                <input ng-show="c.contact|showContactAction:'unplonk'" type="button" value="Unplonk" ng-click="c.contact_unplonk(x)"/>
+                                <input ng-show="c.contact|showContactAction:'add'"     type="button" value="Add"     ng-click="c.contact_add(x)"/>
+                                <input ng-show="c.contact|showContactAction:'remove'"  type="button" value="Remove"  ng-click="c.contact_remove(x)"/>
+                                <input ng-show="c.contact|showContactAction:'verify'"  type="button" value="Verify"  ng-click="c.contact_verify(x)"/>
+                                <input ng-show="c.show_contact_delete()" type="button" value="Delete" ng-click="c.contact_delete()"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>User type</td>
+                            <td>&nbsp;</td>
+                            <td ng-bind="c.contact.type"></td>
+                            <td>&nbsp;</td>
+                            <td>-</td>
+                        </tr>
+                        <tr ng-repeat="s in c.contact.search">
+                            <td ng-bind-html="s.tag"></td>
+                            <td></td>
+                            <td ng-bind-html="s|formatSearchValue" title="{{s|formatSearchTitle}}"></td>
+                            <td></td>
+                            <td ng-bind-html="s.privacy"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+                <div ng-show="c.group_chat" style="width: 100%">
+                    <span ng-repeat="x in c.group_chat_contacts" style="padding-left: 5px; padding-bottom: 5px;">
+                        <table style="display: inline">
+                            <tbody>
+                            <tr>
+                                <td>
+                                    <img ng-show="c.editing_grp_chat" ng-src="{{x|findContactAvatar}}"
+                                         ng-click="c.grp_chat_add(x)" title="Click to remove contact from group chat">
+                                    <img ng-hide="c.editing_grp_chat" ng-src="{{x|findContactAvatar}}"
+                                         ng-click="c.chat_contact(x)" title="Click to chat with contact">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td ng-bind-html="x|aliasOrShortCertUserId">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td ng-bind="x|getLastUpdated"></td>
+                            </tr>
+                            <tr>
+                                <td ng-bind="x.type"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </span>
+                </div>
+
+            </div>
+
+
 
             <br>
 
             <ul class="list-unstyled media-block">
 
-                <li ng-show="c.contact">
+                <li ng-show="c.contact || c.group_chat">
 
                     <div class="media-left">
                         <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Avatar">
@@ -289,18 +347,20 @@
                                     </tr>
                                     <tr>
                                         <td colspan="2" style="width: 99%">
-
-                                            <textarea ng-show="c.contact.pubkey" class="autosize postfield new_chat_msg" id="new_chat_msg"
-                                                      placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox" rows="1" required
-                                                      ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
-                                            </textarea>
-                                            <span ng-hide="c.contact.pubkey">
-                                                Chat disabled. No public key found for this contact at ZeroNet.
-                                                Could be an old inactive contact. Data on ZeroNet are deleted after {{c.no_days_before_cleanup}} days.
-                                                Keep contact and chat if you think that contact will return to Money Network later.
-                                                Delete contact and chat if you think that user has left Money Network for good.
-                                            </span>
-
+                                        <textarea ng-show="c.contact || c.group_chat"
+                                                  class="autosize postfield new_chat_msg" id="new_chat_msg"
+                                                  placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox" rows="1" required
+                                                  ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
+                                        </textarea>
+                                        <span ng-show="c.chat_hint_pubkey()">
+                                            Chat not possible for this contact. No public key was found on ZeroNet.
+                                            Could be an old inactive contact. Data on ZeroNet are deleted after {{c.no_days_before_cleanup}} days.
+                                            Keep contact and chat if you think that contact will return to Money Network later.
+                                            Delete contact and chat if you think that user has left Money Network for good.
+                                        </span>
+                                        <span ng-show="c.group_chat && (c.group_chat_contacts.length == 0)">
+                                            Group chat disabled. Please select one or more contacts. Click on avatars.
+                                        </span>
                                         </td>
                                     </tr>
                                     <tr ng-show="c.new_chat_src">
@@ -321,7 +381,9 @@
                                                 <input id="file-input" type="file" accept=".png, .jpg, .jpeg, .gif, .tif"/>
                                             </div>
 
-                                            <button type="submit" ng-click="c.send_chat_msg()" ng-disabled="new_chat_msg_form.$invalid">Send</button>
+                                            <button type="submit" ng-click="c.send_chat_msg()"
+                                                    ng-disabled="new_chat_msg_form.$invalid || !c.chat_hint_send()">Send
+                                            </button>
                                         </td>
                                     </tr>
                                     </tbody>
@@ -529,7 +591,7 @@
 
                 <span class="two_panel_chat">
                     Two panel chat:
-                    <input type="checkbox" ng-model="c.two_panel_chat" ng-change="c.two_panel_chat_changed()">
+                    <input type="checkbox" ng-model="c.setup.two_panel_chat" ng-change="c.two_panel_chat_changed()">
                 </span>
 
             </p>
@@ -542,13 +604,13 @@
                         <td ng-bind="c.chat_hint()"><td>
                         <td style="text-align: right; vertical-align: top; white-space: nowrap;">
                             <span ng-hide="!c.chat_hint_chatting()">
-                                <span ng-hide="c.editing_grp_chat || c.chat_hint_pubkey()"
-                                      class="glyphicon glyphicon-pushpin" ng-click="c.start_editing_grp_chat()"
+                                <span ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
+                                      class="glyphicon glyphicon-pushpin"
                                       title="Click to update participants in this chat"
                                       alt="Click to update participants in this chat">
                                 </span>
-                                <span ng-show="c.editing_grp_chat"
-                                      class="glyphicon glyphicon-ok" ng-click="c.stop_editing_grp_chat()"
+                                <span ng-show="c.editing_grp_chat" ng-click="c.stop_editing_grp_chat()"
+                                      class="glyphicon glyphicon-ok"
                                       title="Click when finished updating participants in group chat"
                                       alt="Click when finished updating participants in group chat">
                                 </span>
@@ -1208,7 +1270,7 @@
                             <ul class="nav">
                                 <li><a href="#/money">Money</a></li>
                                 <li><a href="#/network">Network</a></li>
-                                <li><a href="#/chat2">Chat</a></li>
+                                <li><a ng-href="{{n.chat_link()}}">Chat</a></li>
                                 <li><a href="">todo</a></li>
                                 <li><a href="#/user">Account</a></li>
                                 <li ng-hide="n.is_logged_in()"><a href="#/auth">Log in</a></li>
@@ -1226,7 +1288,7 @@
                             <ul class="nav">
                                 <li><a href="#/money">Money</a></li>
                                 <li><a href="#/network">Network</a></li>
-                                <li><a href="#/chat2">Chat</a></li>
+                                <li><a href="{{n.chat_link()}}">Chat</a></li>
                             </ul>
                         </td>
                     </tr>

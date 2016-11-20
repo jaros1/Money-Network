@@ -210,15 +210,10 @@ form {
     .bodyleft {
         display: none
     }
-
     .bodyright {
         width: 92.5%;
         position: absolute;
         left: 18px;
-    }
-
-    .two_panel_chat {
-        display: none
     }
 }
 
@@ -226,15 +221,10 @@ form {
     .bodyleft {
         display: none
     }
-
     .bodyright {
         width: 93%;
         position: absolute;
         left: 18px;
-    }
-
-    .two_panel_chat {
-        display: none
     }
 }
 
@@ -242,15 +232,10 @@ form {
     .bodyleft {
         display: none
     }
-
     .bodyright {
         width: 93.5%;
         position: absolute;
         left: 18px;
-    }
-
-    .two_panel_chat {
-        display: none
     }
 }
 
