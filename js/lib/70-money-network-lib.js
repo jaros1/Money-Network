@@ -96,7 +96,7 @@ var MoneyNetworkHelper = (function () {
     // search ZeroNet for new potential contacts with matching search words
     // add/remove new potential contacts to/from local_storage_contacts array (MoneyNetworkService and ContactCtrl)
     // fnc_when_ready - callback - execute when local_storage_contacts are updated
-    function z_contact_search (local_storage_contacts, fnc_when_ready) {
+    function z_contact_search (ls_contacts, ls_contacts_hash, fnc_when_ready) {
         var pgm = module + '.z_contact_search: ' ;
 
         // any relevant user info? User must have tags with privacy Search or Hidden to search network
@@ -124,7 +124,7 @@ var MoneyNetworkHelper = (function () {
 
         // check ZeroFrame status. Is ZeroNet ready?
         var retry_z_contact_search = function () {
-            z_contact_search (local_storage_contacts, fnc_when_ready);
+            z_contact_search (ls_contacts, ls_contacts_hash, fnc_when_ready);
         };
         if (!ZeroFrame.site_info) {
             // ZeroFrame websocket connection not ready. Try again in 5 seconds
@@ -141,8 +141,8 @@ var MoneyNetworkHelper = (function () {
 
         // check avatars. All contacts must have a valid avatar
         var contact ;
-        for (i=0 ; i<local_storage_contacts.length ; i++) {
-            contact = local_storage_contacts[i] ;
+        for (i=0 ; i<ls_contacts.length ; i++) {
+            contact = ls_contacts[i] ;
             if (!contact.avatar) debug('invalid_avatars', pgm + 'Error. Pre search check. Contact without avatar ' + JSON.stringify(contact)) ;
         } // for i
 
@@ -282,10 +282,10 @@ var MoneyNetworkHelper = (function () {
                 for (var i=0 ; i<res.length ; i++) {
                     // check contacts on ignore list
                     ignore=false ;
-                    for (j=0 ; (!ignore && (j<local_storage_contacts.length)) ; j++) {
-                        if (local_storage_contacts[j].type != 'ignore') continue ;
-                        if (res[i].auth_address == local_storage_contacts[j].auth_address) ignore=true ;
-                        if (res[i].pubkey == local_storage_contacts[j].pubkey) ignore=true ;
+                    for (j=0 ; (!ignore && (j<ls_contacts.length)) ; j++) {
+                        if (ls_contacts[j].type != 'ignore') continue ;
+                        if (res[i].auth_address == ls_contacts[j].auth_address) ignore=true ;
+                        if (res[i].pubkey == ls_contacts[j].pubkey) ignore=true ;
                     }
                     if (ignore) continue ;
                     // add search match to res_hash
@@ -326,12 +326,15 @@ var MoneyNetworkHelper = (function () {
                 // insert/update/delete new contacts in local_storage_contacts (type=new)
                 // console.log(pgm + 'issue #10#: user_info = ' + JSON.stringify(user_info));
                 var contact, found_unique_ids = [], debug_info ;
-                for (i=local_storage_contacts.length-1 ; i>= 0 ; i--) {
-                    contact = local_storage_contacts[i] ;
+                for (i=ls_contacts.length-1 ; i>= 0 ; i--) {
+                    contact = ls_contacts[i] ;
                     unique_id = contact.unique_id ;
                     if (!res_hash.hasOwnProperty(unique_id)) {
                         // contact no longer matching search words. Delete contact if no messages
-                        if ((contact.type == 'new') && (contact.messages.length == 0)) local_storage_contacts.splice(i,1) ;
+                        if ((contact.type == 'new') && (contact.messages.length == 0)) {
+                            ls_contacts.splice(i,1) ;
+                            delete ls_contacts_hash[unique_id];
+                        }
                         continue ;
                     }
                     found_unique_ids.push(unique_id) ;
@@ -401,14 +404,15 @@ var MoneyNetworkHelper = (function () {
                             new_contact.avatar = public_avatars[index] ;
                         }
                     }
-                    local_storage_contacts.push(new_contact);
+                    ls_contacts.push(new_contact);
+                    ls_contacts_hash[unique_id] = new_contact ;
                     // console.log(pgm + 'new_contact = ' + JSON.stringify(new_contact));
                 }
                 // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
 
                 // check avatars. All contacts must have a avatar
-                for (i=0 ; i<local_storage_contacts.length ; i++) {
-                    contact = local_storage_contacts[i] ;
+                for (i=0 ; i<ls_contacts.length ; i++) {
+                    contact = ls_contacts[i] ;
                     if (!contact.avatar) console.log(pgm + 'Error. Post search check. Contact without avatar ' + JSON.stringify(contact)) ;
                 }
 
