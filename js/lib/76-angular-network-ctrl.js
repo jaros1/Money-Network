@@ -10,7 +10,7 @@ angular.module('MoneyNetwork')
 
         // get contacts. two different types of contacts:
         // a) contacts stored in localStorage
-        self.contacts = moneyNetworkService.local_storage_get_contacts() ; // array with contacts from localStorage
+        self.contacts = moneyNetworkService.ls_get_contacts() ; // array with contacts from localStorage
         // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
         self.zeronet_search_contacts = function() {
             MoneyNetworkHelper.z_contact_search(self.contacts, function () {$scope.$apply()}) ;
@@ -71,8 +71,8 @@ angular.module('MoneyNetwork')
             delete search.edit_alias ;
             $scope.$apply() ;
             // save contacts in localStorage
-            // console.log(pgm + 'calling local_storage_save_contacts') ;
-            moneyNetworkService.local_storage_save_contacts(false) ;
+            // console.log(pgm + 'calling ls_save_contacts') ;
+            moneyNetworkService.ls_save_contacts(false) ;
         };
 
         // get user setup. contact_filters and contact_sort are used in this controller

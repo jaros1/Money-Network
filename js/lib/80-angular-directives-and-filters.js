@@ -460,7 +460,7 @@ angular.module('MoneyNetwork')
 
     .filter('hashkeyToContact', ['MoneyNetworkService', function (moneyNetworkService) {
         var pgm = 'hashkeyToContact filter: ';
-        var contacts = moneyNetworkService.local_storage_get_contacts() ;
+        var contacts = moneyNetworkService.ls_get_contacts() ;
         return function (hashkey) {
             for (var i=0 ; i<contacts.length ; i++) {
                 if (contacts[i]["$$hashKey"] == hashkey) return contacts[i] ;

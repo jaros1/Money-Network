@@ -12,7 +12,7 @@ angular.module('MoneyNetwork')
         self.show_privacy_title = moneyNetworkService.get_show_privacy_title() ; // checkbox - display column with privacy descriptions?
 
         // search for new ZeroNet contacts and add avatars for new contacts
-        var contacts = moneyNetworkService.local_storage_get_contacts();
+        var contacts = moneyNetworkService.ls_get_contacts();
         self.zeronet_search_contacts = function () {
             MoneyNetworkHelper.z_contact_search(contacts, function () {
                 $scope.$apply()

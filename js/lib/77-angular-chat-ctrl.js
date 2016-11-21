@@ -96,7 +96,7 @@ angular.module('MoneyNetwork')
                     contact.participants.push(self.group_chat_contacts[i].unique_id) ;
                 } // for i
                 self.contacts.push(contact);
-                moneyNetworkService.local_storage_save_contacts(false);
+                moneyNetworkService.ls_save_contacts(false);
                 return contact ;
             }
 
@@ -106,18 +106,21 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'pushpin not allowed') ;
                     return ;
                 }
-                if (!self.contact || (self.contact.type == 'group')) {
+                var info;
+                if (self.setup.two_panel_chat) info = "Click on avatars to add/remove participants in this group chat" ;
+                else info = "Click on avatars to remove participants from this group chat" ;
+                if (self.group_chat) {
                     // start, stop, start editing group chat. just continue already group
-                    self.group_chat = true ;
+                    // console.log(pgm + 'start, stop, start editing group chat. just continue already group') ;
                     self.editing_grp_chat = true ;
+                    ZeroFrame.cmd("wrapperNotification", ["info", info , 5000]);
                     return ;
                 }
                 if (!self.contact.pubkey) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Cannot start group chat with this contact. Public key is missing", 5000]);
                     return ;
                 }
-                // ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat.", 5000]);
-                ZeroFrame.cmd("wrapperNotification", ["info", "Click on avatars to add/remove participants in this group chat<br>Not yet implemented. Just UI changes for now", 5000]);
+                ZeroFrame.cmd("wrapperNotification", ["info", info , 5000]);
                 self.group_chat = true ;
                 self.editing_grp_chat = true ;
                 for (var i=0 ; i<self.contacts.length ; i++) {
@@ -126,7 +129,8 @@ angular.module('MoneyNetwork')
                         return ;
                     }
                 }
-            };
+            }; // start_editing_grp_chat
+
             self.stop_editing_grp_chat = function () {
                 var pgm = controller + '.stop_edit_grp_chat: ' ;
                 if (self.group_chat_contacts.length == 0) {
@@ -141,14 +145,15 @@ angular.module('MoneyNetwork')
                     self.group_chat_contacts = [] ;
                 }
                 else {
-                    // calc new unique id for this chat group and check if contact exists
+                    // calc new unique id for this chat group and find/create pseudo group chat contact
                     // do not create pseudo group chat contact yet
                     self.editing_grp_chat = false ;
-                    var contact = find_group_chat_contact(false) ;
+                    var contact = find_group_chat_contact(true) ;
                     console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
                     if (contact && (typeof contact == 'object')) self.contact = contact ;
                 }
-            };
+            }; // stop_editing_grp_chat
+
             self.grp_chat_add = function (contact) {
                 var pgm = controller + '.grp_chat_add: ' ;
                 if (!self.editing_grp_chat) {
@@ -179,7 +184,8 @@ angular.module('MoneyNetwork')
                     }
                 }
                 // console.log(pgm + 'self.group_chat_contacts = ' + JSON.stringify(self.group_chat_contacts)) ;
-            };
+            }; // grp_chat_add
+
             // chat group participants - aquamarine background color for selected participants.
             self.contact_background_color = function (contact) {
                 var pgm = controller + '.background_color: ' ;
@@ -191,13 +197,11 @@ angular.module('MoneyNetwork')
                 }
                 if (index == -1) return {} ;
                 else return {'background-color':'aquamarine'};
-            };
-
-
+            }; // contact_background_color
 
             // get contacts. two different types of contacts:
             // a) contacts stored in localStorage
-            self.contacts = moneyNetworkService.local_storage_get_contacts() ; // array with contacts from localStorage
+            self.contacts = moneyNetworkService.ls_get_contacts() ; // array with contacts from localStorage
             // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
             self.zeronet_search_contacts = function() {
                 MoneyNetworkHelper.z_contact_search(self.contacts, function () {$scope.$apply()}) ;
@@ -205,7 +209,7 @@ angular.module('MoneyNetwork')
             self.zeronet_search_contacts() ;
 
             self.contact = null;
-            self.messages = moneyNetworkService.javascript_get_messages();
+            self.messages = moneyNetworkService.js_get_messages();
             // console.log(controller + ': messages = ' + JSON.stringify(self.messages));
 
             // disabled chat. contact without public key. span with explanation about deleting old inactive accounts
@@ -395,8 +399,8 @@ angular.module('MoneyNetwork')
                 delete contact.edit_alias ;
                 $scope.$apply() ;
                 // save contacts in localStorage
-                // console.log(pgm + 'calling local_storage_save_contacts') ;
-                moneyNetworkService.local_storage_save_contacts(false) ;
+                // console.log(pgm + 'calling ls_save_contacts') ;
+                moneyNetworkService.ls_save_contacts(false) ;
             }; // save_user_info
 
 
@@ -495,13 +499,13 @@ angular.module('MoneyNetwork')
                     // validate json
                     var error = MoneyNetworkHelper.validate_json (pgm, verified_message, verified_message.msgtype, 'Password was correct but verification response was not sent to contact') ;
                     if (error) {
-                        moneyNetworkService.local_storage_save_contacts(false);
+                        moneyNetworkService.ls_save_contacts(false);
                         ZeroFrame.cmd("wrapperNotification", ["Error", error]);
                         return ;
                     }
                     // send message
                     moneyNetworkService.add_msg(message.contact, verified_message) ;
-                    moneyNetworkService.local_storage_save_contacts(true) ;
+                    moneyNetworkService.ls_save_contacts(true) ;
                     // notification
                     delete message.message.message.password_sha256 ;
                     ZeroFrame.cmd("wrapperNotification", ["info", "Verification OK", 3000]);
@@ -680,8 +684,8 @@ angular.module('MoneyNetwork')
                 self.new_chat_src = null ;
                 // console.log(pgm + 'contact = ' + JSON.stringify(contact));
                 // update localStorage and ZeroNet
-                // console.log(pgm + 'calling local_storage_save_contacts');
-                moneyNetworkService.local_storage_save_contacts(true);
+                // console.log(pgm + 'calling ls_save_contacts');
+                moneyNetworkService.ls_save_contacts(true);
             }; // send_chat_msg
 
             self.changed_chat_msg = "";
@@ -724,7 +728,7 @@ angular.module('MoneyNetwork')
                         $scope.$apply();
                         // update localStorage and optional zeronet
                         var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;
-                        moneyNetworkService.local_storage_save_contacts(update_zeronet);
+                        moneyNetworkService.ls_save_contacts(update_zeronet);
                     }); // wrapperConfirm
                 }
             }; // edit_chat_msg
@@ -789,7 +793,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'todo: keep old message in some kind of edit history?');
                 message.message.deleted_at = new Date().getTime() ;
                 // save localStorage and update ZeroNet
-                moneyNetworkService.local_storage_save_contacts(true) ;
+                moneyNetworkService.ls_save_contacts(true) ;
             }; // save_chat_msg
             self.delete_edit_chat_msg = function (message) {
                 // called from edit chat message form. Always outbox message
@@ -822,7 +826,7 @@ angular.module('MoneyNetwork')
                     // delete new message (just created delete chat message message)
                     message.contact.messages[message.contact.messages.length - 1].deleted_at = new Date().getTime();
                     // save localStorage and update ZeroNet
-                    moneyNetworkService.local_storage_save_contacts(true);
+                    moneyNetworkService.ls_save_contacts(true);
                 }); // wrapperConfrm
             }; // delete_edit_chat_msg
 
