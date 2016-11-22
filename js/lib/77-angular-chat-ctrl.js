@@ -540,7 +540,20 @@ angular.module('MoneyNetwork')
                     // show chat for all contacts. Use green/red filter in top of page
                     match = (self.setup.contact_filters[message.contact.type] == 'green');
                 }
-                else match = (self.contact.unique_id == message.contact.unique_id); // show chat for one contact
+                else if (self.contact.unique_id == message.contact.unique_id) {
+                    // show chat for one contact or one group chat contact
+                    match = true ;
+                }
+                else if (self.contact.type == 'group') {
+                    // group chat contact: show "Started group chat" messages to participants in group chat
+                    // console.log(pgm + 'self.contact.password = ' + self.contact.password) ;
+                    // console.log(pgm + 'message.message.message.msgtype = ' + message.message.message.msgtype) ;
+                    match = ((message.message.message.msgtype == 'group chat') && (message.message.message.password == self.contact.password)) ;
+                }
+                else {
+                    // b) normal contact: show group chat involving this contact.
+                    match = ((message.contact.type == 'group') && (message.contact.participants.indexOf(self.contact.unique_id) != -1)) ;
+                }
                 // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder + ', match = ' + match);
                 return match;
             }; // chat_filter
