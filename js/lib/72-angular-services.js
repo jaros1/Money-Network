@@ -2146,14 +2146,15 @@ angular.module('MoneyNetwork')
                     // check users/search arrays. create/update/delete contact and search information for this auth_address only
                     auth_address = filename.split('/')[2] ;
                     MoneyNetworkHelper.z_contact_search (ls_contacts, ls_contacts_hash, function () { $rootScope.$apply()}, auth_address) ;
+                    // debug('file_done', pgm + 'called z_contact_search for auth_address ' + auth_address) ;
 
                     // check msg array
-                    if (res.msg) res.msg = [] ;
+                    if (!res.msg) res.msg = [] ;
                     var pubkey, j, unique_id ;
-                    // console.log(pgm + 'watch_receiver_sha256 = ' + JSON.stringify(watch_receiver_sha256));
-                    // console.log(pgm + 'res.msg.length before = ' + res.msg.length) ;
+                    // debug('file_done', pgm + 'watch_receiver_sha256 = ' + JSON.stringify(watch_receiver_sha256));
+                    // debug('file_done', pgm + 'res.msg.length before = ' + res.msg.length) ;
                     for (i=res.msg.length-1 ; i>=0 ; i--) {
-                        // console.log(pgm + 'res.msg[' + i + '].receiver_sha256 = ' + res.msg[i].receiver_sha256);
+                        // debug('file_done', pgm + 'res.msg[' + i + '].receiver_sha256 = ' + res.msg[i].receiver_sha256);
                         if (watch_receiver_sha256.indexOf(res.msg[i].receiver_sha256) == -1) {
                             // not listening for this sha256 address
                             res.msg.splice(i,1) ;
@@ -2164,7 +2165,7 @@ angular.module('MoneyNetwork')
                             res.msg.splice(i,1) ;
                             continue ;
                         }
-                        // console.log(pgm + 'todo: receive message ' + JSON.stringify(res.msg[i]));
+                        // debug('file_done', pgm + 'receive message ' + JSON.stringify(res.msg[i]));
 
                         // find unique id for contact
                         pubkey = null ;
@@ -2175,8 +2176,7 @@ angular.module('MoneyNetwork')
                         }
                         unique_id = CryptoJS.SHA256(auth_address + '/'  + pubkey).toString();
                         res.msg[i].auth_address = auth_address ; // used if create new unknown contacts
-                        // console.log(pgm + 'unique_id = ' + unique_id);
-                        // contact_unique_id = 2130b080fec648e4260aa118c0903c4e567ce393304d38d24c374c09acd09997
+                        // debug('file_done', pgm + 'unique_id = ' + unique_id);
 
                         if (process_incoming_message(res.msg[i], unique_id)) {
                             contacts_updated = true ;
