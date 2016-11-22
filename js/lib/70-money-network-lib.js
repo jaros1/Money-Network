@@ -147,9 +147,8 @@ var MoneyNetworkHelper = (function () {
     // add/remove new potential contacts to/from local_storage_contacts array (MoneyNetworkService and ContactCtrl)
     // params:
     // - ls_contacts (array) and ls_contacts_hash (hash) from MoneyNetworkService. required
-    // - fnc_when_ready - callback - execute when local_storage_contacts are updated - optional
-    // - auth_address - mini contact search only - update only info for auth_address - optional
-
+    // - fnc_when_ready - callback - execute when local_storage_contacts are updated
+    // - auth_address - mini update only - update only info for this auth_address - optional
     function z_contact_search (ls_contacts, ls_contacts_hash, fnc_when_ready, auth_address) {
         var pgm = module + '.z_contact_search: ' ;
 
@@ -236,38 +235,8 @@ var MoneyNetworkHelper = (function () {
             // find other clients with matching search words using sqlite like operator
             // Search: tags shared public on ZeroNet. Hidden: tags stored only in localStorage
 
-            // console.log(pgm + 'my_search = ' + my_search) ;
-            // get contact info: user_seq, pubkey, auth_address, cert_user_id, modified and avatars (users & files)
-            // old query with modified (from content.json) and timestamp (from status)
-            //var contacts_query =
-            //    "select" +
-            //    "  users.user_seq, users.pubkey, users.avatar as users_avatar, users.guest," +
-            //    "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
-            //    "  content_json.json_id as content_json_id," +
-            //    "  keyvalue1.value as cert_user_id," +
-            //    "  keyvalue2.value as modified," +
-            //    "  (select substr(files.filename,8)" +
-            //    "   from files, json as avatar_json " +
-            //    "   where files.filename like 'avatar%'" +
-            //    "   and avatar_json.json_id = files.json_id" +
-            //    "   and avatar_json.directory = data_json.directory) as files_avatar," +
-            //    "  (select status.timestamp" +
-            //    "   from json as status_json, status" +
-            //    "   where status_json.directory = content_json.directory" +
-            //    "   and status_json.file_name = 'status.json'"+
-            //    "   and status.json_id = status_json.json_id" +
-            //    "   and status.user_seq = users.user_seq) as timestamp " +
-            //    "from users, json as data_json, json as content_json, keyvalue as keyvalue1, keyvalue as keyvalue2 " +
-            //    "where users.pubkey <> '" + pubkey + "'" +
-            //    "and data_json.json_id = users.json_id " +
-            //    "and content_json.directory = data_json.directory " +
-            //    "and content_json.file_name = 'content.json' " +
-            //    "and keyvalue1.json_id = content_json.json_id " +
-            //    "and keyvalue1.key = 'cert_user_id' " +
-            //    "and keyvalue2.json_id = content_json.json_id " +
-            //    "and keyvalue2.key = 'modified'" ;
-
             // new contacts query without modified timestamp from content.json (keyvalue)
+            if (auth_address) debug('select', pgm + 'auth_address = ' + auth_address) ;
             var contacts_query =
                 "select" +
                 "  users.user_seq, users.pubkey, users.avatar as users_avatar, users.guest," +
@@ -280,8 +249,16 @@ var MoneyNetworkHelper = (function () {
                 "   and avatar_json.json_id = files.json_id" +
                 "   and avatar_json.directory = data_json.directory) as files_avatar," +
                 "  status.timestamp " +
-                "from users, json as data_json, json as content_json, keyvalue, json as status_json, status " +
-                "where users.pubkey <> '" + pubkey + "'" +
+                "from users, json as data_json, json as content_json, keyvalue, json as status_json, status " ;
+            if (auth_address) {
+                // file done event. check only info from this auth_address
+                contacts_query += "where data_json.directory = 'users/" + auth_address + "' " ;
+            }
+            else {
+                // page startup. general contacts search. all contacts except current user
+                contacts_query += "where users.pubkey <> '" + pubkey + "' " ;
+            }
+            contacts_query +=
                 "and data_json.json_id = users.json_id " +
                 "and content_json.directory = data_json.directory " +
                 "and content_json.file_name = 'content.json' " +
@@ -385,6 +362,7 @@ var MoneyNetworkHelper = (function () {
                 var contact, found_unique_ids = [], debug_info ;
                 for (i=ls_contacts.length-1 ; i>= 0 ; i--) {
                     contact = ls_contacts[i] ;
+                    if (auth_address && (contact.auth_address != auth_address)) continue ; // checking only one auth_address
                     unique_id = contact.unique_id ;
                     if (!res_hash.hasOwnProperty(unique_id)) {
                         // contact no longer matching search words. Delete contact if no messages
