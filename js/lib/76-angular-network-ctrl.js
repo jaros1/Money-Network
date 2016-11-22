@@ -14,7 +14,7 @@ angular.module('MoneyNetwork')
         var contacts_hash = moneyNetworkService.ls_get_contacts_hash() ;
         // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
         self.zeronet_search_contacts = function() {
-            MoneyNetworkHelper.z_contact_search(self.contacts, contacts_hash, function () {$scope.$apply()}) ;
+            MoneyNetworkHelper.z_contact_search(self.contacts, contacts_hash, function () {$scope.$apply()}, null) ;
         };
         self.zeronet_search_contacts() ;
 

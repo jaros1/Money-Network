@@ -145,8 +145,12 @@ var MoneyNetworkHelper = (function () {
 
     // search ZeroNet for new potential contacts with matching search words
     // add/remove new potential contacts to/from local_storage_contacts array (MoneyNetworkService and ContactCtrl)
-    // fnc_when_ready - callback - execute when local_storage_contacts are updated
-    function z_contact_search (ls_contacts, ls_contacts_hash, fnc_when_ready) {
+    // params:
+    // - ls_contacts (array) and ls_contacts_hash (hash) from MoneyNetworkService. required
+    // - fnc_when_ready - callback - execute when local_storage_contacts are updated - optional
+    // - auth_address - mini contact search only - update only info for auth_address - optional
+
+    function z_contact_search (ls_contacts, ls_contacts_hash, fnc_when_ready, auth_address) {
         var pgm = module + '.z_contact_search: ' ;
 
         // any relevant user info? User must have tags with privacy Search or Hidden to search network
@@ -173,20 +177,23 @@ var MoneyNetworkHelper = (function () {
         }
 
         // check ZeroFrame status. Is ZeroNet ready?
-        var retry_z_contact_search = function () {
-            z_contact_search (ls_contacts, ls_contacts_hash, fnc_when_ready);
-        };
-        if (!ZeroFrame.site_info) {
-            // ZeroFrame websocket connection not ready. Try again in 5 seconds
-            console.log(pgm + 'ZeroFrame.site_info is not ready. Try again in 5 seconds. Refresh page (F5) if problem continues') ;
-            setTimeout(retry_z_contact_search,5000); // outside angularjS - using normal setTimeout function
-            return ;
-        }
-        if (!ZeroFrame.site_info.cert_user_id) {
-            console.log(pgm + 'Auto login process to ZeroNet not finished. Maybe user forgot to select cert. Checking for new contacts in 1 minute');
-            ZeroFrame.cmd("certSelect", [["moneynetwork"]]);
-            setTimeout(retry_z_contact_search,60000);// outside angularjS - using normal setTimeout function
-            return ;
+        if (!auth_address) {
+            // only relevant in startup sequence. not relevant for file_done_events
+            var retry_z_contact_search = function () {
+                z_contact_search (ls_contacts, ls_contacts_hash, fnc_when_ready, null);
+            };
+            if (!ZeroFrame.site_info) {
+                // ZeroFrame websocket connection not ready. Try again in 5 seconds
+                console.log(pgm + 'ZeroFrame.site_info is not ready. Try again in 5 seconds. Refresh page (F5) if problem continues') ;
+                setTimeout(retry_z_contact_search,5000); // outside angularjS - using normal setTimeout function
+                return ;
+            }
+            if (!ZeroFrame.site_info.cert_user_id) {
+                console.log(pgm + 'Auto login process to ZeroNet not finished. Maybe user forgot to select cert. Checking for new contacts in 1 minute');
+                ZeroFrame.cmd("certSelect", [["moneynetwork"]]);
+                setTimeout(retry_z_contact_search,60000);// outside angularjS - using normal setTimeout function
+                return ;
+            }
         }
 
         // check avatars. All contacts must have a valid avatar
@@ -476,22 +483,6 @@ var MoneyNetworkHelper = (function () {
         }) ;
 
     } // z_contact_search
-
-
-
-    // update contact and search information for one auth_address only. called from event_file_done for data.json files
-    function z_mini_search (auth_address, data, ls_contacts, ls_contacts_hash) {
-        var pgm = module + '.z_mini_search: ' ;
-        console.log(pgm + 'todo: check users & search arrays. create/update/delete contact and search information for this auth_address only') ;
-        console.log(pgm + 'auth_address = ' + auth_address) ;
-        console.log(pgm + 'users = ' + JSON.stringify(data.users)) ;
-        console.log(pgm + 'search = ' + JSON.stringify(data.search)) ;
-
-        // must compare my search tags with search tags in this file and update contact(s) and search info for this auth address only
-
-        return false ; // contacts were not updated
-    } // z_mini_search
-
 
 
     // values in sessionStorage:
@@ -1225,7 +1216,6 @@ var MoneyNetworkHelper = (function () {
         get_public_avatars: get_public_avatars,
         ls_update_group_last_updated: ls_update_group_last_updated,
         z_contact_search: z_contact_search,
-        z_mini_search: z_mini_search,
         getItem: getItem,
         getItemSize: getItemSize,
         setItem: setItem,

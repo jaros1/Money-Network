@@ -12,6 +12,8 @@ angular.module('MoneyNetwork')
             console.log(controller + ' loaded');
             $window.scrollTo(0, 0);
 
+            function debug (key, text) { MoneyNetworkHelper.debug(key, text) }
+
             // get user setup.
             self.setup = moneyNetworkService.get_user_setup() ;
 
@@ -219,7 +221,7 @@ angular.module('MoneyNetwork')
             var contacts_hash = moneyNetworkService.ls_get_contacts_hash() ;
             // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
             self.zeronet_search_contacts = function() {
-                MoneyNetworkHelper.z_contact_search(self.contacts, contacts_hash, function () {$scope.$apply()}) ;
+                MoneyNetworkHelper.z_contact_search(self.contacts, contacts_hash, function () {$scope.$apply()}, null) ;
             };
             self.zeronet_search_contacts() ;
 
@@ -551,10 +553,10 @@ angular.module('MoneyNetwork')
                     match = ((message.message.message.msgtype == 'group chat') && (message.message.message.password == self.contact.password)) ;
                 }
                 else {
-                    // b) normal contact: show group chat involving this contact.
+                    // normal contact: show group chat involving this contact.
                     match = ((message.contact.type == 'group') && (message.contact.participants.indexOf(self.contact.unique_id) != -1)) ;
                 }
-                // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder + ', match = ' + match);
+                debug('chat_filter', 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder + ', match = ' + match);
                 return match;
             }; // chat_filter
 
@@ -563,7 +565,7 @@ angular.module('MoneyNetwork')
                 var i, unique_id, j ;
                 if (contact.type == 'group') {
                     // display group if one participant is within current filter
-                    for (var i=0 ; i<contact.participants.length ; i++) {
+                    for (i=0 ; i<contact.participants.length ; i++) {
                         unique_id = contact.participants[i] ;
                         for (j=0 ; j<contacts.length ; j++) {
                             if (contacts[j].unique_id == unique_id) {
@@ -578,11 +580,9 @@ angular.module('MoneyNetwork')
                     // simpel contact filter
                     return (self.setup.contact_filters[contact.type] == 'green');
                 }
-                return match ;
-            };
+            }; // contact_filter
 
             // contacts sort options - typeahead auto complete functionality
-            // todo: refactor - also used in network controller
             self.contact_sort_options = moneyNetworkService.get_contact_sort_options();
             self.contact_sort_title = moneyNetworkService.get_contact_sort_title();
             self.contact_sort_changed = function () {

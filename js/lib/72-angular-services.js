@@ -814,7 +814,7 @@ angular.module('MoneyNetwork')
                 MoneyNetworkHelper.ls_save() ;
                 // console.log(pgm + 'z_update_data_json + z_contact_search not working 100% correct. There goes a few seconds between updating data.json with new search words and updating the sqlite database');
                 z_update_data_json(pgm) ;
-                MoneyNetworkHelper.z_contact_search(ls_contacts, ls_contacts_hash, function () {$rootScope.$apply()}) ;
+                MoneyNetworkHelper.z_contact_search(ls_contacts, ls_contacts_hash, function () {$rootScope.$apply()}, null) ;
             })
         } // save_user_info
 
@@ -2143,9 +2143,9 @@ angular.module('MoneyNetwork')
 
                     contacts_updated = false ;
 
-                    // check users/search arrays. create/update/delete contact and search information for this auth_address
+                    // check users/search arrays. create/update/delete contact and search information for this auth_address only
                     auth_address = filename.split('/')[2] ;
-                    if (MoneyNetworkHelper.z_mini_search (auth_address, res, ls_contacts, ls_contacts_hash)) contacts_updated = true ;
+                    MoneyNetworkHelper.z_contact_search (ls_contacts, ls_contacts_hash, function () { $rootScope.$apply()}, auth_address) ;
 
                     // check msg array
                     if (res.msg) res.msg = [] ;

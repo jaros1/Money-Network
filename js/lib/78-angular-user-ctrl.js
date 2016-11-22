@@ -17,7 +17,7 @@ angular.module('MoneyNetwork')
         self.zeronet_search_contacts = function () {
             MoneyNetworkHelper.z_contact_search(contacts, contacts_hash, function () {
                 $scope.$apply()
-            });
+            }, null);
         };
         self.zeronet_search_contacts();
 
