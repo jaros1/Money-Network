@@ -910,6 +910,9 @@ angular.module('MoneyNetwork')
                 // group chat. add empty search array
                 if (new_contact.type == 'group') new_contact.search = [] ;
 
+                // group chat. add dummy cert_user_id
+                if ((new_contact.type == 'group') && !new_contact.cert_user_id) new_contact.cert_user_id = new_contact.unique_id.substr(0,13) + '@moneynetwork' ;
+
                 // add "row" sequence to search array
                 if (new_contact) for (j=0 ; j<new_contact.search.length ; j++) new_contact.search[j].row = j+1 ;
 
@@ -955,7 +958,7 @@ angular.module('MoneyNetwork')
             var contact, auth_addresses = [] ;
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
-                if (contact.type == 'group') continue ; // pseudo contact used for group chat. no public key
+                if (contact.type == 'group') continue ; // pseudo contact used for group chat. no public key. only password
                 // console.log(pgm + i + ': contact.type = ' + contact.type + ', contact.auth_address = ' + contact.auth_address)
                 if (auth_addresses.indexOf(contact.auth_address) == -1) auth_addresses.push(contact.auth_address);
             }
@@ -1066,7 +1069,11 @@ angular.module('MoneyNetwork')
 
                         // console.log(pgm + 'contact = ' + JSON.stringify(contact));
                     } // for i
-                } // else
+
+                    // update last updated for group chat pseudo contacts
+                    MoneyNetworkHelper.ls_update_group_last_updated(ls_contacts, ls_contacts_hash) ;
+
+                }
 
                 // refresh contact avatars
                 // source 1: uploaded avatars from files table (users/.../content.json) - pubkey is null - jpg or png
@@ -1562,6 +1569,7 @@ angular.module('MoneyNetwork')
                     // create pseudo chat group contact without password. password will be added when sending first chat message in this group
                     group_chat_contact = {
                         unique_id: group_chat_unique_id,
+                        cert_user_id: group_chat_unique_id.substr(0,13) + '@moneynetwork',
                         type: 'group',
                         password: decrypted_message.password,
                         participants: [],
@@ -1577,7 +1585,6 @@ angular.module('MoneyNetwork')
                     watch_receiver_sha256.push(CryptoJS.SHA256(decrypted_message.password).toString()) ;
                 }
             }
-
 
             // todo: add more message post processing ...
 
@@ -2133,10 +2140,16 @@ angular.module('MoneyNetwork')
                 } // end reading content.json
 
                 if (filename.match(/data\.json$/)) {
-                    // data.json file. check msg array
-                    if (!res.msg) return ; // no messages array in this data.json
-                    var pubkey, j, unique_id ;
+
                     contacts_updated = false ;
+
+                    // check users/search arrays. create/update/delete contact and search information for this auth_address
+                    auth_address = filename.split('/')[2] ;
+                    if (MoneyNetworkHelper.z_mini_search (auth_address, res, ls_contacts, ls_contacts_hash)) contacts_updated = true ;
+
+                    // check msg array
+                    if (res.msg) res.msg = [] ;
+                    var pubkey, j, unique_id ;
                     // console.log(pgm + 'watch_receiver_sha256 = ' + JSON.stringify(watch_receiver_sha256));
                     // console.log(pgm + 'res.msg.length before = ' + res.msg.length) ;
                     for (i=res.msg.length-1 ; i>=0 ; i--) {
@@ -2154,7 +2167,6 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'todo: receive message ' + JSON.stringify(res.msg[i]));
 
                         // find unique id for contact
-                        auth_address = filename.split('/')[2] ;
                         pubkey = null ;
                         for (j=0 ; j<res.users.length ; j++) if (res.users[j].user_seq == res.msg[i].user_seq) pubkey = res.users[j].pubkey ;
                         if (!pubkey) {

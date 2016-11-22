@@ -65,16 +65,23 @@ angular.module('MoneyNetwork')
                 if (self.group_chat_contacts.length == 0) return null ;
                 if (self.group_chat_contacts.length == 1) return self.group_chat_contacts[0] ;
                 // calculate group chat unique_id from participants in group chat
-                var my
+                // calculate last updated as max last updated for participants in group chat
                 var my_pubkey = MoneyNetworkHelper.getItem('pubkey');
                 var my_auth_address = ZeroFrame.site_info.auth_address ;
                 var my_unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
-                var i, j ;
+                var i, j, participant, timestamp ;
+                var last_updated = 0 ;
                 // console.log(pgm + 'my_unique_id = ' + my_unique_id);
                 var group_chat_contact_unique_ids = [my_unique_id] ;
                 for (i=0 ; i<self.group_chat_contacts.length ; i++) {
-                    group_chat_contact_unique_ids.push(self.group_chat_contacts[i].unique_id) ;
-                } // for i
+                    participant = self.group_chat_contacts[i] ;
+                    group_chat_contact_unique_ids.push(participant.unique_id) ;
+                    for (j=0 ; j<participant.search.length ; j++) {
+                        timestamp = participant.search[j] ;
+                        if (typeof timestamp != 'number') continue ;
+                        if (timestamp > last_updated) last_updated = timestamp ;
+                    } // for j (search)
+                } // for i (participants)
                 group_chat_contact_unique_ids.sort() ;
                 // console.log(pgm + 'group_chat_contact_unique_ids = ' + JSON.stringify(group_chat_contact_unique_ids)) ;
                 var group_unique_id = CryptoJS.SHA256(JSON.stringify(group_chat_contact_unique_ids)).toString() ;
@@ -84,21 +91,28 @@ angular.module('MoneyNetwork')
                 }
                 if (!create) return group_unique_id ;
                 // create pseudo chat group contact without password. password will be added when sending first chat message in this group
+                var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
+                var index = Math.floor(Math.random() * public_avatars.length);
+                var avatar = public_avatars[index] ;
                 var contact = {
                     unique_id: group_unique_id,
+                    cert_user_id: group_unique_id.substr(0,13) + '@moneynetwork',
                     type: 'group',
                     password: null,
                     participants: [],
                     search: [],
-                    messages: []
+                    messages: [],
+                    avatar: avatar
                 };
                 for (i=0 ; i<self.group_chat_contacts.length ; i++) {
                     contact.participants.push(self.group_chat_contacts[i].unique_id) ;
                 } // for i
+                if (last_updated) contact.search.push({tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1}) ;
                 self.contacts.push(contact);
+                contacts_hash[group_unique_id] = contact ;
                 moneyNetworkService.ls_save_contacts(false);
                 return contact ;
-            }
+            } // find_group_chat_contact
 
             self.start_editing_grp_chat = function () {
                 var pgm = controller + 'start_edit_grp_chat: ';

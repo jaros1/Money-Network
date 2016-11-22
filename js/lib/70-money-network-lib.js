@@ -93,6 +93,56 @@ var MoneyNetworkHelper = (function () {
         return public_avatars ;
     }
 
+    // update last updated for group chat pseudo contacts
+    // return true if any contacts have been updated
+    function ls_update_group_last_updated (ls_contacts, ls_contacts_hash) {
+        var pgm = module + '.ls_update_group_last_updated: ' ;
+        var i, contact, old_last_updated, found_last_updated, j, new_last_updated, unique_id, participant, k, timestamp ;
+        var ls_updated = false ;
+        for (i=0 ; i<ls_contacts.length ; i++) {
+            contact = ls_contacts[i] ;
+            if (contact.type != 'group') continue ;
+            if (!contact.search) contact.search = [] ;
+            old_last_updated = 0 ;
+            found_last_updated = -1 ;
+            for (j=0 ; j<contact.search.length ; j++) {
+                if (typeof contact.search[j].value == 'number') {
+                    old_last_updated = contact.search[j].value ;
+                    found_last_updated = j ;
+                }
+            }
+            new_last_updated = old_last_updated ;
+            for (j=0 ; j<contact.participants.length ; j++) {
+                unique_id = contact.participants[j] ;
+                participant = ls_contacts_hash[unique_id] ;
+                if (!participant) {
+                    console.log(pgm + 'warning. group chat participant with unique id ' + unique_id + ' does not exists') ;
+                    continue ;
+                }
+                if (!participant.search) participant.search = [] ;
+                for (k=0 ; k<participant.search.length ; k++) {
+                    timestamp = participant.search[k].value
+                    if ((typeof timestamp == 'number') && (timestamp > new_last_updated)) new_last_updated = timestamp ;
+                }
+            } // for j (participants)
+            if (old_last_updated == new_last_updated) continue ;
+            ls_updated = true ;
+            // add/update Last updated timestamp to pseudo group chat contact
+            if (found_last_updated == -1) {
+                contact.search.push({
+                    tag: 'Last updated',
+                    value: new_last_updated,
+                    privacy: 'Search',
+                    row: contact.search.length-1
+                });
+            }
+            else {
+                contact.search[found_last_updated].value = new_last_updated ;
+            }
+        } // for i (contacts)
+        return ls_updated ;
+    } // ls_update_group_last_updated
+
     // search ZeroNet for new potential contacts with matching search words
     // add/remove new potential contacts to/from local_storage_contacts array (MoneyNetworkService and ContactCtrl)
     // fnc_when_ready - callback - execute when local_storage_contacts are updated
@@ -410,19 +460,38 @@ var MoneyNetworkHelper = (function () {
                 }
                 // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
 
+                // update Last updated for pseudo group chat contacts.
+                ls_update_group_last_updated(ls_contacts, ls_contacts_hash) ;
+
                 // check avatars. All contacts must have a avatar
                 for (i=0 ; i<ls_contacts.length ; i++) {
                     contact = ls_contacts[i] ;
                     if (!contact.avatar) console.log(pgm + 'Error. Post search check. Contact without avatar ' + JSON.stringify(contact)) ;
                 }
 
-                // refresh contacts in angularJS UI
+                // refresh angularJS UI
                 fnc_when_ready() ;
 
             });
         }) ;
 
     } // z_contact_search
+
+
+
+    // update contact and search information for one auth_address only. called from event_file_done for data.json files
+    function z_mini_search (auth_address, data, ls_contacts, ls_contacts_hash) {
+        var pgm = module + '.z_mini_search: ' ;
+        console.log(pgm + 'todo: check users & search arrays. create/update/delete contact and search information for this auth_address only') ;
+        console.log(pgm + 'auth_address = ' + auth_address) ;
+        console.log(pgm + 'users = ' + JSON.stringify(data.users)) ;
+        console.log(pgm + 'search = ' + JSON.stringify(data.search)) ;
+
+        // must compare my search tags with search tags in this file and update contact(s) and search info for this auth address only
+
+        return false ; // contacts were not updated
+    } // z_mini_search
+
 
 
     // values in sessionStorage:
@@ -1154,7 +1223,9 @@ var MoneyNetworkHelper = (function () {
     return {
         // local storage helpers
         get_public_avatars: get_public_avatars,
+        ls_update_group_last_updated: ls_update_group_last_updated,
         z_contact_search: z_contact_search,
+        z_mini_search: z_mini_search,
         getItem: getItem,
         getItemSize: getItemSize,
         setItem: setItem,
