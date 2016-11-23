@@ -836,6 +836,13 @@ angular.module('MoneyNetwork')
         var js_messages = [] ; // array with { :contact => contact, :message => message } - one row for each message
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
 
+        function get_last_online (contact) {
+            return MoneyNetworkHelper.get_last_online(contact) ;
+        }
+        function set_last_online (contact, last_online) {
+            MoneyNetworkHelper.set_last_online(contact, last_online) ;
+        }
+
         // get contacts stored in localStorage
         function ls_load_contacts () {
             var pgm = service + '.ls_load_contacts: ' ;
@@ -1025,9 +1032,7 @@ angular.module('MoneyNetwork')
                         }
                         var msg = 'Public key was not found for ' + alias ;
                         var last_updated, j, no_msg ;
-                        for (j=0 ; j<contact.search.length ; j++) {
-                            if (typeof contact.search[j].value == 'number') last_updated = contact.search[j].value ;
-                        }
+                        last_updated = get_last_online(contact) ;
                         if (last_updated) msg += '. Last updated ' + date(last_updated*1000, 'short') ;
                         if (['new', 'guest'].indexOf(contact.type) != -1) {
                             no_msg = 0 ;
@@ -1069,10 +1074,7 @@ angular.module('MoneyNetwork')
                         contact.user_seq = found_user_seq ;
                         contact.pubkey = found_pubkey ;
                         // update "Last updated"
-                        for (j=0 ; j<contact.search.length ; j++) {
-                            if (typeof contact.search[j].value == 'number') contact.search[j].value = found_last_updated ;
-                        }
-
+                        set_last_online(contact, found_last_updated) ;
                         // console.log(pgm + 'contact = ' + JSON.stringify(contact));
                     } // for i
 
@@ -1800,6 +1802,7 @@ angular.module('MoneyNetwork')
             watch_receiver_sha256.push(my_pubkey_sha256);
             for (i = 0; i < ls_contacts.length; i++) {
                 contact = ls_contacts[i];
+                if (contact.type == 'group') watch_receiver_sha256.push(CryptoJS.SHA256(contact.password).toString()) ;
                 if (!contact.messages) contact.messages = [];
                 for (j = 0; j < contact.messages.length; j++) {
                     message = contact.messages[j];
@@ -2163,16 +2166,14 @@ angular.module('MoneyNetwork')
                     var pubkey, j, unique_id ;
                     // debug('file_done', pgm + 'watch_receiver_sha256 = ' + JSON.stringify(watch_receiver_sha256));
                     // debug('file_done', pgm + 'res.msg.length before = ' + res.msg.length) ;
-                    for (i=res.msg.length-1 ; i>=0 ; i--) {
+                    for (i=0 ; i<res.msg.length ; i++) {
                         // debug('file_done', pgm + 'res.msg[' + i + '].receiver_sha256 = ' + res.msg[i].receiver_sha256);
                         if (watch_receiver_sha256.indexOf(res.msg[i].receiver_sha256) == -1) {
                             // not listening for this sha256 address
-                            res.msg.splice(i,1) ;
                             continue ;
                         }
                         if (ignore_zeronet_msg_id.indexOf(res.msg[i].message_sha256) != -1) {
                             // message already received
-                            res.msg.splice(i,1) ;
                             continue ;
                         }
                         // debug('file_done', pgm + 'receive message ' + JSON.stringify(res.msg[i]));
@@ -2188,22 +2189,9 @@ angular.module('MoneyNetwork')
                         res.msg[i].auth_address = auth_address ; // used if create new unknown contacts
                         // debug('file_done', pgm + 'unique_id = ' + unique_id);
 
-                        if (process_incoming_message(res.msg[i], unique_id)) {
-                            contacts_updated = true ;
-                            res.msg.splice(i,1);
-                        }
+                        if (process_incoming_message(res.msg[i], unique_id)) contacts_updated = true ;
                     } // for i (res.msg)
                     // console.log(pgm + 'res.msg.length after = ' + res.msg.length) ;
-
-                    // there should not be any unprocessed messages except messages with unknown contacts here
-                    if ((res.msg.length > 0) && (res.msg.length != new_unknown_contacts.length)) {
-                        if (res.msg.length == 1) {
-                            debug('file_done', pgm + filename + ': 1 message could not be processed');
-                        }
-                        else {
-                            debug('file_done', pgm + filename + ': ' + res.msg.length + ' messages could not be processed');
-                        }
-                    }
 
                     // any receipts to sent?
                     if (new_outgoing_receipts.length > 0) {
@@ -2253,12 +2241,10 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'contact.search = ' + JSON.stringify(contact.search)) ;
                         // contact.search = [{"tag":"Last updated","value":1477408336.515066,"privacy":"Search","row":1},{"tag":"Name","value":"test5","privacy":"Search","row":2}]
                         // Update Last updated in search array
-                        for (j=0 ; j<contact.search.length ; j++) {
-                            if (typeof contact.search[j].value != 'number') continue ;
-                            if (last_updated > contact.search[j].value) {
-                                contact.search[j].value = last_updated ;
-                                contacts_updated = true ;
-                            }
+                        var old_last_updated = get_last_online(contact) || 0 ;
+                        if (last_updated > old_last_updated) {
+                            set_last_online(contact, last_updated) ;
+                            contacts_updated = true ;
                         }
                     } // for i (contacts)
 
@@ -2716,10 +2702,7 @@ angular.module('MoneyNetwork')
             unix_timestamp = false ;
             if (user_setup.contact_sort== 'Last updated') {
                 unix_timestamp = true ;
-                for (i=0 ; i<contact.search.length ; i++) {
-                    row = contact.search[i] ;
-                    if (typeof row.value == 'number') sort = -row.value
-                }
+                sort = -get_last_online(contact) ;
             }
             if (user_setup.contact_sort== 'User name') {
                 sort = user_name ;
@@ -2843,7 +2826,7 @@ angular.module('MoneyNetwork')
         function notification_if_old_contact (contact) {
             // find last updated for this contact
             var last_updated, last_updated2, i, j, newer_contacts, contact2 ;
-            for (i=0 ; i<contact.search.length ; i++) if (typeof contact.search[i].value == 'number') last_updated = contact.search[i].value ;
+            last_updated = get_last_online(contact) ;
             // console.log(pgm + 'last_updated = ' + last_updated + ', contact = ' + JSON.stringify(contact)) ;
 
             // check last updated for contacts with identical cert_user_id or pubkey
@@ -2852,8 +2835,7 @@ angular.module('MoneyNetwork')
                 contact2 = ls_contacts[i] ;
                 if ((contact2.cert_user_id != contact.cert_user_id) && (contact2.pubkey != contact.pubkey)) continue ;
                 if (contact2.unique_id == contact.unique_id) continue ;
-                last_updated2 = null ;
-                for (j=0 ; j<contact2.search.length ; j++) if (typeof contact2.search[j].value == 'number') last_updated2 = contact2.search[j].value ;
+                last_updated2 = get_last_online(contact2) ;
                 // console.log(pgm + 'last_updated2 = ' + last_updated2 + ', contact2 = ' + JSON.stringify(contact2));
                 if (last_updated2 > last_updated) newer_contacts.push(contact2);
             } // for i (self.contacts)
@@ -2867,7 +2849,7 @@ angular.module('MoneyNetwork')
                     ((newer_contacts.length > 1) ? 's' : '') + '.';
                 for (i=0 ; i<newer_contacts.length ; i++) {
                     contact2 = newer_contacts[i] ;
-                    for (j=0 ; j<contact2.search.length ; j++) if (typeof contact2.search[j].value == 'number') last_updated2 = contact2.search[j].value ;
+                    last_updated2 = get_last_online(contact2) ;
                     msg += '<br>' + (i+1) + ' : Last updated ' + date(last_updated2*1000, 'short') + '. ';
                     msg += 'Identical ' + ((contact.cert_user_id == contact2.cert_user_id) ? 'zeronet user' : 'browser public key') + '.' ;
                 }

@@ -93,25 +93,43 @@ var MoneyNetworkHelper = (function () {
         return public_avatars ;
     }
 
+    // return Last online from contact search array. Only value with typeof = number
+    function get_last_online (contact) {
+        if (!contact.search) contact.search = [] ;
+        for (var i=0 ; i<contact.search.length ; i++) {
+            if (typeof contact.search[i].value == 'number') return contact.search[i].value ;
+        }
+        return null ;
+    }
+
+    function set_last_online (contact, last_online) {
+        if (!contact.search) contact.search = [] ;
+        for (var i=0 ; i<contact.search.length ; i++) {
+            if (typeof contact.search[i].value == 'number') {
+                contact.search[i].value = last_online ;
+                return
+            }
+        }
+        contact.search.push({
+            tag: 'Last updated',
+            value: last_online,
+            privacy: 'Search',
+            row: contact.search.length+1
+        }) ;
+    }
+
     // update last updated for group chat pseudo contacts
     // return true if any contacts have been updated
     function ls_update_group_last_updated (ls_contacts, ls_contacts_hash) {
         var pgm = module + '.ls_update_group_last_updated: ' ;
-        var i, contact, old_last_updated, found_last_updated, j, new_last_updated, unique_id, participant, k, timestamp ;
+        var i, contact, old_last_online, found_last_updated, j, new_last_online, unique_id, participant, k, timestamp ;
         var ls_updated = false ;
         for (i=0 ; i<ls_contacts.length ; i++) {
             contact = ls_contacts[i] ;
             if (contact.type != 'group') continue ;
             if (!contact.search) contact.search = [] ;
-            old_last_updated = 0 ;
-            found_last_updated = -1 ;
-            for (j=0 ; j<contact.search.length ; j++) {
-                if (typeof contact.search[j].value == 'number') {
-                    old_last_updated = contact.search[j].value ;
-                    found_last_updated = j ;
-                }
-            }
-            new_last_updated = old_last_updated ;
+            old_last_online = get_last_online(contact) || 0 ;
+            new_last_online = old_last_online ;
             for (j=0 ; j<contact.participants.length ; j++) {
                 unique_id = contact.participants[j] ;
                 participant = ls_contacts_hash[unique_id] ;
@@ -119,26 +137,11 @@ var MoneyNetworkHelper = (function () {
                     console.log(pgm + 'warning. group chat participant with unique id ' + unique_id + ' does not exists') ;
                     continue ;
                 }
-                if (!participant.search) participant.search = [] ;
-                for (k=0 ; k<participant.search.length ; k++) {
-                    timestamp = participant.search[k].value
-                    if ((typeof timestamp == 'number') && (timestamp > new_last_updated)) new_last_updated = timestamp ;
-                }
+                timestamp = get_last_online(participant) ;
+                if (timestamp && (timestamp > new_last_online)) new_last_online = timestamp ;
             } // for j (participants)
-            if (old_last_updated == new_last_updated) continue ;
-            ls_updated = true ;
-            // add/update Last updated timestamp to pseudo group chat contact
-            if (found_last_updated == -1) {
-                contact.search.push({
-                    tag: 'Last updated',
-                    value: new_last_updated,
-                    privacy: 'Search',
-                    row: contact.search.length-1
-                });
-            }
-            else {
-                contact.search[found_last_updated].value = new_last_updated ;
-            }
+            if (old_last_online == new_last_online) continue ;
+            set_last_online(contact, new_last_online) ;
         } // for i (contacts)
         return ls_updated ;
     } // ls_update_group_last_updated
@@ -1192,6 +1195,8 @@ var MoneyNetworkHelper = (function () {
     return {
         // local storage helpers
         get_public_avatars: get_public_avatars,
+        get_last_online: get_last_online,
+        set_last_online: set_last_online,
         ls_update_group_last_updated: ls_update_group_last_updated,
         z_contact_search: z_contact_search,
         getItem: getItem,

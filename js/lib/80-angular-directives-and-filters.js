@@ -515,8 +515,7 @@ angular.module('MoneyNetwork')
         // short format for unix timestamp used in chat
         return function (contact) {
             var pgm = 'formatSearchValue: ' ;
-            var timestamp ;
-            for (var i=0 ; i<contact.search.length ; i++) if (typeof contact.search[i].value == 'number') timestamp = contact.search[i].value ;
+            var timestamp = MoneyNetworkHelper.get_last_online(contact);
             return shortChatTime(timestamp*1000) ;
         } ;
         // end formatSearchTitle filter

@@ -78,11 +78,8 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<self.group_chat_contacts.length ; i++) {
                     participant = self.group_chat_contacts[i] ;
                     group_chat_contact_unique_ids.push(participant.unique_id) ;
-                    for (j=0 ; j<participant.search.length ; j++) {
-                        timestamp = participant.search[j] ;
-                        if (typeof timestamp != 'number') continue ;
-                        if (timestamp > last_updated) last_updated = timestamp ;
-                    } // for j (search)
+                    timestamp = MoneyNetworkHelper.get_last_updated(participant) ;
+                    if (timestamp > last_updated) last_updated = timestamp ;
                 } // for i (participants)
                 group_chat_contact_unique_ids.sort() ;
                 // console.log(pgm + 'group_chat_contact_unique_ids = ' + JSON.stringify(group_chat_contact_unique_ids)) ;
