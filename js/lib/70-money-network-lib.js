@@ -111,7 +111,7 @@ var MoneyNetworkHelper = (function () {
             }
         }
         contact.search.push({
-            tag: 'Last updated',
+            tag: 'Last online',
             value: last_online,
             privacy: 'Search',
             row: contact.search.length+1
@@ -342,7 +342,7 @@ var MoneyNetworkHelper = (function () {
                             pubkey: res[i].other_pubkey,
                             guest: res[i].other_guest,
                             avatar: res[i].other_files_avatar || res[i].other_users_avatar,
-                            search: [{ tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
+                            search: [{ tag: 'Last online', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
                         };
                     }
                     res_hash[unique_id].search.push({
@@ -448,7 +448,7 @@ var MoneyNetworkHelper = (function () {
                 }
                 // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
 
-                // update Last updated for pseudo group chat contacts.
+                // update Last online for pseudo group chat contacts.
                 ls_update_group_last_updated(ls_contacts, ls_contacts_hash) ;
 
                 // check avatars. All contacts must have a avatar

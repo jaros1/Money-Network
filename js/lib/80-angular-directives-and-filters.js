@@ -242,7 +242,6 @@ angular.module('MoneyNetwork')
         // short format for unix timestamp used in chat
         return function (row) {
             var pgm = 'formatSearchValue: ' ;
-            if (row.tag != 'Last updated') return row.value ;
             if (typeof row.value != 'number') return row.value ;
             return shortChatTime(row.value*1000) ;
         } ;
@@ -254,7 +253,6 @@ angular.module('MoneyNetwork')
         // short format for unix timestamp used in chat
         return function (row) {
             var pgm = 'formatSearchValue: ' ;
-            if (row.tag != 'Last updated') return row.value ;
             if (typeof row.value != 'number') return row.value ;
             return date(row.value*1000, 'short') ;
         } ;

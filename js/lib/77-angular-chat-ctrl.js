@@ -78,7 +78,7 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<self.group_chat_contacts.length ; i++) {
                     participant = self.group_chat_contacts[i] ;
                     group_chat_contact_unique_ids.push(participant.unique_id) ;
-                    timestamp = MoneyNetworkHelper.get_last_updated(participant) ;
+                    timestamp = MoneyNetworkHelper.get_last_online(participant) ;
                     if (timestamp > last_updated) last_updated = timestamp ;
                 } // for i (participants)
                 group_chat_contact_unique_ids.sort() ;
@@ -533,27 +533,75 @@ angular.module('MoneyNetwork')
             // filter and order by used in ng-repeat messages filter
             self.chat_filter = function (message, index, messages) {
                 var pgm = controller + '.chat_filter: ';
-                var match ;
-                if (message.message.deleted_at) match = false ;
+                var match, reason, image, i, unique_id, participant, remote_msg_seq, message2 ;
+                image = message.message.message.image? true : false ;
+                if (message.message.deleted_at) {
+                    match = false ;
+                    reason = 1 ;
+                }
                 else if (!self.contact) {
                     // show chat for all contacts. Use green/red filter in top of page
-                    match = (self.setup.contact_filters[message.contact.type] == 'green');
+                    if (message.contact.type == 'group') {
+                        reason = 2.1 ;
+                        match = false ;
+                        // no group filter. check participants in group chat
+                        for (i=0 ; i<message.contact.participants.length ; i++) {
+                            unique_id = message.contact.participants[i] ;
+                            participant = contacts_hash[unique_id] ;
+                            if (!participant) continue ;
+                            if (self.setup.contact_filters[participant.type] == 'green') {
+                                match = true ;
+                                break ;
+                            }
+                        } // for i (participants)
+                    }
+                    else {
+                        match = (self.setup.contact_filters[message.contact.type] == 'green');
+                        reason = 2.2 ;
+                    }
                 }
                 else if (self.contact.unique_id == message.contact.unique_id) {
                     // show chat for one contact or one group chat contact
                     match = true ;
+                    reason = 3 ;
                 }
                 else if (self.contact.type == 'group') {
                     // group chat contact: show "Started group chat" messages to participants in group chat
                     // console.log(pgm + 'self.contact.password = ' + self.contact.password) ;
                     // console.log(pgm + 'message.message.message.msgtype = ' + message.message.message.msgtype) ;
-                    match = ((message.message.message.msgtype == 'group chat') && (message.message.message.password == self.contact.password)) ;
+                    reason = 4.2 ;
+                    if (message.message.message.msgtype == 'received') {
+                        // receipt for image. Check if image was send in a group chat message
+                        remote_msg_seq = message.message.message.remote_msg_seq;
+                        for (i = 0; i < messages.length; i++) if (messages[i].message.local_msg_seq == remote_msg_seq) {
+                            message2 = messages[i];
+                            // debug('chat_filter', pgm + 'remote_msg_seq = ' + remote_msg_seq + ', message2.message = ' + JSON.stringify(message2.message));
+                            break;
+                        }
+                        if (message2) {
+                            // image belongs to this group chat?
+                            reason = 4.1 ;
+                            match = (self.contact.unique_id == message2.contact.unique_id) ;
+                        }
+                        else {
+                            // image must have been deleted
+                            reason = 4.2 ;
+                            match = false ;
+                        }
+                    }
+                    else {
+                        // group chat started message
+                        reason = 4.3 ;
+                        match = ((message.message.message.msgtype == 'group chat') && (message.message.message.password == self.contact.password)) ;
+                    }
                 }
                 else {
                     // normal contact: show group chat involving this contact.
                     match = ((message.contact.type == 'group') && (message.contact.participants.indexOf(self.contact.unique_id) != -1)) ;
+                    reason = 5 ;
                 }
-                debug('chat_filter', 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder + ', match = ' + match);
+                debug('chat_filter', pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder + ', match = ' + match + ', reason = ' + reason + ', image = ' + image);
+                // if ([200, 201, 202].indexOf(message.message.local_msg_seq) != -1) debug('chat_filter', pgm + 'message.message = ' + JSON.stringify(message.message)) ;
                 return match;
             }; // chat_filter
 
