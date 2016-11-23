@@ -1017,25 +1017,31 @@ angular.module('MoneyNetwork')
                     var auth_address, unique_id, found_user_seq, found_pubkey, found_last_updated ;
                     // delete contact helper. keep or delete contact without public key?
                     var delete_contact = function (contact, i) {
-                        var msg = 'Public key was not found for contact with auth_address ' + contact.auth_address + ' and unique id ' + contact.unique_id ;
+                        var alias, index ;
+                        if (contact.alias) alias = contact.alias ;
+                        else {
+                            index = contact.cert_user_id.indexOf('@') ;
+                            alias = contact.cert_user_id.substr(0, index) ;
+                        }
+                        var msg = 'Public key was not found for ' + alias ;
                         var last_updated, j, no_msg ;
                         for (j=0 ; j<contact.search.length ; j++) {
                             if (typeof contact.search[j].value == 'number') last_updated = contact.search[j].value ;
                         }
                         if (last_updated) msg += '. Last updated ' + date(last_updated*1000, 'short') ;
-                        if (contact.type == 'new') {
+                        if (['new', 'guest'].indexOf(contact.type) != -1) {
                             no_msg = 0 ;
                             for (j=0 ; j<contact.messages.length ; j++) {
-                                if (!contact.contact.messages[j].deleted_at) no_msg++ ;
+                                if (!contact.messages[j].deleted_at) no_msg++ ;
                             }
                         }
-                        if ((contact.type == 'ignore') || ((contact.type == 'new') && (no_msg == 0))) {
+                        if ((contact.type == 'ignore') || ((['new', 'guest'].indexOf(contact.type) != -1) && (no_msg == 0))) {
                             msg += '. Contact was deleted' ;
                             ls_contacts.splice(i,1);
                             delete ls_contacts_hash[contact.unique_id];
                         }
-                        else msg += '. Contact was not deleted' ;
-                        console.log(pgm + msg);
+                        else msg += '. Contact with ' + no_msg + ' chat message(s) was not deleted' ;
+                        debug('no_pubkey', pgm + msg);
                     }; // delete_contact
                     for (i=ls_contacts.length-1 ; i>=0 ; i--) {
                         contact = ls_contacts[i] ;
@@ -1567,6 +1573,9 @@ angular.module('MoneyNetwork')
                 else console.log(pgm + 'could not find group chat contact with unique id ' + group_chat_unique_id) ;
                 if (!group_chat_contact) {
                     // create pseudo chat group contact without password. password will be added when sending first chat message in this group
+                    var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
+                    index = Math.floor(Math.random() * public_avatars.length);
+                    var avatar = public_avatars[index] ;
                     group_chat_contact = {
                         unique_id: group_chat_unique_id,
                         cert_user_id: group_chat_unique_id.substr(0,13) + '@moneynetwork',
@@ -1574,7 +1583,8 @@ angular.module('MoneyNetwork')
                         password: decrypted_message.password,
                         participants: [],
                         search: [],
-                        messages: []
+                        messages: [],
+                        avatar: avatar
                     };
                     for (i=0 ; i<group_chat_unique_ids.length ; i++) {
                         if (group_chat_unique_ids[i] == my_unique_id) continue ;

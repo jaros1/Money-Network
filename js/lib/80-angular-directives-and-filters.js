@@ -261,13 +261,15 @@ angular.module('MoneyNetwork')
         // end formatSearchTitle filter
     }])
 
-    .filter('formatChatMessage', [function () {
-        // return part of cert_user_id before @
+    .filter('formatChatMessage', ['MoneyNetworkService', function (moneyNetworkService) {
+        // format ingoing or outgoing chat message
+        var ls_contacts = moneyNetworkService.ls_get_contacts() ;
+        var ls_contacts_hash = moneyNetworkService.ls_get_contacts_hash() ;
         return function (message) {
             // find receiver
             var pgm = 'formatChatMessage: ' ;
             // console.log(pgm + 'message = ' + JSON.stringify(message));
-            var setup, alias, greeting, i ;
+            var setup, alias, greeting, i, group_contact, unique_id ;
             if (message.message.folder == 'inbox') {
                 // inbox: received message from contact
                 setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
@@ -340,7 +342,45 @@ angular.module('MoneyNetwork')
                     // received receipt for chat message with image from contact
                 }
             }
-            if (msgtype == 'group chat') return greeting + '. Started group chat' ;
+            if (msgtype == 'group chat') {
+                // sent or received group chat password
+                // format. Started group chat with you, me [...] and xxxx
+                // limit_other_participants = 3. Just write number of other participants
+                group_contact = null ;
+                for (i=0 ; i<ls_contacts.length ; i++) {
+                    if (ls_contacts[i].password == message.message.message.password) {
+                        group_contact = ls_contacts[i] ;
+                        break ;
+                    }
+                } // for i (contacts)
+                str = greeting + '. Started group chat' ;
+                if (!group_contact) {
+                    // must be an error or group contact has been deleted ....
+                    return str ;
+                }
+                str += ' with you, me' ;
+                // console.log(pgm + 'group_contact = ' + JSON.stringify(group_contact));
+                var other_participants = [], participant ;
+                var limit_other_participants = 3 ;
+                for (i=0 ; i<group_contact.participants.length ; i++) {
+                    unique_id = group_contact.participants[i] ;
+                    if (unique_id != message.contact.unique_id) other_participants.push(unique_id) ;
+                }
+                // console.log(pgm + 'other_participants = ' + JSON.stringify(other_participants));
+                if (other_participants.length > limit_other_participants) {
+                    // too many participants for a full list
+                    return str + ' and ' + other_participants.length + ' other participants' ;
+                }
+                for (i=0 ; i<other_participants.length ; i++) {
+                    if (i==other_participants.length-1) str += ' and ' ;
+                    else str += ', ' ;
+                    unique_id = other_participants[i] ;
+                    participant = ls_contacts_hash[unique_id] ;
+                    if (participant.alias) str += participant.alias ;
+                    else str += participant.unique_id.substr(0,13) ;
+                }
+                return str ;
+            }
             // other "unknown" messages. Just return JSON dump
             str = JSON.stringify(message.message) ;
             str = str.split('":"').join('": "');
