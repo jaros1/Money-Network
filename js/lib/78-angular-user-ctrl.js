@@ -76,10 +76,12 @@ angular.module('MoneyNetwork')
         };
 
         // manage user avatar
+        self.avatar = moneyNetworkService.get_avatar();
+        // console.log(controller + ': self.avatar (1) = ' + JSON.stringify(self.avatar)) ;
         moneyNetworkService.load_avatar(function () {
+            // console.log(controller + ': self.avatar (2) = ' + JSON.stringify(self.avatar)) ;
             $scope.$apply() ;
         }) ;
-        self.avatar = moneyNetworkService.get_avatar();
         // upload_avatar callback function. handle upload
         function handleAvatarUpload (image_base64uri) {
             var ext, image_base64, user_path;

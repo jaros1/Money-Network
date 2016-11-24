@@ -856,11 +856,14 @@ angular.module('MoneyNetwork')
             ls_contacts_index.cert_user_id[contact.cert_user_id] = contact ;
         }
         function remove_contact (index) {
-            var contact = ls_contacts[index] ;
+            var contact, password_sha256 ;
+            contact = ls_contacts[index] ;
             ls_contacts.splice(index,1) ;
             delete ls_contacts_index.unique_id[contact.unique_id] ;
-            if (contact.password) password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
-            if (password_sha256) ls_contacts_index.password_sha256[password_sha256] ;
+            if (contact.password) {
+                password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
+                ls_contacts_index.password_sha256[password_sha256] ;
+            }
             delete ls_contacts_index.cert_user_id[contact.cert_user_id] ;
         }
         function update_contact_add_password (contact) { // added password to existing pseudo group chat contact
@@ -2443,33 +2446,35 @@ angular.module('MoneyNetwork')
                 else res = { files: {} } ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 if (res.files["avatar.jpg"]) {
+                    // console.log(pgm + 'found avatar.jpg') ;
                     avatar.src = user_path + '/avatar.jpg';
                     avatar.loaded = true ;
                     refresh_angular() ;
                     return ;
                 }
                 if (res.files["avatar.png"]) {
+                    // console.log(pgm + 'found avatar.png') ;
                     avatar.src = user_path + '/avatar.png';
                     avatar.loaded = true ;
                     refresh_angular() ;
                     return ;
                 }
                 // 2) no user avatar found - use previous selection in localStorage
-                var setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
-                var ls_avatar = setup.avatar ;
+                var ls_avatar = user_setup.avatar ;
                 if (ls_avatar) {
+                    // console.log(pgm + 'found from user_setup. ls_avatar = ' + JSON.stringify(ls_avatar)) ;
                     avatar.src = "public/images/avatar" + ls_avatar;
                     avatar.loaded = true ;
                     refresh_angular() ;
                     return ;
                 }
                 // 3) assign random avatar from public/images/avatar
+                // console.log(pgm + 'assigned random avatar') ;
                 var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
                 var index = Math.floor(Math.random() * public_avatars.length);
                 avatar.src = "public/images/avatar" + public_avatars[index] ;
                 avatar.loaded = true ;
-                setup.avatar = public_avatars[index] ;
-                MoneyNetworkHelper.setItem('setup', JSON.stringify(setup)) ;
+                user_setup.avatar = public_avatars[index] ;
                 MoneyNetworkHelper.ls_save();
             });
         } // load_avatar
@@ -2757,7 +2762,6 @@ angular.module('MoneyNetwork')
         var user_id = 0 ;
         function client_login(password, create_new_account, guest) {
             // login or register. update sessionStorage and localStorage
-            var setup, avatar, alias, setup_updated ;
             if (!create_new_account) guest = false ;
             user_id = MoneyNetworkHelper.client_login(password, create_new_account);
             if (user_id) {
@@ -2767,32 +2771,6 @@ angular.module('MoneyNetwork')
                 load_user_info(guest) ;
                 ls_load_contacts() ;
                 local_storage_read_messages() ;
-
-                // avatar and alias to setup */
-                if (!MoneyNetworkHelper.getItem('setup')) MoneyNetworkHelper.setItem('setup', JSON.stringify({})) ;
-                setup_updated = false ;
-                setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
-                avatar = MoneyNetworkHelper.getItem('avatar') ;
-                if (avatar) {
-                    MoneyNetworkHelper.removeItem('avatar');
-                    setup.avatar = avatar ;
-                    setup_updated = true ;
-                }
-                alias = MoneyNetworkHelper.getItem('alias');
-                if (alias) {
-                    MoneyNetworkHelper.removeItem('alias');
-                    setup.alias = alias ;
-                    setup_updated = true ;
-                }
-                if (!setup.alias) {
-                    setup.alias = 'Me';
-                    setup_updated = true;
-                }
-                if (setup_updated) {
-                    MoneyNetworkHelper.setItem('setup', JSON.stringify(setup));
-                    MoneyNetworkHelper.ls_save() ;
-                }
-
                 i_am_online() ;
                 load_user_contents_max_size() ;
                 cleanup_inactive_users() ;
@@ -3170,7 +3148,7 @@ angular.module('MoneyNetwork')
         // user setup: avatar, alias, contact sort, contact filters, chat sort, spam filters
         var user_setup = {} ;
         function load_user_setup () {
-            var new_user_setup, key, guest_id, guest ;
+            var new_user_setup, key, guest_id, guest, alias ;
             new_user_setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
             for (key in user_setup) delete user_setup[key] ;
             for (key in new_user_setup) user_setup[key] = new_user_setup[key] ;
@@ -3193,6 +3171,8 @@ angular.module('MoneyNetwork')
             if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = !guest ;
             if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
             if (!user_setup.hasOwnProperty('two_panel_chat')) user_setup.two_panel_chat = true ;
+            if (!user_setup.alias) user_setup.alias = 'Me';
+
         }
         function save_user_setup () {
             MoneyNetworkHelper.setItem('setup', JSON.stringify(user_setup));
