@@ -1871,10 +1871,11 @@ angular.module('MoneyNetwork')
             if ((decrypted_message.msgtype == 'chat msg') && decrypted_message.old_local_msg_seq) {
                 // received update to an old chat message
                 // todo: must also implement delete chat message
-                var old_message_envelope, old_message, index ;
+                var contact2, old_message_envelope, old_message, index ;
+                contact2 = res.key ? contact : group_chat_contact ; // check old contact or old group contact messages?
                 index = -1 ;
-                for (i=0 ; i<contact.messages.length ; i++) {
-                    old_message_envelope = contact.messages[i] ;
+                for (i=0 ; i<contact2.messages.length ; i++) {
+                    old_message_envelope = contact2.messages[i] ;
                     old_message = old_message_envelope.message ;
                     if (old_message_envelope.folder != 'inbox') continue ;
                     if (old_message.msgtype != 'chat msg') continue ;
@@ -1890,7 +1891,7 @@ angular.module('MoneyNetwork')
                     if (decrypted_message.image == 'x') delete decrypted_message.image ; // x = image unchanged but old message was not found
                 }
                 else {
-                    old_message_envelope = contact.messages[index];
+                    old_message_envelope = contact2.messages[index];
                     old_message_envelope.deleted_at = message.sent_at ;
                     debug('inbox && unencrypted', pgm + 'received OK update to an old chat msg') ;
                     debug('inbox && unencrypted', pgm + 'new decrypted_message = ' + JSON.stringify(decrypted_message));
@@ -1920,9 +1921,45 @@ angular.module('MoneyNetwork')
                 // received receipt for outgoing chat message with image.
                 // remove chat message from ZeroNet to free disk space
                 // must update zeronet
+                // a) receipt from a normal chat. just update data.json. cleanup code in z_update_data_json
+                // b) receipt from a group chat. should cleanup data.json when all receipts have been received.
+                //    see chatCtrl.chat_filter
                 debug('inbox && unencrypted', pgm + 'received receipt from contact. expects old outgoing chat message with image to be removed from data.json and zeronet_msg_size to be updated') ;
-                debug('inbox && unencrypted', pgm + 'contact.messages = ' + JSON.stringify(contact.messages));
-                new_incoming_receipts++ ;
+                debug('inbox && unencrypted', pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
+                // debug('inbox && unencrypted', pgm + 'contact.messages = ' + JSON.stringify(contact.messages));
+                // check if image chat was a group chat image message
+                var remote_msg_seq = decrypted_message.remote_msg_seq ;
+                // debug('inbox && unencrypted', pgm + 'check if image chat was a group chat image message. remote_msg_seq = ' + remote_msg_seq);
+                var message2 ;
+                for (i = 0; i < js_messages.length; i++) if (js_messages[i].message.local_msg_seq == remote_msg_seq) {
+                    message2 = js_messages[i];
+                    // debug('chat_filter', pgm + 'remote_msg_seq = ' + remote_msg_seq + ', message2.message = ' + JSON.stringify(message2.message));
+                    break;
+                }
+                // debug('inbox && unencrypted', pgm + 'message2 = ' + JSON.stringify(message2));
+                if (message2 && (message2.contact.type == 'group')) {
+                    debug('inbox && unencrypted', pgm + 'image receipt was from a group chat message');
+                    var image_receipts = message2.message.image_receipts ;
+                    // debug('inbox && unencrypted', pgm + 'image_receipts = ' + JSON.stringify(image_receipts));
+                    // debug('inbox && unencrypted', pgm + 'group contact = ' + JSON.stringify(message2.contact)) ;
+                    // debug('inbox && unencrypted', pgm + 'participants = ' + JSON.stringify(message2.contact.participants)) ;
+                    // debug('inbox && unencrypted', pgm + 'contact = ' + JSON.stringify(contact)) ;
+                    // debug('inbox && unencrypted', pgm + 'contact.unique_id = ' + JSON.stringify(contact.unique_id)) ;
+                    index = image_receipts.indexOf(contact.unique_id) ;
+                    if (index != -1) image_receipts.splice(index, 1) ;
+                    console.log(pgm + 'image_receipts.length = ' + image_receipts.length + ', message2.contact.participants.length = ' + message2.contact.participants.length ) ;
+                    if (image_receipts.length == 0) {
+                        // image received be all participant in group chat - ready for data.json cleanup
+                        console.log(pgm + 'image received be all participant in group chat - ready for data.json cleanup') ;
+                        new_incoming_receipts++
+                    }
+                }
+                else {
+                    debug('inbox && unencrypted', pgm + 'image receipt was from a normal chat message');
+                    // ready for data.json cleanup
+                    new_incoming_receipts++ ;
+                }
+
             }
 
             if (decrypted_message.msgtype == 'verified') {
@@ -2204,6 +2241,7 @@ angular.module('MoneyNetwork')
                     message = contact.messages[j];
                     if (message.folder == 'inbox') {
                         // ignore already read messages
+                        // if (message.message.msgtype == 'received') console.log(pgm + 'message = ' + JSON.stringify(message)) ;
                         if (message.zeronet_msg_id) {
                             if (ignore_zeronet_msg_id.indexOf(message.zeronet_msg_id) != -1) {
                                 // problem with doublet contacts. maybe also problem with doublet messages ....
@@ -2232,6 +2270,7 @@ angular.module('MoneyNetwork')
 
             // console.log(pgm + 'watch_receiver_sha256 = ' + JSON.stringify(watch_receiversender_sha256)) ;
             // console.log(pgm + 'ignore_zeronet_msg_id = ' + JSON.stringify(ignore_zeronet_msg_id)) ;
+
             // fetch relevant messages
             // 1) listening to relevant receiver_sha256 addresses
             var query =

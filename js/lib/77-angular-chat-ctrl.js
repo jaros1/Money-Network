@@ -758,6 +758,17 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                 // send message
                 moneyNetworkService.add_msg(contact, message);
+                if (self.group_chat && self.new_chat_src) {
+                    // sending a group chat message with an image.
+                    // expects one receipt for each participant in chat group
+                    // remove message from zeronet when all image receipts have been received
+                    // see process_incoming_message - post processing of image receipts
+                    // see z_update_data_json - data.json too big - xxxxxx
+                    var message_with_envelope = contact.messages[contact.messages.length-1] ;
+                    message_with_envelope.image_receipts = JSON.parse(JSON.stringify(contact.participants))  ;
+                    debug('outbox && unencrypted', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                }
+
                 // ready for next chat msg
                 self.new_chat_msg = '';
                 self.new_chat_src = null ;
