@@ -812,9 +812,8 @@ angular.module('MoneyNetwork')
 
             $timeout(function () {
                 MoneyNetworkHelper.ls_save() ;
-                // console.log(pgm + 'z_update_data_json + z_contact_search not working 100% correct. There goes a few seconds between updating data.json with new search words and updating the sqlite database');
                 z_update_data_json(pgm) ;
-                MoneyNetworkHelper.z_contact_search(ls_contacts, ls_contacts_unique_id_hash, function () {$rootScope.$apply()}, null) ;
+                z_contact_search(function () {$rootScope.$apply()}, null) ;
             })
         } // save_user_info
 
@@ -831,11 +830,54 @@ angular.module('MoneyNetwork')
             show_privacy_title = show ;
         }
 
+        // array and indexes with contacts from localStorage
+        // array for angularUI. hash with indexes for fast access
         var ls_contacts = [] ; // array with contacts
-        var ls_contacts_unique_id_hash = {} ; // hash - from unique_id to contact
+        var ls_contacts_index = { //
+            unique_id: {}, // from unique_id to contract
+            password_sha256: {} // from group password sha256 value to group contact
+        } ;
+
+        // contacts array helper functions
+        function clear_contacts () {
+            var key ;
+            ls_contacts.splice(0, ls_contacts.length) ;
+            for (key in ls_contacts_index.unique_id) delete ls_contacts_index.unique_id[key] ;
+            for (key in ls_contacts_index.password_sha256) delete ls_contacts_index.password_sha256[key] ;
+        }
+        function add_contact (contact) {
+            var password_sha256 ;
+            ls_contacts.push(contact) ;
+            ls_contacts_index.unique_id[contact.unique_id] = contact ;
+            if (contact.password) password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
+            if (password_sha256) ls_contacts_index.password_sha256[password_sha256] = contact ;
+        }
+        function remove_contact (index) {
+            var contact = ls_contacts[index] ;
+            ls_contacts.splice(index,1) ;
+            delete ls_contacts_index.unique_id[contact.unique_id] ;
+            if (contact.password) password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
+            if (password_sha256) ls_contacts_index.password_sha256[password_sha256] ;
+        }
+        function update_contact_add_password (contact) { // added password to existing pseudo group chat contact
+            var pgm = service + '.update_contact_add_password: ' ;
+            var password_sha256 ;
+            password_sha256 = CryptoJS.SHA256(contact.password).toString();
+            ls_contacts_index.password_sha256[password_sha256] = contact ;
+            watch_receiver_sha256.push(password_sha256) ;
+            console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
+        }
+        function get_contact_by_unique_id (unique_id) {
+            return ls_contacts_index.unique_id[unique_id] ;
+        }
+        function get_contact_by_password_sha256 (password_sha256) {
+            return ls_contacts_index.password_sha256[password_sha256] ;
+        }
+
         var js_messages = [] ; // array with { :contact => contact, :message => message } - one row for each message
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
 
+        // wrappers
         function get_last_online (contact) {
             return MoneyNetworkHelper.get_last_online(contact) ;
         }
@@ -850,8 +892,7 @@ angular.module('MoneyNetwork')
             contacts_str = MoneyNetworkHelper.getItem('contacts') ;
             if (contacts_str) new_contacts = JSON.parse(contacts_str);
             else new_contacts = [] ;
-            ls_contacts.splice(0, ls_contacts.length) ;
-            for (unique_id in ls_contacts_unique_id_hash) delete ls_contacts_unique_id_hash[unique_id] ;
+            clear_contacts() ;
             js_messages.splice(0, js_messages.length) ;
             var i, j, contacts_updated = false ;
             var unique_id_to_index = {}, old_contact ;
@@ -870,17 +911,14 @@ angular.module('MoneyNetwork')
                     }
                 }
                 // fix error with doublet contacts in local storage. merge contacts
-                old_contact = ls_contacts_unique_id_hash[unique_id] ;
+                old_contact = get_contact_by_unique_id(unique_id) ;
                 if (old_contact) {
                     console.log(pgm + 'warning: doublet contact with unique id ' + unique_id + ' in localStorage') ;
                     // skip new doublet contact but keep messages
                     for (j=0 ; j<new_contact.messages.length ; j++) old_contact.messages.push(new_contact.messages[j]) ;
                     contacts_updated = true ;
                 }
-                else {
-                    ls_contacts.push(new_contact) ;
-                    ls_contacts_unique_id_hash[unique_id] = new_contact ;
-                }
+                else add_contact(new_contact) ;
 
                 // delete array deleted_messages. now using sender_sha256 hash to keep track of sender_sha256 messages
                 if (new_contact.deleted_messages) delete new_contact.deleted_messages ;
@@ -1046,8 +1084,7 @@ angular.module('MoneyNetwork')
                         }
                         if ((contact.type == 'ignore') || ((['new', 'guest'].indexOf(contact.type) != -1) && (no_msg == 0))) {
                             msg += '. Contact was deleted' ;
-                            ls_contacts.splice(i,1);
-                            delete ls_contacts_unique_id_hash[contact.unique_id];
+                            remove_contact(i) ;
                         }
                         else msg += '. Contact with ' + no_msg + ' chat message(s) was not deleted' ;
                         debug('no_pubkey', pgm + msg);
@@ -1083,7 +1120,7 @@ angular.module('MoneyNetwork')
                     } // for i
 
                     // update last updated for group chat pseudo contacts
-                    MoneyNetworkHelper.ls_update_group_last_updated(ls_contacts, ls_contacts_unique_id_hash) ;
+                    ls_update_group_last_updated() ;
 
                 }
 
@@ -1183,9 +1220,6 @@ angular.module('MoneyNetwork')
         function get_contacts() {
             return ls_contacts ;
         }
-        function get_contacts_unique_id_hash() {
-            return ls_contacts_unique_id_hash ;
-        }
         function ls_save_contacts (update_zeronet) {
             var pgm = service + '.ls_save_contacts: ' ;
 
@@ -1250,6 +1284,353 @@ angular.module('MoneyNetwork')
             }
         } // ls_save_contacts
 
+
+
+        // update last updated for group chat pseudo contacts
+        // return true if any contacts have been updated
+        function ls_update_group_last_updated () {
+            var pgm = service + '.ls_update_group_last_updated: ' ;
+            var i, contact, old_last_online, found_last_updated, j, new_last_online, unique_id, participant, k, timestamp ;
+            var ls_updated = false ;
+            for (i=0 ; i<ls_contacts.length ; i++) {
+                contact = ls_contacts[i] ;
+                if (contact.type != 'group') continue ;
+                if (!contact.search) contact.search = [] ;
+                old_last_online = get_last_online(contact) || 0 ;
+                new_last_online = old_last_online ;
+                for (j=0 ; j<contact.participants.length ; j++) {
+                    unique_id = contact.participants[j] ;
+                    participant = get_contact_by_unique_id(unique_id) ;
+                    if (!participant) {
+                        console.log(pgm + 'warning. group chat participant with unique id ' + unique_id + ' does not exists') ;
+                        continue ;
+                    }
+                    timestamp = get_last_online(participant) ;
+                    if (timestamp && (timestamp > new_last_online)) new_last_online = timestamp ;
+                } // for j (participants)
+                if (old_last_online == new_last_online) continue ;
+                set_last_online(contact, new_last_online) ;
+            } // for i (contacts)
+            return ls_updated ;
+        } // ls_update_group_last_updated
+
+
+        // search ZeroNet for new potential contacts with matching search words
+        // add/remove new potential contacts to/from local_storage_contacts array (MoneyNetworkService and ContactCtrl)
+        // params:
+        // - ls_contacts (array) and ls_contacts_hash (hash) from MoneyNetworkService. required
+        // - fnc_when_ready - callback - execute when local_storage_contacts are updated
+        // - auth_address - mini update only - update only info for this auth_address - optional
+        function z_contact_search (fnc_when_ready, auth_address) {
+            var pgm = service + '.z_contact_search: ' ;
+
+            // any relevant user info? User must have tags with privacy Search or Hidden to search network
+            var my_search_query, i, row, error ;
+            my_search_query = '' ;
+            for (i=0 ; i<user_info.length ; i++) {
+                row = user_info[i] ;
+                if (['Search','Hidden'].indexOf(row.privacy) == -1) continue ;
+                row.tag = row.tag.replace(/'/g, "''") ; // escape ' in strings
+                row.value = row.value.replace(/'/g, "''") ; // escape ' in strings
+                if (my_search_query) my_search_query = my_search_query + " union all" ;
+                my_search_query = my_search_query + " select '" + row.tag + "' as tag, '" + row.value + "' as value"
+            }
+            if (!my_search_query) {
+                error = "No search tags in user profile. Please add some tags with privacy Search and/or Hidden and try again" ;
+                console.log(pgm + error);
+                // console.log(pgm + 'user_info = ' + JSON.stringify(user_info));
+                // console.log(pgm + 'my_search_query = ' + my_search_query);
+                // ZeroFrame.cmd("wrapperNotification", ["info", error, 3000]);
+                return ;
+            }
+
+            // check ZeroFrame status. Is ZeroNet ready?
+            if (!auth_address) {
+                // only relevant in startup sequence. not relevant for file_done_events
+                var retry_z_contact_search = function () {
+                    z_contact_search (fnc_when_ready, null);
+                };
+                if (!ZeroFrame.site_info) {
+                    // ZeroFrame websocket connection not ready. Try again in 5 seconds
+                    console.log(pgm + 'ZeroFrame.site_info is not ready. Try again in 5 seconds. Refresh page (F5) if problem continues') ;
+                    setTimeout(retry_z_contact_search,5000); // outside angularjS - using normal setTimeout function
+                    return ;
+                }
+                if (!ZeroFrame.site_info.cert_user_id) {
+                    console.log(pgm + 'Auto login process to ZeroNet not finished. Maybe user forgot to select cert. Checking for new contacts in 1 minute');
+                    ZeroFrame.cmd("certSelect", [["moneynetwork"]]);
+                    setTimeout(retry_z_contact_search,60000);// outside angularjS - using normal setTimeout function
+                    return ;
+                }
+            }
+
+            // check avatars. All contacts must have a valid avatar
+            var contact ;
+            for (i=0 ; i<ls_contacts.length ; i++) {
+                contact = ls_contacts[i] ;
+                if (!contact.avatar) debug('invalid_avatars', pgm + 'Error. Pre search check. Contact without avatar ' + JSON.stringify(contact)) ;
+            } // for i
+
+            // find json_id and user_seq for current user.
+            // must use search words for current user
+            // must not return search hits for current user
+            var directory = 'users/' + ZeroFrame.site_info.auth_address ;
+            var pubkey = MoneyNetworkHelper.getItem('pubkey') ;
+            var query = "select json.json_id, users.user_seq from json, users " +
+                "where json.directory = '" + directory + "' " +
+                "and users.json_id = json.json_id " +
+                "and users.pubkey = '" + pubkey + "'";
+            debug('select', pgm + 'query 1 = ' + query) ;
+            ZeroFrame.cmd("dbQuery", [query], function(res) {
+                var pgm = service + '.z_contact_search dbQuery callback 1: ' ;
+                var error ;
+                // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                if (res.error) {
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
+                    console.log(pgm + "Search for new contacts failed: " + res.error) ;
+                    console.log(pgm + 'query = ' + query) ;
+                    return ;
+                }
+                if (res.length == 0) {
+                    // current user not in data.users array. must be a new user (first save). Try again in 3 seconds
+                    console.log(pgm + 'current user not in data.users array. must be a new user (first save). Try again in 3 seconds');
+                    // ZeroFrame.cmd("wrapperNotification", ["info", "Updating ZeroNet database. Please wait", 3000]);
+                    setTimeout(retry_z_contact_search,3000) ;
+                    return ;
+                }
+                var json_id = res[0].json_id ;
+                var user_seq = res[0].user_seq ;
+                // console.log(pgm + 'json_id = ' + json_id + ', user_seq = ' + user_seq) ;
+                // find other clients with matching search words using sqlite like operator
+                // Search: tags shared public on ZeroNet. Hidden: tags stored only in localStorage
+
+                // new contacts query without modified timestamp from content.json (keyvalue)
+                if (auth_address) debug('select', pgm + 'auth_address = ' + auth_address) ;
+                var contacts_query =
+                    "select" +
+                    "  users.user_seq, users.pubkey, users.avatar as users_avatar, users.guest," +
+                    "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
+                    "  content_json.json_id as content_json_id," +
+                    "  keyvalue.value as cert_user_id," +
+                    "  (select substr(files.filename,8)" +
+                    "   from files, json as avatar_json " +
+                    "   where files.filename like 'avatar%'" +
+                    "   and avatar_json.json_id = files.json_id" +
+                    "   and avatar_json.directory = data_json.directory) as files_avatar," +
+                    "  status.timestamp " +
+                    "from users, json as data_json, json as content_json, keyvalue, json as status_json, status " ;
+                if (auth_address) {
+                    // file done event. check only info from this auth_address
+                    contacts_query += "where data_json.directory = 'users/" + auth_address + "' " ;
+                }
+                else {
+                    // page startup. general contacts search. all contacts except current user
+                    contacts_query += "where users.pubkey <> '" + pubkey + "' " ;
+                }
+                contacts_query +=
+                    "and data_json.json_id = users.json_id " +
+                    "and content_json.directory = data_json.directory " +
+                    "and content_json.file_name = 'content.json' " +
+                    "and keyvalue.json_id = content_json.json_id " +
+                    "and keyvalue.key = 'cert_user_id' " +
+                    "and status_json.directory = data_json.directory " +
+                    "and status_json.file_name = 'status.json' " +
+                    "and status.json_id = status_json.json_id " +
+                    "and status.user_seq = users.user_seq" ;
+                debug('select', pgm + 'contacts_query = ' + contacts_query) ;
+
+                // find contacts with matching tags
+                query =
+                    "select" +
+                    "  my_search.tag as my_tag, my_search.value as my_value," +
+                    "  contacts.pubkey as other_pubkey, contacts.guest as other_guest, contacts.auth_address as other_auth_address," +
+                    "  contacts.cert_user_id as other_cert_user_id," +
+                    "  contacts.timestamp as other_user_timestamp," +
+                    "  search.tag as other_tag, search.value as other_value, " +
+                    "  contacts.users_avatar as other_users_avatar, contacts.files_avatar as other_files_avatar " +
+                    "from (" + my_search_query + ") as my_search, " +
+                    "     search, (" + contacts_query + ") as contacts " +
+                    "where (my_search.tag like search.tag and search.tag <> '%' and my_search.value like search.value and search.value <> '%' " +
+                    "or search.tag like my_search.tag and search.value like my_search.value) " +
+                    "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " +
+                    "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq" ;
+                debug('select', pgm + 'query = ' + query) ;
+
+                ZeroFrame.cmd("dbQuery", [query], function(res) {
+                    var pgm = service + '.z_contact_search dbQuery callback 2: ';
+                    // console.log(pgm + 'res = ' + JSON.stringify(res));
+                    if (res.error) {
+                        ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
+                        console.log(pgm + "Search for new contacts failed: " + res.error) ;
+                        console.log(pgm + 'query = ' + query) ;
+                        return;
+                    }
+                    if (res.length == 0) {
+                        // current user not in data.users array. must be an user without any search words in user_info
+                        ZeroFrame.cmd("wrapperNotification", ["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
+                        return;
+                    }
+
+                    // error elsewhere in code but remove invalid avatars from query result
+                    var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
+                    for (i=0 ; i<res.length ; i++) {
+                        if (!res[i].other_users_avatar) continue ;
+                        if (res[i].other_users_avatar == 'jpg') continue ;
+                        if (res[i].other_users_avatar == 'png') continue ;
+                        if (public_avatars.indexOf(res[i].other_users_avatar) != -1) continue ;
+                        debug('invalid_avatars', 'Error. Removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
+                        delete res[i].other_users_avatar ;
+                    } // for i
+
+                    var unique_id, unique_ids = [], res_hash = {}, ignore, j, last_updated ;
+                    for (var i=0 ; i<res.length ; i++) {
+                        // check contacts on ignore list
+                        ignore=false ;
+                        for (j=0 ; (!ignore && (j<ls_contacts.length)) ; j++) {
+                            if (ls_contacts[j].type != 'ignore') continue ;
+                            if (res[i].auth_address == ls_contacts[j].auth_address) ignore=true ;
+                            if (res[i].pubkey == ls_contacts[j].pubkey) ignore=true ;
+                        }
+                        if (ignore) continue ;
+                        // add search match to res_hash
+                        // unique id is sha256 signatur of ZeroNet authorization and localStorage authorization
+                        // note many to many relation in the authorization and contact ids:
+                        // - a ZeroNet id can have been used on multiple devices (localStorage) when communicating with ZeroNet
+                        // - public/private localStorage key pairs can have been exported to other devices
+                        unique_id = CryptoJS.SHA256(res[i].other_auth_address + '/'  + res[i].other_pubkey).toString();
+                        res[i].other_unique_id = unique_id;
+                        last_updated = Math.round(res[i].other_user_timestamp / 1000) ;
+                        if (unique_ids.indexOf(res[i].other_unique_id)==-1) unique_ids.push(res[i].other_unique_id) ;
+                        if (!res_hash.hasOwnProperty(unique_id)) {
+                            res_hash[unique_id] = {
+                                type: 'new',
+                                auth_address: res[i].other_auth_address,
+                                cert_user_id: res[i].other_cert_user_id,
+                                pubkey: res[i].other_pubkey,
+                                guest: res[i].other_guest,
+                                avatar: res[i].other_files_avatar || res[i].other_users_avatar,
+                                search: [{ tag: 'Last online', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
+                            };
+                        }
+                        res_hash[unique_id].search.push({
+                            tag: res[i].other_tag,
+                            value: res[i].other_value,
+                            privacy: 'Search',
+                            row: res_hash[unique_id].search.length+1
+                            // issue #10# - debug info
+                            //debug_info: {
+                            //    my_tag: res[i].my_tag,
+                            //    my_value: res[i].my_value,
+                            //    other_tag: res[i].other_tag,
+                            //    other_value: res[i].other_value
+                            //}
+                        }) ;
+                    }
+
+                    // insert/update/delete new contacts in local_storage_contacts (type=new)
+                    // console.log(pgm + 'issue #10#: user_info = ' + JSON.stringify(user_info));
+                    var contact, found_unique_ids = [], debug_info ;
+                    for (i=ls_contacts.length-1 ; i>= 0 ; i--) {
+                        contact = ls_contacts[i] ;
+                        if (auth_address && (contact.auth_address != auth_address)) continue ; // checking only one auth_address
+                        unique_id = contact.unique_id ;
+                        if (!res_hash.hasOwnProperty(unique_id)) {
+                            // contact no longer matching search words. Delete contact if no messages
+                            if ((contact.type == 'new') && (contact.messages.length == 0)) {
+                                remove_contact(i);
+                            }
+                            continue ;
+                        }
+                        found_unique_ids.push(unique_id) ;
+
+                        // issue #10 - problem with wildcards in search. debug info.
+                        // keep debug code. maybe also other problems with wildcards
+                        //debug_info = [] ;
+                        //for (j=0 ; j<res_hash[unique_id].search.length ; j++) {
+                        //    debug_info.push({
+                        //        row: res_hash[unique_id].search[j].row,
+                        //        my_tag: res_hash[unique_id].search[j].debug_info.my_tag,
+                        //        my_value: res_hash[unique_id].search[j].debug_info.my_value,
+                        //        other_tag: res_hash[unique_id].search[j].debug_info.other_tag,
+                        //        other_value: res_hash[unique_id].search[j].debug_info.other_value
+                        //    }) ;
+                        //}
+                        // console.log(pgm + 'issue #10: contact.search.debug_info = ' + JSON.stringify(debug_info)) ;
+
+                        // update contact with new search words
+                        contact.cert_user_id = res_hash[unique_id].cert_user_id ;
+                        if (res_hash[unique_id].guest && (contact.type == 'new')) {
+                            contact.type = 'guest';
+                            contact.guest = true ;
+                        }
+                        if (res_hash[unique_id].avatar) contact.avatar = res_hash[unique_id].avatar ;
+                        for (j=contact.search.length-1 ; j >= 0 ; j--) {
+                            if (contact.search[j].privacy == 'Search') {
+                                contact.search.splice(j,1);
+                            }
+                        }
+                        for (j=0 ; j<res_hash[unique_id].search.length ; j++) {
+                            contact.search.push(res_hash[unique_id].search[j]) ;
+                        }
+                        for (j=0 ; j<contact.search.length ; j++) contact.search[j].row = j+1 ;
+
+                        // if (contact.type == 'guest') console.log(pgm + 'guest = ' + JSON.stringify(contact));
+                    } // i
+
+                    var new_contact ;
+                    for (unique_id in res_hash) {
+                        if (found_unique_ids.indexOf(unique_id) != -1) continue ;
+                        // insert new contact
+                        new_contact = {
+                            unique_id: unique_id,
+                            type: (res_hash[unique_id].guest ? 'guest' : 'new'),
+                            guest: (res_hash[unique_id].guest ? true : null),
+                            auth_address: res_hash[unique_id].auth_address,
+                            cert_user_id: res_hash[unique_id].cert_user_id,
+                            avatar: res_hash[unique_id].avatar,
+                            pubkey: res_hash[unique_id].pubkey,
+                            search: res_hash[unique_id].search,
+                            messages: [],
+                            outbox_sender_sha256: {},
+                            inbox_zeronet_msg_id: [],
+                            inbox_last_sender_sha256: null,
+                            inbox_last_sender_sha256_at: 0
+                        };
+
+                        if (!new_contact.avatar) {
+                            // assign random avatar
+                            if (public_avatars.length == 0) {
+                                console.log(pgm + 'Error. Public avatars array are not ready. Using 1.png as avatar') ;
+                                new_contact.avatar = '1.png' ;
+                            }
+                            else {
+                                var index = Math.floor(Math.random() * public_avatars.length);
+                                new_contact.avatar = public_avatars[index] ;
+                            }
+                        }
+                        add_contact(new_contact) ;
+                        // console.log(pgm + 'new_contact = ' + JSON.stringify(new_contact));
+                    }
+                    // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
+
+                    // update Last online for pseudo group chat contacts.
+                    ls_update_group_last_updated() ;
+
+                    // check avatars. All contacts must have a avatar
+                    for (i=0 ; i<ls_contacts.length ; i++) {
+                        contact = ls_contacts[i] ;
+                        if (!contact.avatar) console.log(pgm + 'Error. Post search check. Contact without avatar ' + JSON.stringify(contact)) ;
+                    }
+
+                    // refresh angularJS UI
+                    fnc_when_ready() ;
+
+                });
+            }) ;
+
+        } // z_contact_search
+
+
         // return chat friendly message array
         function js_get_messages() {
             return js_messages ;
@@ -1269,6 +1650,7 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.setItem('msg_seq', JSON.stringify(local_msg_seq)) ;
             return local_msg_seq ;
         } // next_local_msg_seq
+
 
         // array with messages with unknown unique id for contact.
         // must create contact and process message once more
@@ -1304,14 +1686,7 @@ angular.module('MoneyNetwork')
                 // no RSA key - must be a group chat message.
 
                 // find pseudo group chat contact from receiver_sha256 address
-                group_chat_contact = null ;
-                for (i=0 ; i<ls_contacts.length ; i++) {
-                    if (ls_contacts[i].type != 'group') continue ;
-                    if (CryptoJS.SHA256(ls_contacts[i].password).toString() == res.receiver_sha256) {
-                        group_chat_contact = ls_contacts[i] ;
-                        break ;
-                    }
-                }
+                group_chat_contact = get_contact_by_password_sha256(res.receiver_sha256) ;
                 if (!group_chat_contact) {
                     console.log(pgm + 'could not find any pseudo group chat contact with correct password') ;
                     return false ;
@@ -1331,7 +1706,7 @@ angular.module('MoneyNetwork')
             decrypted_message = JSON.parse(decrypted_message_str);
 
             // who is message from? find contact from unique_id.
-            contact = ls_contacts_unique_id_hash[unique_id] ;
+            contact = get_contact_by_unique_id(unique_id) ;
             if (!contact) {
                 // buffer incoming message, create contact and try once more
                 new_unknown_contacts.push({
@@ -1560,7 +1935,7 @@ angular.module('MoneyNetwork')
                 // check for unknown participants
                 var participant, j ;
                 for (i=0 ; i<decrypted_message.participants.length ; i++) {
-                    participant = ls_contacts_unique_id_hash[decrypted_message.participants[i]] ;
+                    participant = get_contact_by_unique_id(decrypted_message.participants[i]) ;
                     if (!participant) console.log(pgm + 'warning. could not find participant with unique id ' + decrypted_message.participants[i]) ;
                 } // for i
                 // find unique id for pseudo group chat contact.
@@ -1575,7 +1950,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'group_chat_unique_ids = ' + JSON.stringify(group_chat_unique_ids)) ;
                 var group_chat_unique_id = CryptoJS.SHA256(JSON.stringify(group_chat_unique_ids)).toString() ;
                 console.log(pgm + 'group_chat_unique_id = ' + group_chat_unique_id) ;
-                var group_chat_contact = ls_contacts_unique_id_hash[group_chat_unique_id];
+                var group_chat_contact = get_contact_by_unique_id(group_chat_unique_id);
                 if (group_chat_contact) console.log(pgm + 'group_chat_contact = ' + JSON.stringify(group_chat_contact)) ;
                 else console.log(pgm + 'could not find group chat contact with unique id ' + group_chat_unique_id) ;
                 if (!group_chat_contact) {
@@ -1597,8 +1972,7 @@ angular.module('MoneyNetwork')
                         if (group_chat_unique_ids[i] == my_unique_id) continue ;
                         group_chat_contact.participants.push(group_chat_unique_ids[i]) ;
                     }
-                    ls_contacts.push(group_chat_contact) ;
-                    ls_contacts_unique_id_hash[group_chat_unique_id] = group_chat_contact ;
+                    add_contact(group_chat_contact) ;
                     watch_receiver_sha256.push(CryptoJS.SHA256(decrypted_message.password).toString()) ;
                 }
             }
@@ -1752,8 +2126,7 @@ angular.module('MoneyNetwork')
                             new_contact.avatar = public_avatars[index] ;
                         }
                     }
-                    ls_contacts.push(new_contact);
-                    ls_contacts_unique_id_hash[unique_id] = new_contact ;
+                    add_contact(new_contact) ;
                     // console.log(pgm + 'new_contact = ' + JSON.stringify(new_contact));
 
                     // process message(s)
@@ -1807,7 +2180,10 @@ angular.module('MoneyNetwork')
             watch_receiver_sha256.push(my_pubkey_sha256);
             for (i = 0; i < ls_contacts.length; i++) {
                 contact = ls_contacts[i];
-                if (contact.type == 'group') watch_receiver_sha256.push(CryptoJS.SHA256(contact.password).toString()) ;
+                if (contact.type == 'group') {
+                    console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
+                    watch_receiver_sha256.push(CryptoJS.SHA256(contact.password).toString()) ;
+                }
                 if (!contact.messages) contact.messages = [];
                 for (j = 0; j < contact.messages.length; j++) {
                     message = contact.messages[j];
@@ -2163,7 +2539,7 @@ angular.module('MoneyNetwork')
 
                     // check users/search arrays. create/update/delete contact and search information for this auth_address only
                     auth_address = filename.split('/')[2] ;
-                    MoneyNetworkHelper.z_contact_search (ls_contacts, ls_contacts_unique_id_hash, function () { $rootScope.$apply()}, auth_address) ;
+                    z_contact_search (function () { $rootScope.$apply()}, auth_address) ;
                     // debug('file_done', pgm + 'called z_contact_search for auth_address ' + auth_address) ;
 
                     // check msg array
@@ -2430,8 +2806,7 @@ angular.module('MoneyNetwork')
             // clear all JS work data in MoneyNetworkService
             for (var key in zeronet_file_locked) delete zeronet_file_locked[key];
             user_info.splice(0, user_info.length);
-            ls_contacts.splice(0, ls_contacts.length);
-            for (key in ls_contacts_unique_id_hash) delete ls_contacts_unique_id_hash[key] ;
+            clear_contacts() ;
             js_messages.splice(0, js_messages.length);
             watch_receiver_sha256.splice(0, watch_receiver_sha256.length);
             ignore_zeronet_msg_id.splice(0, ignore_zeronet_msg_id.length);
@@ -2656,8 +3031,7 @@ angular.module('MoneyNetwork')
                     if (!confirm) return false ;
                     for (i=ls_contacts.length-1 ; i >= 0 ; i-- ) {
                         if (ls_contacts[i].unique_id == contact.unique_id) {
-                            ls_contacts.splice(i,1);
-                            delete ls_contacts_unique_id_hash[contact.unique_id] ;
+                            remove_contact(i);
                         }
                     }
                     ls_save_contacts(false) ;
@@ -2883,7 +3257,11 @@ angular.module('MoneyNetwork')
             get_user_info: get_user_info,
             save_user_info: save_user_info,
             get_contacts: get_contacts,
-            get_contacts_unique_id_hash: get_contacts_unique_id_hash,
+            get_contact_by_unique_id: get_contact_by_unique_id,
+            get_contact_by_password_sha256: get_contact_by_password_sha256,
+            add_contact: add_contact,
+            update_contact_add_password: update_contact_add_password,
+            z_contact_search: z_contact_search,
             ls_save_contacts: ls_save_contacts,
             js_get_messages: js_get_messages,
             get_ls_msg_factor: get_ls_msg_factor,

@@ -13,11 +13,8 @@ angular.module('MoneyNetwork')
 
         // search for new ZeroNet contacts and add avatars for new contacts
         var contacts = moneyNetworkService.get_contacts(); // array with contacts from localStorage
-        var contacts_hash = moneyNetworkService.get_contacts_unique_id_hash() ;
         self.zeronet_search_contacts = function () {
-            MoneyNetworkHelper.z_contact_search(contacts, contacts_hash, function () {
-                $scope.$apply()
-            }, null);
+            moneyNetworkService.z_contact_search(function () { $scope.$apply() }, null);
         };
         self.zeronet_search_contacts();
 

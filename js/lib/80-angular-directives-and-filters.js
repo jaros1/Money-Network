@@ -262,7 +262,6 @@ angular.module('MoneyNetwork')
     .filter('formatChatMessage', ['MoneyNetworkService', function (moneyNetworkService) {
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
-        var contacts_unique_id_hash = moneyNetworkService.get_contacts_unique_id_hash() ; // and with unique_id index
         return function (message) {
             // find receiver
             var pgm = 'formatChatMessage: ' ;
@@ -373,7 +372,7 @@ angular.module('MoneyNetwork')
                     if (i==other_participants.length-1) str += ' and ' ;
                     else str += ', ' ;
                     unique_id = other_participants[i] ;
-                    participant = contacts_unique_id_hash[unique_id] ;
+                    participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
                     if (participant.alias) str += participant.alias ;
                     else str += participant.unique_id.substr(0,13) ;
                 }

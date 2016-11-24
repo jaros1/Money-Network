@@ -107,8 +107,7 @@ angular.module('MoneyNetwork')
                     contact.participants.push(self.group_chat_contacts[i].unique_id) ;
                 } // for i
                 if (last_updated) contact.search.push({tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1}) ;
-                self.contacts.push(contact);
-                contacts_hash[group_unique_id] = contact ;
+                moneyNetworkService.add_contact(contact) ;
                 moneyNetworkService.ls_save_contacts(false);
                 return contact ;
             } // find_group_chat_contact
@@ -215,10 +214,9 @@ angular.module('MoneyNetwork')
             // get contacts. two different types of contacts:
             // a) contacts stored in localStorage
             self.contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
-            var contacts_hash = moneyNetworkService.get_contacts_unique_id_hash() ;
             // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
             self.zeronet_search_contacts = function() {
-                MoneyNetworkHelper.z_contact_search(self.contacts, contacts_hash, function () {$scope.$apply()}, null) ;
+                moneyNetworkService.z_contact_search(function () {$scope.$apply()}, null) ;
             };
             self.zeronet_search_contacts() ;
 
@@ -547,7 +545,7 @@ angular.module('MoneyNetwork')
                         // no group filter. check participants in group chat
                         for (i=0 ; i<message.contact.participants.length ; i++) {
                             unique_id = message.contact.participants[i] ;
-                            participant = contacts_hash[unique_id] ;
+                            participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
                             if (!participant) continue ;
                             if (self.setup.contact_filters[participant.type] == 'green') {
                                 match = true ;
@@ -706,9 +704,9 @@ angular.module('MoneyNetwork')
                         my_pubkey = MoneyNetworkHelper.getItem('pubkey');
                         my_auth_address = ZeroFrame.site_info.auth_address ;
                         my_unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
-
                         password = MoneyNetworkHelper.generate_random_password(200);
                         contact.password = password;
+                        moneyNetworkService.update_contact_add_password(contact) ; // update password_sha256 index
                         // send password to participants
                         for (i = 0; i < self.group_chat_contacts.length; i++) {
                             message = {
