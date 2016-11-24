@@ -814,7 +814,7 @@ angular.module('MoneyNetwork')
                 MoneyNetworkHelper.ls_save() ;
                 // console.log(pgm + 'z_update_data_json + z_contact_search not working 100% correct. There goes a few seconds between updating data.json with new search words and updating the sqlite database');
                 z_update_data_json(pgm) ;
-                MoneyNetworkHelper.z_contact_search(ls_contacts, ls_contacts_hash, function () {$rootScope.$apply()}, null) ;
+                MoneyNetworkHelper.z_contact_search(ls_contacts, ls_contacts_unique_id_hash, function () {$rootScope.$apply()}, null) ;
             })
         } // save_user_info
 
@@ -832,7 +832,7 @@ angular.module('MoneyNetwork')
         }
 
         var ls_contacts = [] ; // array with contacts
-        var ls_contacts_hash = {} ; // hash - from unique_id to contact
+        var ls_contacts_unique_id_hash = {} ; // hash - from unique_id to contact
         var js_messages = [] ; // array with { :contact => contact, :message => message } - one row for each message
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
 
@@ -851,7 +851,7 @@ angular.module('MoneyNetwork')
             if (contacts_str) new_contacts = JSON.parse(contacts_str);
             else new_contacts = [] ;
             ls_contacts.splice(0, ls_contacts.length) ;
-            for (unique_id in ls_contacts_hash) delete ls_contacts_hash[unique_id] ;
+            for (unique_id in ls_contacts_unique_id_hash) delete ls_contacts_unique_id_hash[unique_id] ;
             js_messages.splice(0, js_messages.length) ;
             var i, j, contacts_updated = false ;
             var unique_id_to_index = {}, old_contact ;
@@ -870,7 +870,7 @@ angular.module('MoneyNetwork')
                     }
                 }
                 // fix error with doublet contacts in local storage. merge contacts
-                old_contact = ls_contacts_hash[unique_id] ;
+                old_contact = ls_contacts_unique_id_hash[unique_id] ;
                 if (old_contact) {
                     console.log(pgm + 'warning: doublet contact with unique id ' + unique_id + ' in localStorage') ;
                     // skip new doublet contact but keep messages
@@ -879,7 +879,7 @@ angular.module('MoneyNetwork')
                 }
                 else {
                     ls_contacts.push(new_contact) ;
-                    ls_contacts_hash[unique_id] = new_contact ;
+                    ls_contacts_unique_id_hash[unique_id] = new_contact ;
                 }
 
                 // delete array deleted_messages. now using sender_sha256 hash to keep track of sender_sha256 messages
@@ -1047,7 +1047,7 @@ angular.module('MoneyNetwork')
                         if ((contact.type == 'ignore') || ((['new', 'guest'].indexOf(contact.type) != -1) && (no_msg == 0))) {
                             msg += '. Contact was deleted' ;
                             ls_contacts.splice(i,1);
-                            delete ls_contacts_hash[contact.unique_id];
+                            delete ls_contacts_unique_id_hash[contact.unique_id];
                         }
                         else msg += '. Contact with ' + no_msg + ' chat message(s) was not deleted' ;
                         debug('no_pubkey', pgm + msg);
@@ -1083,7 +1083,7 @@ angular.module('MoneyNetwork')
                     } // for i
 
                     // update last updated for group chat pseudo contacts
-                    MoneyNetworkHelper.ls_update_group_last_updated(ls_contacts, ls_contacts_hash) ;
+                    MoneyNetworkHelper.ls_update_group_last_updated(ls_contacts, ls_contacts_unique_id_hash) ;
 
                 }
 
@@ -1179,12 +1179,12 @@ angular.module('MoneyNetwork')
 
             }) ; // end dbQuery callback 1 (get public, user_seq and timestamp)
 
-        } // end local_storage_load_contacts
-        function ls_get_contacts() {
+        } // end ls_load_contacts
+        function get_contacts() {
             return ls_contacts ;
         }
-        function ls_get_contacts_hash() {
-            return ls_contacts_hash ;
+        function get_contacts_unique_id_hash() {
+            return ls_contacts_unique_id_hash ;
         }
         function ls_save_contacts (update_zeronet) {
             var pgm = service + '.ls_save_contacts: ' ;
@@ -1331,7 +1331,7 @@ angular.module('MoneyNetwork')
             decrypted_message = JSON.parse(decrypted_message_str);
 
             // who is message from? find contact from unique_id.
-            contact = ls_contacts_hash[unique_id] ;
+            contact = ls_contacts_unique_id_hash[unique_id] ;
             if (!contact) {
                 // buffer incoming message, create contact and try once more
                 new_unknown_contacts.push({
@@ -1560,7 +1560,7 @@ angular.module('MoneyNetwork')
                 // check for unknown participants
                 var participant, j ;
                 for (i=0 ; i<decrypted_message.participants.length ; i++) {
-                    participant = ls_contacts_hash[decrypted_message.participants[i]] ;
+                    participant = ls_contacts_unique_id_hash[decrypted_message.participants[i]] ;
                     if (!participant) console.log(pgm + 'warning. could not find participant with unique id ' + decrypted_message.participants[i]) ;
                 } // for i
                 // find unique id for pseudo group chat contact.
@@ -1575,7 +1575,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'group_chat_unique_ids = ' + JSON.stringify(group_chat_unique_ids)) ;
                 var group_chat_unique_id = CryptoJS.SHA256(JSON.stringify(group_chat_unique_ids)).toString() ;
                 console.log(pgm + 'group_chat_unique_id = ' + group_chat_unique_id) ;
-                var group_chat_contact = ls_contacts_hash[group_chat_unique_id];
+                var group_chat_contact = ls_contacts_unique_id_hash[group_chat_unique_id];
                 if (group_chat_contact) console.log(pgm + 'group_chat_contact = ' + JSON.stringify(group_chat_contact)) ;
                 else console.log(pgm + 'could not find group chat contact with unique id ' + group_chat_unique_id) ;
                 if (!group_chat_contact) {
@@ -1598,7 +1598,7 @@ angular.module('MoneyNetwork')
                         group_chat_contact.participants.push(group_chat_unique_ids[i]) ;
                     }
                     ls_contacts.push(group_chat_contact) ;
-                    ls_contacts_hash[group_chat_unique_id] = group_chat_contact ;
+                    ls_contacts_unique_id_hash[group_chat_unique_id] = group_chat_contact ;
                     watch_receiver_sha256.push(CryptoJS.SHA256(decrypted_message.password).toString()) ;
                 }
             }
@@ -1753,7 +1753,7 @@ angular.module('MoneyNetwork')
                         }
                     }
                     ls_contacts.push(new_contact);
-                    ls_contacts_hash[unique_id] = new_contact ;
+                    ls_contacts_unique_id_hash[unique_id] = new_contact ;
                     // console.log(pgm + 'new_contact = ' + JSON.stringify(new_contact));
 
                     // process message(s)
@@ -2163,7 +2163,7 @@ angular.module('MoneyNetwork')
 
                     // check users/search arrays. create/update/delete contact and search information for this auth_address only
                     auth_address = filename.split('/')[2] ;
-                    MoneyNetworkHelper.z_contact_search (ls_contacts, ls_contacts_hash, function () { $rootScope.$apply()}, auth_address) ;
+                    MoneyNetworkHelper.z_contact_search (ls_contacts, ls_contacts_unique_id_hash, function () { $rootScope.$apply()}, auth_address) ;
                     // debug('file_done', pgm + 'called z_contact_search for auth_address ' + auth_address) ;
 
                     // check msg array
@@ -2431,7 +2431,7 @@ angular.module('MoneyNetwork')
             for (var key in zeronet_file_locked) delete zeronet_file_locked[key];
             user_info.splice(0, user_info.length);
             ls_contacts.splice(0, ls_contacts.length);
-            for (key in ls_contacts_hash) delete ls_contacts_hash[key] ;
+            for (key in ls_contacts_unique_id_hash) delete ls_contacts_unique_id_hash[key] ;
             js_messages.splice(0, js_messages.length);
             watch_receiver_sha256.splice(0, watch_receiver_sha256.length);
             ignore_zeronet_msg_id.splice(0, ignore_zeronet_msg_id.length);
@@ -2657,7 +2657,7 @@ angular.module('MoneyNetwork')
                     for (i=ls_contacts.length-1 ; i >= 0 ; i-- ) {
                         if (ls_contacts[i].unique_id == contact.unique_id) {
                             ls_contacts.splice(i,1);
-                            delete ls_contacts_hash[contact.unique_id] ;
+                            delete ls_contacts_unique_id_hash[contact.unique_id] ;
                         }
                     }
                     ls_save_contacts(false) ;
@@ -2882,8 +2882,8 @@ angular.module('MoneyNetwork')
             load_user_info: load_user_info,
             get_user_info: get_user_info,
             save_user_info: save_user_info,
-            ls_get_contacts: ls_get_contacts,
-            ls_get_contacts_hash: ls_get_contacts_hash,
+            get_contacts: get_contacts,
+            get_contacts_unique_id_hash: get_contacts_unique_id_hash,
             ls_save_contacts: ls_save_contacts,
             js_get_messages: js_get_messages,
             get_ls_msg_factor: get_ls_msg_factor,

@@ -10,8 +10,8 @@ angular.module('MoneyNetwork')
 
         // get contacts. two different types of contacts:
         // a) contacts stored in localStorage
-        self.contacts = moneyNetworkService.ls_get_contacts() ; // array with contacts from localStorage
-        var contacts_hash = moneyNetworkService.ls_get_contacts_hash() ;
+        self.contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
+        var contacts_hash = moneyNetworkService.get_contacts_unique_id_hash() ;
         // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
         self.zeronet_search_contacts = function() {
             MoneyNetworkHelper.z_contact_search(self.contacts, contacts_hash, function () {$scope.$apply()}, null) ;

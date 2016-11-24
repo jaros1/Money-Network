@@ -261,8 +261,8 @@ angular.module('MoneyNetwork')
 
     .filter('formatChatMessage', ['MoneyNetworkService', function (moneyNetworkService) {
         // format ingoing or outgoing chat message
-        var ls_contacts = moneyNetworkService.ls_get_contacts() ;
-        var ls_contacts_hash = moneyNetworkService.ls_get_contacts_hash() ;
+        var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
+        var contacts_unique_id_hash = moneyNetworkService.get_contacts_unique_id_hash() ; // and with unique_id index
         return function (message) {
             // find receiver
             var pgm = 'formatChatMessage: ' ;
@@ -345,9 +345,9 @@ angular.module('MoneyNetwork')
                 // format. Started group chat with you, me [...] and xxxx
                 // limit_other_participants = 3. Just write number of other participants
                 group_contact = null ;
-                for (i=0 ; i<ls_contacts.length ; i++) {
-                    if (ls_contacts[i].password == message.message.message.password) {
-                        group_contact = ls_contacts[i] ;
+                for (i=0 ; i<contacts.length ; i++) {
+                    if (contacts[i].password == message.message.message.password) {
+                        group_contact = contacts[i] ;
                         break ;
                     }
                 } // for i (contacts)
@@ -373,7 +373,7 @@ angular.module('MoneyNetwork')
                     if (i==other_participants.length-1) str += ' and ' ;
                     else str += ', ' ;
                     unique_id = other_participants[i] ;
-                    participant = ls_contacts_hash[unique_id] ;
+                    participant = contacts_unique_id_hash[unique_id] ;
                     if (participant.alias) str += participant.alias ;
                     else str += participant.unique_id.substr(0,13) ;
                 }
@@ -498,7 +498,7 @@ angular.module('MoneyNetwork')
 
     .filter('hashkeyToContact', ['MoneyNetworkService', function (moneyNetworkService) {
         var pgm = 'hashkeyToContact filter: ';
-        var contacts = moneyNetworkService.ls_get_contacts() ;
+        var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
         return function (hashkey) {
             for (var i=0 ; i<contacts.length ; i++) {
                 if (contacts[i]["$$hashKey"] == hashkey) return contacts[i] ;
