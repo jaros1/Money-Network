@@ -267,9 +267,9 @@ angular.module('MoneyNetwork')
             var pgm = 'formatChatMessage: ' ;
             // console.log(pgm + 'message = ' + JSON.stringify(message));
             var setup, alias, greeting, i, group_contact, unique_id ;
+            setup = moneyNetworkService.get_user_setup() ;
             if (message.message.folder == 'inbox') {
                 // inbox: received message from contact
-                setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
                 alias = setup.alias;
                 greeting = 'Hi ' + alias ;
             }

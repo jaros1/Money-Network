@@ -1728,14 +1728,7 @@ angular.module('MoneyNetwork')
                 return false ;
             }
 
-            // todo: check spam filters block_guests and block_ignored from user setup
-            //setup = {
-            //    ...
-            //    "block_guests": false,
-            //    "block_ignored": false,
-            //    "block_guests_at": 1479033958082,
-            //    "block_ignored_at": 1479033949514
-            //};
+            // check spam filters block_guests and block_ignored from user setup
             if (contact.type == 'guest') {
                 if (user_setup.block_guests) {
                     // console.log(pgm + 'blocking quests and ignoring message from guest ' + JSON.stringify(contact));
@@ -1810,12 +1803,22 @@ angular.module('MoneyNetwork')
             }
 
             debug('inbox && unencrypted', pgm + 'new incoming message = ' + JSON.stringify(message));
-
-            contact.messages.push(message) ;
-            js_messages.push({
-                contact: contact,
-                message: message
-            });
+            if (res.key) {
+                // private person to person chat
+                contact.messages.push(message) ;
+                js_messages.push({
+                    contact: contact,
+                    message: message
+                });
+            }
+            else {
+                // group chat
+                group_chat_contact.messages.push(message) ;
+                js_messages.push({
+                    contact: group_chat_contact,
+                    message: message
+                });
+            }
 
             if (message.receiver_sha256) {
                 // this message is using a sender_sha256 address from a previous sent message (add contact, chat etc)

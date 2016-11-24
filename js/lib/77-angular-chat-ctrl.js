@@ -537,7 +537,7 @@ angular.module('MoneyNetwork')
                     match = false ;
                     reason = 1 ;
                 }
-                else if (!self.contact) {
+                else if (!self.contact && !self.group_chat) {
                     // show chat for all contacts. Use green/red filter in top of page
                     if (message.contact.type == 'group') {
                         reason = 2.1 ;
@@ -587,10 +587,16 @@ angular.module('MoneyNetwork')
                             match = false ;
                         }
                     }
-                    else {
+                    else if (message.message.message.msgtype == 'group chat') {
                         // group chat started message
                         reason = 4.3 ;
-                        match = ((message.message.message.msgtype == 'group chat') && (message.message.message.password == self.contact.password)) ;
+                        match = (message.message.message.password == self.contact.password) ;
+                    }
+                    else if (message.message.message.msgtype = 'chat msg') {
+                        // group chat message. receiver_sha256 = SHA256(group chat password?)
+                        // old errors. Messages should have been under 3 instead
+                        reason = 4.4 ;
+                        match = false ;
                     }
                 }
                 else {
