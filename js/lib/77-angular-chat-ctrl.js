@@ -370,6 +370,7 @@ angular.module('MoneyNetwork')
             var edit_alias_notifications = 1 ;
             self.edit_alias = function (contact) {
                 var pgm = controller + '.edit_alias: ', i, id ;
+                debug('edit_alias', pgm + 'contact = ' + JSON.stringify(contact));
                 if (contact) {
                     // left panel (network) edit contact alias
                     id = contact["$$hashKey"] + ":alias"
@@ -396,7 +397,7 @@ angular.module('MoneyNetwork')
             } ; // edit_alias
             self.cancel_edit_alias = function (contact) {
                 var pgm = controller + '.cancel_edit_alias: ' ;
-                console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                debug('edit_alias', pgm + 'contact = ' + JSON.stringify(contact));
                 if (!contact) contact = self.contact ; // right panel
                 delete contact.new_alias ;
                 delete contact.edit_alias ;
@@ -404,6 +405,7 @@ angular.module('MoneyNetwork')
             } ; // cancel_edit_alias
             self.save_user_info = function (contact) {
                 var pgm = controller + '.save_user_info: ';
+                debug('edit_alias', pgm + 'contact = ' + JSON.stringify(contact));
                 if (!contact) contact = self.contact ; // right panel
                 // update angular UI
                 contact.alias = contact.new_alias ;
@@ -538,7 +540,7 @@ angular.module('MoneyNetwork')
                     reason = 1 ;
                 }
                 else if (!self.contact && !self.group_chat) {
-                    // show chat for all contacts. Use green/red filter in top of page
+                    // no context - show chat for all contacts. Use green/red filter in top of page
                     if (message.contact.type == 'group') {
                         reason = 2.1 ;
                         match = false ;
