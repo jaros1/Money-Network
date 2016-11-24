@@ -835,7 +835,8 @@ angular.module('MoneyNetwork')
         var ls_contacts = [] ; // array with contacts
         var ls_contacts_index = { //
             unique_id: {}, // from unique_id to contract
-            password_sha256: {} // from group password sha256 value to group contact
+            password_sha256: {}, // from group password sha256 value to group contact
+            cert_user_id: {}, // from cert_user_id to contact
         } ;
 
         // contacts array helper functions
@@ -844,6 +845,7 @@ angular.module('MoneyNetwork')
             ls_contacts.splice(0, ls_contacts.length) ;
             for (key in ls_contacts_index.unique_id) delete ls_contacts_index.unique_id[key] ;
             for (key in ls_contacts_index.password_sha256) delete ls_contacts_index.password_sha256[key] ;
+            for (key in ls_contacts_index.cert_user_id) delete ls_contacts_index.cert_user_id[key] ;
         }
         function add_contact (contact) {
             var password_sha256 ;
@@ -851,6 +853,7 @@ angular.module('MoneyNetwork')
             ls_contacts_index.unique_id[contact.unique_id] = contact ;
             if (contact.password) password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
             if (password_sha256) ls_contacts_index.password_sha256[password_sha256] = contact ;
+            ls_contacts_index.cert_user_id[contact.cert_user_id] = contact ;
         }
         function remove_contact (index) {
             var contact = ls_contacts[index] ;
@@ -858,6 +861,7 @@ angular.module('MoneyNetwork')
             delete ls_contacts_index.unique_id[contact.unique_id] ;
             if (contact.password) password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
             if (password_sha256) ls_contacts_index.password_sha256[password_sha256] ;
+            delete ls_contacts_index.cert_user_id[contact.cert_user_id] ;
         }
         function update_contact_add_password (contact) { // added password to existing pseudo group chat contact
             var pgm = service + '.update_contact_add_password: ' ;
@@ -865,13 +869,16 @@ angular.module('MoneyNetwork')
             password_sha256 = CryptoJS.SHA256(contact.password).toString();
             ls_contacts_index.password_sha256[password_sha256] = contact ;
             watch_receiver_sha256.push(password_sha256) ;
-            console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
+            // console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
         }
         function get_contact_by_unique_id (unique_id) {
             return ls_contacts_index.unique_id[unique_id] ;
         }
         function get_contact_by_password_sha256 (password_sha256) {
             return ls_contacts_index.password_sha256[password_sha256] ;
+        }
+        function get_contact_by_cert_user_id (cert_user_id) {
+            return ls_contacts_index.cert_user_id[cert_user_id] ;
         }
 
         var js_messages = [] ; // array with { :contact => contact, :message => message } - one row for each message
@@ -902,6 +909,7 @@ angular.module('MoneyNetwork')
                 new_contact = new_contacts[i] ;
                 unique_id = new_contact.unique_id ;
                 if (!new_contact.messages) new_contact.messages = [] ;
+
                 // fix old spelling error. rename send_at to sent_at in messages
                 for (j=0 ; j<new_contact.messages.length ; j++) {
                     if (new_contact.messages[j].send_at) {
@@ -910,6 +918,10 @@ angular.module('MoneyNetwork')
                         contacts_updated = true ;
                     }
                 }
+
+                // group chat. add dummy cert_user_id
+                if ((new_contact.type == 'group') && !new_contact.cert_user_id) new_contact.cert_user_id = new_contact.unique_id.substr(0,13) + '@moneynetwork' ;
+
                 // fix error with doublet contacts in local storage. merge contacts
                 old_contact = get_contact_by_unique_id(unique_id) ;
                 if (old_contact) {
@@ -954,9 +966,6 @@ angular.module('MoneyNetwork')
 
                 // group chat. add empty search array
                 if (new_contact.type == 'group') new_contact.search = [] ;
-
-                // group chat. add dummy cert_user_id
-                if ((new_contact.type == 'group') && !new_contact.cert_user_id) new_contact.cert_user_id = new_contact.unique_id.substr(0,13) + '@moneynetwork' ;
 
                 // add "row" sequence to search array
                 // rename Last updated timestamp to Last online
@@ -2181,7 +2190,7 @@ angular.module('MoneyNetwork')
             for (i = 0; i < ls_contacts.length; i++) {
                 contact = ls_contacts[i];
                 if (contact.type == 'group') {
-                    console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
+                    // console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
                     watch_receiver_sha256.push(CryptoJS.SHA256(contact.password).toString()) ;
                 }
                 if (!contact.messages) contact.messages = [];
@@ -2497,39 +2506,32 @@ angular.module('MoneyNetwork')
                     else content_json_avatar = null ;
                     // check contacts
                     var contact, public_avatars, index, avatar_short_path ;
-                    contacts_updated = false ;
-                    for (i=0 ; i<ls_contacts.length ; i++) {
-                        contact = ls_contacts[i] ;
-                        if (contact.cert_user_id != res.cert_user_id) continue ;
-                        // console.log(pgm + 'content-json avatar = ' + content_json_avatar) ;
-                        // console.log(pgm + 'contact.avatar = ' + contact.avatar);
-                        if (contact.avatar == content_json_avatar) continue ;
-                        // avatar (maybe) updated
-                        if (content_json_avatar) {
-                            // not null avatar in content.json - uploaded avatar.
-                            contact.avatar = avatar_short_path ;
+                    contact = get_contact_by_cert_user_id(res.cert_user_id);
+                    if (!contact) return ;
+                    if (contact.avatar == content_json_avatar) return ;
+
+                    // avatar (maybe) updated
+                    if (content_json_avatar) {
+                        // not null avatar in content.json - uploaded avatar.
+                        contact.avatar = avatar_short_path;
+                    }
+                    else {
+                        // null avatar in content.json
+                        if (['jpg', 'png'].indexOf(contact.avatar) != -1) {
+                            // previosly uploaded avatar has been deleted. Assign random avatar to contact.
+                            public_avatars = MoneyNetworkHelper.get_public_avatars();
+                            index = Math.floor(Math.random() * public_avatars.length);
+                            avatar_short_path = public_avatars[index];
+                            contact.avatar = avatar_short_path;
                         }
                         else {
-                            // null avatar in content.json
-                            if (['jpg','png'].indexOf(contact.avatar) != -1) {
-                                // previosly uploaded avatar has been deleted. Assign random avatar to contact.
-                                public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                                index = Math.floor(Math.random() * public_avatars.length);
-                                avatar_short_path = public_avatars[index] ;
-                                contact.avatar = avatar_short_path ;
-                            }
-                            else {
-                                // OK. Contact has already an random assigned public avatar
-                                continue ;
-                            }
+                            // OK. Contact has already an random assigned public avatar
+                            return ;
                         }
-                        contacts_updated = true ;
-                    } // for i (contacts)
-
-                    if (contacts_updated) {
-                        $rootScope.$apply() ;
-                        ls_save_contacts(false) ;
                     }
+
+                    $rootScope.$apply();
+                    ls_save_contacts(false);
                     return ;
                 } // end reading content.json
 
@@ -3259,6 +3261,7 @@ angular.module('MoneyNetwork')
             get_contacts: get_contacts,
             get_contact_by_unique_id: get_contact_by_unique_id,
             get_contact_by_password_sha256: get_contact_by_password_sha256,
+            get_contact_by_cert_user_id: get_contact_by_cert_user_id,
             add_contact: add_contact,
             update_contact_add_password: update_contact_add_password,
             z_contact_search: z_contact_search,
