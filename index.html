@@ -127,7 +127,7 @@
                 </tbody>
                 <tbody ng-repeat="x in c.contacts|filter:c.filter_contacts|orderBy:c.contact_order_by">
                 <tr>
-                    <td>User id</td>
+                    <td style="vertical-align: top">User id</td>
                     <td>:</td>
                     <td>
                         <span ng-hide="x.edit_alias" ng-bind-html="x|aliasOrShortCertUserId" ng-click="c.edit_alias(x)"
@@ -545,7 +545,7 @@
                 <tbody ng-repeat="x in c.contacts|filter:c.contact_filter|orderBy:c.contact_order_by"
                        ng-style="c.contact_background_color(x)">
                 <tr>
-                    <td>User id</td>
+                    <td style="vertical-align: top">User id</td>
                     <td>:</td>
                     <td ng-hide="x.edit_alias" ng-bind-html="x|aliasOrShortCertUserId" ng-click="c.edit_alias(x)"
                         title="{{x.cert_user_id}}. Click to update alias">
@@ -555,11 +555,17 @@
                                on-key-enter="c.save_user_info(x)" on-key-escape="c.cancel_edit_alias(x)">
                     </td>
                     <td rowspan="2" style="vertical-align: top">
-                        <span ng-hide="c.editing_grp_chat">
+                        <span ng-show="!c.editing_grp_chat && (x.type != 'group')">
                         <img ng-src="{{x|findContactAvatar}}" title="Click to chat with contact" ng-click="c.chat_contact(x)">
                         </span>
-                        <span ng-show="c.editing_grp_chat">
+                        <span ng-show="!c.editing_grp_chat && (x.type == 'group')" >
+                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat with group" ng-click="c.chat_contact(x)">
+                        </span>
+                        <span ng-show="c.editing_grp_chat && (x.type != 'group')">
                         <img ng-src="{{x|findContactAvatar}}" title="Click to add/remove contact to/from group chat" ng-click="c.grp_chat_add(x)">
+                        </span>
+                        <span ng-show="c.editing_grp_chat && (x.type == 'group')">
+                        <img ng-src="{{x|findContactAvatar}}">
                         </span>
                     </td>
                 </tr>
