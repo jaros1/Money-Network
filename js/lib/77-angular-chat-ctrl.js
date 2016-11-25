@@ -530,7 +530,7 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.contact_remove(self.contact);
             };
 
-            // admin function. should only be used for deleting test user accounts
+            // admin functions. should only be used for deleting test user accounts
             self.show_delete_user = moneyNetworkService.is_admin() ;
             self.delete_user = function () {
                 var pgm = controller + '.delete_user: ' ;

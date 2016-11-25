@@ -541,12 +541,15 @@ angular.module('MoneyNetwork')
                                 } // for k (data.msg)
                                 // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
                                 if (!message_deleted) {
-                                    error = "Could not delete message from Zeronet. Maybe posted in ZeroNet from an other ZeroNet id" ;
-                                    console.log(pgm + 'error = ' + error) ;
-                                    console.log(pgm + 'user_seq = ' + user_seq) ;
-                                    console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
-                                    // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
-                                    ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                    if (!is_admin() || !admin_key) {
+                                        // not an admin tast!
+                                        error = "Could not delete message from Zeronet. Maybe posted in ZeroNet from an other ZeroNet id" ;
+                                        console.log(pgm + 'error = ' + error) ;
+                                        console.log(pgm + 'user_seq = ' + user_seq) ;
+                                        console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
+                                        // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
+                                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                    }
                                     delete contact.messages[j].zeronet_msg_id ;
                                     delete contact.messages[j].zeronet_msg_size ;
                                 }
@@ -2796,7 +2799,7 @@ angular.module('MoneyNetwork')
             if (admin_key) {
                 // confirm dialog
                 ZeroFrame.cmd("wrapperConfirm", [text, "OK"], function (confirm) {
-                    if (confirm) task(key) ;
+                    if (confirm) task(admin_key) ;
                 }) ;
             }
             else {
@@ -2942,9 +2945,9 @@ angular.module('MoneyNetwork')
             ignore_zeronet_msg_id.splice(0, ignore_zeronet_msg_id.length);
             avatar.loaded = false;
             user_id = 0 ;
-            user_seq = 0 ;
             user_contents_max_size = null ;
-            var user_setup = {} ;
+            admin_key = null ;
+            for (key in user_setup) delete user_setup[key] ;
             // redirect
             $location.path('/auth');
             $location.replace();

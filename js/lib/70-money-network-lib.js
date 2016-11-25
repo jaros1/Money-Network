@@ -81,7 +81,7 @@ var MoneyNetworkHelper = (function () {
             var pgm = module + '.load_public_avatars fileGet callback: ';
             if (res) res = JSON.parse(res) ;
             else res = { files: {} } ;
-            for (key in res.files) {
+            for (var key in res.files) {
                 if (!res.files.hasOwnProperty(key)) continue ;
                 if (key.substr(0,20) == 'public/images/avatar') public_avatars.push(key.substr(20,key.length-20)) ;
             } // for key
