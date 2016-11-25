@@ -373,7 +373,8 @@ angular.module('MoneyNetwork')
                     else str += ', ' ;
                     unique_id = other_participants[i] ;
                     participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
-                    if (participant.alias) str += participant.alias ;
+                    if (!participant) str += 'deleted contact' ;
+                    else if (participant.alias) str += participant.alias ;
                     else str += participant.unique_id.substr(0,13) ;
                 }
                 return str ;

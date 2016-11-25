@@ -1382,7 +1382,7 @@ angular.module('MoneyNetwork')
                     unique_id = contact.participants[j] ;
                     participant = get_contact_by_unique_id(unique_id) ;
                     if (!participant) {
-                        console.log(pgm + 'warning. group chat participant with unique id ' + unique_id + ' does not exists') ;
+                        // console.log(pgm + 'warning. group chat participant with unique id ' + unique_id + ' does not exists') ;
                         continue ;
                     }
                     timestamp = get_last_online(participant) ;
@@ -2781,8 +2781,38 @@ angular.module('MoneyNetwork')
             return days_before_cleanup_users ;
         }
 
+
+        // administrator helpers. cleanup old inactive users. delete test users etc
+        var admin_auth_address = '16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH' ;
+        function is_admin () {
+            var pgm = service + '.is_admin: ' ;
+            var admin = ZeroFrame.site_info.auth_address == admin_auth_address ;
+            // console.log(pgm + 'admin = ' + admin) ;
+            return admin ;
+        }
+        var admin_key ;
+        function confirm_admin_task (text, task) {
+            if (!is_admin()) return ;
+            if (admin_key) {
+                // confirm dialog
+                ZeroFrame.cmd("wrapperConfirm", [text, "OK"], function (confirm) {
+                    if (confirm) task(key) ;
+                }) ;
+            }
+            else {
+                // enter private key dialog
+                ZeroFrame.cmd("wrapperPrompt", [text + "<br>Enter private key to continue", "key"], function (key) {
+                    if (key) {
+                        admin_key = key;
+                        task(key);
+                    }
+                }); // wrapperPrompt
+            }
+        } // confirm_admin_job
+
+
         function cleanup_inactive_users() {
-            var pgm = service + '.cleanup_old_users: ';
+            var pgm = service + '.cleanup_inactive_users: ';
             var info = '. Skipping cleanup_inactive_users check';
             // check Zeronet status
             if (!user_id) {
@@ -2797,7 +2827,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'No ZeroNet login' + info);
                 return;
             }
-            if (ZeroFrame.site_info.cert_user_id != '16R2WrLv3rRrx@moneynetwork') {
+            if (!is_admin()) {
                 // console.log(pgm + 'not administrator');
                 return;
             }
@@ -2839,9 +2869,8 @@ angular.module('MoneyNetwork')
                 // use zite private key instead
                 var users = (json_ids.length == 1 ? '1 user' : json_ids.length + ' users') + '. ' ;
                 var files = (res.length == 1 ? '1 file' : res.length + ' files') + '. ' ;
-                ZeroFrame.cmd("wrapperPrompt",
-                    ["Cleanup old user accounts? " + users + files + "Total " + bytes + " bytes.<br>" +
-                    "Enter zite or moderator private key", "key"], function (privatekey) {
+
+                confirm_admin_task("Cleanup old user accounts? " + users + files + "Total " + bytes + " bytes.", function (privatekey) {
                     if (!privatekey) return;
 
                     // sign/publish is not working. 1CCiJ97XHgVeJ@moneynetwork should be moderator and allowed to delete old user files
@@ -2874,13 +2903,11 @@ angular.module('MoneyNetwork')
                     } // for i (res)
                     sign_and_publish(last_directory);
 
-                }); // wrapperPrompt
-
+                }); // confirm_admin_task
 
             }); // dbQuery
 
-
-        }; // cleanup_inactive_users
+        } // cleanup_inactive_users
 
         var user_id = 0 ;
         function client_login(password, create_new_account, guest) {
@@ -3095,7 +3122,8 @@ angular.module('MoneyNetwork')
 
         } // contact_verify
 
-        function contact_delete (contact) {
+        // delete contact. note: 2 steps. first messages, then contact
+        function contact_delete (contact, callback) {
             var no_msg, i, message, update_zeronet, now, index, j ;
             no_msg = 0 ;
             for (i=0 ; i<contact.messages.length ; i++) {
@@ -3125,11 +3153,10 @@ angular.module('MoneyNetwork')
                     // done. refresh UI and save contacts. optional update zeronet
                     $rootScope.$apply() ;
                     ls_save_contacts(update_zeronet) ;
-                    return false ;
                 }) ;
             }
-            else if (!contact.pubkey) {
-                // delete contact. must be an old inactive contact removed from ZeroNet. See cleanup_inactive_users
+            else {
+                // delete contact.
                 ZeroFrame.cmd("wrapperConfirm", ["Delete contact?", "Delete"], function (confirm) {
                     if (!confirm) return false ;
                     for (i=ls_contacts.length-1 ; i >= 0 ; i-- ) {
@@ -3137,8 +3164,8 @@ angular.module('MoneyNetwork')
                             remove_contact(i);
                         }
                     }
+                    if (callback) callback() ;
                     ls_save_contacts(false) ;
-                    return true ;
                 })
             }
         } // contact_delete
@@ -3397,7 +3424,9 @@ angular.module('MoneyNetwork')
             get_chat_sort_options: get_chat_sort_options,
             get_chat_sort_title: get_chat_sort_title,
             chat_order_by: chat_order_by,
-            notification_if_old_contact: notification_if_old_contact
+            notification_if_old_contact: notification_if_old_contact,
+            is_admin: is_admin,
+            confirm_admin_task: confirm_admin_task
         };
 
         // end MoneyNetworkService

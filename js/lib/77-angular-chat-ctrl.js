@@ -477,16 +477,10 @@ angular.module('MoneyNetwork')
             };
             self.contact_delete = function () {
                 var pgm = controller + '.contact_delete: ' ;
-                if (moneyNetworkService.contact_delete(self.contact)) {
+                moneyNetworkService.contact_delete(self.contact, function () {
                     // contact deleted. show chat for all contacts
-                    var location = $location.path('/chat');
-                    console.log(pgm + 'old location = ' + location);
-                    var index = location.lastIndexOf('/');
-                    location = location.substr(0,index);
-                    console.log(pgm + 'new location = ' + location);
-                    $location.path(location);
-                    $location.replace();
-                }
+                    self.contact = null ;
+                }) ;
             };
             self.show_verify_icon = function (message) {
                 if (message.message.folder != 'inbox') return false ;
@@ -532,10 +526,80 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("wrapperNotification", ["info", "Verification OK", 3000]);
                 });
             }; // enter_password
-
             self.contact_remove = function () {
                 moneyNetworkService.contact_remove(self.contact);
             };
+
+            // admin function. should only be used for deleting test user accounts
+            self.show_delete_user = moneyNetworkService.is_admin() ;
+            self.delete_user = function () {
+                var pgm = controller + '.delete_user: ' ;
+                if (!self.contact || (self.contact.type == 'group')) return ;
+
+                // any files to delete?
+                var user_path = "data/users/" + self.contact.auth_address;
+                ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
+                    var pgm = controller + '.delete_user fileGet callback: ' ;
+                    var error, files, file_names, total_size, file_name, text ;
+                    if (!content) {
+                        error = 'system error. content.json file was not found for auth_address ' + self.contact.auth_address ;
+                        console.log(pgm + error) ;
+                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                        return ;
+                    }
+                    content = JSON.parse(content) ;
+                    files = content.files ;
+                    file_names = [] ;
+                    total_size = 0 ;
+                    for (file_name in files) {
+                        file_names.push(file_name) ;
+                        total_size += files[file_name].size ;
+                    }
+                    if (file_names.length == 0) {
+                        ZeroFrame.cmd("wrapperNotification", ["info", "User has already been deleted. No files were found", 5000]);
+                        return ;
+                    }
+
+                    // admin dialog
+                    text = "Delete user with auth_address " + self.contact.auth_address + "?<br>" ;
+                    text += "This function should only be used for test accounts!<br>" ;
+                    if (file_names.size == 1) text += file_names[0] + ' file.' ;
+                    else for (var i=0 ; i<file_names.length ; i++) {
+                        if (i==0) text += '' ;
+                        else if (i==file_names.length-1) text += ' and ' ;
+                        else text += ', ' ;
+                        text += file_names[i] ;
+                    }
+                    text += ' files. Total ' + total_size + ' bytes' ;
+                    moneyNetworkService.confirm_admin_task(text, function (private_key) {
+                        if (!private_key) return ;
+
+                        // delete files
+                        for (i=0 ; i<file_names.length ; i++) {
+                            file_name = user_path + "/" + file_names[i] ;
+                            ZeroFrame.cmd("fileDelete", file_name, function (res) {});
+                        }
+
+                        // sign and publish
+                        var file_name = user_path + '/content.json';
+                        ZeroFrame.cmd("sitePublish", {privatekey: private_key, inner_path: file_name}, function (res) {
+                            var pgm = controller + '.delete_user callback: ', error;
+                            if (res != "ok") {
+                                error = "Failed to publish " + file_name + " : " + res.error;
+                                console.log(pgm + error);
+                                ZeroFrame.cmd("wrapperNotification", ["error", error, 3000]);
+                                return ;
+                            }
+
+                            // remove public key. rest of cleanup job can be done with normal delete function
+                            delete self.contact.pubkey ;
+                        }); // sitePublish
+
+                    }) ; // confirm_admin_task
+
+                }) ; // fileGet
+
+            }; // delete user
 
             // filter and order by used in ng-repeat messages filter
             self.chat_filter = function (message, index, messages) {
