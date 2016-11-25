@@ -1039,10 +1039,10 @@ angular.module('MoneyNetwork')
                 }
 
                 // add "row" sequence to search array
-                // rename Last updated timestamp to Last online
+                // rename Last updated timestamp to Online
                 if (new_contact) for (j=0 ; j<new_contact.search.length ; j++) {
                     new_contact.search[j].row = j+1 ;
-                    if (typeof new_contact.search[j].value == 'number') new_contact.search[j].tag = 'Last online' ;
+                    if (typeof new_contact.search[j].value == 'number') new_contact.search[j].tag = 'Online' ;
                 }
 
                 // insert copy of messages into chat friendly array
@@ -1589,7 +1589,7 @@ angular.module('MoneyNetwork')
                                 pubkey: res[i].other_pubkey,
                                 guest: res[i].other_guest,
                                 avatar: res[i].other_files_avatar || res[i].other_users_avatar,
-                                search: [{ tag: 'Last online', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
+                                search: [{ tag: 'Online', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
                             };
                         }
                         res_hash[unique_id].search.push({
@@ -2098,7 +2098,7 @@ angular.module('MoneyNetwork')
                         if (group_chat_unique_ids[i] == my_unique_id) continue ;
                         group_chat_contact.participants.push(group_chat_unique_ids[i]) ;
                     }
-                    if (last_updated) group_chat_contact.search.push({tag: 'Last online', value: last_updated, privacy: 'Search', row: 1}) ;
+                    if (last_updated) group_chat_contact.search.push({tag: 'Online', value: last_updated, privacy: 'Search', row: 1}) ;
                     group_chat_contact.search.push({
                         tag: 'Group',
                         value: group_chat_contact.participants.length + ' participants',
@@ -2240,7 +2240,7 @@ angular.module('MoneyNetwork')
                         cert_user_id: res[i].cert_user_id,
                         avatar: res[i].avatar,
                         pubkey: res[i].pubkey,
-                        search: [{ tag: 'Last online', value: last_updated, privacy: 'Search', row: 1}],
+                        search: [{ tag: 'Online', value: last_updated, privacy: 'Search', row: 1}],
                         messages: [],
                         outbox_sender_sha256: {},
                         inbox_zeronet_msg_id: [],

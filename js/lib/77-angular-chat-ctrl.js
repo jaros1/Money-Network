@@ -107,7 +107,7 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<self.group_chat_contacts.length ; i++) {
                     contact.participants.push(self.group_chat_contacts[i].unique_id) ;
                 } // for i
-                if (last_updated) contact.search.push({tag: 'Last online', value: last_updated, privacy: 'Search', row: 1}) ;
+                if (last_updated) contact.search.push({tag: 'Online', value: last_updated, privacy: 'Search', row: 1}) ;
                 contact.search.push({
                     tag: 'Group',
                     value: contact.participants.length + ' participants',

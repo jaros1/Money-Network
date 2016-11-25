@@ -526,12 +526,9 @@
             <table>
                 <thead>
                 <tr>
-                    <th colspan="1" style="text-align: center"
-                        title="User id (ZeroNet or alias) and contact status (new, added, unverfied, verified and ignore). Click to User id to edit">
-                        User
-                    </th>
-                    <th style="text-align: center" colspan="3" title="User information">
-                        User information
+                    <th colspan="4" style="text-align: center"
+                        title="Money Network contacts. Click on User id to update alias">
+                        Money Network contacts
                     </th>
                 </tr>
                 </thead>
@@ -543,15 +540,7 @@
                 <tbody ng-repeat="x in c.contacts|filter:c.contact_filter|orderBy:c.contact_order_by"
                        ng-style="c.contact_background_color(x)">
                 <tr>
-                    <td rowspan="{{x.search.length+1}}" style="vertical-align: top">
-                        <span ng-hide="c.editing_grp_chat">
-                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat with contact" ng-click="c.chat_contact(x)">
-                        </span>
-                        <span ng-show="c.editing_grp_chat">
-                        <img ng-src="{{x|findContactAvatar}}" title="Click to add/remove contact to/from group chat" ng-click="c.grp_chat_add(x)">
-                        </span>
-                    </td>
-                    <td>User</td>
+                    <td>User id</td>
                     <td>:</td>
                     <td ng-hide="x.edit_alias" ng-bind-html="x|aliasOrShortCertUserId" ng-click="c.edit_alias(x)"
                         title="{{x.cert_user_id}}. Click to edit">
@@ -560,11 +549,19 @@
                         <input type="text" ng-model="x.new_alias" style="width: 110px" id="{{x.$$hashKey}}:alias"
                                on-key-enter="c.save_user_info(x)" on-key-escape="c.cancel_edit_alias(x)">
                     </td>
+                    <td rowspan="2" style="vertical-align: top">
+                        <span ng-hide="c.editing_grp_chat">
+                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat with contact" ng-click="c.chat_contact(x)">
+                        </span>
+                        <span ng-show="c.editing_grp_chat">
+                        <img ng-src="{{x|findContactAvatar}}" title="Click to add/remove contact to/from group chat" ng-click="c.grp_chat_add(x)">
+                        </span>
+                    </td>
                 </tr>
                 <tr ng-repeat="y in x.search">
                     <td ng-bind-html="y.tag"></td>
                     <td>:</td>
-                    <td ng-bind-html="y|formatSearchValue" title="{{y|formatSearchTitle}}"></td>
+                    <td colspan="{{[1,2].indexOf(x.search.row) == -1 ? 2 : 1}}" ng-bind-html="y|formatSearchValue" title="{{y|formatSearchTitle}}"></td>
                 </tr>
                 <tr style="background-color: white">
                     <td colspan="4">&nbsp;</td>

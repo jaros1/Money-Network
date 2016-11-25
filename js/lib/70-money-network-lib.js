@@ -111,7 +111,7 @@ var MoneyNetworkHelper = (function () {
             }
         }
         contact.search.push({
-            tag: 'Last online',
+            tag: 'Online',
             value: last_online,
             privacy: 'Search',
             row: contact.search.length+1
