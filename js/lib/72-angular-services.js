@@ -695,12 +695,66 @@ angular.module('MoneyNetwork')
                                     debug('data_cleanup', pgm + 'data.json is big. removed outbox message received by contact') ;
                                     break ;
                                 }
+                                else {
+                                    debug('data_cleanup', pgm + 'error. outbox message was not in data.msg array. cleaning up invalid reference') ;
+                                    delete outbox_message.zeronet_msg_id ;
+                                    delete outbox_message.zeronet_msg_size ;
+                                    local_storage_updated = true ;
+                                }
                             } // for j (messages)
                             if (data_removed) break ;
                         } // for i (contacts)
                         if (data_removed) continue ; // recheck data.json size
 
-                        // c) delete old msg
+                        // c) cleanup image group chat messages where receipts have been received from all participants in group chat
+                        //    image has send in a group chat message (contact.type = group)
+                        //    message has an empty image_receipts array.
+                        //    see chatCtrl.send_chat_msg - initializing image_receipts array
+                        //    see process_incoming_message - removing participants from image_receipts array
+                        for (i=0 ; i<ls_contacts.length ; i++) {
+                            contact = ls_contacts[i];
+                            if (contact.type != 'group') continue ;
+                            if (!contact.messages) continue ;
+                            for (j=0 ; j<contact.messages.length ; j++) {
+                                outbox_message = contact.messages[j] ;
+                                if (outbox_message.folder != 'outbox') continue ;
+                                if (!outbox_message.zeronet_msg_id) continue ;
+                                if (!outbox_message.hasOwnProperty('image_receipts')) continue ;
+                                debug('data_cleanup', pgm + 'found outbox message with an image_receipts array.') ;
+                                if (outbox_message.image_receipts.length > 0) {
+                                    debug('data_cleanup', pgm + 'keeping image. not all receipts have been received. outbox_message.image_receipts = ' + JSON.stringify(outbox_message.image_receipts));
+                                    continue ;
+                                }
+                                debug('data_cleanup', pgm + 'all image receipts have been received. Remove message from data.json') ;
+
+                                // check if outbox message is in data.msg array
+                                for (k=data.msg.length-1 ; k >= 0 ; k--) {
+                                    if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
+                                    // found a message that can be deleted from ZeroNet (received by contact)
+                                    debug('data_cleanup', pgm + 'found a message that can be deleted from ZeroNet (received by all group chat contacts)') ;
+                                    data.msg.splice(k,1);
+                                    delete outbox_message.zeronet_msg_id ;
+                                    delete outbox_message.zeronet_msg_size ;
+                                    local_storage_updated = true ;
+                                    data_removed = true ;
+                                    break ;
+                                } // for k (data.msg)
+                                if (data_removed) {
+                                    debug('data_cleanup', pgm + 'data.json is big. removed outbox message received by received by all group chat contacts') ;
+                                    break ;
+                                }
+                                else {
+                                    debug('data_cleanup', pgm + 'error. outbox message was not in data.msg array. cleaning up invalid reference') ;
+                                    delete outbox_message.zeronet_msg_id ;
+                                    delete outbox_message.zeronet_msg_size ;
+                                    local_storage_updated = true ;
+                                }
+                            } // for j (contact.messages)
+                            if (data_removed) break ;
+                        } // for i (contacts)
+                        if (data_removed) continue ; // recheck data.json size
+
+                        // d) delete old msg
                         if ((data.msg.length == 0) || (data.msg[0].timestamp > one_hour_ago)) {
                             debug('data_cleanup', pgm + 'no more old data to remove');
                             break ;
@@ -1947,10 +2001,10 @@ angular.module('MoneyNetwork')
                     // debug('inbox && unencrypted', pgm + 'contact.unique_id = ' + JSON.stringify(contact.unique_id)) ;
                     index = image_receipts.indexOf(contact.unique_id) ;
                     if (index != -1) image_receipts.splice(index, 1) ;
-                    console.log(pgm + 'image_receipts.length = ' + image_receipts.length + ', message2.contact.participants.length = ' + message2.contact.participants.length ) ;
+                    debug('inbox && unencrypted', pgm + 'image_receipts.length = ' + image_receipts.length + ', message2.contact.participants.length = ' + message2.contact.participants.length ) ;
                     if (image_receipts.length == 0) {
                         // image received be all participant in group chat - ready for data.json cleanup
-                        console.log(pgm + 'image received be all participant in group chat - ready for data.json cleanup') ;
+                        debug('inbox && unencrypted', pgm + 'image received be all participant in group chat - ready for data.json cleanup') ;
                         new_incoming_receipts++
                     }
                 }

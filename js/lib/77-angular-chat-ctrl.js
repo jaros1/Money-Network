@@ -761,7 +761,7 @@ angular.module('MoneyNetwork')
                 if (self.group_chat && self.new_chat_src) {
                     // sending a group chat message with an image.
                     // expects one receipt for each participant in chat group
-                    // remove message from zeronet when all image receipts have been received
+                    // remove image chat message from zeronet (data.json) when all image receipts have been received
                     // see process_incoming_message - post processing of image receipts
                     // see z_update_data_json - data.json too big - xxxxxx
                     var message_with_envelope = contact.messages[contact.messages.length-1] ;
@@ -953,7 +953,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.uploadImage: ' ;
                 // what is the target for file upload? new_chat_src in top of page or edit chat message img scr
                 var input_file_id = event.target.id ; // file-input, file-input2 or edit_chat_file_input_id_115
-                console.log(pgm + 'input_file_id = ' + input_file_id);
+                // console.log(pgm + 'input_file_id = ' + input_file_id);
 
                 // https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
                 var reader  = new FileReader();
