@@ -39,16 +39,15 @@ angular.module('MoneyNetwork')
         // todo: almost identical code in Chat. Refactor to MoneyNetworkService
         self.edit_alias_title = "Edit alias. Press ENTER to save. Press ESC to cancel" ;
         var edit_alias_notifications = 1 ;
-        self.edit_alias = function (contact, search) {
+        self.edit_alias = function (contact) {
             var pgm = controller + '.edit_alias: ', i ;
-            if (search.row != 1) return ;
             if (contact.alias) contact.new_alias = contact.alias ;
             else if (contact.type == 'group') contact.new_alias = contact.unique_id.substr(0,13);
             else {
                 i = contact.cert_user_id.indexOf('@') ;
                 contact.new_alias = contact.cert_user_id.substr(0,i) ;
             }
-            search.edit_alias = true ;
+            contact.edit_alias = true ;
             if (edit_alias_notifications > 0) {
                 ZeroFrame.cmd("wrapperNotification", ["info", self.edit_alias_title, 5000]);
                 edit_alias_notifications-- ;
@@ -58,17 +57,17 @@ angular.module('MoneyNetwork')
             var set_focus = function () { document.getElementById(id).focus() } ;
             $timeout(set_focus) ;
         } ;
-        self.cancel_edit_alias = function (contact, search) {
+        self.cancel_edit_alias = function (contact) {
             var pgm = controller + '.cancel_edit_alias: ' ;
             delete contact.new_alias ;
-            delete search.edit_alias ;
+            delete contact.edit_alias ;
             $scope.$apply() ;
         } ;
-        self.save_user_info = function (contact, search) {
+        self.save_user_info = function (contact) {
             var pgm = controller + '.save_user_info: ';
             // update angular UI
             contact.alias = contact.new_alias ;
-            delete search.edit_alias ;
+            delete contact.edit_alias ;
             $scope.$apply() ;
             // save contacts in localStorage
             // console.log(pgm + 'calling ls_save_contacts') ;
