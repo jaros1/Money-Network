@@ -103,10 +103,17 @@ angular.module('MoneyNetwork')
                     messages: [],
                     avatar: avatar
                 };
+                // add participants and search info
                 for (i=0 ; i<self.group_chat_contacts.length ; i++) {
                     contact.participants.push(self.group_chat_contacts[i].unique_id) ;
                 } // for i
-                if (last_updated) contact.search.push({tag: 'Last updated', value: last_updated, privacy: 'Search', row: 1}) ;
+                if (last_updated) contact.search.push({tag: 'Last online', value: last_updated, privacy: 'Search', row: 1}) ;
+                contact.search.push({
+                    tag: 'Group',
+                    value: contact.participants.length + ' participants',
+                    privacy: 'Search',
+                    row: contact.search.length+1
+                });
                 moneyNetworkService.add_contact(contact) ;
                 moneyNetworkService.ls_save_contacts(false);
                 return contact ;

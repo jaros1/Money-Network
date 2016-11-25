@@ -959,8 +959,9 @@ angular.module('MoneyNetwork')
             clear_contacts() ;
             js_messages.splice(0, js_messages.length) ;
             var i, j, contacts_updated = false ;
-            var unique_id_to_index = {}, old_contact ;
+            var old_contact ;
             var ls_msg_size_total = 0 ;
+            var found_group_tag ;
 
             for (i=0 ; i<new_contacts.length ; i++) {
                 new_contact = new_contacts[i] ;
@@ -976,7 +977,7 @@ angular.module('MoneyNetwork')
                     }
                 }
 
-                // group chat. add dummy cert_user_id
+                // group chat. add dummy cert_user_id. before add_contact (index on cert_user_id)
                 if ((new_contact.type == 'group') && !new_contact.cert_user_id) new_contact.cert_user_id = new_contact.unique_id.substr(0,13) + '@moneynetwork' ;
 
                 // fix error with doublet contacts in local storage. merge contacts
@@ -1022,7 +1023,20 @@ angular.module('MoneyNetwork')
                 }
 
                 // group chat. add empty search array
-                if (new_contact.type == 'group') new_contact.search = [] ;
+                if ((new_contact.type == 'group') && !new_contact.search) new_contact.search = [] ;
+
+                // group chat. add "Group: <n> participants" to search array. Will make it easier to see chat groups in contact list
+                if (new_contact.type == 'group') {
+                    found_group_tag = false ;
+                    for (j=0 ; j<new_contact.search.length ; j++) {
+                        if (new_contact.search[j].tag == 'Group') found_group_tag = true ;
+                    }
+                    if (!found_group_tag) new_contact.search.push({
+                        tag: 'Group',
+                        value: new_contact.participants.length + ' participants',
+                        privacy: 'Search'
+                    }) ;
+                }
 
                 // add "row" sequence to search array
                 // rename Last updated timestamp to Last online
@@ -2040,9 +2054,14 @@ angular.module('MoneyNetwork')
                 // received password for a new group chat.
                 // check for unknown participants
                 var participant, j ;
+                var last_updated = 0, timestamp ;
                 for (i=0 ; i<decrypted_message.participants.length ; i++) {
                     participant = get_contact_by_unique_id(decrypted_message.participants[i]) ;
                     if (!participant) console.log(pgm + 'warning. could not find participant with unique id ' + decrypted_message.participants[i]) ;
+                    else {
+                        timestamp = MoneyNetworkHelper.get_last_online(participant) ;
+                        if (timestamp > last_updated) last_updated = timestamp ;
+                    }
                 } // for i
                 // find unique id for pseudo group chat contact.
                 // my unique id, sender unique id + participants in this message
@@ -2074,10 +2093,18 @@ angular.module('MoneyNetwork')
                         messages: [],
                         avatar: avatar
                     };
+                    // add participants and search info
                     for (i=0 ; i<group_chat_unique_ids.length ; i++) {
                         if (group_chat_unique_ids[i] == my_unique_id) continue ;
                         group_chat_contact.participants.push(group_chat_unique_ids[i]) ;
                     }
+                    if (last_updated) group_chat_contact.search.push({tag: 'Last online', value: last_updated, privacy: 'Search', row: 1}) ;
+                    group_chat_contact.search.push({
+                        tag: 'Group',
+                        value: group_chat_contact.participants.length + ' participants',
+                        privacy: 'Search',
+                        row: group_chat_contact.search.length+1
+                    });
                     add_contact(group_chat_contact) ;
                     watch_receiver_sha256.push(CryptoJS.SHA256(decrypted_message.password).toString()) ;
                 }
