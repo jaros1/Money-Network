@@ -39,7 +39,5 @@ You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNe
 ## Help
 Test help would by nice. Create an issue if you find something that should be fixed.
 
-Css help would be nice. I am not a css person. I am having some problem with fixed menu and scroll in pages.
-
 Ideas and inspiration are welcome. Specially on wallet and money API parts that have not yet been started. Fell free to create an issue with your inputs,
 
