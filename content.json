@@ -8,8 +8,8 @@
    "size": 18027
   },
   "README.md": {
-   "sha512": "090ae067f43a712a9ad5124d07e9c2ebc7ba2a602090b2502d54906accdd6822",
-   "size": 2627
+   "sha512": "3806a8344d129d91b49bf702f4aaeef58cc0d884317ed8fe9e0ff7782b7645d1",
+   "size": 2526
   },
   "css/all.css": {
    "sha512": "fbe337730da78c0af261fe482dba44920f780df69d4c881b313ccdeb0a94a04c",
@@ -24,16 +24,16 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "f2bca34a18428e0824c1664b144184a19892a91efa4307e83f7b9d8dacedd2e9",
-   "size": 76399
+   "sha512": "9be1e9cf055b8c60a2fe015ab16bea3b72908ff8fba0c0ca454e1c0509dabfea",
+   "size": 76664
   },
   "js-external/pngencoder.js": {
    "sha512": "ecaadaad552d2610336995b48360253cd6d847b6aa590fc3d96e7245a5d5fe11",
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "3883620f51a9078e03283c439ca63409e04011a1feec5a0f2f324f4b9fe86359",
-   "size": 2832235
+   "sha512": "d345c979aa67c9e4b1c8a7587120a19140d44969bfcb7d494088a3167f082f6d",
+   "size": 2841961
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -106,15 +106,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1480090546.873836,
+ "modified": 1480177988.65823,
  "postmessage_nonce_security": true,
  "sign": [
-  107217732442622818454647011196326222814019982145849695056631210793344907153733,
-  67533269368403927695673545059353400931002058751166742812577302645424719583640
+  59945788134683135164023869479884303858051300578301274178577297717039391000458,
+  47466867280738803170820808743021088223450006560185500106669576574284995873822
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HIoOBgkEhbe1sB5i7hjNEnTXXmBgkGSolJ3U+gkNNleKCV8G/dcWwpIn7zgFvA5YcIRblXs5xV9mRmcEB4DFXsU="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HBXQuZZMBOQGiCTM0750H1lOjNotGmPv+mm+68goiJyKiTmFXX1WDTsb0K1O4E0PGlQ87uYYOGw8puCEA309+yI="
  },
  "signs_required": 1,
  "title": "Money Network",

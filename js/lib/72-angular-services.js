@@ -1401,9 +1401,10 @@ angular.module('MoneyNetwork')
             var pgm = service + '.ls_save_contacts: ' ;
 
             // any inbox messages to be physical deleted?
-            var i, contact, j, message ;
+            var i, contact, j, message, auth_address ;
             for (i=0 ; i<ls_contacts.length ; i++)  {
                 contact = ls_contacts[i] ;
+                auth_address = contact.auth_address ;
                 if (!contact.messages) continue ;
                 for (j=contact.messages.length-1 ; j>=0 ; j--) {
                     message = contact.messages[j] ;
@@ -1413,7 +1414,8 @@ angular.module('MoneyNetwork')
                     if (message.zeronet_msg_id) {
                         if (!contact.inbox_zeronet_msg_id) contact.inbox_zeronet_msg_id = [] ;
                         contact.inbox_zeronet_msg_id.push(message.zeronet_msg_id) ;
-                        ignore_zeronet_msg_id.push(message.zeronet_msg_id) ;
+                        if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
+                        ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id) ;
                     }
                     contact.messages.splice(j,1);
                 } // for j (contact.messages)
@@ -1962,7 +1964,15 @@ angular.module('MoneyNetwork')
             if ((message.receiver_sha256 == my_pubkey_sha256) || !res.key) delete message.receiver_sha256 ;
             // if (message.receiver_sha256 && !res.key) debug('inbox && unencrypted', pgm + 'error. expected receiver_sha256 to be null (1)');
             message.ls_msg_size = JSON.stringify(message).length ;
-            ignore_zeronet_msg_id.push(res.message_sha256) ;
+
+
+            if (!res.auth_address) console.log(pgm + 'todo: please add auth_address to res. res = ' + JSON.stringify(res)) ;
+            else {
+                if (!ignore_zeronet_msg_id[res.auth_address]) ignore_zeronet_msg_id[res.auth_address] = [] ;
+                ignore_zeronet_msg_id[res.auth_address].push(res.message_sha256) ;
+            }
+
+
             if (sender_sha256 && (res.timestamp > contact.inbox_last_sender_sha256_at)) {
                 contact.inbox_last_sender_sha256 = sender_sha256 ;
                 contact.inbox_last_sender_sha256_at = res.timestamp ;
@@ -2409,23 +2419,23 @@ angular.module('MoneyNetwork')
 
         // after login - check for new ingoing messages (dbQuery)
         var watch_receiver_sha256 = [] ; // listen for sha256 addresses
-        var ignore_zeronet_msg_id = [] ; // ignore already read messages
+        var ignore_zeronet_msg_id = {} ; // ignore already read messages. hash auth_address => [ sha256 addresses ]
         function local_storage_read_messages () {
             var pgm = service + '.local_storage_read_messages: ' ;
 
             // initialize watch_sender_sha256 array with relevant sender_sha256 addresses
             // that is sha256(pubkey) + any secret sender_sha256 reply addresses sent to contacts in money network
-            var my_pubkey, my_pubkey_sha256, my_prvkey, i, j, contact, message, key ;
+            var my_pubkey, my_pubkey_sha256, my_prvkey, i, j, contact, auth_address, message, key ;
             my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
-            my_prvkey = MoneyNetworkHelper.getItem('prvkey') ;
 
             // after login. initialize arrays with watch and ignore sha256 lists
             watch_receiver_sha256.splice(0, watch_receiver_sha256.length);
-            ignore_zeronet_msg_id.splice(0, ignore_zeronet_msg_id.length);
+            for (auth_address in ignore_zeronet_msg_id) delete ignore_zeronet_msg_id[auth_address] ;
             watch_receiver_sha256.push(my_pubkey_sha256);
             for (i = 0; i < ls_contacts.length; i++) {
                 contact = ls_contacts[i];
+                auth_address = contact.auth_address ;
                 if (contact.type == 'group') {
                     // console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
                     watch_receiver_sha256.push(CryptoJS.SHA256(contact.password).toString()) ;
@@ -2437,12 +2447,13 @@ angular.module('MoneyNetwork')
                         // ignore already read messages
                         // if (message.message.msgtype == 'received') console.log(pgm + 'message = ' + JSON.stringify(message)) ;
                         if (message.zeronet_msg_id) {
-                            if (ignore_zeronet_msg_id.indexOf(message.zeronet_msg_id) != -1) {
+                            if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
+                            if (ignore_zeronet_msg_id[auth_address].indexOf(message.zeronet_msg_id) != -1) {
                                 // problem with doublet contacts. maybe also problem with doublet messages ....
                                 console.log(pgm + 'Error. Message with sha256 ' + message.zeronet_msg_id + ' found more than one in inbox');
                                 console.log(pgm + 'contact = ' + JSON.stringify(contact));
                             }
-                            else ignore_zeronet_msg_id.push(message.zeronet_msg_id);
+                            else ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id);
                         }
                     }
                     if (message.folder == 'outbox') {
@@ -2457,13 +2468,14 @@ angular.module('MoneyNetwork')
                     if (watch_receiver_sha256.indexOf(key) == -1) watch_receiver_sha256.push(key) ;
                 }
                 // check array with zeronet_msg_id from deleted inbox messages.
-                if (contact.inbox_zeronet_msg_id) {
-                    for (j=0 ; j<contact.inbox_zeronet_msg_id.length ; j++) ignore_zeronet_msg_id.push(contact.inbox_zeronet_msg_id[j]) ;
+                if (contact.inbox_zeronet_msg_id && (contact.inbox_zeronet_msg_id.length > 0)) {
+                    if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = []
+                    for (j=0 ; j<contact.inbox_zeronet_msg_id.length ; j++) ignore_zeronet_msg_id[auth_address].push(contact.inbox_zeronet_msg_id[j]) ;
                 }
             } // i (contacts)
 
             // console.log(pgm + 'watch_receiver_sha256 = ' + JSON.stringify(watch_receiversender_sha256)) ;
-            // console.log(pgm + 'ignore_zeronet_msg_id = ' + JSON.stringify(ignore_zeronet_msg_id)) ;
+            console.log(pgm + 'ignore_zeronet_msg_id = ' + JSON.stringify(ignore_zeronet_msg_id)) ;
 
             // fetch relevant messages
             // 1) listening to relevant receiver_sha256 addresses
@@ -2478,11 +2490,15 @@ angular.module('MoneyNetwork')
             query = query + ')' ;
             // 2) check if previously received inbox messages been deleted from zeronet
             // 3) check if previously deleted inbox messages have been deleted from zeronet
-            if (ignore_zeronet_msg_id.length > 0) {
-                query = query + " or messages.message_sha256 in ('" + ignore_zeronet_msg_id[0] + "'" ;
-                for (i=1 ; i<ignore_zeronet_msg_id.length ; i++) query = query + ", '" + ignore_zeronet_msg_id[i] + "'" ;
-                query = query + ')' ;
+            var first = true ;
+            for (auth_address in ignore_zeronet_msg_id) {
+                for (i=0 ; i<ignore_zeronet_msg_id[auth_address].length ; i++) {
+                    if (first) { query += " or messages.message_sha256 in (" ; first = false }
+                    else query += ", " ;
+                    query += "'" + ignore_zeronet_msg_id[auth_address][i] + "'" ;
+                }
             }
+            if (!first) query += ')' ;
             query = query + " )" +
                 "and users.json_id = messages.json_id " +
                 "and users.user_seq = messages.user_seq " +
@@ -2510,32 +2526,38 @@ angular.module('MoneyNetwork')
                     return;
                 }
 
-                // check ignore_zeronet_msg_id array. has previously received messages been deleted on ZeroNet?
-                var ignore_zeronet_msg_id_clone = ignore_zeronet_msg_id.slice() ;
+                // check ignore_zeronet_msg_id hash. has previously received messages been deleted on ZeroNet?
+                var ignore_zeronet_msg_id_clone = JSON.parse(JSON.stringify(ignore_zeronet_msg_id)) ;
                 var contacts_updated = false ;
                 var i, j, contact, k, message, decrypted_message ;
                 for (i=res.length-1 ; i>= 0 ; i--) {
-                    j = ignore_zeronet_msg_id_clone.indexOf(res[i].message_sha256) ;
+                    auth_address = res[i].auth_address ;
+                    if (!auth_address) console.log(pgm + 'please add auth_address to res. res = ' + JSON.stringify(res));
+                    if (!ignore_zeronet_msg_id_clone[auth_address]) continue ;
+                    j = ignore_zeronet_msg_id_clone[auth_address].indexOf(res[i].message_sha256) ;
                     if (j != -1) {
                         // previous received message is still on ZeroNet
-                        ignore_zeronet_msg_id_clone.splice(j,1) ;
+                        ignore_zeronet_msg_id_clone[auth_address].splice(j,1) ;
+                        if (ignore_zeronet_msg_id_clone[auth_address].length == 0) delete ignore_zeronet_msg_id_clone[auth_address] ;
                         res.splice(i);
                     }
                 } // for i (res)
-                if (ignore_zeronet_msg_id_clone.length > 0) {
+                if (Object.keys(ignore_zeronet_msg_id_clone).length > 0) {
                     console.log(pgm + 'messages deleted on Zeronet: ' + JSON.stringify(ignore_zeronet_msg_id_clone));
                     // should by 2 or 3:
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         contact = ls_contacts[i] ;
+                        auth_address = contact.auth_address ;
+                        if (!ignore_zeronet_msg_id_clone[auth_address]) continue ;
                         // - 2) previously received messages been deleted from zeronet
                         for (j=0 ; j<contact.messages.length ; j++) {
                             message = contact.messages[j] ;
                             if (message.folder != 'inbox') continue ;
-                            k = ignore_zeronet_msg_id_clone.indexOf(message.zeronet_msg_id) ;
+                            k = ignore_zeronet_msg_id_clone[auth_address].indexOf(message.zeronet_msg_id) ;
                             if (k != -1) {
                                 // previously received message has been deleted on ZeroNet. remove zeronet_msg_id link
                                 // from message in localStorage to message on ZeroNet
-                                ignore_zeronet_msg_id_clone.splice(k,1);
+                                ignore_zeronet_msg_id_clone[auth_address].splice(k,1);
                                 delete message.zeronet_msg_id ;
                                 contacts_updated = true ;
                             }
@@ -2543,22 +2565,22 @@ angular.module('MoneyNetwork')
                         // - 3) previously deleted inbox messages have been deleted from zeronet
                         if (!contact.inbox_zeronet_msg_id) continue ;
                         for (j=contact.inbox_zeronet_msg_id.length-1 ; j >= 0 ; j--) {
-                            k = ignore_zeronet_msg_id_clone.indexOf(contact.inbox_zeronet_msg_id[j]) ;
+                            k = ignore_zeronet_msg_id_clone[auth_address].indexOf(contact.inbox_zeronet_msg_id[j]) ;
                             if (k != -1) {
                                 // previous received and deleted message has also been deleted from zeronet.
                                 // just remove sha256 address from inbox_zeronet_msg_id array
-                                ignore_zeronet_msg_id_clone.splice(k,1);
+                                ignore_zeronet_msg_id_clone[auth_address].splice(k,1);
                                 contact.inbox_zeronet_msg_id.splice(j,1) ;
                                 contacts_updated = true ;
                             }
                         }
-
+                        if (ignore_zeronet_msg_id_clone[auth_address].length == 0) delete ignore_zeronet_msg_id_clone[auth_address] ;
                     } // for i (contacts)
                 } // if
                 // sum check for ignore sha256 addresses. Should be empty
-                if (ignore_zeronet_msg_id_clone.length > 0) {
+                if (Object.keys(ignore_zeronet_msg_id_clone).length > 0) {
                     console.log(pgm + 'System error. ignore_zeronet_msg_id_clone should be empty now');
-                    console.log(pgm + 'ignore_zeronet_msg_id_clone.length = ' + JSON.stringify(ignore_zeronet_msg_id_clone.length));
+                    console.log(pgm + 'ignore_zeronet_msg_id_clone = ' + JSON.stringify(ignore_zeronet_msg_id_clone));
                 }
                 if (res.length == 0) {
                     // console.log(pgm + 'no new messages') ;
@@ -2793,15 +2815,14 @@ angular.module('MoneyNetwork')
 
                     debug('file_done', pgm + 'processing new incoming messages from msg array. should also detect previously received messages that have been deleted from msg array');
 
-
-
                     for (i=0 ; i<res.msg.length ; i++) {
                         // debug('file_done', pgm + 'res.msg[' + i + '].receiver_sha256 = ' + res.msg[i].receiver_sha256);
                         if (watch_receiver_sha256.indexOf(res.msg[i].receiver_sha256) == -1) {
                             // not listening for this sha256 address
                             continue ;
                         }
-                        if (ignore_zeronet_msg_id.indexOf(res.msg[i].message_sha256) != -1) {
+                        if (ignore_zeronet_msg_id[auth_address] &&
+                            (ignore_zeronet_msg_id[auth_address].indexOf(res.msg[i].message_sha256) != -1)) {
                             // message already received
                             continue ;
                         }
@@ -3056,16 +3077,17 @@ angular.module('MoneyNetwork')
 
         function client_logout() {
             // notification
+            var key ;
             ZeroFrame.cmd("wrapperNotification", ['done', 'Log out OK', 3000]);
             // clear sessionStorage
             MoneyNetworkHelper.client_logout();
             // clear all JS work data in MoneyNetworkService
-            for (var key in zeronet_file_locked) delete zeronet_file_locked[key];
+            for (key in zeronet_file_locked) delete zeronet_file_locked[key];
             user_info.splice(0, user_info.length);
             clear_contacts() ;
             js_messages.splice(0, js_messages.length);
             watch_receiver_sha256.splice(0, watch_receiver_sha256.length);
-            ignore_zeronet_msg_id.splice(0, ignore_zeronet_msg_id.length);
+            for (key in ignore_zeronet_msg_id) delete ignore_zeronet_msg_id[key] ;
             avatar.loaded = false;
             user_id = 0 ;
             user_contents_max_size = null ;
