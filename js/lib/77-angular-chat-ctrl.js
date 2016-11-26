@@ -665,7 +665,7 @@ angular.module('MoneyNetwork')
                         reason = 4.3 ;
                         match = (message.message.message.password == self.contact.password) ;
                     }
-                    else if (message.message.message.msgtype = 'chat msg') {
+                    else if (message.message.message.msgtype == 'chat msg') {
                         // group chat message. receiver_sha256 = SHA256(group chat password?)
                         // old errors. Messages should have been under 3 instead
                         reason = 4.4 ;
@@ -880,12 +880,13 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("wrapperConfirm", ['Delete "' + msg_text + '" message?', "Delete"], function (confirmed) {
                         if (!confirmed) return;
                         // console.log(pgm + 'delete message. message = ' + JSON.stringify(message));
-                        message.message.deleted_at = new Date().getTime(); // logical delete
-                        var index = null;
-                        for (var i = 0; i < self.messages.length; i++) if (self.messages[i]["$$hashKey"] == message["$$hashKey"]) index = i;
-                        // console.log(pgm + 'index = ' + index);
+                        // logical delete here. physical delete in ls_save_contacts
+                        message.message.deleted_at = new Date().getTime();
                         // remove from UI
-                        self.messages.splice(index, 1);
+                        var index = -1;
+                        for (var i = 0; i < self.messages.length; i++) if (self.messages[i]["$$hashKey"] == message["$$hashKey"]) index = i;
+                        // console.log(pgm + 'index = ' + index + ', message = ' + JSON.stringify(message));
+                        if (index != -1) self.messages.splice(index, 1);
                         $scope.$apply();
                         // update localStorage and optional zeronet
                         var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;

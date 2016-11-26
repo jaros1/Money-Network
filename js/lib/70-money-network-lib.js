@@ -829,7 +829,7 @@ var MoneyNetworkHelper = (function () {
         var debug_keys = [
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
-            'edit_alias'];
+            'edit_alias', 'feedback_info'];
         var i, key, debug_value, regexp ;
         for (i=0 ; i<debug_keys.length ; i++) {
             key = debug_keys[i] ;

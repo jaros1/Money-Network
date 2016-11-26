@@ -242,6 +242,45 @@ angular.module('MoneyNetwork')
             return Math.round(user_contents_max_size * 0.9) ;
         } // get_max_image_size
 
+
+        // add feedback info to outgoing message
+        // a) sending feedback info: I have received message i1, i2, i3, ... from you
+        // b) requesting feedback info: I am still waiting for feedback info for message o1, o2, o3, ... to you
+        // c) a little more complicated for group chat ...
+        // d) check sender_sha256 and receiver_sha256 when available
+        // e) check local_msg_seq and remote_msg_seq when available
+        function add_feedback_info(message, contact) {
+            var pgm = service + '.add_feedback_info: ' ;
+            debug('feedback_info', pgm + 'not implemented. message = ' + JSON.stringify(message));
+
+            if (contact.type == 'group') {
+
+            }
+            else {
+                // normal chat.
+                // - always adding a random sender_sha256 address to outgoing message
+                // - listening for any response to this address (receiver_sha256) and remove message from ZeroNet (data.json) after having received response
+                // - see section b) in data.json cleanup routine (z_update_data_json)
+
+                //message = {
+                //    "folder": "outbox",
+                //    "message": {
+                //        "msgtype": "chat msg",
+                //        "message": "xxx",
+                //        "local_msg_seq": 394,
+                //        "sender_sha256": "f8f6e281de60bdc82fcddbb4b46a185880d24e57d4594b0214cfcfd19dec5796"
+                //    },
+                //    "msgtype": "chat msg",
+                //    "local_msg_seq": 394,
+                //    "sender_sha256": "f8f6e281de60bdc82fcddbb4b46a185880d24e57d4594b0214cfcfd19dec5796"
+                //};
+
+            }
+
+
+        } // add_feedback_info
+
+
         // keep track of ZeroNet fileGet/fileWrite operations. fileWrite must finish before next fileGet
         var zeronet_file_locked = {} ;
 
@@ -438,6 +477,7 @@ angular.module('MoneyNetwork')
                                 local_msg_seq = next_local_msg_seq() ;
                                 message_with_envelope.local_msg_seq = local_msg_seq;
                                 message.local_msg_seq = local_msg_seq ;
+
                                 if (contact.type == 'group') {
                                     // simple symmetric encryption only using contact.password
                                     // problem. too easy to identify group chat messages
@@ -490,6 +530,9 @@ angular.module('MoneyNetwork')
                                         continue ;
                                     }
                                 }
+                                // add feedback info to outgoing message
+                                add_feedback_info(message_with_envelope, contact) ;
+                                // don't send unchanged images
                                 image = null ;
                                 if (message.replace_unchanged_image_with_x) {
                                     // x = 'unchanged image'
@@ -505,6 +548,7 @@ angular.module('MoneyNetwork')
                                 if (image) message.image = image ; // restore image
                                 delete message.sender_sha256 ; // info is in message_with_envelope
                                 delete message.local_msg_seq ; // info is in message_with_envelope
+                                // delete message.feedback_info ; // todo: no reason to keep feedback info?
                                 message_with_envelope.zeronet_msg_id = CryptoJS.SHA256(encrypted_message_str).toString();
                                 message_with_envelope.sent_at = new Date().getTime() ;
                                 // console.log(pgm + 'new local_storage_messages[' + i + '] = ' + JSON.stringify(message));
@@ -525,6 +569,7 @@ angular.module('MoneyNetwork')
                                 local_storage_updated = true ;
                                 continue ;
                             } // if
+
                             if (contact.messages[j].zeronet_msg_id && contact.messages[j].deleted_at) {
                                 // delete message requested by client (active delete)
                                 // console.log(pgm + 'debug: delete message requested by client (active delete)') ;
@@ -541,8 +586,7 @@ angular.module('MoneyNetwork')
                                 } // for k (data.msg)
                                 // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
                                 if (!message_deleted) {
-                                    if (!is_admin() || !admin_key) {
-                                        // not an admin tast!
+                                    if (!is_admin() || !admin_key) { // ignore delete errors for admin task!
                                         error = "Could not delete message from Zeronet. Maybe posted in ZeroNet from an other ZeroNet id" ;
                                         console.log(pgm + 'error = ' + error) ;
                                         console.log(pgm + 'user_seq = ' + user_seq) ;
@@ -587,6 +631,7 @@ angular.module('MoneyNetwork')
                     for (i=data.msg.length-1 ; i>=0 ; i--) {
                         if (data.msg[i].timestamp > one_week_ago) continue ;
                         // clear reference from localStorage to deleted message at ZeroNet
+
                         for (j=0 ; j<ls_contacts.length ; j++) {
                             contact = ls_contacts[j] ;
                             for (k=0 ; k<contact.messages.length ; k++) {
@@ -607,10 +652,7 @@ angular.module('MoneyNetwork')
                     // always keep messages for last hour.
                     // data.json size must also be <data_json_max_size
                     var one_hour_ago = now - 1000*60*60 ;
-                    var msg_user_seqs ;
-                    var my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
-                    var my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
-                    var inbox_message, outbox_message, data_removed ;
+                    var msg_user_seqs, inbox_message, outbox_message, data_removed ;
                     var count = 0 ;
                     while (true) {
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
@@ -651,16 +693,30 @@ angular.module('MoneyNetwork')
                         //    outbox msg1.sender_sha256 == inbox msg2.receiver_sha256
                         //    ingoing msg2 is a response using sender_sha256 from outgoing msg1
                         //    delete msg1 from data.msg array if not already done
+                        //    only used in private chat - not used in group chat
                         for (i=0 ; i<ls_contacts.length ; i++) {
                             contact = ls_contacts[i] ;
+                            if (contact.type == 'group') continue ;
                             if (!contact.messages) continue ;
                             for (j=0 ; j<contact.messages.length ; j++) {
                                 if (contact.messages[j].folder != 'inbox') continue ;
                                 inbox_message = contact.messages[j] ;
                                 if (!inbox_message.receiver_sha256) continue ;
-                                if (inbox_message.receiver_sha256 == my_pubkey_sha256) continue ; // todo: drop. No reason to save receiver_sha256 == my_pubkey_sha256 in inbox messages
                                 // found a message in inbox folder with a receiver_sha256. Find corresponding outbox message
                                 debug('data_cleanup', pgm + 'inbox_message = ' + JSON.stringify(inbox_message));
+                                // todo: why "msgtype": "chat msg" in message envelope? see issue #33 Minor problem with msgtype in message envelope
+                                //inbox_message = {
+                                //    "local_msg_seq": 384,
+                                //    "folder": "inbox",
+                                //    "message": {"msgtype": "received", "remote_msg_seq": 383, "local_msg_seq": 2},
+                                //    "zeronet_msg_id": "1fe194fae73b323d7147141687789f1fae802102ed4658985a2bdc323fdcbe13",
+                                //    "sender_sha256": "ae7a57d6430be2b7f1cc90026bf788de75d7329819b2c27e46595d6d66601606",
+                                //    "sent_at": 1480097517890,
+                                //    "receiver_sha256": "3e33ff66af81ef8a9484b94996e0d300e9659a8fc61c01c80432745cc1ba51cd",
+                                //    "received_at": 1480097522875,
+                                //    "ls_msg_size": 414,
+                                //    "msgtype": "chat msg"
+                                //};
                                 outbox_message = null ;
                                 for (k=0; k<contact.messages.length ; k++) {
                                     if (contact.messages[k].folder != 'outbox') continue ;
@@ -673,16 +729,25 @@ angular.module('MoneyNetwork')
                                 if (!outbox_message) {
                                     if (contact.outbox_sender_sha256 && contact.outbox_sender_sha256[inbox_message.receiver_sha256]) {
                                         // OK. must be an outbox message deleted by user. Has already been removed from data.json
-                                        debug('data_cleanup', pgm + 'OK. must be an outbox message deleted by user. Has already been removed from data.json') ;
+                                        debug('data_cleanup', pgm + 'OK. must be an outbox message deleted by user. Has already been removed from data.json.') ;
+                                        debug('data_cleanup', pgm + 'setting inbox_message.receiver_sha256 to null');
+                                        delete inbox_message.receiver_sha256 ;
+                                        local_storage_updated = true ;
                                         continue ;
                                     }
                                     else {
-                                        console.log(pgm + 'System error. Could not find any messages in outbox folder with sender_sha256 = ' + inbox_message.sender_sha256);
+                                        console.log(pgm + 'System error. Could not find any messages in outbox folder with sender_sha256 = ' + inbox_message.receiver_sha256);
+                                        debug('data_cleanup', pgm + 'setting inbox_message.receiver_sha256 to null');
+                                        delete inbox_message.receiver_sha256 ;
                                         continue ;
                                     }
                                 }
-                                // outbox message.sender_sha256 == inbox message.receiver_sha256
-                                // check if outbox message is in data.msg array
+                                // outbox_message.sender_sha256 == inbox message.receiver_sha256
+                                // mark outbox message as received. do not request feedback info for this message
+                                // keep outbox.sender_sha256. there can come other ingoing messages with this receiver_sha256 address (watch_receiver_sha256 array)
+                                outbox_message.received = true ;
+                                delete inbox_message.receiver_sha256 ;
+                                // check if outbox message still is in data.msg array
                                 for (k=data.msg.length-1 ; k >= 0 ; k--) {
                                     if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
                                     // found a message that can be deleted from ZeroNet (received by contact)
@@ -692,6 +757,10 @@ angular.module('MoneyNetwork')
                                     delete outbox_message.zeronet_msg_size ;
                                     local_storage_updated = true ;
                                     data_removed = true ;
+                                    if (inbox_message.message.msgtype == 'received') {
+                                        // logical delete. will be physical deleted in next ls_save_contacts
+                                        inbox_message.deleted_at = new Date().getTime() ;
+                                    }
                                     break ;
                                 }
                                 if (data_removed) {
@@ -729,12 +798,13 @@ angular.module('MoneyNetwork')
                                     continue ;
                                 }
                                 debug('data_cleanup', pgm + 'all image receipts have been received. Remove message from data.json') ;
+                                delete outbox_message.image_receipts ;
 
                                 // check if outbox message is in data.msg array
                                 for (k=data.msg.length-1 ; k >= 0 ; k--) {
                                     if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
                                     // found a message that can be deleted from ZeroNet (received by contact)
-                                    debug('data_cleanup', pgm + 'found a message that can be deleted from ZeroNet (received by all group chat contacts)') ;
+                                    debug('data_cleanup', pgm + 'found an image message that can be deleted from ZeroNet (received by all group chat contacts)') ;
                                     data.msg.splice(k,1);
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
@@ -743,7 +813,7 @@ angular.module('MoneyNetwork')
                                     break ;
                                 } // for k (data.msg)
                                 if (data_removed) {
-                                    debug('data_cleanup', pgm + 'data.json is big. removed outbox message received by received by all group chat contacts') ;
+                                    debug('data_cleanup', pgm + 'data.json is big. removed outbox image message received by received by all group chat contacts') ;
                                     break ;
                                 }
                                 else {
@@ -757,14 +827,38 @@ angular.module('MoneyNetwork')
                         } // for i (contacts)
                         if (data_removed) continue ; // recheck data.json size
 
-                        // d) delete old msg
-                        if ((data.msg.length == 0) || (data.msg[0].timestamp > one_hour_ago)) {
+                        // d) delete old msg. only current user_seq
+                        i = -1 ;
+                        for (j=0; ((i==-1) && (j<data.msg.length)) ; j++) if (data.msg[j].user_seq == user_seq) i == j ;
+                        if ((i == -1) || (data.msg[i].timestamp > one_hour_ago)) {
                             debug('data_cleanup', pgm + 'no more old data to remove');
                             break ;
                         }
+                        // found old data.msg row. find outbox message
+                        outbox_message = null ;
+                        for (j=0 ; j<ls_contacts.length ; j++) {
+                            contact = ls_contacts[j] ;
+                            for (k=0 ; k<contact.messages.length ; j++) {
+                                if (contact.messages[k].folder != 'outbox') continue;
+                                if (!contact.messages[k].zeronet_msg_id) continue;
+                                if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
+                                // found outbox message
+                                outbox_message = contact.messages[k] ;
+                                break ;
+                            } // for k (contact.messages)
+                            if (outbox_message) break ;
+                        } // for j (contacts)
+                        if (outbox_message) {
+                            // remove reference from outbox to zeronet
+                            delete outbox_message.zeronet_msg_id ;
+                            delete outbox_message.zeronet_msg_size ;
+                            outbox_message.cleanup_at =  new Date().getTime() ;
+                            local_storage_updated = true ;
+                        }
+                        else debug('data_cleanup', pgm + 'Warning. Could not find outbox message with zeronet_msg_id ' + data.msg[i].message_sha256) ;
+                        // remove from zeronet
+                        data.msg.splice(j,1);
 
-                        // remove old message and recheck data.json size
-                        data.msg.splice(0,1);
                         debug('data_cleanup', pgm + 'data.json is big. deleted old message') ;
                     } // while true
 
@@ -1866,6 +1960,7 @@ angular.module('MoneyNetwork')
             var my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             var my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
             if ((message.receiver_sha256 == my_pubkey_sha256) || !res.key) delete message.receiver_sha256 ;
+            // if (message.receiver_sha256 && !res.key) debug('inbox && unencrypted', pgm + 'error. expected receiver_sha256 to be null (1)');
             message.ls_msg_size = JSON.stringify(message).length ;
             ignore_zeronet_msg_id.push(res.message_sha256) ;
             if (sender_sha256 && (res.timestamp > contact.inbox_last_sender_sha256_at)) {
@@ -1874,6 +1969,18 @@ angular.module('MoneyNetwork')
             }
 
             debug('inbox && unencrypted', pgm + 'new incoming message = ' + JSON.stringify(message));
+            //message = {
+            //    "local_msg_seq": 384,
+            //    "folder": "inbox",
+            //    "message": {"msgtype": "received", "remote_msg_seq": 383, "local_msg_seq": 2},
+            //    "zeronet_msg_id": "1fe194fae73b323d7147141687789f1fae802102ed4658985a2bdc323fdcbe13",
+            //    "sender_sha256": "ae7a57d6430be2b7f1cc90026bf788de75d7329819b2c27e46595d6d66601606",
+            //    "sent_at": 1480097517890,
+            //    "receiver_sha256": "3e33ff66af81ef8a9484b94996e0d300e9659a8fc61c01c80432745cc1ba51cd",
+            //    "received_at": 1480097522875,
+            //    "ls_msg_size": 414
+            //};
+
             if (res.key) {
                 // private person to person chat
                 contact.messages.push(message) ;
@@ -1884,6 +1991,7 @@ angular.module('MoneyNetwork')
             }
             else {
                 // group chat
+                // if (message.receiver_sha256) debug('inbox && unencrypted', pgm + 'error. expected receiver_sha256 to be null (2)');
                 group_chat_contact.messages.push(message) ;
                 js_messages.push({
                     contact: group_chat_contact,
@@ -2027,6 +2135,8 @@ angular.module('MoneyNetwork')
                 }
                 else {
                     debug('inbox && unencrypted', pgm + 'image receipt was from a normal chat message');
+                    // debug('inbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
+                    // debug('inbox && unencrypted', pgm + 'message2 = ' + JSON.stringify(message2));
                     // ready for data.json cleanup
                     new_incoming_receipts++ ;
                 }
@@ -2366,7 +2476,7 @@ angular.module('MoneyNetwork')
                 "where ( messages.receiver_sha256 in ('" + watch_receiver_sha256[0] + "'" ;
             for (i=1 ; i<watch_receiver_sha256.length ; i++) query = query + ", '" + watch_receiver_sha256[i] + "'" ;
             query = query + ')' ;
-            // 2) check if previously received messages been deleted from zeronet
+            // 2) check if previously received inbox messages been deleted from zeronet
             // 3) check if previously deleted inbox messages have been deleted from zeronet
             if (ignore_zeronet_msg_id.length > 0) {
                 query = query + " or messages.message_sha256 in ('" + ignore_zeronet_msg_id[0] + "'" ;
@@ -2622,7 +2732,7 @@ angular.module('MoneyNetwork')
             // must be content.json or data.json
             debug('file_done', pgm + 'filename = ' + filename) ;
 
-            // read json file
+            // read json file (content.json, data.json or status.json)
             ZeroFrame.cmd("fileGet", [filename, false], function (res) {
                 var pgm = service + '.event_file_done fileGet callback: ';
                 var content_json_avatar, i, auth_address, contacts_updated ;
@@ -2680,6 +2790,11 @@ angular.module('MoneyNetwork')
                     var pubkey, j, unique_id ;
                     // debug('file_done', pgm + 'watch_receiver_sha256 = ' + JSON.stringify(watch_receiver_sha256));
                     // debug('file_done', pgm + 'res.msg.length before = ' + res.msg.length) ;
+
+                    debug('file_done', pgm + 'processing new incoming messages from msg array. should also detect previously received messages that have been deleted from msg array');
+
+
+
                     for (i=0 ; i<res.msg.length ; i++) {
                         // debug('file_done', pgm + 'res.msg[' + i + '].receiver_sha256 = ' + res.msg[i].receiver_sha256);
                         if (watch_receiver_sha256.indexOf(res.msg[i].receiver_sha256) == -1) {
@@ -2703,9 +2818,17 @@ angular.module('MoneyNetwork')
                         res.msg[i].auth_address = auth_address ; // used if create new unknown contacts
                         // debug('file_done', pgm + 'unique_id = ' + unique_id);
 
-                        if (process_incoming_message(res.msg[i], unique_id)) contacts_updated = true ;
+                        if (process_incoming_message(res.msg[i], unique_id)) {
+                            debug('file_done', pgm + 'last message = ' + JSON.stringify(js_messages[js_messages.length-1].message)) ;
+                            contacts_updated = true ;
+                        }
                     } // for i (res.msg)
                     // console.log(pgm + 'res.msg.length after = ' + res.msg.length) ;
+
+                    debug('file_done',
+                        pgm + 'new_outgoing_receipts.length = ' + new_outgoing_receipts.length +
+                        ', new_incoming_receipts = ' + new_incoming_receipts +
+                        ', contacts_updated = ' + contacts_updated );
 
                     // any receipts to sent?
                     if (new_outgoing_receipts.length > 0) {
