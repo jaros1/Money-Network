@@ -839,13 +839,26 @@ var MoneyNetworkHelper = (function () {
             keys = keys.replace(regexp, debug_value) ;
         }
         // console.log(pgm + 'new keys = ' + keys);
+        var regexp ;
         try {
-            if (eval(keys)) console.log(text) ;
+            if (eval(keys)) {
+                // shorten long strings. for example images
+                regexp = new RegExp('"([^"]{500,}?)"','g');
+                text = text.replace(regexp, function(match, $1, $2, offset, original) { return $1.substr(0,480) + '...' }) ;
+                console.log(text) ;
+            }
         }
         catch (err) {
             console.log(pgm + 'invalid call. keys = ' + keys + ', text = ' + text + ', error = ' + err.message) ;
         }
     } // debug
+
+    // as JSON.stringify but shorten long message and image. Also used in debug
+    function stringify (json) {
+        var str = JSON.stringify(json) ;
+        var regexp = new RegExp('"([^"]{500,}?)"','g');
+        return str.replace(regexp, function(match, $1, $2, offset, original) { return $1.substr(0,480) + '...' }) ;
+    }
 
     // export helpers
     return {
@@ -868,8 +881,8 @@ var MoneyNetworkHelper = (function () {
         decrypt: decrypt,
         validate_json: validate_json,
         load_user_setup: load_user_setup,
-        debug: debug
-
+        debug: debug,
+        stringify: stringify
     };
 })();
 // MoneyNetworkHelper end
