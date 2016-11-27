@@ -260,6 +260,10 @@ angular.module('MoneyNetwork')
             feedback = {} ;
 
             if (contact.type == 'group') {
+                // group chat
+
+                // check inbox
+
 
             }
             else {
@@ -273,20 +277,10 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message = contact.messages[i] ;
                     if (message.folder != 'inbox') continue ;
-                    if (!message.zeronet_msg_id) continue ;
+                    if (!message.zeronet_msg_id) continue ; // already removed from ZeroNet
+                    if (message.feedback) continue ; // todo: feedback info exchanged - contact knows that message has been received
                     debug('feedback_info', pgm + 'inbox message = ' + JSON.stringify(message)) ;
-                    //{
-                    //    "local_msg_seq": 446,
-                    //    "folder": "inbox",
-                    //    "message": {"msgtype": "chat msg", "message": "hi", "local_msg_seq": 1},
-                    //    "zeronet_msg_id": "35030e508617348391a880143346f841289eba502424d7da5d5c94c3cc9744a5",
-                    //    "sender_sha256": "991a34e246487a037cf3abf58965e35a28a6ef1ef4edb42e32b0a323dc2eafe1",
-                    //    "sent_at": 1480242755169,
-                    //    "received_at": 1480242767997,
-                    //    "ls_msg_size": 323,
-                    //    "msgtype": "chat msg"
-                    //};
-                    if (message.message && message.message.local_msg_seq) local_msg_seqs.push(message.message.local_msg_seq) ;
+                    if (message.message.local_msg_seq) local_msg_seqs.push(message.message.local_msg_seq) ;
                 } // for i (contact.messages)
                 if (local_msg_seqs.length > 0) feedback.received = local_msg_seqs ;
 
@@ -298,28 +292,15 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message = contact.messages[i] ;
                     if (message.folder != 'outbox') continue ;
-                    if (message.feedback) continue ;
-                    if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ;
+                    if (message.feedback) continue ; // message have been received by contact
+                    if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ; // current message
                     debug('feedback_info', pgm + 'outbox message = ' + JSON.stringify(message)) ;
-                    // {
-                    //    "folder": "outbox",
-                    //    "message": {
-                    //        "msgtype": "chat msg",
-                    //        "message": "ho 4",
-                    //        "local_msg_seq": 449,
-                    //        "sender_sha256": "bc1a5f80a0dd6fec88129fa31c4e709ae58af462e8e07630f23213c60599e8a7"
-                    //    },
-                    //    "msgtype": "chat msg",
-                    //    "local_msg_seq": 449,
-                    //    "sender_sha256": "bc1a5f80a0dd6fec88129fa31c4e709ae58af462e8e07630f23213c60599e8a7"
-                    // }
                     local_msg_seqs.push(message.local_msg_seq) ;
                 } // for i (contact.messages)
                 if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
-
             }
 
-            // any feedback info?
+            // any feedback info to add?
             if (Object.keys(feedback).length > 0) {
                 debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback));
                 // feedback = {"received":[1],"sent":[445,447,448,449,450]} ;
@@ -327,6 +308,85 @@ angular.module('MoneyNetwork')
             }
 
         } // add_feedback_info
+
+
+        function receive_feedback_info(message_with_envelope, contact) {
+            var pgm = service + '.receive_feedback_info: ' ;
+            var feedback, received, sent, i, message, index, local_msg_seq ;
+            debug('feedback_info', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+            feedback = message_with_envelope.message.feedback ;
+            //message_with_envelope = {
+            //    "local_msg_seq": 479,
+            //    "folder": "inbox",
+            //    "message": {
+            //        "msgtype": "chat msg",
+            //        "message": "ho 2",
+            //        "local_msg_seq": 3,
+            //        "feedback": {"received": [476], "sent": [2]}
+            //    },
+            //    "zeronet_msg_id": "c1e73400920fe1d18c7c9f94343852c0f4e7d488b1ce0bf97b23f016154966ea",
+            //    "sender_sha256": "957367572bca3e8d8c6e2ce95950bb5a387ecb3f9195aebc60d29f09ca68f8f1",
+            //    "sent_at": 1480260635958,
+            //    "receiver_sha256": "671df454b0e6412ac66c29ecae1e80690ed1f347e58157b4e44934a799278aa2",
+            //    "received_at": 1480260662735,
+            //    "ls_msg_size": 451
+            //};
+
+            if (contact.type == 'group') {
+                // received feedback info in group chat message
+            }
+            else {
+                // received feedback info in normal chat message
+                // "feedback": {"received": [476], "sent": [2]}
+                // example. "received": [476] - contact have received outbox message with local_msg_seq 474
+                if (feedback.received) {
+                    received = JSON.parse(JSON.stringify(feedback.received)) ;
+                    for (i=0 ; i<contact.messages.length ; i++) {
+                        message = contact.messages[i] ;
+                        if (message.folder != 'outbox') continue ;
+                        index = received.indexOf(message.local_msg_seq) ;
+                        if (index == -1) continue ;
+                        received.splice(index,1) ;
+                        if (!message.feedback) {
+                            message.feedback = true ;
+                            debug('feedback_info', pgm + 'marked previous sent outbox message ' + JSON.stringify(message) + ' as received') ;
+                        }
+                    }
+                    if (received.length) debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(received) + ' were not found in outbox');
+                } // for j (contact.messages)
+                // 2) contact is waiting for feedback for inbox message with remote_msg_seq 2.
+                // example: "sent": [2] - contact has sent message with local_msg_seq 2 and is waiting for feedback info
+                if (feedback.sent) {
+                    sent = JSON.parse(JSON.stringify(feedback.sent)) ;
+                    for (i=0 ; i<contact.messages.length ; i++) {
+                        message = contact.messages[i] ;
+                        if (message.folder != 'inbox') continue ;
+                        debug('feedback_info', 'inbox message = ' + JSON.stringify(message));
+                        local_msg_seq = message.message.local_msg_seq ;
+                        if (!local_msg_seq) continue ;
+                        index = sent.indexOf(local_msg_seq) ;
+                        if (index == -1) continue ;
+                        sent.splice(index,1);
+                        if (message.feedback == false) {
+                            debug('feedback_info', pgm + 'already have received feedback info request for inbox message with local_msg_seq ' + local_msg_seq + ' from contact') ;
+                            continue ;
+                        }
+                        if (message.feedback) {
+                            debug('feedback_info', pgm + 'has already sent feedback info for inbox message with local_msg_seq ' + local_msg_seq + ' to contact but will resend feedback info in next outbox message') ;
+                        }
+                        else {
+                            debug('feedback_info', pgm + 'has marked inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested') ;
+                        }
+                        message.feedback = false ;
+                        debug('feedback_info', 'message = ' + JSON.stringify(message)) ;
+
+                    } // for i (contact.messages)
+                    if (sent.length) debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
+                }
+
+            }
+
+        } // receive_feedback_info
 
 
         // keep track of ZeroNet fileGet/fileWrite operations. fileWrite must finish before next fileGet
@@ -2091,11 +2151,27 @@ angular.module('MoneyNetwork')
                 if (!contact.outbox_sender_sha256[message.receiver_sha256].last_used_at ||
                     (message.sent_at > contact.outbox_sender_sha256[message.receiver_sha256].last_used_at)) {
                     contact.outbox_sender_sha256[message.receiver_sha256].last_used_at = message.sent_at ;
-                }
-                // console.log(pgm + 'updated contact.sha256. contact = ' + JSON.stringify(contact));
+                }// console.log(pgm + 'updated contact.sha256. contact = ' + JSON.stringify(contact));
             }
 
+
             // post processing new incoming messages
+
+            // any feedback info?
+            var feedback = decrypted_message.feedback ;
+            if (feedback) {
+                // received feedback info. what messages have contact sent. what messages is contact waiting for feedback for
+                debug('feedback_info || inbox && unencrypted', pgm + 'feedback = ' + JSON.stringify(feedback));
+                // decrypted_message.feedback = {"received":[468,469,470,473],"sent":[4]} ;
+                if (res.key) {
+                    // normal chat feedback info
+                    receive_feedback_info(message, contact) ;
+                }
+                else {
+                    // group chat feedback info
+                    receive_feedback_info(message, group_chat_contact) ;
+                }
+            }
 
             if (decrypted_message.msgtype == 'contact added') {
                 // received public & unverified user information from contact
