@@ -695,7 +695,23 @@ var MoneyNetworkHelper = (function () {
                 }
             },
             "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "feedback": {
+                "type": 'object',
+                "properties": {
+                    "received": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    },
+                    "sent": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    }
+                },
+                "additionalProperties": false
+            }
         },
         "required": ['msgtype', 'search'],
         "additionalProperties": false
@@ -706,7 +722,23 @@ var MoneyNetworkHelper = (function () {
         "properties": {
             "msgtype": { "type": 'string', pattern: '^contact removed$'},
             "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "feedback": {
+                "type": 'object',
+                "properties": {
+                    "received": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    },
+                    "sent": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    }
+                },
+                "additionalProperties": false
+            }
         },
         "required": ['msgtype'],
         "additionalProperties": false
@@ -721,7 +753,23 @@ var MoneyNetworkHelper = (function () {
             "local_msg_seq": { "type": 'integer'},
             "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "old_local_msg_seq": { "type": 'integer' },
-            "image": { "type": 'string'}
+            "image": { "type": 'string'},
+            "feedback": {
+                "type": 'object',
+                "properties": {
+                    "received": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    },
+                    "sent": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    }
+                },
+                "additionalProperties": false
+            }
         },
         "required": ['msgtype'],
         "additionalProperties": false
@@ -734,7 +782,23 @@ var MoneyNetworkHelper = (function () {
             "msgtype": { "type": 'string', pattern: '^verify$'},
             "password_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "feedback": {
+                "type": 'object',
+                "properties": {
+                    "received": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    },
+                    "sent": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    }
+                },
+                "additionalProperties": false
+            }
         },
         "required": ['msgtype', 'password_sha256'],
         "additionalProperties": false
@@ -746,7 +810,23 @@ var MoneyNetworkHelper = (function () {
             "msgtype": { "type": 'string', pattern: '^verified$'},
             "password": { "type": 'string'},
             "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "feedback": {
+                "type": 'object',
+                "properties": {
+                    "received": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    },
+                    "sent": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    }
+                },
+                "additionalProperties": false
+            }
         },
         "required": ['msgtype', 'password'],
         "additionalProperties": false
@@ -758,7 +838,23 @@ var MoneyNetworkHelper = (function () {
             "msgtype": { "type": 'string', pattern: '^received$'},
             "remote_msg_seq": { "type": 'integer'},
             "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "feedback": {
+                "type": 'object',
+                "properties": {
+                    "received": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    },
+                    "sent": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    }
+                },
+                "additionalProperties": false
+            }
         },
         "required": ['msgtype', 'remote_msg_seq'],
         "additionalProperties": false
@@ -775,7 +871,23 @@ var MoneyNetworkHelper = (function () {
             },
             "password": { "type": 'string' },
             "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "feedback": {
+                "type": 'object',
+                "properties": {
+                    "received": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    },
+                    "sent": {
+                        "type": 'array',
+                        "items": { "type": 'integer'},
+                        "minItems": 1
+                    }
+                },
+                "additionalProperties": false
+            }
         },
         "required": ['msgtype', 'participants', 'password'],
         "additionalProperties": false

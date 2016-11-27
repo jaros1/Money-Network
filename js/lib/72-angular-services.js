@@ -254,9 +254,10 @@ angular.module('MoneyNetwork')
         // c) a little more complicated for group chat ...
         // d) check sender_sha256 and receiver_sha256 when available
         // e) check local_msg_seq and remote_msg_seq when available
-        function add_feedback_info(message, contact) {
+        function add_feedback_info (message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
-            debug('feedback_info', pgm + 'not implemented. message = ' + JSON.stringify(message));
+            var feedback, i, message, local_msg_seqs ;
+            feedback = {} ;
 
             if (contact.type == 'group') {
 
@@ -267,21 +268,63 @@ angular.module('MoneyNetwork')
                 // - listening for any response to this address (receiver_sha256) and remove message from ZeroNet (data.json) after having received response
                 // - see section b) in data.json cleanup routine (z_update_data_json)
 
-                //message = {
-                //    "folder": "outbox",
-                //    "message": {
-                //        "msgtype": "chat msg",
-                //        "message": "xxx",
-                //        "local_msg_seq": 394,
-                //        "sender_sha256": "f8f6e281de60bdc82fcddbb4b46a185880d24e57d4594b0214cfcfd19dec5796"
-                //    },
-                //    "msgtype": "chat msg",
-                //    "local_msg_seq": 394,
-                //    "sender_sha256": "f8f6e281de60bdc82fcddbb4b46a185880d24e57d4594b0214cfcfd19dec5796"
-                //};
+                // check inbox. received messages from contact that have not yet been deleted from zeronet
+                local_msg_seqs = [] ;
+                for (i=0 ; i<contact.messages.length ; i++) {
+                    message = contact.messages[i] ;
+                    if (message.folder != 'inbox') continue ;
+                    if (!message.zeronet_msg_id) continue ;
+                    debug('feedback_info', pgm + 'inbox message = ' + JSON.stringify(message)) ;
+                    //{
+                    //    "local_msg_seq": 446,
+                    //    "folder": "inbox",
+                    //    "message": {"msgtype": "chat msg", "message": "hi", "local_msg_seq": 1},
+                    //    "zeronet_msg_id": "35030e508617348391a880143346f841289eba502424d7da5d5c94c3cc9744a5",
+                    //    "sender_sha256": "991a34e246487a037cf3abf58965e35a28a6ef1ef4edb42e32b0a323dc2eafe1",
+                    //    "sent_at": 1480242755169,
+                    //    "received_at": 1480242767997,
+                    //    "ls_msg_size": 323,
+                    //    "msgtype": "chat msg"
+                    //};
+                    if (message.message && message.message.local_msg_seq) local_msg_seqs.push(message.message.local_msg_seq) ;
+                } // for i (contact.messages)
+                if (local_msg_seqs.length > 0) feedback.received = local_msg_seqs ;
+
+                // check outbox. messages sent to contact without having received any feedback
+                // two kind of feedback.
+                //   a) inbox.receiver_sha256 = outbox.sender_sha256. have received an inbox message with sha256 address sent in a outbox message
+                //   b) feedback hash in ingoing messages. See above.
+                local_msg_seqs = [] ;
+                for (i=0 ; i<contact.messages.length ; i++) {
+                    message = contact.messages[i] ;
+                    if (message.folder != 'outbox') continue ;
+                    if (message.feedback) continue ;
+                    if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ;
+                    debug('feedback_info', pgm + 'outbox message = ' + JSON.stringify(message)) ;
+                    // {
+                    //    "folder": "outbox",
+                    //    "message": {
+                    //        "msgtype": "chat msg",
+                    //        "message": "ho 4",
+                    //        "local_msg_seq": 449,
+                    //        "sender_sha256": "bc1a5f80a0dd6fec88129fa31c4e709ae58af462e8e07630f23213c60599e8a7"
+                    //    },
+                    //    "msgtype": "chat msg",
+                    //    "local_msg_seq": 449,
+                    //    "sender_sha256": "bc1a5f80a0dd6fec88129fa31c4e709ae58af462e8e07630f23213c60599e8a7"
+                    // }
+                    local_msg_seqs.push(message.local_msg_seq) ;
+                } // for i (contact.messages)
+                if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
 
             }
 
+            // any feedback info?
+            if (Object.keys(feedback).length > 0) {
+                debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback));
+                // feedback = {"received":[1],"sent":[445,447,448,449,450]} ;
+                message_with_envelope.message.feedback = feedback ;
+            }
 
         } // add_feedback_info
 
@@ -1060,7 +1103,7 @@ angular.module('MoneyNetwork')
             else new_contacts = [] ;
             clear_contacts() ;
             js_messages.splice(0, js_messages.length) ;
-            var i, j, contacts_updated = false ;
+            var i, j, contacts_updated = false, receiver_sha256 ;
             var old_contact ;
             var ls_msg_size_total = 0 ;
             var found_group_tag ;
@@ -1138,6 +1181,16 @@ angular.module('MoneyNetwork')
                         value: new_contact.participants.length + ' participants',
                         privacy: 'Search'
                     }) ;
+                }
+
+                // add feedback=true to outbox messages. that is messages where inbox.receiver_sha256 = outbox.sender_sha256
+                if (new_contact.outbox_sender_sha256) {
+                    for (receiver_sha256 in new_contact.outbox_sender_sha256) {
+                        for (j=0 ; j<new_contact.messages.length ; j++) {
+                            if (new_contact.messages[j].folder != 'outbox') continue ;
+                            if (new_contact.messages[j].sender_sha256 == receiver_sha256) new_contact.messages[j].feedback = true ;
+                        }
+                    }
                 }
 
                 // add "row" sequence to search array
@@ -2023,6 +2076,7 @@ angular.module('MoneyNetwork')
                     for (i=0 ; i<contact.messages.length ; i++) {
                         if (contact.messages[i].folder != 'outbox') continue ;
                         if (contact.messages[i].sender_sha256 != message.receiver_sha256) continue ;
+                        contact.messages[i].feedback = true ;
                         contact.outbox_sender_sha256[message.receiver_sha256] = { sent_at: contact.messages[i].sent_at } ;
                         break ;
                     } // for i (contact.messages)
