@@ -2814,6 +2814,37 @@ angular.module('MoneyNetwork')
                     // debug('file_done', pgm + 'res.msg.length before = ' + res.msg.length) ;
 
                     debug('file_done', pgm + 'processing new incoming messages from msg array. should also detect previously received messages that have been deleted from msg array');
+                    debug('file_done', pgm + 'res.msg = ' + JSON.stringify(res.msg)) ;
+                    //res.msg = [{
+                    //    "user_seq": 1,
+                    //    "receiver_sha256": "73ad4de7ec019035144bf0f231c420933f7844f2902bc7d59daee26dba7ef34d",
+                    //    "key": "iIunciOkVI4iuFMTY1wc2XrPOGIfpXqJ9s9SToRCxWGqRYrfyItZeSTCPTcTsOJdt8sitd0HtX5sV8i3fLMoGwmQCmE3PUDIToHVf2+YyAvtSI6mRYjeVanCZPwKtO+VxMFJ1bUSeounDzO6p1k/yXZ53aFBVWLv2epebswvKW1Lz3bqPmikW/XHgdDKaorpBDFmMoA7tmPUkNwOkk2gDz8LzX1/JnRZZk9iiVoiQZd69eUOG+tC831j0P/ub1btBCVbFotaaWb+tvnrg6CqmhPkFkd6A2+Oe0d33Yn4A0dIDQRLCVHad9InoieJmMwUiPSC/2tXHxZ4NOghi48/gw==",
+                    //    "message": "U2FsdGVkX1981IFBXlcxp/gkm3a1jCKzYnnV0k1GiRjicRSjp5i6GS41KFqB5QHoCzx4i2u9RMf1ipW8DG1FDd/mAFl+fFzcqzaTBvqEQVYoy3lmckXjOuunTT2zDVy7JjnOovkY78M8oZ8XiIUrZ1wEdr41i78jpZfx2FzbeMYKP2ebLhLvwEitjT+SMdn+jpUPGNlwTjujb//r6xZtQLYCbIP8v1LjTxbW4/8WUVycc9jMqLzQSIpi8zohoh9d",
+                    //    "message_sha256": "ee81d04a83990deedd83fc0baee613bfc88762e3e0c9a1cb105324f80590bc54",
+                    //    "timestamp": 1480155788903
+                    //}, {
+                    //    "user_seq": 3,
+                    //    "receiver_sha256": "21de8163066901b671ddf737d9a9f3884e891ad1e0958924853382fd9b1a0477",
+                    //    "key": "bce2b/cn+VzhcLsDFjlOm47ADqizh/oybxW1+PNceYjXVhOEl0b5wSqJ7w98ioDtrIFMynMoa0wNpqa/VBg5Aqi1fTMlY0DHvImLNtsZN23qjlacuAs8M2PeB31Ce6rYzNJ1udNy+8Dbpxu3EXCFzkwJm5ay4L8WnXBVFH/+L8V48Fj1Tdw0or0BgZ0KhEjCDGfisw1ytNDAZI0HpzIXmIUL5/GrjpHu3iHF831rVq9owzqiuYvwN/N9/jfdjQHQU5gizL27auA2E2zOA3VG9MlGON1aYgyHb5LCuC5rHTB3btpe/xgBeqE6s0yLVZEJBAQP/Z+IOUQuTf8Gj9S5tw==",
+                    //    "message": "U2FsdGVkX1+3ooOpLut4QOhdgaqpFwGfu8qUWJZenrNFS9g0iAkfsEe4TZ9++72KgjuZugPVAB/ckOkQffM6ua1mPCT/Tf1/Ct4/Nfp0U3HExfPge6bsPBtbg2UL5V1bC43I/ZZrJ/W1J7s8+EKvBdsaDQV2Tf4t1opWZBJqhNKeSmAlEZQR1hUeWi67yo5SmkzMihvrTbCKFYfnZdvf+Q==",
+                    //    "message_sha256": "e94f80dc230517428f6585c8a7b5ef7dbf1935a7fa40c908f355cbea148e279b",
+                    //    "timestamp": 1480178412504
+                    //}, {
+                    //    "user_seq": 3,
+                    //    "receiver_sha256": "8a2a289c6c951a7c1c9925ff1d43fa0310aacb4d29b7e9e67198f6f1b770ce69",
+                    //    "key": "mq+hl/c+t6pnAaXjdW3paG3pDApcVapqS3t+My/hNHJbgN+ne3Cs/YKWMia8rvEij5T+CSqT9aMBQ9kXSsOC1+rFKrW62N07SITFplrJa8Zt5Xi/ovhyw2MPfh8qL4NbQpWkV76KHrKHePaQIxvKovsEA0ykPz9qMuFlGt3BEyjCXP2VV/Nf/GGUjUchvfO+knEvl2GfqivgdIpdXs7dVmErPi3cO9JA+Tzy+scwNNP0Y6xUWH8wBx85kTfhc+vAV9ds6KnoBu8vmaLsQObFkyzGvZtysVAlUnXVo12fKsaFCdaWR7mkCVKTSV9Fq5MIThEpoy3n5MPVbOafuv8a8Q==",
+                    //    "message": "U2FsdGVkX19t5PAQoXGli66fb+zaBIUiT3Zy7NJZOZo+BCXx/W/FFxhoh53pQ5Yj9HPRBnRXhn9VeP6yiqtzScjGgmQRFlpfaRC4UTn22coDl4U6F0Qf7GLANeeIr7YWGeCW33LZ85Sc4uzSKQ7HCbeKMSarCnGF1AOknzvXIyY5/GTjpZ+e4cd5zBBpOXu+8oX3Mi56HgNnnWys9GDmcg==",
+                    //    "message_sha256": "a4702c4d95978622bddb3f1a456ac961313ea0352c8c6e1d049a5e83f801a39b",
+                    //    "timestamp": 1480178660534
+                    //}];
+                    debug('file_done', pgm + 'ignore_zeronet_msg_id[auth_address] = ' + JSON.stringify(ignore_zeronet_msg_id[auth_address])) ;
+                    //ignore_zeronet_msg_id[auth_address] = [
+                    //    "ee81d04a83990deedd83fc0baee613bfc88762e3e0c9a1cb105324f80590bc54", -- row 1 in res.msg
+                    //    "d09ec28c70b398792f72582251e6a40cf0fdeec2613d28945890a1b7f50deda3",
+                    //    "626dd80e6b108702f3bbb9911f0c81451444eb7594499352cfe62125b2c6ddfe",
+                    //    "29264a29572a4acf3d342b4e3de51af503c76c8c65378d0d5f4ef142bc60821d",
+                    //    "e94f80dc230517428f6585c8a7b5ef7dbf1935a7fa40c908f355cbea148e279b" -- row 2 in res.msg
+                    //];
 
                     for (i=0 ; i<res.msg.length ; i++) {
                         // debug('file_done', pgm + 'res.msg[' + i + '].receiver_sha256 = ' + res.msg[i].receiver_sha256);
