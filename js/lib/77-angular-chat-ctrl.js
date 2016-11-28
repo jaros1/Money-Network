@@ -881,7 +881,7 @@ angular.module('MoneyNetwork')
                         if (!confirmed) return;
                         // console.log(pgm + 'delete message. message = ' + JSON.stringify(message));
                         // logical delete here. physical delete in ls_save_contacts
-                        message.message.deleted_at = new Date().getTime();
+                        message.message.deleted_at = new Date().getTime(); // logical delete
                         // remove from UI
                         var index = -1;
                         for (var i = 0; i < self.messages.length; i++) if (self.messages[i]["$$hashKey"] == message["$$hashKey"]) index = i;
@@ -890,7 +890,7 @@ angular.module('MoneyNetwork')
                         $scope.$apply();
                         // update localStorage and optional zeronet
                         var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;
-                        moneyNetworkService.ls_save_contacts(update_zeronet);
+                        moneyNetworkService.ls_save_contacts(update_zeronet); // physical delete
                     }); // wrapperConfirm
                 }
             }; // edit_chat_msg
@@ -983,7 +983,7 @@ angular.module('MoneyNetwork')
                     moneyNetworkService.add_msg(message.contact, delete_message);
                     // delete old message
                     delete message.edit_chat_message;
-                    message.message.deleted_at = new Date().getTime();
+                    message.message.deleted_at = new Date().getTime(); // logical delete
                     delete message.message.image;
                     // delete new message (just created delete chat message message)
                     message.contact.messages[message.contact.messages.length - 1].deleted_at = new Date().getTime();

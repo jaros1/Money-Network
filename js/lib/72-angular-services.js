@@ -254,7 +254,7 @@ angular.module('MoneyNetwork')
         // c) a little more complicated for group chat ...
         // d) check sender_sha256 and receiver_sha256 when available
         // e) check local_msg_seq and remote_msg_seq when available
-        function add_feedback_info (message_with_envelope, contact) {
+        function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
             var feedback, i, message, local_msg_seqs ;
             feedback = {} ;
@@ -275,13 +275,20 @@ angular.module('MoneyNetwork')
                 // - see section b) in data.json cleanup routine (z_update_data_json)
 
                 // check inbox. messages received from contact
+                console.log(pgm + 'receiver_sha256 = ' + receiver_sha256) ;
                 local_msg_seqs = [] ;
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message = contact.messages[i] ;
                     if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
                     //  inbox message with a local_msg_seq (contacts local_msg_seq for this message)
+                    // console.log(pgm + 'inbox message.sender_sha256 = ' + message.sender_sha256);
                     if (message.feedback) {
                         // feedback loop complete - contact knows that this message has been received
+                        continue ;
+                    }
+                    if (message.sender_sha256 == receiver_sha256) {
+                        // current outbox message.receiver_sha256 = inbox message.sender_sha256.
+                        // no reason also to add this inbox message to feedback.received
                         continue ;
                     }
                     // feedback loop not finished. tell contact that this message has been received
@@ -317,7 +324,7 @@ angular.module('MoneyNetwork')
 
         function receive_feedback_info(message_with_envelope, contact) {
             var pgm = service + '.receive_feedback_info: ' ;
-            var feedback, received, sent, i, message, index, local_msg_seq ;
+            var feedback, received, sent, i, message, index, local_msg_seq, old_feedback ;
             feedback = message_with_envelope.message.feedback ;
             debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback)) ;
 
@@ -344,13 +351,20 @@ angular.module('MoneyNetwork')
                         //    debug('feedback_info', pgm + 'marked previous sent outbox message ' + JSON.stringify(message) + ' as received') ;
                         //}
                     }
-                    if (received.length) debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(received) + ' were not found in outbox');
+                    if (received.length) {
+                        // received feedback info for one or more messages no longer in outbox
+                        // could be a) an error or b) deleted messages. todo: keep a short list of deleted outbox messages to check b)
+                        debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(received) + ' were not found in outbox');
+                        debug('feedback_info', 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
+                            ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)));
+                    }
                 } // for j (contact.messages)
 
                 // 2) feedback.sent array - check inbox
                 //    example: "sent": [2] - contact has sent message with local_msg_seq 2 and is waiting for feedback
                 if (feedback.sent) {
                     sent = JSON.parse(JSON.stringify(feedback.sent)) ;
+                    // check inbox
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
                         if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
@@ -370,9 +384,38 @@ angular.module('MoneyNetwork')
                             debug('feedback_info', pgm + 'has marked inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested. will be sent in next outbox message') ;
                         }
                         message.feedback = false ;
-
                     } // for i (contact.messages)
-                    if (sent.length) debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
+
+                    // check deleted inbox messages
+                    if (sent.length && contact.deleted_inbox_messages) for (i=sent.length-1 ; i>= 0 ; i--) {
+                        local_msg_seq = '' + sent[i] ;
+                        debug('feedback_info', pgm + 'i = ' + i + ', local_msg_seq = ' + JSON.stringify(local_msg_seq)) ;
+                        if (!contact.deleted_inbox_messages.hasOwnProperty(local_msg_seq)) continue ; // error - unknown local_msg_seq
+                        sent.splice(i,1) ;
+                        old_feedback = contact.deleted_inbox_messages[local_msg_seq] ;
+                        if (old_feedback == false) {
+                            debug('feedback_info', pgm + 'already have received feedback info request for deleted inbox message with local_msg_seq ' + local_msg_seq + ' from contact. will be sent in next outbox message') ;
+                            continue ;
+                        }
+                        if (old_feedback) {
+                            debug('feedback_info', pgm + 'has already sent feedback info for deleted inbox message with local_msg_seq ' + local_msg_seq + ' to contact but will resend feedback info in next outbox message') ;
+                        }
+                        else {
+                            debug('feedback_info', pgm + 'has marked deleted inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested. will be sent in next outbox message') ;
+                        }
+                        contact.deleted_inbox_messages[local_msg_seq] = false ;
+                    }
+
+                    if (sent.length) {
+                        // received feedback request for one or more messages no longer in inbox
+                        // could be a) an error, b) not received messages or c) deleted messages
+                        // todo: keep a short list of deleted inbox messages to check c)
+                        debug('feedback_info', pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
+                        debug('feedback_info', pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
+                            ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
+                        // receive_feedback_info: messages with local_msg_seq [1,2] were not found in inbox
+                        // receive_feedback_info: contact.deleted_inbox_messages = {}Object.keys(contact.deleted_inbox_messages) = ["2"]
+                    }
                 }
 
             }
@@ -630,7 +673,7 @@ angular.module('MoneyNetwork')
                                     }
                                 }
                                 // add feedback info to outgoing message
-                                add_feedback_info(message_with_envelope, contact) ;
+                                add_feedback_info(receiver_sha256, message_with_envelope, contact) ;
                                 // don't send unchanged images
                                 image = null ;
                                 if (message.replace_unchanged_image_with_x) {
@@ -1510,21 +1553,40 @@ angular.module('MoneyNetwork')
             var pgm = service + '.ls_save_contacts: ' ;
 
             // any inbox messages to be physical deleted?
-            var i, contact, j, message, auth_address ;
+            var i, contact, j, message, auth_address, local_msg_seq ;
             for (i=0 ; i<ls_contacts.length ; i++)  {
                 contact = ls_contacts[i] ;
                 auth_address = contact.auth_address ;
                 if (!contact.messages) continue ;
                 for (j=contact.messages.length-1 ; j>=0 ; j--) {
                     message = contact.messages[j] ;
-                    if (message.folder != 'inbox') continue ;
                     if (!message.deleted_at) continue ;
-                    // physical delete inbox message. Remember zeronet_msg_id from deleted message
-                    if (message.zeronet_msg_id) {
-                        if (!contact.inbox_zeronet_msg_id) contact.inbox_zeronet_msg_id = [] ;
-                        contact.inbox_zeronet_msg_id.push(message.zeronet_msg_id) ;
-                        if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
-                        ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id) ;
+                    if (message.folder == 'inbox') {
+                        // physical delete inbox message.
+                        // 1) remember zeronet_msg_id from deleted message. do not recreate deleted inbox messages
+                        if (message.zeronet_msg_id) {
+                            if (!contact.inbox_zeronet_msg_id) contact.inbox_zeronet_msg_id = [] ;
+                            contact.inbox_zeronet_msg_id.push(message.zeronet_msg_id) ;
+                            if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
+                            ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id) ;
+                        }
+                        // 2) remember local_msg_seq from deleted inbox messages. Contact may request feedback info for this local_msg_seq later
+                        local_msg_seq = message.message.local_msg_seq ;
+                        if (local_msg_seq) {
+                            if (!contact.deleted_inbox_messages) contact.deleted_inbox_messages = {};
+                            contact.deleted_inbox_messages[local_msg_seq] = message.feedback;
+                            debug('feedback_info', pgm + 'contact ' + contact.auth_address +
+                                ', deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
+                                ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
+                        }
+                    }
+                    else {
+                        // outbox. remember local_msg_seq from deleted outbox messages. Contact may feedback info for this local_msg_seq later
+                        if (!contact.deleted_outbox_messages) contact.deleted_outbox_messages = {} ;
+                        contact.deleted_outbox_messages[message.local_msg_seq] = message.feedback ;
+                        debug('feedback_info', pgm + 'contact ' + contact.auth_address +
+                            ', deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
+                            ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages))) ;
                     }
                     contact.messages.splice(j,1);
                 } // for j (contact.messages)
@@ -2946,9 +3008,6 @@ angular.module('MoneyNetwork')
                     // find inbox messages that have been cleanup from zeronet
                     // maybe cleanup after contact has received feedback info
                     // maybe contact data.json file has too big
-                    debug('file_done', pgm + 'processing new incoming messages from msg array. should also detect previously received messages that have been deleted from msg array');
-                    debug('file_done', pgm + 'res.msg = ' + JSON.stringify(res.msg)) ;
-                    debug('file_done', pgm + 'ignore_zeronet_msg_id[auth_address] = ' + JSON.stringify(ignore_zeronet_msg_id[auth_address])) ;
                     if (ignore_zeronet_msg_id[auth_address]) {
                         cleanup_inbox_messages = JSON.parse(JSON.stringify(ignore_zeronet_msg_id[auth_address])) ;
                         for (i=0 ; i<res.msg.length ; i++) {
@@ -2994,7 +3053,13 @@ angular.module('MoneyNetwork')
                             } // for i (contacts)
 
                             // recheck cleanup_inbox_messages.length. should be empty now!
-                            if (cleanup_inbox_messages.length > 0) debug('file_done', 'one or more sha256 addresses in cleanup_inbox_messages was not found for contacts with auth_address ' + auth_address + '. cleanup_inbox_messages ' + JSON.stringify(cleanup_inbox_messages));
+                            if (cleanup_inbox_messages.length > 0) {
+                                // only debug info if in case of error
+                                debug('file_done', pgm + 'processing new incoming messages from msg array. should also detect previously received messages that have been deleted from msg array');
+                                debug('file_done', pgm + 'res.msg = ' + JSON.stringify(res.msg)) ;
+                                debug('file_done', pgm + 'ignore_zeronet_msg_id[auth_address] = ' + JSON.stringify(ignore_zeronet_msg_id[auth_address])) ;
+                                debug('file_done', 'one or more sha256 addresses in cleanup_inbox_messages was not found for contacts with auth_address ' + auth_address + '. cleanup_inbox_messages ' + JSON.stringify(cleanup_inbox_messages));
+                            }
 
                         }
                     }
@@ -3471,7 +3536,7 @@ angular.module('MoneyNetwork')
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
                         if (message.deleted_at) continue ;
-                        // delete marked
+                        // logical delete
                         message.deleted_at = now ;
                         // remove from UI
                         index = null;
@@ -3484,7 +3549,7 @@ angular.module('MoneyNetwork')
                     }
                     // done. refresh UI and save contacts. optional update zeronet
                     $rootScope.$apply() ;
-                    ls_save_contacts(update_zeronet) ;
+                    ls_save_contacts(update_zeronet) ; // physical delete
                 }) ;
             }
             else {
