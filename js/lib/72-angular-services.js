@@ -264,6 +264,8 @@ angular.module('MoneyNetwork')
 
                 // check inbox
 
+                // check outbox
+
 
             }
             else {
@@ -272,29 +274,32 @@ angular.module('MoneyNetwork')
                 // - listening for any response to this address (receiver_sha256) and remove message from ZeroNet (data.json) after having received response
                 // - see section b) in data.json cleanup routine (z_update_data_json)
 
-                // check inbox. received messages from contact that have not yet been deleted from zeronet
+                // check inbox. messages received from contact
                 local_msg_seqs = [] ;
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message = contact.messages[i] ;
-                    if (message.folder != 'inbox') continue ;
-                    if (!message.zeronet_msg_id) continue ; // already removed from ZeroNet
-                    if (message.feedback) continue ; // todo: feedback info exchanged - contact knows that message has been received
-                    debug('feedback_info', pgm + 'inbox message = ' + JSON.stringify(message)) ;
-                    if (message.message.local_msg_seq) local_msg_seqs.push(message.message.local_msg_seq) ;
+                    if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
+                    //  inbox message with a local_msg_seq (contacts local_msg_seq for this message)
+                    if (message.feedback) {
+                        // feedback loop complete - contact knows that this message has been received
+                        continue ;
+                    }
+                    // feedback loop not finished. tell contact that this message has been received
+                    local_msg_seqs.push(message.message.local_msg_seq) ;
                 } // for i (contact.messages)
                 if (local_msg_seqs.length > 0) feedback.received = local_msg_seqs ;
 
-                // check outbox. messages sent to contact without having received any feedback
+                // check outbox. messages sent to contact without having received feedback
                 // two kind of feedback.
                 //   a) inbox.receiver_sha256 = outbox.sender_sha256. have received an inbox message with sha256 address sent in a outbox message
-                //   b) feedback hash in ingoing messages. See above.
+                //   b) feedback.received array in ingoing messages.
                 local_msg_seqs = [] ;
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message = contact.messages[i] ;
                     if (message.folder != 'outbox') continue ;
-                    if (message.feedback) continue ; // message have been received by contact
-                    if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ; // current message
-                    debug('feedback_info', pgm + 'outbox message = ' + JSON.stringify(message)) ;
+                    if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ; // sending current outbox message
+                    if (message.feedback) continue ; // feedback loop complete - message have been received by contact
+                    // request feedback info from contact. has this outbox message been received?
                     local_msg_seqs.push(message.local_msg_seq) ;
                 } // for i (contact.messages)
                 if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
@@ -313,72 +318,58 @@ angular.module('MoneyNetwork')
         function receive_feedback_info(message_with_envelope, contact) {
             var pgm = service + '.receive_feedback_info: ' ;
             var feedback, received, sent, i, message, index, local_msg_seq ;
-            debug('feedback_info', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
             feedback = message_with_envelope.message.feedback ;
-            //message_with_envelope = {
-            //    "local_msg_seq": 479,
-            //    "folder": "inbox",
-            //    "message": {
-            //        "msgtype": "chat msg",
-            //        "message": "ho 2",
-            //        "local_msg_seq": 3,
-            //        "feedback": {"received": [476], "sent": [2]}
-            //    },
-            //    "zeronet_msg_id": "c1e73400920fe1d18c7c9f94343852c0f4e7d488b1ce0bf97b23f016154966ea",
-            //    "sender_sha256": "957367572bca3e8d8c6e2ce95950bb5a387ecb3f9195aebc60d29f09ca68f8f1",
-            //    "sent_at": 1480260635958,
-            //    "receiver_sha256": "671df454b0e6412ac66c29ecae1e80690ed1f347e58157b4e44934a799278aa2",
-            //    "received_at": 1480260662735,
-            //    "ls_msg_size": 451
-            //};
+            debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback)) ;
 
             if (contact.type == 'group') {
                 // received feedback info in group chat message
             }
             else {
-                // received feedback info in normal chat message
-                // "feedback": {"received": [476], "sent": [2]}
-                // example. "received": [476] - contact have received outbox message with local_msg_seq 474
+                // 1) feedback.received array - check outbox
+                //    example. "received": [476] - contact have received outbox message with local_msg_seq 474
+                //    set message.feedback = true. do not ask for feedback info in next message to contact
                 if (feedback.received) {
+                    // array with one or more received messages from contact. Check outbox and mark messages as received
                     received = JSON.parse(JSON.stringify(feedback.received)) ;
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
                         if (message.folder != 'outbox') continue ;
+                        // outbox
                         index = received.indexOf(message.local_msg_seq) ;
-                        if (index == -1) continue ;
+                        if (index == -1) continue ; // not relevant
                         received.splice(index,1) ;
-                        if (!message.feedback) {
-                            message.feedback = true ;
-                            debug('feedback_info', pgm + 'marked previous sent outbox message ' + JSON.stringify(message) + ' as received') ;
-                        }
+                        message.feedback = true ;
+                        //if (!message.feedback) {
+                        //    message.feedback = true ;
+                        //    debug('feedback_info', pgm + 'marked previous sent outbox message ' + JSON.stringify(message) + ' as received') ;
+                        //}
                     }
                     if (received.length) debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(received) + ' were not found in outbox');
                 } // for j (contact.messages)
-                // 2) contact is waiting for feedback for inbox message with remote_msg_seq 2.
-                // example: "sent": [2] - contact has sent message with local_msg_seq 2 and is waiting for feedback info
+
+                // 2) feedback.sent array - check inbox
+                //    example: "sent": [2] - contact has sent message with local_msg_seq 2 and is waiting for feedback
                 if (feedback.sent) {
                     sent = JSON.parse(JSON.stringify(feedback.sent)) ;
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
-                        if (message.folder != 'inbox') continue ;
-                        debug('feedback_info', 'inbox message = ' + JSON.stringify(message));
+                        if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
+                        // inbox
                         local_msg_seq = message.message.local_msg_seq ;
-                        if (!local_msg_seq) continue ;
                         index = sent.indexOf(local_msg_seq) ;
-                        if (index == -1) continue ;
+                        if (index == -1) continue ; // not relevant
                         sent.splice(index,1);
                         if (message.feedback == false) {
-                            debug('feedback_info', pgm + 'already have received feedback info request for inbox message with local_msg_seq ' + local_msg_seq + ' from contact') ;
+                            debug('feedback_info', pgm + 'already have received feedback info request for inbox message with local_msg_seq ' + local_msg_seq + ' from contact. will be sent in next outbox message') ;
                             continue ;
                         }
                         if (message.feedback) {
                             debug('feedback_info', pgm + 'has already sent feedback info for inbox message with local_msg_seq ' + local_msg_seq + ' to contact but will resend feedback info in next outbox message') ;
                         }
                         else {
-                            debug('feedback_info', pgm + 'has marked inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested') ;
+                            debug('feedback_info', pgm + 'has marked inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested. will be sent in next outbox message') ;
                         }
                         message.feedback = false ;
-                        debug('feedback_info', 'message = ' + JSON.stringify(message)) ;
 
                     } // for i (contact.messages)
                     if (sent.length) debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
