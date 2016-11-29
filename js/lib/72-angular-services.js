@@ -256,7 +256,7 @@ angular.module('MoneyNetwork')
         // e) check local_msg_seq and remote_msg_seq when available
         function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
-            var feedback, i, message, local_msg_seqs ;
+            var feedback, i, message, local_msg_seqs, local_msg_seq ;
             feedback = {} ;
 
             if (contact.type == 'group') {
@@ -294,6 +294,15 @@ angular.module('MoneyNetwork')
                     // feedback loop not finished. tell contact that this message has been received
                     local_msg_seqs.push(message.message.local_msg_seq) ;
                 } // for i (contact.messages)
+                // check deleted inbox messages.
+                if (contact.deleted_inbox_messages) for (local_msg_seq in contact.deleted_inbox_messages) {
+                    if (contact.deleted_inbox_messages[local_msg_seq]) {
+                        // feedback loop complete - contact knows that this deleted message has been received
+                        continue ;
+                    }
+                    // feedback loop not finished. tell contact that this deleted inbox message has been received
+                    local_msg_seqs.push(parseInt(local_msg_seq));
+                } // for local_msg_seq (deleted_inbox_messages)
                 if (local_msg_seqs.length > 0) feedback.received = local_msg_seqs ;
 
                 // check outbox. messages sent to contact without having received feedback
@@ -305,10 +314,16 @@ angular.module('MoneyNetwork')
                     message = contact.messages[i] ;
                     if (message.folder != 'outbox') continue ;
                     if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ; // sending current outbox message
-                    if (message.feedback) continue ; // feedback loop complete - message have been received by contact
+                    if (message.feedback) continue ; // feedback loop complete - outbox message have been received by contact
                     // request feedback info from contact. has this outbox message been received?
                     local_msg_seqs.push(message.local_msg_seq) ;
                 } // for i (contact.messages)
+                // check deleted outbox messages - todo: any reason to ask for feedback info for deleted outbox messages?
+                if (contact.deleted_outbox_messages) for (local_msg_seq in contact.deleted_outbox_messages) {
+                    if (contact.deleted_outbox_messages[local_msg_seq]) continue ; // feedback loop complete - deleted outbox message have been received by contact
+                    // request feedback info from contact. has this deleted outbox message been received?
+                    local_msg_seqs.push(parseInt(local_msg_seq)) ;
+                } // for local_msg_seq (deleted_outbox_messages)
                 if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
             }
 
@@ -336,7 +351,8 @@ angular.module('MoneyNetwork')
                 //    example. "received": [476] - contact have received outbox message with local_msg_seq 474
                 //    set message.feedback = true. do not ask for feedback info in next message to contact
                 if (feedback.received) {
-                    // array with one or more received messages from contact. Check outbox and mark messages as received
+                    // array with one or more received messages from contact. '
+                    // Check outbox and mark messages as received
                     received = JSON.parse(JSON.stringify(feedback.received)) ;
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
@@ -351,9 +367,18 @@ angular.module('MoneyNetwork')
                         //    debug('feedback_info', pgm + 'marked previous sent outbox message ' + JSON.stringify(message) + ' as received') ;
                         //}
                     }
+                    // check also deleted outbox messages
+                    if (received.length && contact.deleted_outbox_messages) for (i=received.length-1 ; i >= 0 ; i--) {
+                        local_msg_seq = '' + received[i] ;
+                        debug('feedback_info', pgm + 'i = ' + i + ', local_msg_seq = ' + JSON.stringify(local_msg_seq)) ;
+                        if (!contact.deleted_outbox_messages.hasOwnProperty(local_msg_seq)) continue ; // error - unknown local_msg_seq
+                        received.splice(i,1);
+                        contact.deleted_outbox_messages[local_msg_seq] = true ;
+                    }
+
                     if (received.length) {
                         // received feedback info for one or more messages no longer in outbox
-                        // could be a) an error or b) deleted messages. todo: keep a short list of deleted outbox messages to check b)
+                        // must be an error
                         debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(received) + ' were not found in outbox');
                         debug('feedback_info', 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
                             ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)));
@@ -386,7 +411,7 @@ angular.module('MoneyNetwork')
                         message.feedback = false ;
                     } // for i (contact.messages)
 
-                    // check deleted inbox messages
+                    // feedback.sent array - contact is waiting for feedback - check also deleted inbox messages
                     if (sent.length && contact.deleted_inbox_messages) for (i=sent.length-1 ; i>= 0 ; i--) {
                         local_msg_seq = '' + sent[i] ;
                         debug('feedback_info', pgm + 'i = ' + i + ', local_msg_seq = ' + JSON.stringify(local_msg_seq)) ;
@@ -408,7 +433,7 @@ angular.module('MoneyNetwork')
 
                     if (sent.length) {
                         // received feedback request for one or more messages no longer in inbox
-                        // could be a) an error, b) not received messages or c) deleted messages
+                        // could be a) an error or b) not received messages. c) deleted messages has been checked
                         // todo: keep a short list of deleted inbox messages to check c)
                         debug('feedback_info', pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
                         debug('feedback_info', pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
