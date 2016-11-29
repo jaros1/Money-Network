@@ -268,7 +268,6 @@ angular.module('MoneyNetwork')
 
                 // check outbox
 
-
             }
             else {
                 // normal chat.
@@ -334,6 +333,7 @@ angular.module('MoneyNetwork')
                         local_msg_seqs.push(parseInt(local_msg_seq)) ;
                     }
                 } // for local_msg_seq (deleted_outbox_messages)
+                if (user_setup.debug && user_setup.debug.force_lost_message) local_msg_seqs.push(999) ; // force lost message error
                 if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
             }
 
