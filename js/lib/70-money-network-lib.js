@@ -892,7 +892,16 @@ var MoneyNetworkHelper = (function () {
         "required": ['msgtype', 'participants', 'password'],
         "additionalProperties": false
     } ;
-
+    json_schemas['lost msg'] = {
+        "type": 'object',
+        "title": 'Dummy lost inbox message. Is never sent or received. See receive_feedback_info',
+        "properties": {
+            "msgtype": { "type": 'string', pattern: '^lost msg$'},
+            "local_msg_seq": { "type": 'integer'}
+        },
+        "required": ['msgtype', 'local_msg_seq'],
+        "additionalProperties": false
+    } ;
 
     // validate json:
     // - pgm - calling function. for debug messages

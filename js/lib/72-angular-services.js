@@ -256,7 +256,7 @@ angular.module('MoneyNetwork')
         // e) check local_msg_seq and remote_msg_seq when available
         function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
-            var feedback, i, message, local_msg_seqs, local_msg_seq ;
+            var feedback, i, message, local_msg_seqs, local_msg_seq, factor ;
             var now = new Date().getTime() ;
 
             feedback = {} ;
@@ -294,8 +294,9 @@ angular.module('MoneyNetwork')
                         // no reason also to add this inbox message to feedback.received
                         continue ;
                     }
-                    // feedback loop not finished. tell contact that this message has been received
-                    local_msg_seqs.push(message.message.local_msg_seq) ;
+                    // factor = -1. received feedback request for unknown message. tell contact that message has never been received
+                    factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
+                    local_msg_seqs.push(factor* message.message.local_msg_seq) ;
                 } // for i (contact.messages)
                 // check deleted inbox messages.
                 if (contact.deleted_inbox_messages) for (local_msg_seq in contact.deleted_inbox_messages) {
@@ -309,7 +310,7 @@ angular.module('MoneyNetwork')
                 } // for local_msg_seq (deleted_inbox_messages)
                 if (local_msg_seqs.length > 0) feedback.received = local_msg_seqs ;
 
-                // check outbox. messages sent to contact without having received feedback
+                // check outbox. messages sent to contact without having received feedback. request feedback info for outbox messages.
                 // two kind of feedback.
                 //   a) inbox.receiver_sha256 = outbox.sender_sha256. have received an inbox message with sha256 address sent in a outbox message
                 //   b) feedback.received array in ingoing messages.
@@ -348,7 +349,7 @@ angular.module('MoneyNetwork')
 
         function receive_feedback_info(message_with_envelope, contact) {
             var pgm = service + '.receive_feedback_info: ' ;
-            var feedback, received, sent, i, message, index, local_msg_seq, old_feedback, now ;
+            var feedback, received, sent, i, message, index, local_msg_seq, old_feedback, now, error, lost_message, lost_message_with_envelope ;
             feedback = message_with_envelope.message.feedback ;
             debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback)) ;
             now = new Date().getTime() ;
@@ -385,13 +386,16 @@ angular.module('MoneyNetwork')
                     }
 
                     if (received.length) {
-                        // received feedback info for one or more messages no longer in outbox
-                        // must be an error
-                        debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(received) + ' were not found in outbox');
+                        // error: received feedback info for one or more messages not in outbox and not in deleted_outbox_messages
+                        error =
+                            'Error in feedback.received array. Messages with local_msg_seq ' + JSON.stringify(received) +
+                            ' were not found in outbox or in deleted_outbox_messages. Feedback = ' + JSON.stringify(feedback) + '. ' ;
                         if (contact.deleted_outbox_messages) {
-                            debug('feedback_info', 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
-                                ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)));
+                            error +=
+                                'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
+                                ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)) ;
                         }
+                        console.log(pgm + error) ;
                     }
                 } // for j (contact.messages)
 
@@ -442,19 +446,49 @@ angular.module('MoneyNetwork')
                     }
 
                     if (sent.length) {
-                        // received feedback request for one or more messages no longer in inbox
-                        // could be a) an error or b) not received messages. c) deleted messages has been checked
-                        // todo: keep a short list of deleted inbox messages to check c)
-                        debug('feedback_info', pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
+                        // lost inbox messages!
+                        // received feedback request for one or more messages not in inbox and not in deleted_inbox_messages
+                        // could be lost not received inbox messages or could be an error.
+                        console.log(pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
                         if (contact.deleted_inbox_messages) {
-                            debug('feedback_info', pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
+                            console.log(
+                                pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
                                 ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
                         }
                         // receive_feedback_info: messages with local_msg_seq [1,2] were not found in inbox
                         // receive_feedback_info: contact.deleted_inbox_messages = {}Object.keys(contact.deleted_inbox_messages) = ["2"]
-                    }
-                }
 
+                        // create "lost message" notification in inbox? User should know that some messages were lost in cyberspace
+                        for (i=0 ; i<sent.length ; i++) {
+                            local_msg_seq = sent[i] ;
+                            lost_message = { msgtype: 'lost msg', local_msg_seq: local_msg_seq} ;
+                            // validate json
+                            error = MoneyNetworkHelper.validate_json(pgm, lost_message, lost_message.msgtype, 'Cannot insert dummy lost inbox message in UI. local_msg_seq = ' + local_msg_seq);
+                            if (error) {
+                                console.log(pgm + error) ;
+                                continue ;
+                            }
+                            // insert into inbox
+                            local_msg_seq = next_local_msg_seq() ;
+                            lost_message_with_envelope = {
+                                local_msg_seq: local_msg_seq,
+                                folder: 'inbox',
+                                message: lost_message,
+                                sent_at: now,
+                                received_at: now,
+                                feedback: false
+                            } ;
+                            lost_message_with_envelope.ls_msg_size = JSON.stringify(lost_message_with_envelope).length ;
+                            contact.messages.push(lost_message_with_envelope) ;
+                            js_messages.push({contact: contact, message: lost_message_with_envelope}) ;
+
+                        } // for i (sent)
+
+                    } // if sent.length > 0
+
+                } // if feedback.sent
+
+                // end processing feedback info for normal chat
             }
 
         } // receive_feedback_info
