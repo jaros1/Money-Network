@@ -319,10 +319,15 @@ angular.module('MoneyNetwork')
                     local_msg_seqs.push(message.local_msg_seq) ;
                 } // for i (contact.messages)
                 // check deleted outbox messages - todo: any reason to ask for feedback info for deleted outbox messages?
-                if (contact.deleted_outbox_messages) for (local_msg_seq in contact.deleted_outbox_messages) {
-                    if (contact.deleted_outbox_messages[local_msg_seq]) continue ; // feedback loop complete - deleted outbox message have been received by contact
-                    // request feedback info from contact. has this deleted outbox message been received?
-                    local_msg_seqs.push(parseInt(local_msg_seq)) ;
+                if (contact.deleted_outbox_messages) {
+                    debug('feedback_info', pgm + 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages));
+                    debug('feedback_info', pgm + 'Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)));
+                    for (local_msg_seq in contact.deleted_outbox_messages) {
+                        debug('feedback_info', pgm + 'local_msg_seq = ' + local_msg_seq) ;
+                        if (contact.deleted_outbox_messages[local_msg_seq]) continue ; // feedback loop complete - deleted outbox message have been received by contact
+                        // request feedback info from contact. has this deleted outbox message been received?
+                        local_msg_seqs.push(parseInt(local_msg_seq)) ;
+                    }
                 } // for local_msg_seq (deleted_outbox_messages)
                 if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
             }
@@ -380,8 +385,10 @@ angular.module('MoneyNetwork')
                         // received feedback info for one or more messages no longer in outbox
                         // must be an error
                         debug('feedback_info', 'messages with local_msg_seq ' + JSON.stringify(received) + ' were not found in outbox');
-                        debug('feedback_info', 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
-                            ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)));
+                        if (contact.deleted_outbox_messages) {
+                            debug('feedback_info', 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
+                                ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)));
+                        }
                     }
                 } // for j (contact.messages)
 
@@ -436,8 +443,10 @@ angular.module('MoneyNetwork')
                         // could be a) an error or b) not received messages. c) deleted messages has been checked
                         // todo: keep a short list of deleted inbox messages to check c)
                         debug('feedback_info', pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
-                        debug('feedback_info', pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
-                            ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
+                        if (contact.deleted_inbox_messages) {
+                            debug('feedback_info', pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
+                                ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
+                        }
                         // receive_feedback_info: messages with local_msg_seq [1,2] were not found in inbox
                         // receive_feedback_info: contact.deleted_inbox_messages = {}Object.keys(contact.deleted_inbox_messages) = ["2"]
                     }
@@ -637,6 +646,51 @@ angular.module('MoneyNetwork')
                         for (j=contact.messages.length-1 ; j >= 0 ; j--) {
                             message_with_envelope = contact.messages[j] ;
                             if (message_with_envelope.folder != 'outbox') continue ;
+
+                            // delete outgoing messages (delete before insert - some messages are logical deleted after being sent)
+                            if (contact.messages[j].zeronet_msg_id && contact.messages[j].deleted_at) {
+                                // delete message requested by client (active delete)
+                                // console.log(pgm + 'debug: delete message requested by client (active delete)') ;
+                                // console.log(pgm + 'local_storage_messages[' + i + '] = ' + JSON.stringify(contact.messages[j])) ;
+                                message_deleted = false ;
+                                // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
+                                for (k=data.msg.length-1 ; k>=0 ; k--) {
+                                    // console.log(pgm + 'debug: data.msg[' + k + '] = ' + JSON.stringify(data.msg[k])) ;
+                                    if ((data.msg[k].user_seq == user_seq) && (data.msg[k].message_sha256 == contact.messages[j].zeronet_msg_id)) {
+                                        message_deleted = true ;
+                                        data.msg.splice(k,1) ;
+                                        break ;
+                                    }
+                                } // for k (data.msg)
+                                // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
+                                if (!message_deleted) {
+                                    if (!is_admin() || !admin_key) { // ignore delete errors for admin task!
+                                        error = "Could not delete message from Zeronet. Maybe posted in ZeroNet from an other ZeroNet id" ;
+                                        console.log(pgm + 'error = ' + error) ;
+                                        console.log(pgm + 'user_seq = ' + user_seq) ;
+                                        console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
+                                        // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
+                                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                    }
+                                    delete contact.messages[j].zeronet_msg_id ;
+                                    delete contact.messages[j].zeronet_msg_size ;
+                                }
+                                // delete message but keep sender_sha256 in deleted message. Could get an ingoing message later to this address
+                                // console.log(pgm + 'contact before message delete: ' + JSON.stringify(contact));
+                                sender_sha256 = contact.messages[j].sender_sha256 ;
+                                if (sender_sha256) {
+                                    if (!contact.outbox_sender_sha256) contact.outbox_sender_sha256 = {} ;
+                                    if (!contact.outbox_sender_sha256.hasOwnProperty(sender_sha256)) {
+                                        contact.outbox_sender_sha256[contact.messages[j].sender_sha256] = { send_at: contact.messages[j].sent_at}
+                                    }
+                                }
+                                contact.messages.splice(j,1);
+                                // console.log(pgm + 'contact after message delete: ' + JSON.stringify(contact));
+                                local_storage_updated = true ;
+                                continue
+                            } // if
+
+                            // new outgoing messages
                             if (!message_with_envelope.sent_at) {
                                 // not sent - encrypt and insert new message in data.msg array (data.json)
                                 message = message_with_envelope.message ;
@@ -733,51 +787,17 @@ angular.module('MoneyNetwork')
                                 message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
                                 // console.log(pgm + 'new data.msg.last = ' + JSON.stringify(data.msg[data.msg.length-1]));
                                 // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
+
+                                if ((message.msgtype == 'chat msg') && !message.message) {
+                                    // logical deleted just sent empty chat messages
+                                    // will be physical deleted in next ls_save_contacts call
+                                    message_with_envelope.deleted_at = new Date().getTime() ;
+                                }
+
                                 local_storage_updated = true ;
                                 continue ;
                             } // if
 
-                            if (contact.messages[j].zeronet_msg_id && contact.messages[j].deleted_at) {
-                                // delete message requested by client (active delete)
-                                // console.log(pgm + 'debug: delete message requested by client (active delete)') ;
-                                // console.log(pgm + 'local_storage_messages[' + i + '] = ' + JSON.stringify(contact.messages[j])) ;
-                                message_deleted = false ;
-                                // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
-                                for (k=data.msg.length-1 ; k>=0 ; k--) {
-                                    // console.log(pgm + 'debug: data.msg[' + k + '] = ' + JSON.stringify(data.msg[k])) ;
-                                    if ((data.msg[k].user_seq == user_seq) && (data.msg[k].message_sha256 == contact.messages[j].zeronet_msg_id)) {
-                                        message_deleted = true ;
-                                        data.msg.splice(k,1) ;
-                                        break ;
-                                    }
-                                } // for k (data.msg)
-                                // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
-                                if (!message_deleted) {
-                                    if (!is_admin() || !admin_key) { // ignore delete errors for admin task!
-                                        error = "Could not delete message from Zeronet. Maybe posted in ZeroNet from an other ZeroNet id" ;
-                                        console.log(pgm + 'error = ' + error) ;
-                                        console.log(pgm + 'user_seq = ' + user_seq) ;
-                                        console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
-                                        // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
-                                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
-                                    }
-                                    delete contact.messages[j].zeronet_msg_id ;
-                                    delete contact.messages[j].zeronet_msg_size ;
-                                }
-                                // delete message but keep sender_sha256 in deleted message. Could get an ingoing message later to this address
-                                // console.log(pgm + 'contact before message delete: ' + JSON.stringify(contact));
-                                sender_sha256 = contact.messages[j].sender_sha256 ;
-                                if (sender_sha256) {
-                                    if (!contact.outbox_sender_sha256) contact.outbox_sender_sha256 = {} ;
-                                    if (!contact.outbox_sender_sha256.hasOwnProperty(sender_sha256)) {
-                                        contact.outbox_sender_sha256[contact.messages[j].sender_sha256] = { send_at: contact.messages[j].sent_at}
-                                    }
-                                }
-                                contact.messages.splice(j,1);
-                                // console.log(pgm + 'contact after message delete: ' + JSON.stringify(contact));
-                                local_storage_updated = true ;
-                                continue
-                            } // if
                             if (message_with_envelope.zeronet_msg_id && !message_with_envelope.zeronet_msg_size) {
                                 // add new field zeronet_msg_size
                                 for (k=0 ; k<data.msg.length ; k++) {
@@ -1577,7 +1597,7 @@ angular.module('MoneyNetwork')
         function ls_save_contacts (update_zeronet) {
             var pgm = service + '.ls_save_contacts: ' ;
 
-            // any inbox messages to be physical deleted?
+            // any logical deleted inbox messages to be physical deleted?
             var i, contact, j, message, auth_address, local_msg_seq ;
             for (i=0 ; i<ls_contacts.length ; i++)  {
                 contact = ls_contacts[i] ;
@@ -1607,11 +1627,15 @@ angular.module('MoneyNetwork')
                     }
                     else {
                         // outbox. remember local_msg_seq from deleted outbox messages. Contact may feedback info for this local_msg_seq later
-                        if (!contact.deleted_outbox_messages) contact.deleted_outbox_messages = {} ;
-                        contact.deleted_outbox_messages[message.local_msg_seq] = message.feedback ;
-                        debug('feedback_info', pgm + 'contact ' + contact.auth_address +
-                            ', deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
-                            ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages))) ;
+                        local_msg_seq = message.local_msg_seq ;
+                        debug('feedback_info', 'local_msg_seq = ' + local_msg_seq);
+                        if (local_msg_seq) {
+                            if (!contact.deleted_outbox_messages) contact.deleted_outbox_messages = {} ;
+                            contact.deleted_outbox_messages[message.local_msg_seq] = message.feedback ;
+                            debug('feedback_info', pgm + 'contact ' + contact.auth_address +
+                                ', deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
+                                ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages))) ;
+                        }
                     }
                     contact.messages.splice(j,1);
                 } // for j (contact.messages)

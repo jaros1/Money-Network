@@ -985,10 +985,9 @@ angular.module('MoneyNetwork')
                     delete message.edit_chat_message;
                     message.message.deleted_at = new Date().getTime(); // logical delete
                     delete message.message.image;
-                    // delete new message (just created delete chat message message)
-                    message.contact.messages[message.contact.messages.length - 1].deleted_at = new Date().getTime();
                     // save localStorage and update ZeroNet
                     moneyNetworkService.ls_save_contacts(true);
+                    // new empty chat message (delete message) will be logical delete marked in z_update_data_json and physical deleted in next ls_save_contacts call
                 }); // wrapperConfrm
             }; // delete_edit_chat_msg
 
