@@ -275,7 +275,7 @@ angular.module('MoneyNetwork')
                 // - see section b) in data.json cleanup routine (z_update_data_json)
 
                 // check inbox. messages received from contact
-                console.log(pgm + 'receiver_sha256 = ' + receiver_sha256) ;
+                debug('feedback_info', pgm + 'receiver_sha256 = ' + receiver_sha256) ;
                 local_msg_seqs = [] ;
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message = contact.messages[i] ;

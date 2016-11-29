@@ -852,7 +852,7 @@ angular.module('MoneyNetwork')
             self.changed_chat_msg = "";
             self.edit_chat_msg = function (message) {
                 var pgm = controller + '.edit_chat_msg: ';
-                console.log(pgm + 'message.message = ' + JSON.stringify(message.message));
+                // console.log(pgm + 'message.message = ' + JSON.stringify(message.message));
                 if ((message.message.folder == 'outbox') && (message.message.message.msgtype == 'chat msg')) {
                     // edit previously sent chat message. must send changed chat msg to contact
                     message.edit_chat_message = true;
@@ -962,16 +962,16 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.delete_edit_chat_msg: ';
                 var msg_text = formatChatMessage(message);
                 if (msg_text.length > 40) msg_text = msg_text.substring(0, 20) + "..." + msg_text.substring(msg_text.length - 15);
-                console.log(pgm + 'msg_text.length = ' + msg_text.length);
+                // console.log(pgm + 'msg_text.length = ' + msg_text.length);
                 ZeroFrame.cmd("wrapperConfirm", ['Delete "' + msg_text + '" message?', "Delete"], function (confirmed) {
                     if (!confirmed) return;
-                    console.log(pgm + 'deleting message ' + JSON.stringify(message));
+                    // console.log(pgm + 'deleting message ' + JSON.stringify(message));
                     // outbox: send delete chat message. note empty chat message
                     var delete_message = {
                         msgtype: 'chat msg',
                         old_local_msg_seq: message.message.local_msg_seq
                     };
-                    console.log(pgm + 'delete_message = ' + JSON.stringify(delete_message));
+                    // console.log(pgm + 'delete_message = ' + JSON.stringify(delete_message));
                     // validate json
                     var error = MoneyNetworkHelper.validate_json(pgm, delete_message, delete_message.msgtype, 'Could not send delete chat message');
                     if (error) {
