@@ -1200,6 +1200,26 @@
             </table>
             <br>
 
+            <table title="Use this section to enable/disable special test cases">
+                <tbody>
+                <tr>
+                    <td>Show special test cases?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.test.enabled" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                </tbody>
+                <tbody ng-show="u.setup.test.enabled">
+                <tr>
+                    <td>Message lost in cyberspace</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.test.force_lost_message" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                </tbody>
+            </table>
+            <br>
+
+
+
             <p>
                 <b>todo:</b> add a delete user data button. Delete user data from data.json. Data user data from localStorage. Log
                 out.

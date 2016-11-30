@@ -175,7 +175,58 @@ angular.module('MoneyNetwork')
             copy_setup() ;
         };
 
+        function testcase_message_lost_in_cyberspace() {
+            var pgm = controller + '.testcase_message_lost_in_cyberspace: ' ;
+            var last_sent_at, last_contact, i, contact, j, message ;
+            // insert test data for message lost in cyberspace testcase
+            // create outbox message with local_msg_seq 999, status sent, not on zeronet (cleanup) and no feedback from contact
+            // next outbox message will request feedback info for message lost in cyberspace
+            last_sent_at = 0 ;
+            last_contact = null ;
+            for (i=0 ; i<contacts.length ; i++) {
+                contact = contacts[i] ;
+                if (!contact.messages) continue ;
+                for (j=0 ; j<contact.messages.length ; j++) {
+                    message = contact.messages[j] ;
+                    if (message.folder != 'outbox') continue ;
+                    if (message.sent_at < last_sent_at) continue ;
+                    last_contact = contact ;
+                    last_sent_at = message.sent_at ;
+                }
+            }
+            if (!last_contact) {
+                ZeroFrame.cmd('wrapperNotification', ['error', 'No last outbox message was found. cannot create message lost in cyberspace testcase', 5000]) ;
+                return ;
+            }
+            // create test data. status sent, no zeronet_msg_id and status cleanup
+            var local_msg_seq, sender_sha256, lost_message, js_messages ;
+            local_msg_seq = moneyNetworkService.next_local_msg_seq() ;
+            sender_sha256 = CryptoJS.SHA256(MoneyNetworkHelper.generate_random_password(200)).toString();
+            lost_message =
+            {
+                "folder": "outbox",
+                "message": {"msgtype": "chat msg", "message": "message " + local_msg_seq + " lost in cyberspace"},
+                "local_msg_seq": local_msg_seq,
+                "sender_sha256": sender_sha256,
+                "sent_at": new Date().getTime(),
+                "cleanup_at": new Date().getTime()
+            } ;
+            lost_message.ls_msg_size = JSON.stringify(lost_message).length ;
+            console.log(pgm + 'lost_message = ' + JSON.stringify(lost_message));
+            // add message
+            js_messages = moneyNetworkService.js_get_messages() ;
+            last_contact.messages.push(lost_message) ;
+            js_messages.push({contact: last_contact, message: lost_message}) ;
+            moneyNetworkService.ls_save_contacts(false) ;
+            ZeroFrame.cmd('wrapperNotification', ['info', 'created new outbox msg ' + local_msg_seq + ', status sent, not on zeronet and no feedback from contact', 5000]);
+        } // testcase_message_lost_in_cyberspace
+
         self.debug_settings_changed = function () {
+            // create test data
+            var old_force_lost_message = self.setup_copy.test && self.setup_copy.test.force_lost_message ;
+            var new_force_lost_message = self.setup.test && self.setup.test.force_lost_message ;
+            if (!old_force_lost_message && new_force_lost_message) testcase_message_lost_in_cyberspace() ;
+            copy_setup() ;
             moneyNetworkService.save_user_setup() ;
             MoneyNetworkHelper.load_user_setup() ;
         };
