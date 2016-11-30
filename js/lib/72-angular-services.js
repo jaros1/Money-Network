@@ -374,6 +374,7 @@ angular.module('MoneyNetwork')
                             lost_messages.push(-local_msg_seq) ;
                         }
                     }
+                    if (lost_messages.length > 0) debug('lost_message', pgm + 'lost_messages = ' + JSON.stringify(lost_messages));
                     // check outbox
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
@@ -392,8 +393,8 @@ angular.module('MoneyNetwork')
                             received.splice(index,1) ;
                         }
                         if (lost_message) {
-                            console.log(pgm + 'message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. must be a message sent and removed from ZeroNet when contact was offline');
-                            console.log(pgm + 'message = ' + JSON.stringify(message)) ;
+                            debug('lost_message', pgm + 'message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. must be a message sent and removed from ZeroNet when contact was offline');
+                            debug('lost_message', pgm + 'message = ' + JSON.stringify(message)) ;
                             //message = {
                             //    "folder": "outbox",
                             //    "message": {"msgtype": "chat msg", "message": "message 2 lost in cyberspace"},
@@ -406,7 +407,7 @@ angular.module('MoneyNetwork')
                             if (message.zeronet_msg_id) console.log(pgm + 'error. lost message has a zeronet_msg_id and should still be in data.json file') ;
                             else if (!message.sent_at) console.log(pgm + 'error. lost message has never been sent. sent_at is null') ;
                             else  {
-                                console.log(pgm + 'resend old message with old local_msg_id. add old sent_at to message') ;
+                                debug('lost_message', pgm + 'resend old message with old local_msg_id. add old sent_at to message') ;
                                 if (!message.message.sent_at) message.message.sent_at = message.sent_at ;
                                 delete message.sent_at ;
                                 delete message.cleanup_at ;
@@ -494,9 +495,9 @@ angular.module('MoneyNetwork')
                         // lost inbox messages!
                         // received feedback request for one or more messages not in inbox and not in deleted_inbox_messages
                         // could be lost not received inbox messages or could be an error.
-                        console.log(pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
+                        debug('lost_message', pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
                         if (contact.deleted_inbox_messages) {
-                            console.log(
+                            debug('lost_message',
                                 pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
                                 ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
                         }
@@ -781,6 +782,7 @@ angular.module('MoneyNetwork')
                                     // resending old message - already local_msg_seq already in message
                                     local_msg_seq = message_with_envelope.local_msg_seq ;
                                     sent_at = message.sent_at ;
+                                    debug('lost_message', pgm + 'resending lost message with local_msg_seq ' + local_msg_seq);
                                 }
                                 else {
                                     local_msg_seq = next_local_msg_seq() ;
@@ -4583,7 +4585,6 @@ angular.module('MoneyNetwork')
                 }
             }
 
-            debug('inbox && unencrypted', pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message)) ;
             //decrypted_message = {
             //    "msgtype": "chat msg",
             //    "message": "message 2 lost in cyberspace",
@@ -4591,42 +4592,22 @@ angular.module('MoneyNetwork')
             //    "local_msg_seq": 2
             //};
             if (decrypted_message.sent_at) {
-                debug('inbox && unencrypted', pgm + 'message with sent_at timestamp. must be resending previous lost message') ;
-                debug('inbox && unencrypted', pgm + 'todo: should delete old lost msg with same local_msg_seq');
-                debug('inbox && unencrypted', pgm + 'todo: should keep original sent_at');
+                debug('lost_message', pgm + 'message with sent_at timestamp. must be contact resending a lost message') ;
+                debug('lost_message', pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
                 // 1) find message with same local_msg_seq
                 if (res.key) {
-                    debug('inbox && unencrypted', pgm + 'contact.messages = ' + JSON.stringify(contact.messages));
-                    //contact.messages = [
-                    // ...,
-                    // {
-                    //    "local_msg_seq": 665,
-                    //    "folder": "inbox",
-                    //    "message": {"msgtype": "lost msg", "local_msg_seq": 2},
-                    //    "sent_at": 1480518155314,
-                    //    "received_at": 1480518155314,
-                    //    "feedback": 1480518165906,
-                    //    "ls_msg_size": 158,
-                    //    "msgtype": "chat msg"
-                    // ,...
-                    //}];
                     index = -1 ;
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
-                        debug('inbox && unencrypted', pgm + 'i = ' + i + ', message = ' + JSON.stringify(message)) ;
-                        debug('inbox && unencrypted', pgm + 'i = ' + i + ', message.folder = ' + message.folder) ;
                         if (message.folder != 'inbox') continue ;
-                        debug('inbox && unencrypted', pgm + 'i = ' + i + ', message.message.local_msg_seq = ' + message.message.local_msg_seq + ', decrypted_message.local_msg_seq = ' + decrypted_message.local_msg_seq) ;
                         if (message.message.local_msg_seq != decrypted_message.local_msg_seq) continue ;
-                        debug('inbox && unencrypted', pgm + 'i = ' + i + ', message.message.msgtype = ' + message.message.msgtype) ;
                         if (message.message.msgtype != 'lost msg') continue ;
                         index = i ;
                         break ;
                     }
                     if (index != -1) {
                         // OK - delete lost msg
-                        debug('inbox && unencrypted', pgm + 'lost msg was found. deleting it') ;
-
+                        debug('lost_message', pgm + 'lost msg was found. deleting it') ;
                         message = contact.messages[index] ;
                         contact.messages.splice(index,1) ;
                         for (i=js_messages.length-1 ; i>= 0 ; i--) {
@@ -4637,7 +4618,7 @@ angular.module('MoneyNetwork')
                     }
                     else {
                         // lost msg not found. continue as normal new msg
-                        debug('inbox && unencrypted', pgm + 'lost msg was not found. continue as normal new msg') ;
+                        debug('lost_message', pgm + 'lost msg was not found. continue as normal new msg') ;
                         delete decrypted_message.sent_at ;
                     }
 

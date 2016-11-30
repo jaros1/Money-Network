@@ -18,6 +18,10 @@ angular.module('MoneyNetwork')
         };
         self.zeronet_search_contacts();
 
+        function debug (key, text) {
+            MoneyNetworkHelper.debug(key, text) ;
+        }
+
         // quick instructions for newcomers
         self.show_welcome_msg = function () {
             if (!contacts) return true ;
@@ -212,13 +216,13 @@ angular.module('MoneyNetwork')
                 "cleanup_at": new Date().getTime()
             } ;
             lost_message.ls_msg_size = JSON.stringify(lost_message).length ;
-            console.log(pgm + 'lost_message = ' + JSON.stringify(lost_message));
+            debug('lost_message', pgm + 'lost_message = ' + JSON.stringify(lost_message));
             // add message
             js_messages = moneyNetworkService.js_get_messages() ;
             last_contact.messages.push(lost_message) ;
             js_messages.push({contact: last_contact, message: lost_message}) ;
             moneyNetworkService.ls_save_contacts(false) ;
-            ZeroFrame.cmd('wrapperNotification', ['info', 'created new outbox msg ' + local_msg_seq + ', status sent, not on zeronet and no feedback from contact', 5000]);
+            ZeroFrame.cmd('wrapperNotification', ['info', 'created new outbox msg ' + local_msg_seq + '. Not sent, not on ZeroNet, no feedback info and marked as cleanup', 5000]);
         } // testcase_message_lost_in_cyberspace
 
         self.debug_settings_changed = function () {
