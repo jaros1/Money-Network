@@ -932,7 +932,7 @@ angular.module('MoneyNetwork')
                     // data.json size must also be <data_json_max_size
                     var one_hour_ago = now - 1000*60*60 ;
                     var msg_user_seqs, inbox_message, outbox_message, data_removed ;
-                    var count = 0 ;
+                    var count = 0, contact_last_online ;
                     while (true) {
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                         if (json_raw.length < 10000) break ; // OK - small file
@@ -1156,6 +1156,7 @@ angular.module('MoneyNetwork')
                         if (data_removed) continue ; // recheck data.json size
 
                         // d) delete old msg. only current user_seq
+                        // todo: this section is removing not received messages. no feedback timestamp
                         i = -1 ;
                         for (j=0; ((i==-1) && (j<data.msg.length)) ; j++) if (data.msg[j].user_seq == user_seq) i = j ;
                         if ((i == -1) || (data.msg[i].timestamp > one_hour_ago)) {
@@ -1171,6 +1172,10 @@ angular.module('MoneyNetwork')
                                 if (!contact.messages[k].zeronet_msg_id) continue;
                                 if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
                                 // found outbox message
+                                contact_last_online = get_last_online (contact) ;
+                                debug('data_cleanup', 'd: removing old maybe not received outbox message from Zeronet. ' +
+                                    'contact.last_online = ' + contact_last_online +
+                                    ', outbox_message = ' + JSON.stringify(outbox_message)) ;
                                 outbox_message = contact.messages[k] ;
                                 break ;
                             } // for k (contact.messages)
