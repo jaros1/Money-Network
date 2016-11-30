@@ -962,100 +962,149 @@ angular.module('MoneyNetwork')
                             }
                             // remove user and recheck file size
                             data.users.splice(i,1);
-                            debug('data_cleanup', pgm + 'data.json is big. removed user without any messages') ;
+                            debug('a: data_cleanup', pgm + 'data.json is big. removed user without any messages') ;
                             data_removed = true ;
                             break ;
                         } // for i (users)
                         if (data_removed) continue ; // recheck data.json size
 
-                        // b) cleanup msg that has been received by other contacts
-                        //    outbox msg1.sender_sha256 == inbox msg2.receiver_sha256
-                        //    ingoing msg2 is a response using sender_sha256 from outgoing msg1
-                        //    delete msg1 from data.msg array if not already done
-                        //    only used in private chat - not used in group chat
+                        //// old b) cleanup msg that has been received by other contacts
+                        ////    outbox msg1.sender_sha256 == inbox msg2.receiver_sha256
+                        ////    ingoing msg2 is a response using sender_sha256 from outgoing msg1
+                        ////    delete msg1 from data.msg array if not already done
+                        ////    only used in private chat - not used in group chat
+                        //for (i=0 ; i<ls_contacts.length ; i++) {
+                        //    contact = ls_contacts[i] ;
+                        //    if (contact.type == 'group') continue ;
+                        //    if (!contact.messages) continue ;
+                        //    for (j=0 ; j<contact.messages.length ; j++) {
+                        //        if (contact.messages[j].folder != 'inbox') continue ;
+                        //        inbox_message = contact.messages[j] ;
+                        //        if (!inbox_message.receiver_sha256) continue ;
+                        //        // found a message in inbox folder with a receiver_sha256. Find corresponding outbox message
+                        //        debug('data_cleanup', pgm + 'inbox_message = ' + JSON.stringify(inbox_message));
+                        //        // todo: why "msgtype": "chat msg" in message envelope? see issue #33 Minor problem with msgtype in message envelope
+                        //        //inbox_message = {
+                        //        //    "local_msg_seq": 384,
+                        //        //    "folder": "inbox",
+                        //        //    "message": {"msgtype": "received", "remote_msg_seq": 383, "local_msg_seq": 2},
+                        //        //    "zeronet_msg_id": "1fe194fae73b323d7147141687789f1fae802102ed4658985a2bdc323fdcbe13",
+                        //        //    "sender_sha256": "ae7a57d6430be2b7f1cc90026bf788de75d7329819b2c27e46595d6d66601606",
+                        //        //    "sent_at": 1480097517890,
+                        //        //    "receiver_sha256": "3e33ff66af81ef8a9484b94996e0d300e9659a8fc61c01c80432745cc1ba51cd",
+                        //        //    "received_at": 1480097522875,
+                        //        //    "ls_msg_size": 414,
+                        //        //    "msgtype": "chat msg"
+                        //        //};
+                        //        outbox_message = null ;
+                        //        for (k=0; k<contact.messages.length ; k++) {
+                        //            if (contact.messages[k].folder != 'outbox') continue ;
+                        //            if (!contact.messages[k].sender_sha256) continue ;
+                        //            if (!contact.messages[k].zeronet_msg_id) continue ;
+                        //            if (contact.messages[k].sender_sha256 != inbox_message.receiver_sha256) continue ;
+                        //            outbox_message = contact.messages[k] ;
+                        //            break ;
+                        //        } // for k (outbox)
+                        //        if (!outbox_message) {
+                        //            if (contact.outbox_sender_sha256 && contact.outbox_sender_sha256[inbox_message.receiver_sha256]) {
+                        //                // OK. must be an outbox message deleted by user. Has already been removed from data.json
+                        //                debug('data_cleanup', pgm + 'OK. must be an outbox message deleted by user. Has already been removed from data.json.') ;
+                        //                debug('data_cleanup', pgm + 'setting inbox_message.receiver_sha256 to null');
+                        //                delete inbox_message.receiver_sha256 ;
+                        //                local_storage_updated = true ;
+                        //                continue ;
+                        //            }
+                        //            else {
+                        //                console.log(pgm + 'System error. Could not find any messages in outbox folder with sender_sha256 = ' + inbox_message.receiver_sha256);
+                        //                debug('data_cleanup', pgm + 'setting inbox_message.receiver_sha256 to null');
+                        //                delete inbox_message.receiver_sha256 ;
+                        //                continue ;
+                        //            }
+                        //        }
+                        //        // outbox_message.sender_sha256 == inbox message.receiver_sha256
+                        //        // mark outbox message as received. do not request feedback info for this message
+                        //        // keep outbox.sender_sha256. there can come other ingoing messages with this receiver_sha256 address (watch_receiver_sha256 array)
+                        //        outbox_message.received = true ;
+                        //        delete inbox_message.receiver_sha256 ;
+                        //        // check if outbox message still is in data.msg array
+                        //        for (k=data.msg.length-1 ; k >= 0 ; k--) {
+                        //            if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
+                        //            // found a message that can be deleted from ZeroNet (received by contact)
+                        //            debug('data_cleanup', pgm + 'found a message that can be deleted from ZeroNet (received by contact)') ;
+                        //            data.msg.splice(k,1);
+                        //            delete outbox_message.zeronet_msg_id ;
+                        //            delete outbox_message.zeronet_msg_size ;
+                        //            local_storage_updated = true ;
+                        //            data_removed = true ;
+                        //            if (inbox_message.message.msgtype == 'received') {
+                        //                // logical delete. will be physical deleted in next ls_save_contacts
+                        //                inbox_message.deleted_at = new Date().getTime() ;
+                        //            }
+                        //            break ;
+                        //        }
+                        //        if (data_removed) {
+                        //            debug('data_cleanup', pgm + 'data.json is big. removed outbox message received by contact') ;
+                        //            break ;
+                        //        }
+                        //        else {
+                        //            debug('data_cleanup', pgm + 'error. outbox message was not in data.msg array. cleaning up invalid reference') ;
+                        //            delete outbox_message.zeronet_msg_id ;
+                        //            delete outbox_message.zeronet_msg_size ;
+                        //            local_storage_updated = true ;
+                        //        }
+                        //    } // for j (messages)
+                        //    if (data_removed) break ;
+                        //} // for i (contacts)
+                        //if (data_removed) continue ; // recheck data.json size
+
+                        // new b) cleanup msg that has been received by contact. outbox_message.feedback = unix timestamp
                         for (i=0 ; i<ls_contacts.length ; i++) {
                             contact = ls_contacts[i] ;
                             if (contact.type == 'group') continue ;
                             if (!contact.messages) continue ;
                             for (j=0 ; j<contact.messages.length ; j++) {
-                                if (contact.messages[j].folder != 'inbox') continue ;
-                                inbox_message = contact.messages[j] ;
-                                if (!inbox_message.receiver_sha256) continue ;
-                                // found a message in inbox folder with a receiver_sha256. Find corresponding outbox message
-                                debug('data_cleanup', pgm + 'inbox_message = ' + JSON.stringify(inbox_message));
-                                // todo: why "msgtype": "chat msg" in message envelope? see issue #33 Minor problem with msgtype in message envelope
-                                //inbox_message = {
-                                //    "local_msg_seq": 384,
-                                //    "folder": "inbox",
-                                //    "message": {"msgtype": "received", "remote_msg_seq": 383, "local_msg_seq": 2},
-                                //    "zeronet_msg_id": "1fe194fae73b323d7147141687789f1fae802102ed4658985a2bdc323fdcbe13",
-                                //    "sender_sha256": "ae7a57d6430be2b7f1cc90026bf788de75d7329819b2c27e46595d6d66601606",
-                                //    "sent_at": 1480097517890,
-                                //    "receiver_sha256": "3e33ff66af81ef8a9484b94996e0d300e9659a8fc61c01c80432745cc1ba51cd",
-                                //    "received_at": 1480097522875,
-                                //    "ls_msg_size": 414,
-                                //    "msgtype": "chat msg"
-                                //};
-                                outbox_message = null ;
-                                for (k=0; k<contact.messages.length ; k++) {
-                                    if (contact.messages[k].folder != 'outbox') continue ;
-                                    if (!contact.messages[k].sender_sha256) continue ;
-                                    if (!contact.messages[k].zeronet_msg_id) continue ;
-                                    if (contact.messages[k].sender_sha256 != inbox_message.receiver_sha256) continue ;
-                                    outbox_message = contact.messages[k] ;
-                                    break ;
-                                } // for k (outbox)
-                                if (!outbox_message) {
-                                    if (contact.outbox_sender_sha256 && contact.outbox_sender_sha256[inbox_message.receiver_sha256]) {
-                                        // OK. must be an outbox message deleted by user. Has already been removed from data.json
-                                        debug('data_cleanup', pgm + 'OK. must be an outbox message deleted by user. Has already been removed from data.json.') ;
-                                        debug('data_cleanup', pgm + 'setting inbox_message.receiver_sha256 to null');
-                                        delete inbox_message.receiver_sha256 ;
-                                        local_storage_updated = true ;
-                                        continue ;
-                                    }
-                                    else {
-                                        console.log(pgm + 'System error. Could not find any messages in outbox folder with sender_sha256 = ' + inbox_message.receiver_sha256);
-                                        debug('data_cleanup', pgm + 'setting inbox_message.receiver_sha256 to null');
-                                        delete inbox_message.receiver_sha256 ;
-                                        continue ;
-                                    }
-                                }
-                                // outbox_message.sender_sha256 == inbox message.receiver_sha256
-                                // mark outbox message as received. do not request feedback info for this message
-                                // keep outbox.sender_sha256. there can come other ingoing messages with this receiver_sha256 address (watch_receiver_sha256 array)
-                                outbox_message.received = true ;
-                                delete inbox_message.receiver_sha256 ;
+                                if (contact.messages[j].folder != 'outbox') continue ;
+                                outbox_message = contact.messages[j] ;
+                                if (!outbox_message.zeronet_msg_id) continue ;
+                                if (!outbox_message.feedback) continue ;
+                                // found a outbox message that have been received by contact
+                                // feedback as inbox_message.receiver_sha256 = outbox_message.sender_sha256
+                                // or feedback as feedback.received array in ingoing messages
+                                // remove outbox message from msg array in data.json file
+
                                 // check if outbox message still is in data.msg array
                                 for (k=data.msg.length-1 ; k >= 0 ; k--) {
                                     if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
                                     // found a message that can be deleted from ZeroNet (received by contact)
-                                    debug('data_cleanup', pgm + 'found a message that can be deleted from ZeroNet (received by contact)') ;
+                                    debug('data_cleanup', pgm + 'b: found a message that can be deleted from ZeroNet (received by contact)') ;
                                     data.msg.splice(k,1);
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
                                     local_storage_updated = true ;
                                     data_removed = true ;
-                                    if (inbox_message.message.msgtype == 'received') {
-                                        // logical delete. will be physical deleted in next ls_save_contacts
-                                        inbox_message.deleted_at = new Date().getTime() ;
-                                    }
+                                    // from old b) implementation. not possible in new b) implementation
+                                    //if (inbox_message.message.msgtype == 'received') {
+                                    //    // logical delete. will be physical deleted in next ls_save_contacts
+                                    //    inbox_message.deleted_at = new Date().getTime() ;
+                                    //}
+
                                     break ;
-                                }
+                                } // for k (data.msg)
                                 if (data_removed) {
-                                    debug('data_cleanup', pgm + 'data.json is big. removed outbox message received by contact') ;
+                                    debug('data_cleanup', pgm + 'b: data.json is big. removed outbox message received by contact') ;
                                     break ;
                                 }
                                 else {
-                                    debug('data_cleanup', pgm + 'error. outbox message was not in data.msg array. cleaning up invalid reference') ;
+                                    debug('data_cleanup', pgm + 'b: error. outbox message was not in data.msg array. cleaning up invalid reference') ;
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
                                     local_storage_updated = true ;
                                 }
-                            } // for j (messages)
+                            } // for j (contact.messages)
                             if (data_removed) break ;
                         } // for i (contacts)
                         if (data_removed) continue ; // recheck data.json size
+
 
                         // c) cleanup image group chat messages where receipts have been received from all participants in group chat
                         //    image has send in a group chat message (contact.type = group)
@@ -1071,19 +1120,19 @@ angular.module('MoneyNetwork')
                                 if (outbox_message.folder != 'outbox') continue ;
                                 if (!outbox_message.zeronet_msg_id) continue ;
                                 if (!outbox_message.hasOwnProperty('image_receipts')) continue ;
-                                debug('data_cleanup', pgm + 'found outbox message with an image_receipts array.') ;
+                                debug('data_cleanup', pgm + 'c: found outbox message with an image_receipts array.') ;
                                 if (outbox_message.image_receipts.length > 0) {
-                                    debug('data_cleanup', pgm + 'keeping image. not all receipts have been received. outbox_message.image_receipts = ' + JSON.stringify(outbox_message.image_receipts));
+                                    debug('data_cleanup', pgm + 'c: keeping image. not all receipts have been received. outbox_message.image_receipts = ' + JSON.stringify(outbox_message.image_receipts));
                                     continue ;
                                 }
-                                debug('data_cleanup', pgm + 'all image receipts have been received. Remove message from data.json') ;
+                                debug('data_cleanup', pgm + 'c: all image receipts have been received. Remove message from data.json') ;
                                 delete outbox_message.image_receipts ;
 
                                 // check if outbox message is in data.msg array
                                 for (k=data.msg.length-1 ; k >= 0 ; k--) {
                                     if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
                                     // found a message that can be deleted from ZeroNet (received by contact)
-                                    debug('data_cleanup', pgm + 'found an image message that can be deleted from ZeroNet (received by all group chat contacts)') ;
+                                    debug('data_cleanup', pgm + 'c: found an image message that can be deleted from ZeroNet (received by all group chat contacts)') ;
                                     data.msg.splice(k,1);
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
@@ -1092,11 +1141,11 @@ angular.module('MoneyNetwork')
                                     break ;
                                 } // for k (data.msg)
                                 if (data_removed) {
-                                    debug('data_cleanup', pgm + 'data.json is big. removed outbox image message received by received by all group chat contacts') ;
+                                    debug('data_cleanup', pgm + 'c: data.json is big. removed outbox image message received by received by all group chat contacts') ;
                                     break ;
                                 }
                                 else {
-                                    debug('data_cleanup', pgm + 'error. outbox message was not in data.msg array. cleaning up invalid reference') ;
+                                    debug('data_cleanup', pgm + 'c: error. outbox message was not in data.msg array. cleaning up invalid reference') ;
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
                                     local_storage_updated = true ;
@@ -1108,16 +1157,16 @@ angular.module('MoneyNetwork')
 
                         // d) delete old msg. only current user_seq
                         i = -1 ;
-                        for (j=0; ((i==-1) && (j<data.msg.length)) ; j++) if (data.msg[j].user_seq == user_seq) i == j ;
+                        for (j=0; ((i==-1) && (j<data.msg.length)) ; j++) if (data.msg[j].user_seq == user_seq) i = j ;
                         if ((i == -1) || (data.msg[i].timestamp > one_hour_ago)) {
-                            debug('data_cleanup', pgm + 'no more old data to remove');
+                            debug('data_cleanup', pgm + 'd: no more old data to remove.');
                             break ;
                         }
                         // found old data.msg row. find outbox message
                         outbox_message = null ;
                         for (j=0 ; j<ls_contacts.length ; j++) {
                             contact = ls_contacts[j] ;
-                            for (k=0 ; k<contact.messages.length ; j++) {
+                            for (k=0 ; k<contact.messages.length ; k++) {
                                 if (contact.messages[k].folder != 'outbox') continue;
                                 if (!contact.messages[k].zeronet_msg_id) continue;
                                 if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
@@ -1134,11 +1183,11 @@ angular.module('MoneyNetwork')
                             outbox_message.cleanup_at =  new Date().getTime() ;
                             local_storage_updated = true ;
                         }
-                        else debug('data_cleanup', pgm + 'Warning. Could not find outbox message with zeronet_msg_id ' + data.msg[i].message_sha256) ;
+                        else debug('data_cleanup', pgm + 'd: Warning. Could not find outbox message with zeronet_msg_id ' + data.msg[i].message_sha256) ;
                         // remove from zeronet
-                        data.msg.splice(j,1);
+                        data.msg.splice(i,1);
 
-                        debug('data_cleanup', pgm + 'data.json is big. deleted old message') ;
+                        debug('data_cleanup', pgm + 'd: data.json is big. deleted old message') ;
                     } // while true
 
                     // console.log(pgm + 'localStorage.messages (3) = ' + JSON.stringify(local_storage_messages));
