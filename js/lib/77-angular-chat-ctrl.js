@@ -994,6 +994,7 @@ angular.module('MoneyNetwork')
                     $scope.$apply() ;
 
                 }, false);
+                console.log($scope.uploadedFile) ;
                 reader.readAsDataURL($scope.uploadedFile);
 
             }; // imageDropped
