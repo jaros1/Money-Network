@@ -130,25 +130,13 @@ angular.module('MoneyNetwork')
         // end toJSON filter
     }])
 
-    .filter('shortCertUserId', [function () {
-        // return part of cert_user_id before @
-        return function (cert_user_id) {
-            var i = cert_user_id.indexOf('@') ;
-            return cert_user_id.substr(0,i) ;
-        } ;
-        // end shortCertUserId filter
-    }])
-
-    .filter('aliasOrShortCertUserId', [function () {
+    .filter('contactAlias', ['MoneyNetworkService', function (moneyNetworkService   ) {
         // return part of cert_user_id before @
         return function (contact) {
             if (!contact) return '' ;
-            if (contact.alias) return contact.alias ;
-            if (contact.type == 'group') return contact.unique_id.substr(0,13) ;
-            var i = contact.cert_user_id.indexOf('@') ;
-            return contact.cert_user_id.substr(0,i) ;
+            return moneyNetworkService.get_contact_name(contact);
         } ;
-        // end aliasOrShortCertUserId filter
+        // end contactAlias filter
     }])
 
     .filter('findContactAvatar', [function () {
@@ -275,14 +263,7 @@ angular.module('MoneyNetwork')
             }
             else {
                 // outbox: send message to contact
-                if (message.contact.alias) alias = message.contact.alias ;
-                else {
-                    if (message.contact.type == 'group') alias = message.contact.unique_id.substr(0,13) ;
-                    else {
-                        i = message.contact.cert_user_id.indexOf('@') ;
-                        alias = message.contact.cert_user_id.substr(0,i) ;
-                    }
-                }
+                alias = moneyNetworkService.get_contact_name(message.contact);
                 greeting = 'Hello ' + alias;
             }
             // check known message types
@@ -359,9 +340,12 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'group_contact = ' + JSON.stringify(group_contact));
                 var other_participants = [], participant ;
                 var limit_other_participants = 3 ;
+                var my_unique_id = moneyNetworkService.get_my_unique_id() ;
                 for (i=0 ; i<group_contact.participants.length ; i++) {
                     unique_id = group_contact.participants[i] ;
-                    if (unique_id != message.contact.unique_id) other_participants.push(unique_id) ;
+                    if (unique_id == my_unique_id) continue ;
+                    if (unique_id == message.contact.unique_id) continue ;
+                    other_participants.push(unique_id) ;
                 }
                 // console.log(pgm + 'other_participants = ' + JSON.stringify(other_participants));
                 if (other_participants.length > limit_other_participants) {
@@ -373,9 +357,8 @@ angular.module('MoneyNetwork')
                     else str += ', ' ;
                     unique_id = other_participants[i] ;
                     participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
-                    if (!participant) str += 'deleted contact' ;
-                    else if (participant.alias) str += participant.alias ;
-                    else str += participant.unique_id.substr(0,13) ;
+                    if (!participant) str += 'unknown contact' ;
+                    else str += moneyNetworkService.get_contact_name(participant);
                 }
                 return str ;
             }

@@ -23,17 +23,12 @@ angular.module('MoneyNetwork')
             return (self.contacts.length == 0) ;
         }; // show_welcome_msg
 
-        // first column in contacts table. return user_id or type
-        self.get_user_info = function (contact,search) {
-            if (search.row == 1) {
-                // return short cert_user_id or alias
-                if (contact.alias) return '<b>' + contact.alias + '</b>';
-                var i = contact.cert_user_id.indexOf('@') ;
-                return '<b>' + contact.cert_user_id.substr(0,i) + '</b>';
-            }
-            if (search.row == 2) return '(' + contact.type + ')' ;
-            return null ;
-        };
+        //// first column in contacts table. return user_id or type
+        //self.get_user_info = function (contact,search) {
+        //    if (search.row == 1) return '<b>' + moneyNetworkService.get_contact_name(contact) + '</b>';
+        //    if (search.row == 2) return '(' + contact.type + ')' ;
+        //    return null ;
+        //};
 
         // edit contact alias functions
         // todo: almost identical code in Chat. Refactor to MoneyNetworkService
@@ -41,12 +36,7 @@ angular.module('MoneyNetwork')
         var edit_alias_notifications = 1 ;
         self.edit_alias = function (contact) {
             var pgm = controller + '.edit_alias: ', i ;
-            if (contact.alias) contact.new_alias = contact.alias ;
-            else if (contact.type == 'group') contact.new_alias = contact.unique_id.substr(0,13);
-            else {
-                i = contact.cert_user_id.indexOf('@') ;
-                contact.new_alias = contact.cert_user_id.substr(0,i) ;
-            }
+            contact.new_alias = moneyNetworkService.get_contact_name(contact);
             contact.edit_alias = true ;
             if (edit_alias_notifications > 0) {
                 ZeroFrame.cmd("wrapperNotification", ["info", self.edit_alias_title, 5000]);

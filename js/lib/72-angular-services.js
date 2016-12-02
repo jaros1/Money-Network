@@ -908,50 +908,52 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'localStorage.messages (2) = ' + JSON.stringify(local_storage_messages));
                     // console.log(pgm + 'ZeroNet data.msg (2) = ' + JSON.stringify(data.msg));
 
-                    // delete one week old messages from Zeronet.
-                    var now = new Date().getTime() ;
-                    var one_week_ago = now - 1000*60*60*24*7 ;
-                    var outbox_message ;
-                    for (i=data.msg.length-1 ; i>=0 ; i--) {
-                        if (data.msg[i].timestamp > one_week_ago) continue ;
-                        // clear reference from outbox message in localStorage to deleted message at ZeroNet
-                        outbox_message = null ;
-                        for (j=0 ; j<ls_contacts.length ; j++) {
-                            contact = ls_contacts[j] ;
-                            for (k=0 ; k<contact.messages.length ; k++) {
-                                if (contact.messages[k].folder != 'outbox') continue ;
-                                if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
-                                // OK - found outbox message in localStorage
-                                outbox_message = contact.messages[k] ;
-                                break ;
-
-                                if (contact.messages[k].zeronet_msg_id == data.msg[i].message_sha256) {
-                                    outbox_message = contact.messages[k] ;
-                                    break ;
-                                } // if
-
-                            } // for k (contact.messages)
-                            if (outbox_message) break ;
-                        } // for j (contacts)
-                        if (outbox_message) {
-                            debug('data_cleanup', pgm + '0: Removed one week old message with zeronet_msg_id ' + data.msg[i].message_sha256 + ' from zeronet') ;
-                            delete outbox_message.zeronet_msg_id ;
-                            delete outbox_message.zeronet_msg_size ;
-                            outbox_message.cleanup_at = now ;
-                            local_storage_updated = true ;
-                        }
-                        else {
-                            debug('data_cleanup', pgm + '0: One week old message with zeronet_msg_id ' + data.msg[i].message_sha256 + ' was not found in localStorage contacts') ;
-                        }
-                        data.msg.splice(i,1) ;
-                    } // for i
+                    //// delete one week old messages from Zeronet.
+                    //var now = new Date().getTime() ;
+                    //var one_week_ago = now - 1000*60*60*24*7 ;
+                    //var outbox_message ;
+                    //for (i=data.msg.length-1 ; i>=0 ; i--) {
+                    //    if (data.msg[i].timestamp > one_week_ago) continue ;
+                    //    // clear reference from outbox message in localStorage to deleted message at ZeroNet
+                    //    outbox_message = null ;
+                    //    for (j=0 ; j<ls_contacts.length ; j++) {
+                    //        contact = ls_contacts[j] ;
+                    //        for (k=0 ; k<contact.messages.length ; k++) {
+                    //            if (contact.messages[k].folder != 'outbox') continue ;
+                    //            if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
+                    //            // OK - found outbox message in localStorage
+                    //            outbox_message = contact.messages[k] ;
+                    //            break ;
+                    //
+                    //            if (contact.messages[k].zeronet_msg_id == data.msg[i].message_sha256) {
+                    //                outbox_message = contact.messages[k] ;
+                    //                break ;
+                    //            } // if
+                    //
+                    //        } // for k (contact.messages)
+                    //        if (outbox_message) break ;
+                    //    } // for j (contacts)
+                    //    if (outbox_message) {
+                    //        debug('data_cleanup', pgm + '0: Removed one week old message with zeronet_msg_id ' + data.msg[i].message_sha256 + ' from zeronet') ;
+                    //        delete outbox_message.zeronet_msg_id ;
+                    //        delete outbox_message.zeronet_msg_size ;
+                    //        outbox_message.cleanup_at = now ;
+                    //        local_storage_updated = true ;
+                    //    }
+                    //    else {
+                    //        debug('data_cleanup', pgm + '0: One week old message with zeronet_msg_id ' + data.msg[i].message_sha256 + ' was not found in localStorage contacts') ;
+                    //    }
+                    //    data.msg.splice(i,1) ;
+                    //} // for i
 
                     // check file size. Try to keep data.json file size small for fast communication and small site
                     // always keep messages for last hour.
                     // data.json size must also be <data_json_max_size
+                    var now = new Date().getTime() ;
                     var one_hour_ago = now - 1000*60*60 ;
                     var msg_user_seqs, inbox_message, data_removed ;
                     var count = 0, contact_last_online ;
+                    var outbox_message ;
                     while (true) {
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                         if (json_raw.length < 10000) break ; // OK - small file
@@ -960,7 +962,7 @@ angular.module('MoneyNetwork')
                         // todo: looping forever with message - MoneyNetworkService.z_update_data_json fileGet callback: data.json is big. size 14762. removing old data ...
                         count = count + 1 ;
                         if (count > 1000) {
-                            console.log(pgm + 'Ups. System error. Something is wrong here. looping forever. Taking a break') ;
+                            console.log(pgm + 'Ups. System error. Something is wrong here. looping forever!') ;
                             break ;
                         }
                         data_removed = false ;
@@ -1007,7 +1009,7 @@ angular.module('MoneyNetwork')
                                     data.msg.splice(k,1);
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
-                                    outbox_message.cleanup_at =  new Date().getTime() ;
+                                    outbox_message.cleanup_at =  now ;
                                     local_storage_updated = true ;
                                     data_removed = true ;
                                     // todo: from old b) implementation. not possible in new b) implementation
@@ -1025,7 +1027,7 @@ angular.module('MoneyNetwork')
                                     debug('data_cleanup', pgm + 'b: error. outbox message was not in data.msg array. cleaning up invalid reference') ;
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
-                                    outbox_message.cleanup_at =  new Date().getTime() ;
+                                    outbox_message.cleanup_at =  now ;
                                     local_storage_updated = true ;
                                     outbox_message = null ;
                                 }
@@ -1064,7 +1066,7 @@ angular.module('MoneyNetwork')
                                     data.msg.splice(k,1);
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
-                                    outbox_message.cleanup_at =  new Date().getTime() ;
+                                    outbox_message.cleanup_at =  now ;
                                     local_storage_updated = true ;
                                     data_removed = true ;
                                     break ;
@@ -1077,7 +1079,7 @@ angular.module('MoneyNetwork')
                                     debug('data_cleanup', pgm + 'c: error. outbox message was not in data.msg array. cleaning up invalid reference') ;
                                     delete outbox_message.zeronet_msg_id ;
                                     delete outbox_message.zeronet_msg_size ;
-                                    outbox_message.cleanup_at =  new Date().getTime() ;
+                                    outbox_message.cleanup_at =  now ;
                                     local_storage_updated = true ;
                                 }
                             } // for j (contact.messages)
@@ -1110,7 +1112,7 @@ angular.module('MoneyNetwork')
                                         ', outbox_message = ' + JSON.stringify(outbox_message)) ;
                                 }
                                 else {
-                                    debug('data_cleanup', 'd: removing old probably received outbox message from Zeronet. ' +
+                                    debug('data_cleanup', 'd: removing old probably not received outbox message from Zeronet. ' +
                                         'contact.last_online = ' + contact_last_online +
                                         ', outbox_message = ' + JSON.stringify(outbox_message)) ;
                                 }
@@ -1123,7 +1125,7 @@ angular.module('MoneyNetwork')
                             // remove reference from outbox to zeronet
                             delete outbox_message.zeronet_msg_id ;
                             delete outbox_message.zeronet_msg_size ;
-                            outbox_message.cleanup_at =  new Date().getTime() ;
+                            outbox_message.cleanup_at =  now ;
                             local_storage_updated = true ;
                         }
                         else debug('data_cleanup', pgm + 'd: Warning. Could not find outbox message with zeronet_msg_id ' + data.msg[i].message_sha256) ;
@@ -1305,6 +1307,15 @@ angular.module('MoneyNetwork')
         function get_contact_by_cert_user_id (cert_user_id) {
             return ls_contacts_index.cert_user_id[cert_user_id] ;
         }
+        function get_contact_name (contact) {
+            var i ;
+            if (contact.alias) return contact.alias ;
+            else if (contact.cert_user_id) {
+                i = contact.cert_user_id.indexOf('@') ;
+                return contact.cert_user_id.substr(0,i) ;
+            }
+            else return contact.unique_id.substr(0,13) ;
+        } // get_contact_name
 
         var js_messages = [] ; // array with { :contact => contact, :message => message } - one row for each message
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
@@ -1638,14 +1649,8 @@ angular.module('MoneyNetwork')
                 var auth_address, unique_id, found_user_seq, found_pubkey, found_last_updated;
                 // delete contact helper. keep or delete contact without public key?
                 var delete_contact = function (contact, i) {
-                    var alias, index;
-                    if (contact.alias) alias = contact.alias;
-                    else {
-                        index = contact.cert_user_id.indexOf('@');
-                        alias = contact.cert_user_id.substr(0, index);
-                    }
-                    var msg = 'Public key was not found for ' + alias;
-                    var last_updated, j, no_msg;
+                    var msg, last_updated, j, no_msg;
+                    msg = 'Public key was not found for ' + get_contact_name(contact);
                     last_updated = get_last_online(contact);
                     if (last_updated) msg += '. Last online ' + date(last_updated * 1000, 'short');
                     if (['new', 'guest'].indexOf(contact.type) != -1) {
@@ -1900,6 +1905,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.ls_update_group_last_updated: ' ;
             var i, contact, old_last_online, found_last_updated, j, new_last_online, unique_id, participant, k, timestamp ;
             var ls_updated = false ;
+            var my_unique_id = get_my_unique_id() ;
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
                 if (contact.type != 'group') continue ;
@@ -1908,6 +1914,7 @@ angular.module('MoneyNetwork')
                 new_last_online = old_last_online ;
                 for (j=0 ; j<contact.participants.length ; j++) {
                     unique_id = contact.participants[j] ;
+                    if (unique_id == my_unique_id) continue ;
                     participant = get_contact_by_unique_id(unique_id) ;
                     if (!participant) {
                         // console.log(pgm + 'warning. group chat participant with unique id ' + unique_id + ' does not exists') ;
@@ -2665,9 +2672,11 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message)) ;
                 // received password for a new group chat.
                 // check for unknown participants
+                var my_unique_id = get_my_unique_id();
                 var participant, j ;
                 var last_updated = 0, timestamp ;
                 for (i=0 ; i<decrypted_message.participants.length ; i++) {
+                    if (decrypted_message.participants[i] == my_unique_id) continue ;
                     participant = get_contact_by_unique_id(decrypted_message.participants[i]) ;
                     if (!participant) console.log(pgm + 'warning. could not find participant with unique id ' + decrypted_message.participants[i]) ;
                     else {
@@ -2676,22 +2685,13 @@ angular.module('MoneyNetwork')
                     }
                 } // for i
                 // find unique id for pseudo group chat contact.
-                // my unique id, sender unique id + participants in this message
-                var my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
-                var my_auth_address = ZeroFrame.site_info.auth_address ;
-                var my_unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
-                var group_chat_unique_ids = JSON.parse(JSON.stringify(decrypted_message.participants)) ;
-                group_chat_unique_ids.push(my_unique_id) ;
-                group_chat_unique_ids.push(contact.unique_id) ;
-                group_chat_unique_ids.sort() ;
-                console.log(pgm + 'group_chat_unique_ids = ' + JSON.stringify(group_chat_unique_ids)) ;
-                var group_chat_unique_id = CryptoJS.SHA256(JSON.stringify(group_chat_unique_ids)).toString() ;
+                var group_chat_unique_id = CryptoJS.SHA256(JSON.stringify(decrypted_message.participants)).toString() ;
                 console.log(pgm + 'group_chat_unique_id = ' + group_chat_unique_id) ;
                 var group_chat_contact = get_contact_by_unique_id(group_chat_unique_id);
                 if (group_chat_contact) console.log(pgm + 'group_chat_contact = ' + JSON.stringify(group_chat_contact)) ;
                 else console.log(pgm + 'could not find group chat contact with unique id ' + group_chat_unique_id) ;
                 if (!group_chat_contact) {
-                    // create pseudo chat group contact without password. password will be added when sending first chat message in this group
+                    // create pseudo chat group contact
                     var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
                     index = Math.floor(Math.random() * public_avatars.length);
                     var avatar = public_avatars[index] ;
@@ -2700,16 +2700,12 @@ angular.module('MoneyNetwork')
                         cert_user_id: group_chat_unique_id.substr(0,13) + '@moneynetwork',
                         type: 'group',
                         password: decrypted_message.password,
-                        participants: [],
+                        participants: decrypted_message.participants,
                         search: [],
                         messages: [],
                         avatar: avatar
                     };
-                    // add participants and search info
-                    for (i=0 ; i<group_chat_unique_ids.length ; i++) {
-                        if (group_chat_unique_ids[i] == my_unique_id) continue ;
-                        group_chat_contact.participants.push(group_chat_unique_ids[i]) ;
-                    }
+                    // add search info
                     if (last_updated) group_chat_contact.search.push({tag: 'Online', value: last_updated, privacy: 'Search', row: 1}) ;
                     group_chat_contact.search.push({
                         tag: 'Group',
@@ -3607,12 +3603,14 @@ angular.module('MoneyNetwork')
         } // cleanup_inactive_users
 
         var user_id = 0 ;
+        var my_unique_id ;
         function client_login(password, create_new_account, guest) {
             // login or register. update sessionStorage and localStorage
             if (!create_new_account) guest = false ;
             user_id = MoneyNetworkHelper.client_login(password, create_new_account);
             if (user_id) {
                 if (create_new_account && guest) MoneyNetworkHelper.setItem('guestid', user_id); // todo: ls_save()?
+                // my unique id in group chats
                 // load user information from localStorage
                 load_user_setup() ;
                 load_user_info(guest) ;
@@ -3640,6 +3638,7 @@ angular.module('MoneyNetwork')
             for (key in ignore_zeronet_msg_id) delete ignore_zeronet_msg_id[key] ;
             avatar.loaded = false;
             user_id = 0 ;
+            my_unique_id = null ;
             user_contents_max_size = null ;
             admin_key = null ;
             for (key in user_setup) delete user_setup[key] ;
@@ -3647,6 +3646,17 @@ angular.module('MoneyNetwork')
             $location.path('/auth');
             $location.replace();
         } // client_logout
+
+        function get_my_unique_id () {
+            if (my_unique_id) my_unique_id ;
+            if (!ZeroFrame.site_info) return null ; // ZeroFrame not ready - loading
+            var my_auth_address = ZeroFrame.site_info.auth_address ;
+            if (!my_auth_address) return null ; // not logged in on ZeroNet
+            var my_pubkey = MoneyNetworkHelper.getItem('pubkey');
+            my_unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
+            return my_unique_id ;
+        } // get_my_unique_id
+
 
 
         // update timestamp in status.json file and modified in content.json.
@@ -4090,6 +4100,7 @@ angular.module('MoneyNetwork')
             get_contact_by_unique_id: get_contact_by_unique_id,
             get_contact_by_password_sha256: get_contact_by_password_sha256,
             get_contact_by_cert_user_id: get_contact_by_cert_user_id,
+            get_contact_name: get_contact_name,
             add_contact: add_contact,
             update_contact_add_password: update_contact_add_password,
             z_contact_search: z_contact_search,
@@ -4102,6 +4113,7 @@ angular.module('MoneyNetwork')
             get_avatar: get_avatar,
             client_login: client_login,
             client_logout: client_logout,
+            get_my_unique_id: get_my_unique_id,
             zeronet_site_publish: zeronet_site_publish,
             contact_add: contact_add,
             contact_remove: contact_remove,

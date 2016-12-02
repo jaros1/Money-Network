@@ -68,13 +68,9 @@ angular.module('MoneyNetwork')
                 if (self.group_chat_contacts.length == 1) return self.group_chat_contacts[0] ;
                 // calculate group chat unique_id from participants in group chat
                 // calculate last updated as max last updated for participants in group chat
-                var my_pubkey = MoneyNetworkHelper.getItem('pubkey');
-                var my_auth_address = ZeroFrame.site_info.auth_address ;
-                var my_unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
                 var i, j, participant, timestamp ;
                 var last_updated = 0 ;
-                // console.log(pgm + 'my_unique_id = ' + my_unique_id);
-                var group_chat_contact_unique_ids = [my_unique_id] ;
+                var group_chat_contact_unique_ids = [moneyNetworkService.get_my_unique_id()] ;
                 for (i=0 ; i<self.group_chat_contacts.length ; i++) {
                     participant = self.group_chat_contacts[i] ;
                     group_chat_contact_unique_ids.push(participant.unique_id) ;
@@ -85,28 +81,24 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'group_chat_contact_unique_ids = ' + JSON.stringify(group_chat_contact_unique_ids)) ;
                 var group_unique_id = CryptoJS.SHA256(JSON.stringify(group_chat_contact_unique_ids)).toString() ;
                 // console.log(pgm + 'group_unique_id = ' + group_unique_id) ;
-                for (i=0 ; i<self.contacts.length ; i++) {
-                    if (self.contacts[i].unique_id == group_unique_id) return self.contacts[i] ;
-                }
+                var contact = moneyNetworkService.get_contact_by_unique_id(group_unique_id) ;
+                if (contact) return contact ; // group contact already exists
                 if (!create) return group_unique_id ;
-                // create pseudo chat group contact without password. password will be added when sending first chat message in this group
+                // create pseudo chat group contact without password. password will be added later when sending first chat message in this group
                 var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
                 var index = Math.floor(Math.random() * public_avatars.length);
                 var avatar = public_avatars[index] ;
-                var contact = {
+                contact = {
                     unique_id: group_unique_id,
                     cert_user_id: group_unique_id.substr(0,13) + '@moneynetwork',
                     type: 'group',
                     password: null,
-                    participants: [],
+                    participants: group_chat_contact_unique_ids,
                     search: [],
                     messages: [],
                     avatar: avatar
                 };
-                // add participants and search info
-                for (i=0 ; i<self.group_chat_contacts.length ; i++) {
-                    contact.participants.push(self.group_chat_contacts[i].unique_id) ;
-                } // for i
+                // add search info
                 if (last_updated) contact.search.push({tag: 'Online', value: last_updated, privacy: 'Search', row: 1}) ;
                 contact.search.push({
                     tag: 'Group',
@@ -387,12 +379,7 @@ angular.module('MoneyNetwork')
                     id = 'contact_alias_id';
                     contact = self.contact ;
                 }
-                if (contact.alias) contact.new_alias = contact.alias ;
-                else if (contact.type == 'group') contact.new_alias = contact.unique_id.substr(0,13);
-                else {
-                    i = contact.cert_user_id.indexOf('@') ;
-                    contact.new_alias = contact.cert_user_id.substr(0,i) ;
-                }
+                contact.new_alias = moneyNetworkService.get_contact_name(contact);
                 contact.edit_alias = true ;
                 if (edit_alias_notifications > 0) {
                     ZeroFrame.cmd("wrapperNotification", ["info", self.edit_alias_title, 5000]);
@@ -780,9 +767,6 @@ angular.module('MoneyNetwork')
                 if (self.group_chat) {
                     if (!contact.password) {
                         // new pseudo group chat contact. generate password and send password to participants
-                        my_pubkey = MoneyNetworkHelper.getItem('pubkey');
-                        my_auth_address = ZeroFrame.site_info.auth_address ;
-                        my_unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
                         password = MoneyNetworkHelper.generate_random_password(200);
                         contact.password = password;
                         moneyNetworkService.update_contact_add_password(contact) ; // update password_sha256 index
@@ -790,15 +774,9 @@ angular.module('MoneyNetwork')
                         for (i = 0; i < self.group_chat_contacts.length; i++) {
                             message = {
                                 msgtype: 'group chat',
-                                participants: [],
+                                participants: contact.participants,
                                 password: password
                             };
-                            // add participants. Sender and receiver not included
-                            for (j = 0; j < contact.participants.length; j++) {
-                                if (contact.participants[j] == my_unique_id) continue;
-                                if (contact.participants[j] == self.group_chat_contacts[i].unique_id) continue;
-                                message.participants.push(contact.participants[j]);
-                            }
                             console.log(pgm + 'message = ' + JSON.stringify(message));
                             // validate json
                             error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
@@ -831,12 +809,17 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.add_msg(contact, message);
                 if (self.group_chat && self.new_chat_src) {
                     // sending a group chat message with an image.
-                    // expects one receipt for each participant in chat group
+                    // expects one receipt for each participant in chat group except me
                     // remove image chat message from zeronet (data.json) when all image receipts have been received
                     // see process_incoming_message - post processing of image receipts
                     // see z_update_data_json - data.json too big - xxxxxx
+                    my_unique_id = moneyNetworkService.get_my_unique_id() ;
                     var message_with_envelope = contact.messages[contact.messages.length-1] ;
-                    message_with_envelope.image_receipts = JSON.parse(JSON.stringify(contact.participants))  ;
+                    message_with_envelope.image_receipts = [] ;
+                    for (i=0 ; i<contact.participants.length ; i++) {
+                        if (contact.participants[i] == my_unique_id) continue ;
+                        message_with_envelope.image_receipts.push(contact.participants[i]) ;
+                    }
                     debug('outbox && unencrypted', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                 }
 
