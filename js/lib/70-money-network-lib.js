@@ -758,15 +758,34 @@ var MoneyNetworkHelper = (function () {
             "image": { "type": 'string'},
             "feedback": {
                 "type": 'object',
+                "description": 'Feedback info. Has message been received?',
                 "properties": {
-                    "received": {
-                        "type": 'array',
-                        "items": { "type": 'integer'},
-                        "minItems": 1
-                    },
                     "sent": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "description": 'Request feedback info. Array with local_msg_seq (normal chat) or array with objects (group chat)',
+                        "items": {
+                            "type": ['integer', 'object'],
+                            "properties": {
+                                "participant": { "type": 'integer'},
+                                "local_msg_seq": { "type": 'integer'}
+                            },
+                            "required": ['participant', 'local_msg_seq'],
+                            "additionalProperties": false
+                        },
+                        "minItems": 1
+                    },
+                    "received": {
+                        "type": 'array',
+                        "description": 'Return feedback info. Array with local_msg_seq (normal chat) or array with objects (group chat)',
+                        "items": {
+                            "type": ['integer', 'object'],
+                            "properties": {
+                                "participant": { "type": 'integer'},
+                                "local_msg_seq": { "type": 'integer'}
+                            },
+                            "required": ['participant', 'local_msg_seq'],
+                            "additionalProperties": false
+                        },
                         "minItems": 1
                     }
                 },

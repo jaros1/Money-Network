@@ -267,8 +267,128 @@ angular.module('MoneyNetwork')
 
             if (contact.type == 'group') {
                 // group chat
+                debug('feedback_info', 'group = ' + JSON.stringify(contact)) ;
+                //group = {
+                //    "unique_id": "5b6d6f9e8da1380339132cb2edc69b71899a558b00183be6f5094e73f4c1fd6d",
+                //    "cert_user_id": "5b6d6f9e8da13@moneynetwork",
+                //    "type": "group",
+                //    "password": "Q6}!hsGN3fdGR5R70X0i8Yy@/JToD38lw(ThG_MvYlPfEX&IT$-k%iYIL_3j+ee3Fpkd2lMjJ&)y:zh+Dk1{AvkVH1D:K1(wgyD9-[_V[zmq6jxU(lr|iWGF[SK7+cf0$c9VC)Q]%}%=g.V+:WP6FR4etc_6wQcy)f£Fh5Ao_c#7FS:fpGJ6H2a#£XJ[w fN_£jShE[6",
+                //    "participants": ["85d4af81c24c8bf4738ecdceec857a395c3f296c4ace966aff50176b80a7c7bf", "d313edf9b48b930c5e2c8d0f5c9914ddcf62d9b3904dfc25bffb4d7dbae45f88", "ead737059e44669f9ad99a1a53bd3fd60fccfabbf5eda00f4a47e2f137eaebda"],
+                //    "search": [{
+                //        "tag": "Online",
+                //        "value": 1480661786,
+                //        "privacy": "Search",
+                //        "row": 1,
+                //        "$$hashKey": "object:195"
+                //    }, {
+                //        "tag": "Group",
+                //        "value": "3 participants",
+                //        "privacy": "Search",
+                //        "row": 2,
+                //        "$$hashKey": "object:196"
+                //    }],
+                //    "messages": [{
+                //        "local_msg_seq": 769,
+                //        "folder": "inbox",
+                //        "message": {"msgtype": "chat msg", "message": "msg 3", "local_msg_seq": 4},
+                //        "zeronet_msg_id": "3b0abdfaccacd6d8d9a45235d0ffa1336cc8efbe2d3ff29530a66bac6e7f88bb",
+                //        "sent_at": 1480661481186,
+                //        "received_at": 1480661748935,
+                //        "participant": 1,
+                //        "ls_msg_size": 259,
+                //        "msgtype": "chat msg"
+                //    }, {
+                //        "local_msg_seq": 770,
+                //        "folder": "inbox",
+                //        "message": {"msgtype": "chat msg", "message": "msg 2", "local_msg_seq": 3},
+                //        "zeronet_msg_id": "9bfe2eeff5b4ce49e46854b20a2f34b1b4760ef612d7c38de1b3124119c32e48",
+                //        "sent_at": 1480661469717,
+                //        "received_at": 1480661748945,
+                //        "participant": 3,
+                //        "ls_msg_size": 259,
+                //        "msgtype": "chat msg"
+                //    }, {
+                //        "local_msg_seq": 771,
+                //        "folder": "inbox",
+                //        "message": {"msgtype": "chat msg", "message": "msg 4", "local_msg_seq": 768},
+                //        "zeronet_msg_id": "c82d2760a7d038ed340298326cf2d2ef5bd3c8479c6400eb6a6e33d8f1551546",
+                //        "sent_at": 1480661495258,
+                //        "received_at": 1480661750199,
+                //        "participant": 2,
+                //        "ls_msg_size": 261,
+                //        "msgtype": "chat msg"
+                //    }, {
+                //        "local_msg_seq": 772,
+                //        "folder": "inbox",
+                //        "message": {"msgtype": "chat msg", "message": "msg 1", "local_msg_seq": 765},
+                //        "zeronet_msg_id": "89fbaa45dafdef97de5cb13105b7a295594faa50717171d007b9f3460a4f400c",
+                //        "sent_at": 1480661452031,
+                //        "received_at": 1480661750203,
+                //        "participant": 2,
+                //        "ls_msg_size": 261,
+                //        "msgtype": "chat msg"
+                //    }, {
+                //        "local_msg_seq": 777,
+                //        "folder": "inbox",
+                //        "message": {"msgtype": "chat msg", "message": "msg 5 from guest 1", "local_msg_seq": 6},
+                //        "zeronet_msg_id": "1660db943254ee1e7bb6c2326f0953e209cb5a9e6a1e7c3023c38072a6d78b27",
+                //        "sent_at": 1480661769470,
+                //        "received_at": 1480661771004,
+                //        "participant": 1,
+                //        "ls_msg_size": 272,
+                //        "msgtype": "chat msg"
+                //    }, {
+                //        "local_msg_seq": 778,
+                //        "folder": "inbox",
+                //        "message": {"msgtype": "chat msg", "message": "msg 6 from guest 2", "local_msg_seq": 7},
+                //        "zeronet_msg_id": "d0186e3fc18d0eabf99fa07d1c6ed3678e93fa128693516878e2eff5599a19b8",
+                //        "sent_at": 1480661785658,
+                //        "received_at": 1480661787556,
+                //        "participant": 3,
+                //        "ls_msg_size": 272,
+                //        "msgtype": "chat msg"
+                //    }, {
+                //        "folder": "outbox",
+                //        "message": {"msgtype": "chat msg", "message": "msg 7 from money dev", "local_msg_seq": 779},
+                //        "msgtype": "chat msg",
+                //        "local_msg_seq": 779
+                //    }],
+                //    "avatar": "2.png",
+                //    "inbox_zeronet_msg_id": [],
+                //    "inbox_last_sender_sha256": null,
+                //    "inbox_last_sender_sha256_at": 0,
+                //    "$$hashKey": "object:34"
+                //};
 
-                // check inbox
+                // check inbox. messages received in group chat
+                local_msg_seqs = [] ;
+                for (i=0 ; i<contact.messages.length ; i++) {
+                    message = contact.messages[i] ;
+                    if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
+
+                    // todo: check if message has any sender/contact info
+                    debug('feedback_info', 'message = ' + JSON.stringify(message)) ;
+                    continue ;
+
+                    //  inbox message with a local_msg_seq (contacts local_msg_seq for this message)
+
+
+
+                    // console.log(pgm + 'inbox message.sender_sha256 = ' + message.sender_sha256);
+                    if (message.feedback) {
+                        // feedback loop complete - contact knows that this message has been received
+                        continue ;
+                    }
+                    message.feedback = now ;
+                    if (message.sender_sha256 == receiver_sha256) {
+                        // current outbox message.receiver_sha256 = inbox message.sender_sha256.
+                        // no reason also to add this inbox message to feedback.received
+                        continue ;
+                    }
+                    // factor = -1. received feedback request for unknown message. tell contact that message has never been received
+                    factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
+                    local_msg_seqs.push(factor* message.message.local_msg_seq) ;
+                } // for i (contact.messages)
 
                 // check outbox
 
@@ -2442,6 +2562,12 @@ angular.module('MoneyNetwork')
             var my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
             if ((message.receiver_sha256 == my_pubkey_sha256) || !res.key) delete message.receiver_sha256 ;
             // if (message.receiver_sha256 && !res.key) debug('inbox && unencrypted', pgm + 'error. expected receiver_sha256 to be null (1)');
+            if (!res.key) {
+                // group chat. add participant. who sent this group chat message?
+                for (i=0 ; i<group_chat_contact.participants.length ; i++) {
+                    if (group_chat_contact.participants[i] == contact.unique_id) message.participant = i+1 ;
+                }
+            }
             message.ls_msg_size = JSON.stringify(message).length ;
 
 
@@ -2911,8 +3037,11 @@ angular.module('MoneyNetwork')
             // initialize watch_sender_sha256 array with relevant sender_sha256 addresses
             // that is sha256(pubkey) + any secret sender_sha256 reply addresses sent to contacts in money network
             var my_pubkey, my_pubkey_sha256, my_prvkey, i, j, contact, auth_address, message, key ;
+            var participant_unique_id, participant, my_auth_address, now ;
             my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
+            // my_auth_address = ZeroFrame.site_info.auth_address ;
+            now = new Date().getTime() ;
 
             // after login. initialize arrays with watch and ignore sha256 lists
             watch_receiver_sha256.splice(0, watch_receiver_sha256.length);
@@ -2933,16 +3062,39 @@ angular.module('MoneyNetwork')
                         // ignore already read messages
                         // if (message.message.msgtype == 'received') console.log(pgm + 'message = ' + JSON.stringify(message)) ;
                         if (message.zeronet_msg_id) {
-                            if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
-                            if (ignore_zeronet_msg_id[auth_address].indexOf(message.zeronet_msg_id) != -1) {
-                                // problem with doublet contacts. maybe also problem with doublet messages ....
-                                console.log(pgm + 'Error. Message with sha256 ' + message.zeronet_msg_id + ' found more than one in inbox');
-                                console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                            if (contact.type == 'group') {
+                                // no auth_address for group contacts. get auth_address from participant (sender of this message)
+                                auth_address = null ;
+                                if (message.participant) participant_unique_id = contact.participants[message.participant-1] ;
+                                if (participant_unique_id) participant = get_contact_by_unique_id(participant_unique_id) ;
+                                if (participant) auth_address = participant.auth_address ;
+                                if (!auth_address) {
+                                    console.log(pgm + 'could not find sender/auth_address for group inbox message ' + JSON.stringify(message)) ;
+                                }
                             }
-                            else ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id);
+                            if (auth_address) {
+                                if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
+                                if (ignore_zeronet_msg_id[auth_address].indexOf(message.zeronet_msg_id) != -1) {
+                                    // problem with doublet contacts. maybe also problem with doublet messages ....
+                                    console.log(pgm + 'Error. Message with sha256 ' + message.zeronet_msg_id + ' found more than one in inbox');
+                                    console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                                }
+                                else ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id);
+                            }
                         }
                     }
                     if (message.folder == 'outbox') {
+                        //// ignore my outbox group chat messages. do not process as new ingoing messages
+                        //if ((message.zeronet_msg_id) && (contact.folder == 'group')) {
+                        //    if (!ignore_zeronet_msg_id[my_auth_address]) ignore_zeronet_msg_id[my_auth_address] ;
+                        //    if (ignore_zeronet_msg_id[my_auth_address].indexOf(message.zeronet_msg_id) != -1) {
+                        //        // problem with doublet contacts. maybe also problem with doublet messages ....
+                        //        console.log(pgm + 'Error. Message with sha256 ' + message.zeronet_msg_id + ' found more than one in inbox');
+                        //        console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                        //    }
+                        //    else ignore_zeronet_msg_id[my_auth_address].push(message.zeronet_msg_id);
+                        //    console.log(pgm + 'ignore_zeronet_msg_id[my_auth_address] = ' + JSON.stringify(ignore_zeronet_msg_id[my_auth_address]));
+                        //}
                         // check sender_sha256 addresses send to other contacts
                         if (!message.sender_sha256) continue;
                         if (watch_receiver_sha256.indexOf(message.sender_sha256) == -1) watch_receiver_sha256.push(message.sender_sha256);
@@ -3028,6 +3180,7 @@ angular.module('MoneyNetwork')
                         res.splice(i);
                     }
                 } // for i (res)
+
                 if (Object.keys(ignore_zeronet_msg_id_clone).length > 0) {
                     console.log(pgm + 'messages deleted on Zeronet: ' + JSON.stringify(ignore_zeronet_msg_id_clone));
                     // should by 2 or 3:
@@ -3081,6 +3234,12 @@ angular.module('MoneyNetwork')
                 var unique_id ;
                 for (i=res.length-1 ; i>=0 ; i--) {
                     unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
+                    if (unique_id == my_unique_id) {
+                        // my group chat outbox messages
+                        // console.log(pgm + 'ignoring my outbox group chat message ' + JSON.stringify(res[i])) ;
+                        res.splice(i,1) ;
+                        continue ;
+                    }
                     if (process_incoming_message(res[i], unique_id)) {
                         contacts_updated = true ;
                         res.splice(i,1) ;
@@ -3679,7 +3838,7 @@ angular.module('MoneyNetwork')
                 return;
             }
             var user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            console.log(pgm + 'My auth address is ' + ZeroFrame.site_info.auth_address) ;
+            console.log(pgm + 'My auth address is ' + ZeroFrame.site_info.auth_address + ' and my unique id ' + get_my_unique_id()) ;
 
             // find user_seq in data.json
             var pubkey = MoneyNetworkHelper.getItem('pubkey') ;
