@@ -250,20 +250,16 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 // initialize group_chat
-                var i, unique_id, index, j ;
+                var i, unique_id, index, j, my_unique_id, participant ;
                 // console.log(controller + ': initialise group chat from group chat pseudo contact');
+                my_unique_id = moneyNetworkService.get_my_unique_id() ;
                 self.group_chat_contacts.splice(0, self.group_chat_contacts.length) ;
                 for (i=0 ; i<self.contact.participants.length ; i++) {
                     unique_id = self.contact.participants[i] ;
-                    index = -1 ;
-                    for (j=0 ; j<self.contacts.length ; j++) {
-                        if (unique_id == self.contacts[j].unique_id) {
-                            index = j ;
-                            break ;
-                        };
-                    } // for j
-                    if (index == -1) console.log(controller + ': contact with unique id ' + unique_id + ' was not found') ;
-                    else self.group_chat_contacts.push(self.contacts[index]) ;
+                    if (unique_id == my_unique_id) continue ;
+                    participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+                    if (participant) self.group_chat_contacts.push(participant) ;
+                    else console.log(controller + ': contact with unique id ' + unique_id + ' was not found') ;
                 } // for i
                 self.group_chat = true ;
                 // console.log(controller + ': initialize group_chat_contacts. self.group_chat_contacts = ' + JSON.stringify(self.group_chat_contacts)) ;

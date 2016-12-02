@@ -260,138 +260,75 @@ angular.module('MoneyNetwork')
         // e) check local_msg_seq and remote_msg_seq when available
         function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
-            var feedback, i, message, local_msg_seqs, local_msg_seq, factor ;
-            var now = new Date().getTime() ;
+            var feedback, i, message, local_msg_seqs, local_msg_seq, factor, now, key, j, my_unique_id, participant ;
+            now = new Date().getTime() ;
 
             feedback = {} ;
 
             if (contact.type == 'group') {
                 // group chat
-                debug('feedback_info', 'group = ' + JSON.stringify(contact)) ;
-                //group = {
-                //    "unique_id": "5b6d6f9e8da1380339132cb2edc69b71899a558b00183be6f5094e73f4c1fd6d",
-                //    "cert_user_id": "5b6d6f9e8da13@moneynetwork",
-                //    "type": "group",
-                //    "password": "Q6}!hsGN3fdGR5R70X0i8Yy@/JToD38lw(ThG_MvYlPfEX&IT$-k%iYIL_3j+ee3Fpkd2lMjJ&)y:zh+Dk1{AvkVH1D:K1(wgyD9-[_V[zmq6jxU(lr|iWGF[SK7+cf0$c9VC)Q]%}%=g.V+:WP6FR4etc_6wQcy)f£Fh5Ao_c#7FS:fpGJ6H2a#£XJ[w fN_£jShE[6",
-                //    "participants": ["85d4af81c24c8bf4738ecdceec857a395c3f296c4ace966aff50176b80a7c7bf", "d313edf9b48b930c5e2c8d0f5c9914ddcf62d9b3904dfc25bffb4d7dbae45f88", "ead737059e44669f9ad99a1a53bd3fd60fccfabbf5eda00f4a47e2f137eaebda"],
-                //    "search": [{
-                //        "tag": "Online",
-                //        "value": 1480661786,
-                //        "privacy": "Search",
-                //        "row": 1,
-                //        "$$hashKey": "object:195"
-                //    }, {
-                //        "tag": "Group",
-                //        "value": "3 participants",
-                //        "privacy": "Search",
-                //        "row": 2,
-                //        "$$hashKey": "object:196"
-                //    }],
-                //    "messages": [{
-                //        "local_msg_seq": 769,
-                //        "folder": "inbox",
-                //        "message": {"msgtype": "chat msg", "message": "msg 3", "local_msg_seq": 4},
-                //        "zeronet_msg_id": "3b0abdfaccacd6d8d9a45235d0ffa1336cc8efbe2d3ff29530a66bac6e7f88bb",
-                //        "sent_at": 1480661481186,
-                //        "received_at": 1480661748935,
-                //        "participant": 1,
-                //        "ls_msg_size": 259,
-                //        "msgtype": "chat msg"
-                //    }, {
-                //        "local_msg_seq": 770,
-                //        "folder": "inbox",
-                //        "message": {"msgtype": "chat msg", "message": "msg 2", "local_msg_seq": 3},
-                //        "zeronet_msg_id": "9bfe2eeff5b4ce49e46854b20a2f34b1b4760ef612d7c38de1b3124119c32e48",
-                //        "sent_at": 1480661469717,
-                //        "received_at": 1480661748945,
-                //        "participant": 3,
-                //        "ls_msg_size": 259,
-                //        "msgtype": "chat msg"
-                //    }, {
-                //        "local_msg_seq": 771,
-                //        "folder": "inbox",
-                //        "message": {"msgtype": "chat msg", "message": "msg 4", "local_msg_seq": 768},
-                //        "zeronet_msg_id": "c82d2760a7d038ed340298326cf2d2ef5bd3c8479c6400eb6a6e33d8f1551546",
-                //        "sent_at": 1480661495258,
-                //        "received_at": 1480661750199,
-                //        "participant": 2,
-                //        "ls_msg_size": 261,
-                //        "msgtype": "chat msg"
-                //    }, {
-                //        "local_msg_seq": 772,
-                //        "folder": "inbox",
-                //        "message": {"msgtype": "chat msg", "message": "msg 1", "local_msg_seq": 765},
-                //        "zeronet_msg_id": "89fbaa45dafdef97de5cb13105b7a295594faa50717171d007b9f3460a4f400c",
-                //        "sent_at": 1480661452031,
-                //        "received_at": 1480661750203,
-                //        "participant": 2,
-                //        "ls_msg_size": 261,
-                //        "msgtype": "chat msg"
-                //    }, {
-                //        "local_msg_seq": 777,
-                //        "folder": "inbox",
-                //        "message": {"msgtype": "chat msg", "message": "msg 5 from guest 1", "local_msg_seq": 6},
-                //        "zeronet_msg_id": "1660db943254ee1e7bb6c2326f0953e209cb5a9e6a1e7c3023c38072a6d78b27",
-                //        "sent_at": 1480661769470,
-                //        "received_at": 1480661771004,
-                //        "participant": 1,
-                //        "ls_msg_size": 272,
-                //        "msgtype": "chat msg"
-                //    }, {
-                //        "local_msg_seq": 778,
-                //        "folder": "inbox",
-                //        "message": {"msgtype": "chat msg", "message": "msg 6 from guest 2", "local_msg_seq": 7},
-                //        "zeronet_msg_id": "d0186e3fc18d0eabf99fa07d1c6ed3678e93fa128693516878e2eff5599a19b8",
-                //        "sent_at": 1480661785658,
-                //        "received_at": 1480661787556,
-                //        "participant": 3,
-                //        "ls_msg_size": 272,
-                //        "msgtype": "chat msg"
-                //    }, {
-                //        "folder": "outbox",
-                //        "message": {"msgtype": "chat msg", "message": "msg 7 from money dev", "local_msg_seq": 779},
-                //        "msgtype": "chat msg",
-                //        "local_msg_seq": 779
-                //    }],
-                //    "avatar": "2.png",
-                //    "inbox_zeronet_msg_id": [],
-                //    "inbox_last_sender_sha256": null,
-                //    "inbox_last_sender_sha256_at": 0,
-                //    "$$hashKey": "object:34"
-                //};
+                // debug('feedback_info', pgm + 'group = ' + JSON.stringify(contact)) ;
 
                 // check inbox. messages received in group chat
                 local_msg_seqs = [] ;
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message = contact.messages[i] ;
                     if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
-
-                    // todo: check if message has any sender/contact info
-                    debug('feedback_info', 'message = ' + JSON.stringify(message)) ;
-                    continue ;
-
-                    //  inbox message with a local_msg_seq (contacts local_msg_seq for this message)
-
-
-
-                    // console.log(pgm + 'inbox message.sender_sha256 = ' + message.sender_sha256);
+                    // inbox message with a local_msg_seq (contacts local_msg_seq for this message)
                     if (message.feedback) {
                         // feedback loop complete - contact knows that this message has been received
                         continue ;
                     }
                     message.feedback = now ;
-                    if (message.sender_sha256 == receiver_sha256) {
-                        // current outbox message.receiver_sha256 = inbox message.sender_sha256.
-                        // no reason also to add this inbox message to feedback.received
-                        continue ;
-                    }
                     // factor = -1. received feedback request for unknown message. tell contact that message has never been received
                     factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
-                    local_msg_seqs.push(factor* message.message.local_msg_seq) ;
+                    local_msg_seqs.push(message.participant + ',' + (factor*message.message.local_msg_seq)) ;
                 } // for i (contact.messages)
+                // check deleted inbox messages. key = "participant,local_msg_seq", where participant was sender of deleted chat message
+                if (contact.deleted_inbox_messages) for (key in contact.deleted_inbox_messages) {
+                    if (contact.deleted_inbox_messages[key]) {
+                        // feedback loop complete - contact knows that this deleted message has been received
+                        continue ;
+                    }
+                    // feedback loop not finished. tell contact that this deleted inbox message has been received
+                    contact.deleted_inbox_messages[key] = now ;
+                    local_msg_seqs.push(key);
+                } // for local_msg_seq (deleted_inbox_messages)
+                if (local_msg_seqs.length > 0) feedback.received = local_msg_seqs ;
 
-                // check outbox
+                // check outbox. messages sent in group chat
+                // check outbox. messages sent to contact without having received feedback. request feedback info for outbox messages.
+                // only feedback.received array in ingoing messages.
+                local_msg_seqs = [] ;
+                my_unique_id = get_my_unique_id();
+                for (i=0 ; i<contact.messages.length ; i++) {
+                    message = contact.messages[i] ;
+                    if (message.folder != 'outbox') continue ;
+                    if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ; // sending current outbox message
+                    // request feedback info from contact. has this outbox message been received?
+                    if (!message.feedback) message.feedback = {} ;
+                    for (j=0 ; j<contact.participants.length ; j++) {
+                        participant = contact.participants[j] ;
+                        if (participant == my_unique_id) continue ; // me
+                        if (message.feedback[participant]) continue ; // feedback loop complete for this participant
+                        // request feedback info from participant. has this outbox message been received?
+                        local_msg_seqs.push((j+1) + ',' + message.local_msg_seq) ;
+                    } // j
+                } // for i (contact.messages)
+                // check deleted outbox messages - todo: any reason to ask for feedback info for deleted outbox messages?
+                if (contact.deleted_outbox_messages) {
+                    debug('feedback_info', pgm + 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages));
+                    debug('feedback_info', pgm + 'Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)));
+                    for (key in contact.deleted_outbox_messages) {
+                        debug('feedback_info', pgm + 'key = ' + key) ;
+                        if (contact.deleted_outbox_messages[lkey]) continue ; // feedback loop complete - deleted outbox message have been received by participant
+                        // request feedback info from participant. has this deleted outbox message been received?
+                        local_msg_seqs.push(key) ;
+                    }
+                } // for local_msg_seq (deleted_outbox_messages)
+                if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
 
+                // end group  chat
             }
             else {
                 // normal chat.
@@ -421,6 +358,7 @@ angular.module('MoneyNetwork')
                     factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
                     local_msg_seqs.push(factor* message.message.local_msg_seq) ;
                 } // for i (contact.messages)
+
                 // check deleted inbox messages.
                 if (contact.deleted_inbox_messages) for (local_msg_seq in contact.deleted_inbox_messages) {
                     if (contact.deleted_inbox_messages[local_msg_seq]) {
@@ -470,16 +408,135 @@ angular.module('MoneyNetwork')
         } // add_feedback_info
 
 
-        function receive_feedback_info(message_with_envelope, contact) {
+        function receive_feedback_info (message_with_envelope, contact) {
             var pgm = service + '.receive_feedback_info: ' ;
             var feedback, received, sent, i, message, index, local_msg_seq, old_feedback, now, error, lost_message,
-                lost_message_with_envelope, lost_messages ;
+                lost_message_with_envelope, lost_messages, my_unique_id, participant, participant_and_local_msg_seq ;
             feedback = message_with_envelope.message.feedback ;
             debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback)) ;
             now = new Date().getTime() ;
 
             if (contact.type == 'group') {
+
                 // received feedback info in group chat message
+                debug('feedback_info', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                debug('feedback_info', pgm + 'contact = ' + JSON.stringify(contact)) ;
+                my_unique_id = get_my_unique_id() ;
+                for (i=0 ; i<contact.participants.length ; i++) {
+                    if (contact.participant[i] == my_unique_id) participant = i+1 ;
+                }
+                debug('feedback_info', pgm + 'my participant = ' + participant) ;
+                debug('feedback_info', pgm + 'feedback.sent = ' + JSON.stringify(feedback.sent)) ;
+
+                // 1) group chat feedback.received array - check outbox
+                // todo:
+
+                // 2) group chat feedback.sent array - check inbox
+                // receive_feedback_info: feedback = {"sent":["1,862","3,862"]}
+                // - group chat participant 1 - have you received group chat message with local_msg_seq 862
+                // - group chat participant 3 - have you received group chat message with local_msg_seq 862
+
+
+                // 2) feedback.sent array - check inbox
+                //    example: "sent": [2] - contact has sent message with local_msg_seq 2 and is waiting for feedback
+                sent = JSON.parse(JSON.stringify(feedback.sent)) ;
+                // keep only rows for this participant
+                for (i=sent.length-1 ; i>=0 ; i--) {
+                    participant_and_local_msg_seq = sent[i].split(',') ;
+                    if (participant_and_local_msg_seq[0] != '' + participant) sent.splice(i,1) ;
+                    else sent[i] = parseInt(participant_and_local_msg_seq[1]) ;
+                }
+                if (sent.length > 0) {
+
+                    debug('feedback_info', pgm + 'sent = ' + JSON.stringify(sent)) ;
+
+                    // check inbox
+                    for (i=0 ; i<contact.messages.length ; i++) {
+                        message = contact.messages[i] ;
+                        if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
+                        // inbox
+                        local_msg_seq = message.message.local_msg_seq ;
+                        index = sent.indexOf(local_msg_seq) ;
+                        if (index == -1) continue ; // not relevant
+                        sent.splice(index,1);
+                        if (message.feedback == false) {
+                            debug('feedback_info', pgm + 'already have received feedback info request for inbox message with local_msg_seq ' + local_msg_seq + ' from contact. will be sent in next outbox message') ;
+                            continue ;
+                        }
+                        if (message.feedback) {
+                            debug('feedback_info', pgm + 'has already sent feedback info for inbox message with local_msg_seq ' + local_msg_seq + ' to contact at ' + message.feedback + 'but will resend feedback info in next outbox message') ;
+                        }
+                        else {
+                            debug('feedback_info', pgm + 'has marked inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested. will be sent in next outbox message') ;
+                        }
+                        message.feedback = false ;
+                    } // for i (contact.messages)
+
+                    // feedback.sent array - contact is waiting for feedback - check also deleted inbox messages
+                    if (sent.length && contact.deleted_inbox_messages) for (i=sent.length-1 ; i>= 0 ; i--) {
+                        local_msg_seq = sent[i] ;
+                        key = participant + ',' + sent[i] ;
+                        debug('feedback_info', pgm + 'i = ' + i + ', key = ' + JSON.stringify(key)) ;
+                        if (!contact.deleted_inbox_messages.hasOwnProperty(key)) continue ; // error - unknown local_msg_seq
+                        sent.splice(i,1) ;
+                        old_feedback = contact.deleted_inbox_messages[key] ;
+                        if (old_feedback == false) {
+                            debug('feedback_info', pgm + 'already have received feedback info request for deleted inbox message with local_msg_seq ' + local_msg_seq + ' from contact. will be sent in next outbox message') ;
+                            continue ;
+                        }
+                        if (old_feedback) {
+                            debug('feedback_info', pgm + 'has already sent feedback info for deleted inbox message with local_msg_seq ' + local_msg_seq + ' to contact at ' + old_feedback + ' but will resend feedback info in next outbox message') ;
+                        }
+                        else {
+                            debug('feedback_info', pgm + 'has marked deleted inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested. will be sent in next outbox message') ;
+                        }
+                        contact.deleted_inbox_messages[key] = false ;
+                    }
+
+                    if (sent.length) {
+                        // lost inbox messages!
+                        // received feedback request for one or more messages not in inbox and not in deleted_inbox_messages
+                        // could be lost not received inbox messages or could be an error.
+                        debug('lost_message', pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
+                        if (contact.deleted_inbox_messages) {
+                            debug('lost_message',
+                                pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
+                                ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
+                        }
+                        // receive_feedback_info: messages with local_msg_seq [1,2] were not found in inbox
+                        // receive_feedback_info: contact.deleted_inbox_messages = {}Object.keys(contact.deleted_inbox_messages) = ["2"]
+
+                        // create "lost message" notification in inbox? User should know that some messages were lost in cyberspace
+                        for (i=0 ; i<sent.length ; i++) {
+                            local_msg_seq = sent[i] ;
+                            lost_message = { msgtype: 'lost msg', local_msg_seq: local_msg_seq} ;
+                            // validate json
+                            error = MoneyNetworkHelper.validate_json(pgm, lost_message, lost_message.msgtype, 'Cannot insert dummy lost inbox message in UI. local_msg_seq = ' + local_msg_seq);
+                            if (error) {
+                                console.log(pgm + error) ;
+                                continue ;
+                            }
+                            // insert into inbox
+                            local_msg_seq = next_local_msg_seq() ;
+                            lost_message_with_envelope = {
+                                local_msg_seq: local_msg_seq,
+                                folder: 'inbox',
+                                message: lost_message,
+                                sent_at: now,
+                                received_at: now,
+                                feedback: false,
+                                participant: message_with_envelope.participant
+                            } ;
+                            lost_message_with_envelope.ls_msg_size = JSON.stringify(lost_message_with_envelope).length ;
+                            contact.messages.push(lost_message_with_envelope) ;
+                            js_messages.push({contact: contact, message: lost_message_with_envelope}) ;
+
+                        } // for i (sent)
+
+                    } // if sent.length > 0
+
+                } // if feedback.sent
+
             }
             else {
                 // 1) feedback.received array - check outbox
@@ -1927,7 +1984,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.ls_save_contacts: ' ;
 
             // any logical deleted inbox messages to be physical deleted?
-            var i, contact, j, message, auth_address, local_msg_seq ;
+            var i, contact, j, message, auth_address, local_msg_seq, key ;
             for (i=0 ; i<ls_contacts.length ; i++)  {
                 contact = ls_contacts[i] ;
                 auth_address = contact.auth_address ;
@@ -1948,7 +2005,8 @@ angular.module('MoneyNetwork')
                         local_msg_seq = message.message.local_msg_seq ;
                         if (local_msg_seq) {
                             if (!contact.deleted_inbox_messages) contact.deleted_inbox_messages = {};
-                            contact.deleted_inbox_messages[local_msg_seq] = message.feedback;
+                            key = contact.type == 'group' ? message.participant + ',' + local_msg_seq : local_msg_seq ;
+                            contact.deleted_inbox_messages[key] = message.feedback;
                             debug('feedback_info', pgm + 'contact ' + contact.auth_address +
                                 ', deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
                                 ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
@@ -3279,7 +3337,7 @@ angular.module('MoneyNetwork')
                 message: message
             }) ;
             // console.log(pgm + 'sending ' + message.msgtype + ' message. My auth_address is ' + ZeroFrame.site_info.auth_address);
-            debug('outbox && unencrypted', 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
+            debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
             js_messages.push({
                 contact: contact,
                 message: contact.messages[contact.messages.length-1]

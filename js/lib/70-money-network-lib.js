@@ -758,34 +758,16 @@ var MoneyNetworkHelper = (function () {
             "image": { "type": 'string'},
             "feedback": {
                 "type": 'object',
-                "description": 'Feedback info. Has message been received?',
+                "description": 'Feedback info. Has message been received? Normal chat, type integer, with local_msg_seq. Group chat, type string, with participant, local_msg_seq',
                 "properties": {
                     "sent": {
                         "type": 'array',
-                        "description": 'Request feedback info. Array with local_msg_seq (normal chat) or array with objects (group chat)',
-                        "items": {
-                            "type": ['integer', 'object'],
-                            "properties": {
-                                "participant": { "type": 'integer'},
-                                "local_msg_seq": { "type": 'integer'}
-                            },
-                            "required": ['participant', 'local_msg_seq'],
-                            "additionalProperties": false
-                        },
+                        "items": { "type": ['integer', 'string'] },
                         "minItems": 1
                     },
                     "received": {
                         "type": 'array',
-                        "description": 'Return feedback info. Array with local_msg_seq (normal chat) or array with objects (group chat)',
-                        "items": {
-                            "type": ['integer', 'object'],
-                            "properties": {
-                                "participant": { "type": 'integer'},
-                                "local_msg_seq": { "type": 'integer'}
-                            },
-                            "required": ['participant', 'local_msg_seq'],
-                            "additionalProperties": false
-                        },
+                        "items": { "type": ['integer', 'string'] },
                         "minItems": 1
                     }
                 },
