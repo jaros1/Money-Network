@@ -732,6 +732,8 @@ angular.module('MoneyNetwork')
             self.new_chat_src = null ;
 
             self.handleTextAreaHeight = function (e) {
+                // see issue #34 Resend old messages?
+                if (self.setup.debug && self.setup.debug.disable_autoexpand_textarea) return ;
                 var element = e.target;
                 element.style.overflow = 'hidden';
                 element.style.height = 0;
@@ -773,7 +775,7 @@ angular.module('MoneyNetwork')
                                 participants: contact.participants,
                                 password: password
                             };
-                            console.log(pgm + 'message = ' + JSON.stringify(message));
+                            debug('outbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
                             // validate json
                             error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
                             if (error) {

@@ -1116,87 +1116,92 @@
                 </tr>
                 </tbody>
                 <tbody ng-show="u.setup.debug.enabled">
-                <tr>
+                <tr title="Click to see all dbQuery select statements">
                     <td>Show sql selects?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.select" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to see file done event processing of content.json, data.json and status.json files">
                     <td>File done events?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.file_done" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to see all ingoing messages. You should also click Show unencrypted messages and/or Show encrypted messages">
                     <td>Show ingoing messages?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.inbox" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to see all outgoing messages. You should also click Show unencrypted messages and/or Show encrypted messages">
                     <td>Show outgoing messages?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.outbox" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Feedback info. Has messages been received. Click to see feedback info in sent/received messages and to see feedback status for messages">
                     <td>Show feedback info?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.feedback_info" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to see unencrypted messages. You should also click Show ingoing messages and/or Show outgoing messages">
                     <td>Show unencrypted messages?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.unencrypted" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to see encrypted messages. You should also click Show ingoing messages and/or Show outgoing messages">
                     <td>Show encrypted messages?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.encrypted" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to show data cleanup process for data.json file. Trying to keep data.json file small for fast communication">
                     <td>Show data.json cleanup?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.data_cleanup" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to show invalid and/or missing avatars. Old not yet solved issue">
                     <td>Show invalid avatars?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.invalid_avatars" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to show contact sort details">
                     <td>Show contacts sort?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.contact_order_by" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to show chat message sort details">
                     <td>Show chat sort?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.chat_order_by" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to show debug information for chat message filter">
                     <td>Show chat filter?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.chat_filter" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to show no public key warnings at startup (deleted contacts)">
                     <td>Show no pubkey warnings?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.no_pubkey" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to show debug information for edit alias process">
                     <td>Show edit alias?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.edit_alias" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to show debug information for chat message lost in cyberspace">
                     <td>Show lost messages?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.lost_message" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to check sha256 addresses after every sitePublish call. Old maybe solved issue">
                     <td>Check sha256 addresses?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.check_sha256_addresses" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr>
+                <tr title="Click to disable autoexpanding textarea. Performance problem in firefox">
+                    <td>Disable autoexpand textarea?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.disable_autoexpand_textarea" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to show debug information for contact action filter (buttons)">
                     <td>showContactAction filter?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.show_contact_action_filter" ng-change="u.debug_settings_changed()"></td>
@@ -1214,7 +1219,7 @@
                 </tr>
                 </tbody>
                 <tbody ng-show="u.setup.test.enabled">
-                <tr>
+                <tr title="Testcase. Create a message lost in cyberspace. That is a message with status sent, no feedback and not in data.json fiĺe.">
                     <td>Message lost in cyberspace</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.test.force_lost_message" ng-change="u.debug_settings_changed()"></td>

@@ -252,15 +252,25 @@ angular.module('MoneyNetwork')
         } // get_max_image_size
 
 
+        // feedback section. two parts:
+        // - a) feedback hash inside the sent/received messages
+        //      feedback.sent array - array with sent messages where sender is waiting for feedback (has the message been received or not?)
+        //      feedback.received array - array with received messages. negative local_msg_seq if a message has not been received (message lost in cyberspace).
+        // - b) feedback info in message envelopes (feedback status for the message)
+        //      null - waiting for feedback info
+        //      normal chat. unix timestamp - contact has received the message
+        //      group chat. hash with unix timestamps - for example {"1":1480699332201} - participant 1 has received the message
+        // chat types:
+        // - normal chat. sent/received arrays are just list of local_msg_seq
+        // - group chat. sent/received arrays are list of strings with format "<participant>,<local_msg_seq>"
+        //   participant is a number from 1 to number of participant in group chat. See contact.participants array
+        //   example: feedback:{received:["2,890","2,891","1,4"]}
+
         // add feedback info to outgoing message
-        // a) sending feedback info: I have received message i1, i2, i3, ... from you
-        // b) requesting feedback info: I am still waiting for feedback info for message o1, o2, o3, ... to you
-        // c) a little more complicated for group chat ...
-        // d) check sender_sha256 and receiver_sha256 when available
-        // e) check local_msg_seq and remote_msg_seq when available
         function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
-            var feedback, i, message, local_msg_seqs, local_msg_seq, factor, now, key, j, my_unique_id, participant ;
+            var feedback, i, message, local_msg_seqs, local_msg_seq, factor, now, key, j, my_unique_id, participant,
+                show_receiver_sha256 ;
             now = new Date().getTime() ;
 
             feedback = {} ;
@@ -310,7 +320,7 @@ angular.module('MoneyNetwork')
                     for (j=0 ; j<contact.participants.length ; j++) {
                         participant = contact.participants[j] ;
                         if (participant == my_unique_id) continue ; // me
-                        if (message.feedback[participant]) continue ; // feedback loop complete for this participant
+                        if (message.feedback[j+1]) continue ; // feedback loop complete for this participant
                         // request feedback info from participant. has this outbox message been received?
                         local_msg_seqs.push((j+1) + ',' + message.local_msg_seq) ;
                     } // j
@@ -337,8 +347,8 @@ angular.module('MoneyNetwork')
                 // - see section b) in data.json cleanup routine (z_update_data_json)
 
                 // check inbox. messages received from contact
-                debug('feedback_info', pgm + 'receiver_sha256 = ' + receiver_sha256) ;
                 local_msg_seqs = [] ;
+                show_receiver_sha256 = true ;
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message = contact.messages[i] ;
                     if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
@@ -352,6 +362,10 @@ angular.module('MoneyNetwork')
                     if (message.sender_sha256 == receiver_sha256) {
                         // current outbox message.receiver_sha256 = inbox message.sender_sha256.
                         // no reason also to add this inbox message to feedback.received
+                        if (show_receiver_sha256) {
+                            debug('feedback_info', pgm + 'receiver_sha256 = ' + receiver_sha256) ;
+                            show_receiver_sha256 = false ;
+                        }
                         continue ;
                     }
                     // factor = -1. received feedback request for unknown message. tell contact that message has never been received
@@ -399,29 +413,34 @@ angular.module('MoneyNetwork')
             }
 
             // any feedback info to add?
+            if (message.feedback) {
+                // must be message lost in cyberspace processing. resending old previously sent message
+                debug('lost_message || feedback_info', pgm + 'resending old message. removing old feedback = ' + JSON.stringify(message.feedback)) ;
+                delete message.feedback ;
+            }
             if (Object.keys(feedback).length > 0) {
-                debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback));
                 // feedback = {"received":[1],"sent":[445,447,448,449,450]} ;
                 message_with_envelope.message.feedback = feedback ;
+                debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback) + ', message_with_envelope = ' + JSON.stringify(message_with_envelope));
             }
 
         } // add_feedback_info
 
-
+        // process feedback information in ingoing message
         function receive_feedback_info (message_with_envelope, contact) {
             var pgm = service + '.receive_feedback_info: ' ;
             var feedback, received, sent, i, message, index, local_msg_seq, old_feedback, now, error, lost_message,
                 lost_message_with_envelope, lost_messages, my_unique_id, my_participant, participant_and_local_msg_seq,
                 from_participant, key;
             feedback = message_with_envelope.message.feedback ;
-            debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback)) ;
             now = new Date().getTime() ;
+
+            debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback) + ', message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
 
             if (contact.type == 'group') {
 
                 // received feedback info in group chat message
-                debug('feedback_info', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
-                debug('feedback_info', pgm + 'contact = ' + JSON.stringify(contact)) ;
+                debug('feedback_info', pgm + 'contact.participants = ' + JSON.stringify(contact.participants)) ;
                 my_unique_id = get_my_unique_id() ;
                 for (i=0 ; i<contact.participants.length ; i++) {
                     if (contact.participants[i] == my_unique_id) my_participant = i+1 ;
@@ -433,8 +452,8 @@ angular.module('MoneyNetwork')
                 // feedback = {"received":["3,883","3,884","1,4"]}
                 // - participant - I have received local_msg_seq 883 and 884 from participant 3 in this chat group
                 // - participant - I have received local_msg_seq 4 from participant 1 in this chat group
-                debug('feedback_info', pgm + 'feedback.received = ' + JSON.stringify(feedback.received)) ;
                 if (feedback.received) {
+                    debug('feedback_info', pgm + 'message.feedback.received = ' + JSON.stringify(feedback.received)) ;
                     // convert received array. keep only my local_msg_seq as integers
                     received = JSON.parse(JSON.stringify(feedback.received)) ;
                     // keep only rows for this participant
@@ -446,7 +465,7 @@ angular.module('MoneyNetwork')
                 }
                 else received = [] ;
                 if (received.length > 0) {
-                    debug('feedback_info', pgm + 'received = ' + JSON.stringify(received));
+                    debug('feedback_info', pgm + 'participant ' + my_participant + ' only. received = ' + JSON.stringify(received));
 
                     // array with one or more received messages from contact. '
                     // Check outbox and mark messages as received
@@ -460,6 +479,7 @@ angular.module('MoneyNetwork')
                         }
                     }
                     if (lost_messages.length > 0) debug('lost_message', pgm + 'lost_messages = ' + JSON.stringify(lost_messages));
+
                     // check outbox
                     for (i = 0; i < contact.messages.length; i++) {
                         message = contact.messages[i];
@@ -504,7 +524,6 @@ angular.module('MoneyNetwork')
                             }
                         }
                         else {
-                            debug('feedback_info', 'message.feedback = ' + JSON.stringify(message.feedback)) ;
                             if (!message.feedback) message.feedback = {} ;
                             if (message.feedback[from_participant]) {
                                 debug('feedback_info',
@@ -513,8 +532,10 @@ angular.module('MoneyNetwork')
                                     '. Old timestamp = ' + message.feedback[message.participant] + ', new timestamp = ' + now);
                             }
                             message.feedback[from_participant] = now;
+                            debug('feedback_info', pgm + 'message.feedback = ' + JSON.stringify(message.feedback) + ', message = ' + JSON.stringify(message)) ;
                         }
                     }
+
                     // check also deleted outbox messages
                     if (received.length && contact.deleted_outbox_messages) for (i = received.length - 1; i >= 0; i--) {
                         local_msg_seq = received[i] ;
@@ -528,8 +549,9 @@ angular.module('MoneyNetwork')
                                 ' earlier from participant ' + from_participant +
                                 '. Old timestamp = ' + contact.deleted_outbox_messages[key] + ', new timestamp = ' + now);
                         }
-                        contact.deleted_outbox_messages[local_msg_seq] = now;
-                    }
+                        contact.deleted_outbox_messages[key] = now;
+                        debug('feedback_info', pgm + 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages)) ;
+                    } // for i
 
                     if (received.length) {
                         // error: received feedback info for one or more messages not in outbox and not in deleted_outbox_messages
@@ -545,16 +567,13 @@ angular.module('MoneyNetwork')
                     }
 
                 } // if received
-                
-                
-                
 
                 // 2) group chat feedback.sent array - check received messages in inbox
                 // receive_feedback_info: feedback = {"sent":["1,862","3,862"]}
                 // - group chat participant 1 - have you received group chat message with local_msg_seq 862
                 // - group chat participant 3 - have you received group chat message with local_msg_seq 862
-                debug('feedback_info', pgm + 'feedback.sent = ' + JSON.stringify(feedback.sent)) ;
                 if (feedback.sent) {
+                    debug('feedback_info', pgm + 'message.feedback.sent = ' + JSON.stringify(feedback.sent)) ;
                     // convert sent array. keep only my local_msg_seq as integers
                     sent = JSON.parse(JSON.stringify(feedback.sent)) ;
                     // keep only rows for this participant
@@ -566,7 +585,7 @@ angular.module('MoneyNetwork')
                 }
                 else sent = [] ;
                 if (sent.length > 0) {
-                    debug('feedback_info', pgm + 'sent = ' + JSON.stringify(sent)) ;
+                    debug('feedback_info', pgm + 'participant ' + my_participant + ' only. sent = ' + JSON.stringify(sent)) ;
 
                     // check inbox
                     for (i=0 ; i<contact.messages.length ; i++) {
@@ -578,14 +597,14 @@ angular.module('MoneyNetwork')
                         if (index == -1) continue ; // not relevant
                         sent.splice(index,1);
                         if (message.feedback == false) {
-                            debug('feedback_info', pgm + 'already have received feedback info request for inbox message with local_msg_seq ' + local_msg_seq + ' from contact. will be sent in next outbox message') ;
+                            debug('feedback_info', pgm + 'already have received feedback info request for inbox message with local_msg_seq ' + local_msg_seq + ' from contact. will be sent in next outbox message. message = ' + JSON.stringify(message)) ;
                             continue ;
                         }
                         if (message.feedback) {
-                            debug('feedback_info', pgm + 'has already sent feedback info for inbox message with local_msg_seq ' + local_msg_seq + ' to contact at ' + message.feedback + 'but will resend feedback info in next outbox message') ;
+                            debug('feedback_info', pgm + 'has already sent feedback info for inbox message with local_msg_seq ' + local_msg_seq + ' to contact at ' + message.feedback + 'but will resend feedback info in next outbox message. message = ' + JSON.stringify(message)) ;
                         }
                         else {
-                            debug('feedback_info', pgm + 'has marked inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested. will be sent in next outbox message') ;
+                            debug('feedback_info', pgm + 'has marked inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested. will be sent in next outbox message. message = ' + JSON.stringify(message)) ;
                         }
                         message.feedback = false ;
                     } // for i (contact.messages)
@@ -609,6 +628,7 @@ angular.module('MoneyNetwork')
                             debug('feedback_info', pgm + 'has marked deleted inbox message with local_msg_seq ' + local_msg_seq + ' with feedback info requested. will be sent in next outbox message') ;
                         }
                         contact.deleted_inbox_messages[key] = false ;
+                        debug('feedback_info', pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages));
                     }
 
                     if (sent.length) {
@@ -1204,52 +1224,15 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'localStorage.messages (2) = ' + JSON.stringify(local_storage_messages));
                     // console.log(pgm + 'ZeroNet data.msg (2) = ' + JSON.stringify(data.msg));
 
-                    //// delete one week old messages from Zeronet.
-                    //var now = new Date().getTime() ;
-                    //var one_week_ago = now - 1000*60*60*24*7 ;
-                    //var outbox_message ;
-                    //for (i=data.msg.length-1 ; i>=0 ; i--) {
-                    //    if (data.msg[i].timestamp > one_week_ago) continue ;
-                    //    // clear reference from outbox message in localStorage to deleted message at ZeroNet
-                    //    outbox_message = null ;
-                    //    for (j=0 ; j<ls_contacts.length ; j++) {
-                    //        contact = ls_contacts[j] ;
-                    //        for (k=0 ; k<contact.messages.length ; k++) {
-                    //            if (contact.messages[k].folder != 'outbox') continue ;
-                    //            if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
-                    //            // OK - found outbox message in localStorage
-                    //            outbox_message = contact.messages[k] ;
-                    //            break ;
-                    //
-                    //            if (contact.messages[k].zeronet_msg_id == data.msg[i].message_sha256) {
-                    //                outbox_message = contact.messages[k] ;
-                    //                break ;
-                    //            } // if
-                    //
-                    //        } // for k (contact.messages)
-                    //        if (outbox_message) break ;
-                    //    } // for j (contacts)
-                    //    if (outbox_message) {
-                    //        debug('data_cleanup', pgm + '0: Removed one week old message with zeronet_msg_id ' + data.msg[i].message_sha256 + ' from zeronet') ;
-                    //        delete outbox_message.zeronet_msg_id ;
-                    //        delete outbox_message.zeronet_msg_size ;
-                    //        outbox_message.cleanup_at = now ;
-                    //        local_storage_updated = true ;
-                    //    }
-                    //    else {
-                    //        debug('data_cleanup', pgm + '0: One week old message with zeronet_msg_id ' + data.msg[i].message_sha256 + ' was not found in localStorage contacts') ;
-                    //    }
-                    //    data.msg.splice(i,1) ;
-                    //} // for i
-
                     // check file size. Try to keep data.json file size small for fast communication and small site
                     // always keep messages for last hour.
                     // data.json size must also be <data_json_max_size
+                    // todo: issue #42 - data.json size - minor problem - should be a 10Kb limit for current user. not all users in data.json file
                     var now = new Date().getTime() ;
                     var one_hour_ago = now - 1000*60*60 ;
                     var msg_user_seqs, inbox_message, data_removed ;
                     var count = 0, contact_last_online ;
-                    var outbox_message ;
+                    var outbox_message, no_feedback_expected, no_feedback_received ;
                     while (true) {
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                         if (json_raw.length < 10000) break ; // OK - small file
@@ -1289,12 +1272,21 @@ angular.module('MoneyNetwork')
                         // feedback either as inbox.receiver_sha256 = outbox.sendersha256 or as feedback hash in messages
                         for (i=0 ; i<ls_contacts.length ; i++) {
                             contact = ls_contacts[i] ;
-                            if (contact.type == 'group') continue ;
+                            if (contact.type == 'group') no_feedback_expected = contact.participants.length-1 ;
                             if (!contact.messages) continue ;
                             for (j=0 ; j<contact.messages.length ; j++) {
                                 if (contact.messages[j].folder != 'outbox') continue ;
                                 if (!contact.messages[j].zeronet_msg_id) continue ;
-                                if (!contact.messages[j].feedback) continue ;
+                                if (contact.type == 'group') {
+                                    // group chat. feedback = object. expects one receipt for each participant in group chat
+                                    if (!contact.messages[j].feedback) no_feedback_received = 0 ;
+                                    else no_feedback_received = Object.keys(contact.messages[j].feedback).length ;
+                                    if (no_feedback_received < no_feedback_expected) continue ;
+                                }
+                                else {
+                                    // normal chat. feedback = boolean. expects one receipt
+                                    if (!contact.messages[j].feedback) continue ;
+                                }
                                 outbox_message = contact.messages[j] ;
                                 // found a outbox message that have been received by contact
                                 // remove outbox message from msg array in data.json file
@@ -2139,7 +2131,7 @@ angular.module('MoneyNetwork')
                     else {
                         // outbox. remember local_msg_seq from deleted outbox messages. Contact may feedback info for this local_msg_seq later
                         local_msg_seq = message.local_msg_seq ;
-                        debug('feedback_info', 'local_msg_seq = ' + local_msg_seq);
+                        debug('feedback_info', pgm + 'local_msg_seq = ' + local_msg_seq);
                         if (local_msg_seq) {
                             if (!contact.deleted_outbox_messages) contact.deleted_outbox_messages = {} ;
                             contact.deleted_outbox_messages[message.local_msg_seq] = message.feedback ;
@@ -2576,7 +2568,7 @@ angular.module('MoneyNetwork')
         function process_incoming_message (res, unique_id) {
             var pgm = service + '.process_incoming_message: ' ;
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256, error ;
-            var local_msg_seq, message ;
+            var local_msg_seq, message, contact_or_group ;
 
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
 
@@ -2627,6 +2619,8 @@ angular.module('MoneyNetwork')
                 });
                 return false ;
             }
+            // where to find messages?
+            contact_or_group = res.key ? contact : group_chat_contact ;
 
             // check spam filters block_guests and block_ignored from user setup
             if (contact.type == 'guest') {
@@ -2686,41 +2680,39 @@ angular.module('MoneyNetwork')
             //    "local_msg_seq": 2
             //};
             if (decrypted_message.sent_at) {
-                debug('lost_message', pgm + 'message with sent_at timestamp. must be contact resending a lost message') ;
+                debug('lost_message', pgm + 'message with sent_at timestamp. must be contact resending a lost message');
                 debug('lost_message', pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
                 // 1) find message with same local_msg_seq
-                if (res.key) {
-                    index = -1 ;
-                    for (i=0 ; i<contact.messages.length ; i++) {
-                        message = contact.messages[i] ;
-                        if (message.folder != 'inbox') continue ;
-                        if (message.message.local_msg_seq != decrypted_message.local_msg_seq) continue ;
-                        if (message.message.msgtype != 'lost msg') continue ;
-                        index = i ;
-                        break ;
+                index = -1;
+                for (i = 0; i < contact_or_group.messages.length; i++) {
+                    message = contact_or_group.messages[i];
+                    if (message.folder != 'inbox') continue;
+                    if (message.message.local_msg_seq != decrypted_message.local_msg_seq) continue;
+                    if (message.message.msgtype != 'lost msg') {
+                        debug('lost_message', 'message with local_msg_seq ' + decrypted_message.local_msg_seq + ' is in inbox but is not a lost message any longer. Ignoring ingoing message');
+                        return false;
                     }
-                    if (index != -1) {
-                        // OK - delete lost msg
-                        debug('lost_message', pgm + 'lost msg was found. deleting it') ;
-                        message = contact.messages[index] ;
-                        contact.messages.splice(index,1) ;
-                        for (i=js_messages.length-1 ; i>= 0 ; i--) {
-                            if (js_messages[i].message.local_msg_seq != message.local_msg_seq) continue ;
-                            js_messages.splice(i,1) ;
-                            break ;
-                        }
+                    index = i;
+                    break;
+                }
+                if (index != -1) {
+                    // OK - delete lost msg
+                    debug('lost_message', pgm + 'old lost msg placeholder was found. deleting it');
+                    message = contact_or_group.messages[index];
+                    contact_or_group.messages.splice(index, 1);
+                    for (i = js_messages.length - 1; i >= 0; i--) {
+                        if (js_messages[i].message.local_msg_seq != message.local_msg_seq) continue;
+                        js_messages.splice(i, 1);
+                        break;
                     }
-                    else {
-                        // lost msg not found. continue as normal new msg
-                        debug('lost_message', pgm + 'lost msg was not found. continue as normal new msg') ;
-                        delete decrypted_message.sent_at ;
-                    }
-
                 }
                 else {
-                    // group chat - not implemented
+                    // lost msg not found. continue as normal new msg
+                    debug('lost_message', pgm + 'lost msg placeholder with local_msg_seq ' + decrypted_message.local_msg_seq + ' was not found. continue as normal new incoming message');
+                    delete decrypted_message.sent_at;
                 }
-            }
+
+            } // if decrypted_message.sent_at
 
             // save incoming message
             local_msg_seq = next_local_msg_seq() ;
@@ -2773,23 +2765,11 @@ angular.module('MoneyNetwork')
             //    "ls_msg_size": 414
             //};
 
-            if (res.key) {
-                // private person to person chat
-                contact.messages.push(message) ;
-                js_messages.push({
-                    contact: contact,
-                    message: message
-                });
-            }
-            else {
-                // group chat
-                // if (message.receiver_sha256) debug('inbox && unencrypted', pgm + 'error. expected receiver_sha256 to be null (2)');
-                group_chat_contact.messages.push(message) ;
-                js_messages.push({
-                    contact: group_chat_contact,
-                    message: message
-                });
-            }
+            contact_or_group.messages.push(message);
+            js_messages.push({
+                contact: contact_or_group,
+                message: message
+            });
 
             if (message.receiver_sha256) {
                 // this message is using a sender_sha256 address from a previous sent message (add contact, chat etc)
@@ -2827,14 +2807,7 @@ angular.module('MoneyNetwork')
                 // received feedback info. what messages have contact sent. what messages is contact waiting for feedback for
                 debug('feedback_info || inbox && unencrypted', pgm + 'feedback = ' + JSON.stringify(feedback));
                 // decrypted_message.feedback = {"received":[468,469,470,473],"sent":[4]} ;
-                if (res.key) {
-                    // normal chat feedback info
-                    receive_feedback_info(message, contact) ;
-                }
-                else {
-                    // group chat feedback info
-                    receive_feedback_info(message, group_chat_contact) ;
-                }
+                receive_feedback_info(message, contact_or_group) ;
             }
 
             if (decrypted_message.msgtype == 'contact added') {
@@ -2859,11 +2832,10 @@ angular.module('MoneyNetwork')
             if ((decrypted_message.msgtype == 'chat msg') && decrypted_message.old_local_msg_seq) {
                 // received update to an old chat message
                 // todo: must also implement delete chat message
-                var contact2, old_message_envelope, old_message, index ;
-                contact2 = res.key ? contact : group_chat_contact ; // check old contact or old group contact messages?
+                var old_message_envelope, old_message, index ;
                 index = -1 ;
-                for (i=0 ; i<contact2.messages.length ; i++) {
-                    old_message_envelope = contact2.messages[i] ;
+                for (i=0 ; i<contact_or_group.messages.length ; i++) {
+                    old_message_envelope = contact_or_group.messages[i] ;
                     old_message = old_message_envelope.message ;
                     if (old_message_envelope.folder != 'inbox') continue ;
                     if (old_message.msgtype != 'chat msg') continue ;
@@ -2879,7 +2851,7 @@ angular.module('MoneyNetwork')
                     if (decrypted_message.image == 'x') delete decrypted_message.image ; // x = image unchanged but old message was not found
                 }
                 else {
-                    old_message_envelope = contact2.messages[index];
+                    old_message_envelope = contact_or_group.messages[index];
                     old_message_envelope.deleted_at = message.sent_at ;
                     debug('inbox && unencrypted', pgm + 'received OK update to an old chat msg') ;
                     debug('inbox && unencrypted', pgm + 'new decrypted_message = ' + JSON.stringify(decrypted_message));
@@ -3722,6 +3694,7 @@ angular.module('MoneyNetwork')
                         // debug('file_done', pgm + 'unique_id = ' + unique_id);
 
                         if (process_incoming_message(res.msg[i], unique_id)) {
+                            // debug('file_done', pgm + 'js_messages.length = ' + js_messages.length) ;
                             debug('file_done', pgm + 'last message = ' + JSON.stringify(js_messages[js_messages.length-1].message)) ;
                             contacts_updated = true ;
                         }
