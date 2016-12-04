@@ -942,10 +942,10 @@ angular.module('MoneyNetwork')
                     // - data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/avatar.jpg => jpg
                     // - data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/avatar.png => png
                     // - public/images/avatar1.png                                => 1.png
-                    // console.log(pgm + 'avatar = ' + JSON.stringify(avatar));
+                    // uploaded avatars will be found in files table (from contents.json files)
+                    // only random assigned avatar should be in users array
                     var short_avatar ;
-                    if (avatar.src.substr(0,11) == 'data/users/') short_avatar = avatar.src.substr(avatar.src.length-3,3);
-                    else if (avatar.src.substr(0,20) == 'public/images/avatar') short_avatar = avatar.src.substr(20,avatar.src.length-20);
+                    if (avatar.src.substr(0,20) == 'public/images/avatar') short_avatar = avatar.src.substr(20,avatar.src.length-20);
                     // console.log(pgm + 'avatar.src = ' + avatar.src + ', short_avatar = ' + short_avatar);
 
                     // find current user in users array
@@ -2424,7 +2424,7 @@ angular.module('MoneyNetwork')
                         if (res[i].other_users_avatar == 'jpg') continue ;
                         if (res[i].other_users_avatar == 'png') continue ;
                         if (public_avatars.indexOf(res[i].other_users_avatar) != -1) continue ;
-                        debug('invalid_avatars', 'Error. Removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
+                        debug('invalid_avatars', pgm + 'Error. Removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
                         delete res[i].other_users_avatar ;
                     } // for i
 
@@ -3259,7 +3259,7 @@ angular.module('MoneyNetwork')
                                 if (message.participant) { participant_unique_id = contact.participants[message.participant-1] ; reason = 'No participant_unique_id' }
                                 if (participant_unique_id) { participant = get_contact_by_unique_id(participant_unique_id) ; reason = 'Participant was not found' }
                                 if (participant) { auth_address = participant.auth_address ; reason = 'No auth_address for participant' }
-                                if (!auth_address) {
+                                if (!auth_address && (reason != 'Participant was not found')) {
                                     console.log(pgm + 'could not find sender/auth_address for group inbox message. ' + reason + '. Message = ' + JSON.stringify(message)) ;
                                 }
                             }

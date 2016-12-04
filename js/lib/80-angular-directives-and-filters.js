@@ -290,17 +290,17 @@ angular.module('MoneyNetwork')
             var setup, alias, greeting, i, group_contact, unique_id ;
             setup = moneyNetworkService.get_user_setup() ;
             if (message.message.folder == 'outbox') {
-                // outbox: send message to contact
+                // outbox: send message to contact. alias is receiver. contact or group
                 alias = moneyNetworkService.get_contact_name(message.contact);
                 greeting = 'Hello ' + alias;
             }
             else if (message.contact.type == 'group') {
-                // inbox: received a group chat message
+                // inbox: received a group chat message. alias is group name
                 alias = moneyNetworkService.get_contact_name(message.contact);
                 greeting = 'Hi ' + alias ;
             }
             else {
-                // inbox: received message from contact
+                // inbox: received message from contact. alias is contact
                 alias = setup.alias;
                 greeting = 'Hi ' + alias ;
             }
