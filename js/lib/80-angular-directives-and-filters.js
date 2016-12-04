@@ -154,7 +154,7 @@ angular.module('MoneyNetwork')
     }])
 
     .filter('findMessageAvatar', ['findContactAvatarFilter', 'MoneyNetworkService', function (findContactAvatar, moneyNetworkService) {
-        // find message Avatar. Like findContactAvatar, but used for group chat inbox
+        // find message Avatar. Like findContactAvatar, but used for group chat inbox. Use message.participant to find sender of message
         return function (message) {
             var contact, participant_no, unique_id, participant ;
             contact = message.contact ;
@@ -164,8 +164,7 @@ angular.module('MoneyNetwork')
             participant_no = message.message.participant ;
             unique_id = contact.participants[participant_no-1] ;
             participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
-            if (!participant) return findContactAvatar(contact) ; // deleted group chat participant
-            return findContactAvatar(participant) ;
+            return findContactAvatar(participant || contact) ; // return group avatar if participant has been deleted
         } ;
         // end findContactAvatar filter
     }])

@@ -82,10 +82,7 @@ angular.module('MoneyNetwork')
         // manage user avatar
         self.avatar = moneyNetworkService.get_avatar();
         // console.log(controller + ': self.avatar (1) = ' + JSON.stringify(self.avatar)) ;
-        moneyNetworkService.load_avatar(function () {
-            // console.log(controller + ': self.avatar (2) = ' + JSON.stringify(self.avatar)) ;
-            $scope.$apply() ;
-        }) ;
+
         // upload_avatar callback function. handle upload
         function handleAvatarUpload (image_base64uri) {
             var ext, image_base64, user_path;
@@ -105,18 +102,12 @@ angular.module('MoneyNetwork')
                 self.avatar.src = user_path + "/avatar." + ext + '?rev=' + MoneyNetworkHelper.generate_random_password(10);
                 $scope.$apply() ;
                 moneyNetworkService.zeronet_site_publish() ;
+                self.setup.avatar = ext ;
+                moneyNetworkService.save_user_setup() ;
                 //ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
                 //    // empty callback . no error handling. publish for avatar change is not important
                 //}); // sitePublish
             }); // fileWrite
-            // remove any previously random assigned avatar
-            var setup ;
-            setup = JSON.parse(MoneyNetworkHelper.getItem('setup'));
-            if (setup.avatar) {
-                delete setup.avatar ;
-                MoneyNetworkHelper.setItem('setup', JSON.stringify(setup));
-                MoneyNetworkHelper.ls_save();
-            }
         } // handleAvatarUpload
         // avatar click using Uploadable class from ZeroMePlus
         self.upload_avatar = function () {

@@ -3511,12 +3511,19 @@ angular.module('MoneyNetwork')
 
         // return avatar for user or assign a random avatar to user
         var avatar = { src: "public/images/avatar1.png", loaded: false } ;
-        function load_avatar (refresh_angular) {
+        function load_avatar () {
             var pgm = service + '.load_avatar: ';
             if (avatar.loaded) return ; // already loaded
+
+            // set previous avatar from setup before checking zeronet
+            if (user_setup.avatar && (['jpg','png'].indexOf(user_setup.avatar) == -1)) {
+                // public avatar found in user setup
+                avatar.src = 'public/images/avatar' + user_setup.avatar ;
+                console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
+            }
             // check ZeroFrame status
             var retry_load_avatar = function () {
-                load_avatar(refresh_angular);
+                load_avatar();
             };
             if (!ZeroFrame.site_info) {
                 // ZeroFrame websocket connection not ready. Try again in 5 seconds
@@ -3530,6 +3537,12 @@ angular.module('MoneyNetwork')
                  $timeout(retry_load_avatar,60000);
                 return ;
             }
+            if (user_setup.avatar && (['jpg','png'].indexOf(user_setup.avatar) != -1)) {
+                // uploaded avatar found in user setup
+                avatar.src = 'data/users/' + ZeroFrame.site_info.auth_address + '/avatar.' + user_setup.avatar ;
+                console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
+            }
+
             // 1) get content.json - check if user already has uploaded an avatar
             var user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
             ZeroFrame.cmd("fileGet", [user_path + "/content.json", false], function (res) {
@@ -3541,14 +3554,14 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'found avatar.jpg') ;
                     avatar.src = user_path + '/avatar.jpg';
                     avatar.loaded = true ;
-                    refresh_angular() ;
+                    $rootScope.$apply() ;
                     return ;
                 }
                 if (res.files["avatar.png"]) {
                     // console.log(pgm + 'found avatar.png') ;
                     avatar.src = user_path + '/avatar.png';
                     avatar.loaded = true ;
-                    refresh_angular() ;
+                    $rootScope.$apply() ;
                     return ;
                 }
                 // 2) no user avatar found - use previous selection in localStorage
@@ -3557,7 +3570,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'found from user_setup. ls_avatar = ' + JSON.stringify(ls_avatar)) ;
                     avatar.src = "public/images/avatar" + ls_avatar;
                     avatar.loaded = true ;
-                    refresh_angular() ;
+                    $rootScope.$apply() ;
                     return ;
                 }
                 // 3) assign random avatar from public/images/avatar
@@ -3566,6 +3579,7 @@ angular.module('MoneyNetwork')
                 var index = Math.floor(Math.random() * public_avatars.length);
                 avatar.src = "public/images/avatar" + public_avatars[index] ;
                 avatar.loaded = true ;
+                $rootScope.$apply() ;
                 user_setup.avatar = public_avatars[index] ;
                 MoneyNetworkHelper.ls_save();
             });
@@ -3960,6 +3974,7 @@ angular.module('MoneyNetwork')
                 // my unique id in group chats
                 // load user information from localStorage
                 load_user_setup() ;
+                load_avatar() ;
                 load_user_info(guest) ;
                 ls_load_contacts() ;
                 local_storage_read_messages() ;
@@ -3983,6 +3998,7 @@ angular.module('MoneyNetwork')
             js_messages.splice(0, js_messages.length);
             watch_receiver_sha256.splice(0, watch_receiver_sha256.length);
             for (key in ignore_zeronet_msg_id) delete ignore_zeronet_msg_id[key] ;
+            avatar.src = "public/images/avatar1.png" ;
             avatar.loaded = false;
             user_id = 0 ;
             my_unique_id = null ;
