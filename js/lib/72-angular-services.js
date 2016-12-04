@@ -1835,29 +1835,6 @@ angular.module('MoneyNetwork')
                 // group chat. add empty search array
                 if ((new_contact.type == 'group') && !new_contact.search) new_contact.search = [] ;
 
-                // group chat. add "Group: <n> participants" to search array. Will make it easier to see chat groups in contact list
-                if (new_contact.type == 'group') {
-                    // check number of participants. Some participants may have been deleted
-                    no_participants = 0 ;
-                    for (j=0 ; j<new_contact.participants.length ; j++) {
-                        if (get_contact_by_unique_id(new_contact.participants[i])) no_participants++ ;
-                    }
-                    // set no participants
-                    found_group_tag = false ;
-                    for (j=0 ; j<new_contact.search.length ; j++) {
-                        if (new_contact.search[j].tag == 'Group') {
-                            found_group_tag = true ;
-                            new_contact.search[j].value = no_participants + ' participant' + (no_participants == 1 ? '' : 's') ;
-                            break ;
-                        }
-                    }
-                    if (!found_group_tag) new_contact.search.push({
-                        tag: 'Group',
-                        value: no_participants + ' participant' + (no_participants == 1 ? '' : 's'),
-                        privacy: 'Search'
-                    }) ;
-                }
-
                 //// add feedback=true to outbox messages. that is messages where inbox.receiver_sha256 = outbox.sender_sha256
                 //if (new_contact.outbox_sender_sha256) {
                 //    for (receiver_sha256 in new_contact.outbox_sender_sha256) {
@@ -2022,6 +1999,7 @@ angular.module('MoneyNetwork')
                 } // for i
 
                 // update last updated for group chat pseudo contacts
+                // and set no participants in group chat
                 ls_update_group_last_updated();
 
                 // 2) refresh contact avatars
@@ -2229,15 +2207,17 @@ angular.module('MoneyNetwork')
         // return true if any contacts have been updated
         function ls_update_group_last_updated () {
             var pgm = service + '.ls_update_group_last_updated: ' ;
-            var i, contact, old_last_online, found_last_updated, j, new_last_online, unique_id, participant, k, timestamp ;
+            var i, contact, old_last_online, j, new_last_online, unique_id, participant, k, timestamp, no_participants, found_group_tag, old_no_participants, new_no_participants ;
             var ls_updated = false ;
             var my_unique_id = get_my_unique_id() ;
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
                 if (contact.type != 'group') continue ;
+                // update group contact (last online and no participants)
                 if (!contact.search) contact.search = [] ;
                 old_last_online = get_last_online(contact) || 0 ;
                 new_last_online = old_last_online ;
+                no_participants = 0 ;
                 for (j=0 ; j<contact.participants.length ; j++) {
                     unique_id = contact.participants[j] ;
                     if (unique_id == my_unique_id) continue ;
@@ -2246,11 +2226,36 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'warning. group chat participant with unique id ' + unique_id + ' does not exists') ;
                         continue ;
                     }
+                    no_participants++ ;
                     timestamp = get_last_online(participant) ;
                     if (timestamp && (timestamp > new_last_online)) new_last_online = timestamp ;
                 } // for j (participants)
-                if (old_last_online == new_last_online) continue ;
-                set_last_online(contact, new_last_online) ;
+                // set last online
+                if (old_last_online != new_last_online) {
+                    set_last_online(contact, new_last_online) ;
+                    ls_updated = true ;
+                }
+                // set no participants
+                found_group_tag = false ;
+                for (j=0 ; j<contact.search.length ; j++) {
+                    if (contact.search[j].tag == 'Group') {
+                        found_group_tag = true ;
+                        old_no_participants = contact.search[j].value ;
+                        new_no_participants = no_participants + ' participant' + (no_participants == 1 ? '' : 's') ;
+                        contact.search[j].value = new_no_participants ;
+                        if (old_no_participants != new_no_participants) ls_updated = true ;
+                        break ;
+                    }
+                }
+                if (!found_group_tag) {
+                    contact.search.push({
+                        tag: 'Group',
+                        value: no_participants + ' participant' + (no_participants == 1 ? '' : 's'),
+                        privacy: 'Search'
+                    }) ;
+                    ls_updated = true ;
+                }
+
             } // for i (contacts)
             return ls_updated ;
         } // ls_update_group_last_updated
@@ -4236,6 +4241,7 @@ angular.module('MoneyNetwork')
                             remove_contact(i);
                         }
                     }
+                    ls_update_group_last_updated(); // update number of participants in group chat
                     if (callback) callback() ;
                     ls_save_contacts(false) ;
                 })
