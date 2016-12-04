@@ -139,6 +139,23 @@ angular.module('MoneyNetwork')
         // end contactAlias filter
     }])
 
+    .filter('messageAlias', ['MoneyNetworkService', 'contactAliasFilter', function (moneyNetworkService, contactAlias) {
+        // return part of cert_user_id before @ - as contactAlias - used for group chat inbox
+        return function (message) {
+            var contact, participant_no, unique_id, participant ;
+            contact = message.contact ;
+            if (!contact) return '' ;
+            if (contact.type != 'group') return contactAlias(contact) ;
+            if (message.message.folder != 'inbox') return contactAlias(contact) ;
+            participant_no = message.message.participant ;
+            unique_id = contact.participants[participant_no-1] ;
+            participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+            return contactAlias(participant || contact) ; // return alias for group avatar if participant has been deleted
+        } ;
+        // end contactAlias filter
+    }])
+
+
     .filter('findContactAvatar', [function () {
         // find contact avatar - used in must cases
         return function (contact) {
@@ -272,15 +289,20 @@ angular.module('MoneyNetwork')
             // console.log(pgm + 'message = ' + JSON.stringify(message));
             var setup, alias, greeting, i, group_contact, unique_id ;
             setup = moneyNetworkService.get_user_setup() ;
-            if (message.message.folder == 'inbox') {
-                // inbox: received message from contact
-                alias = setup.alias;
-                greeting = 'Hi ' + alias ;
-            }
-            else {
+            if (message.message.folder == 'outbox') {
                 // outbox: send message to contact
                 alias = moneyNetworkService.get_contact_name(message.contact);
                 greeting = 'Hello ' + alias;
+            }
+            else if (message.contact.type == 'group') {
+                // inbox: received a group chat message
+                alias = moneyNetworkService.get_contact_name(message.contact);
+                greeting = 'Hi ' + alias ;
+            }
+            else {
+                // inbox: received message from contact
+                alias = setup.alias;
+                greeting = 'Hi ' + alias ;
             }
             // check known message types
             var str, msgtype, search ;
