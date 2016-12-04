@@ -927,7 +927,7 @@
                     </div>
 
                     <div ng-show="(m.message.folder == 'inbox')" class="media-right">
-                        <img ng-src="{{m.contact|findContactAvatar}}" class="img-circle img-sm" alt="Click to chat"
+                        <img ng-src="{{m|findMessageAvatar}}" class="img-circle img-sm" alt="Click to chat"
                              title="Click to chat" ng-click="c.chat_contact(m.contact)">
                     </div>
                     <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">

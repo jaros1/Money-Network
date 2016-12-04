@@ -140,7 +140,7 @@ angular.module('MoneyNetwork')
     }])
 
     .filter('findContactAvatar', [function () {
-        // return part of cert_user_id before @
+        // find contact avatar - used in must cases
         return function (contact) {
             if (!contact) return '' ;
             if (['jpg','png'].indexOf(contact.avatar) != -1) {
@@ -149,6 +149,23 @@ angular.module('MoneyNetwork')
             }
             // must be contact with a random assigned avatar
             return 'public/images/avatar' + contact.avatar ;
+        } ;
+        // end findContactAvatar filter
+    }])
+
+    .filter('findMessageAvatar', ['findContactAvatarFilter', 'MoneyNetworkService', function (findContactAvatar, moneyNetworkService) {
+        // find message Avatar. Like findContactAvatar, but used for group chat inbox
+        return function (message) {
+            var contact, participant_no, unique_id, participant ;
+            contact = message.contact ;
+            if (!contact) return '' ;
+            if (contact.type != 'group') return findContactAvatar(contact) ;
+            if (message.message.folder != 'inbox') return findContactAvatar(contact) ;
+            participant_no = message.message.participant ;
+            unique_id = contact.participants[participant_no-1] ;
+            participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+            if (!participant) return findContactAvatar(contact) ; // deleted group chat participant
+            return findContactAvatar(participant) ;
         } ;
         // end findContactAvatar filter
     }])
