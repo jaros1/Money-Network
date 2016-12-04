@@ -346,6 +346,7 @@ angular.module('MoneyNetwork')
                 var msg = [] ;
                 if (send) msg.push('Send message') ;
                 if (pubkey) msg.push('Cannot chat with this contact. Public key was not found');
+                if (self.group_chat && (self.group_chat_contacts.length == 0)) msg.push('Empty chat group');
                 if (avatar) {
                     if (self.setup.two_panel_chat) msg.push('Click on avatars to update participants') ;
                     else msg.push('Click on avatars to remove participants') ;
@@ -446,6 +447,7 @@ angular.module('MoneyNetwork')
             self.contact_verify = function () {
                 moneyNetworkService.contact_verify(self.contact);
             };
+
             self.show_contact_delete = function() {
                 var pgm = controller + '.show_contact_delete: ' ;
                 if (!self.contact) return false ;
@@ -465,6 +467,20 @@ angular.module('MoneyNetwork')
                     self.contact = null ;
                 }) ;
             };
+
+            self.show_group_delete = function () {
+                if (self.editing_grp_chat) return false ;
+                return true ;
+            };
+            self.group_delete = function () {
+                var pgm = controller + '.group_delete: ';
+                moneyNetworkService.contact_delete(self.contact, function () {
+                    // group contact deleted. show chat for all contacts
+                    self.contact = null ;
+                    self.group_chat = false ;
+                }) ;
+            };
+
             self.show_verify_icon = function (message) {
                 if (message.message.folder != 'inbox') return false ;
                 if (message.message.message.msgtype != 'verify') return false ;
@@ -596,22 +612,29 @@ angular.module('MoneyNetwork')
                 else if (!self.contact && !self.group_chat) {
                     // no context - show chat for all contacts. Use green/red filter in top of page
                     if (message.contact.type == 'group') {
-                        reason = 2.1 ;
-                        match = false ;
-                        // no group filter. check participants in group chat
-                        for (i=0 ; i<message.contact.participants.length ; i++) {
-                            unique_id = message.contact.participants[i] ;
-                            participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
-                            if (!participant) continue ;
-                            if (self.setup.contact_filters[participant.type] == 'green') {
-                                match = true ;
-                                break ;
-                            }
-                        } // for i (participants)
+                        if (self.setup.contact_filters['all'] == 'green')  {
+                            // always show - including empty chat groups
+                            reason = 2.1 ;
+                            match = true ;
+                        }
+                        else {
+                            reason = 2.2 ;
+                            match = false ;
+                            // no group filter. check participants in group chat
+                            for (i=0 ; i<message.contact.participants.length ; i++) {
+                                unique_id = message.contact.participants[i] ;
+                                participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+                                if (!participant) continue ;
+                                if (self.setup.contact_filters[participant.type] == 'green') {
+                                    match = true ;
+                                    break ;
+                                }
+                            } // for i (participants)
+                        }
                     }
                     else {
                         match = (self.setup.contact_filters[message.contact.type] == 'green');
-                        reason = 2.2 ;
+                        reason = 2.3 ;
                     }
                 }
                 else if (self.contact.unique_id == message.contact.unique_id) {
@@ -660,7 +683,11 @@ angular.module('MoneyNetwork')
                     match = ((message.contact.type == 'group') && (message.contact.participants.indexOf(self.contact.unique_id) != -1)) ;
                     reason = 5 ;
                 }
-                debug('chat_filter', pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder + ', match = ' + match + ', reason = ' + reason + ', image = ' + image);
+                debug('chat_filter',
+                    pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder +
+                    ', match = ' + match + ', reason = ' + reason + ', image = ' + image + ', msgtype = ' + message.message.msgtype +
+                    (message.message.message.message ? ', message = ' + message.message.message.message.substr(0,40) : ''));
+
                 // if ([200, 201, 202].indexOf(message.message.local_msg_seq) != -1) debug('chat_filter', pgm + 'message.message = ' + JSON.stringify(message.message)) ;
                 return match;
             }; // chat_filter
@@ -669,6 +696,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.contact_filter: ';
                 var i, unique_id, j ;
                 if (contact.type == 'group') {
+                    if (self.setup.contact_filters['all'] == 'green') return true ;
                     // display group if one participant is within current filter
                     for (i=0 ; i<contact.participants.length ; i++) {
                         unique_id = contact.participants[i] ;

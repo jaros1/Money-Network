@@ -573,7 +573,7 @@ var MoneyNetworkHelper = (function () {
 
     // generate password - used as key for local storage encryption and used in client to client communication (symmetric encryption)
     function generate_random_password(length) {
-        var character_set = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789![]{}#%&/()=?+-:;_-.@$|£';
+        var character_set = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789![]{}#%&/()=?+-:;_-.@$|£';
         var password = [], index, char;
         for (var i = 0; i < length; i++) {
             index = Math.floor(Math.random() * character_set.length);

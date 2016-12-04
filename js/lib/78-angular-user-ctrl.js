@@ -235,6 +235,8 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.load_user_setup() ;
         };
 
+        if (self.setup.guest) self.guest_password = MoneyNetworkHelper.getItem('password') ;
+
         // end UserCtrl
     }])
 

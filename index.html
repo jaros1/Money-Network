@@ -729,7 +729,10 @@
                     </table>
                 </div>
 
-                <div ng-show="c.group_chat" style="width: 100%">
+                <div ng-show="c.group_chat" style="width: 100%; min-height: 25px">
+                    <span ng-show="c.show_group_delete()" style="float: right;">
+                        <input type="button" value="Delete" ng-click="c.group_delete()"/>
+                    </span>
                     <span ng-repeat="x in c.group_chat_contacts" style="padding-left: 5px; padding-bottom: 5px;">
                         <table style="display: inline">
                             <tbody>
@@ -1013,7 +1016,8 @@
                 <span title="Revert changes" class="glyphicon glyphicon-refresh"
                       style="color: red; font-size: larger"></span>
                 </button>
-                <img ng-src="{{u.avatar.src}}" ng-click="u.upload_avatar()" title="Click to change avatar">
+                <img ng-show="u.setup.guest" ng-src="{{u.avatar.src}}" title="Sorry. Guest account cannot change avatar picture">
+                <img ng-hide="u.setup.guest" ng-src="{{u.avatar.src}}" ng-click="u.upload_avatar()" title="Click to change avatar">
             <span ng-hide="u.editing_alias" ng-bind-html="u.setup.alias" title="Click to edit your alias"
                   ng-click="u.edit_alias()"></span>
             <span ng-show="u.editing_alias" title="Edit alias. Press ENTER to save. Press ESC to cancel">
@@ -1089,6 +1093,21 @@
                     </button>
                 </p>
             </form>
+
+            <span ng-show="u.setup.guest">
+            <table title="Show guest account password. You must remember this password if you want to use your guest account later. Best to register for a new account as guest accounts are temporary accounts and may be blocked from other users">
+                <tbody>
+                <tr>
+                    <td>Show guest password?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.show_guest_password"></td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td ng-show="u.setup.show_guest_password" ng-bind="u.guest_password"></td>
+                </tr>
+                </tbody>
+            </table>
+            <br>
+            </span>
 
             <table title="Use this section to enable/disable messages from guests and contacts on ignore list">
                 <tbody>

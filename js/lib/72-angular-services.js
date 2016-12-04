@@ -1224,6 +1224,32 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'localStorage.messages (2) = ' + JSON.stringify(local_storage_messages));
                     // console.log(pgm + 'ZeroNet data.msg (2) = ' + JSON.stringify(data.msg));
 
+                    // How many bytes used by the other users in data.json file?
+                    var data_json_other_users_size ;
+                    (function() {
+                        var data_clone, i, json_raw ;
+                        data_clone = JSON.parse(JSON.stringify(data)) ;
+                        delete data_clone.version ;
+                        for (i=data_clone.users.length-1 ; i>=0 ; i--) {
+                            if (data_clone.users[i].user_seq == user_seq) data_clone.users.splice(i,1) ;
+                        }
+                        if (data_clone.users.length == 0) delete data_clone.users ;
+                        for (i=data_clone.search.length-1 ; i>=0 ; i--) {
+                            if (data_clone.search[i].user_seq == user_seq) data_clone.search.splice(i,1) ;
+                        }
+                        if (data_clone.search.length == 0) delete data_clone.search ;
+                        for (i=data_clone.msg.length-1 ; i>=0 ; i--) {
+                            if (data_clone.msg[i].user_seq == user_seq) data_clone.msg.splice(i,1) ;
+                        }
+                        if (data_clone.msg.length == 0) delete data_clone.msg ;
+                        if (JSON.stringify(data_clone) == JSON.stringify({}))  data_json_other_users_size = 0 ;
+                        else {
+                            json_raw = unescape(encodeURIComponent(JSON.stringify(data_clone, null, "\t")));
+                            data_json_other_users_size = json_raw.length ;
+                        }
+                        // debug('data_cleanup', pgm + 'data_json_other_users_size = ' + data_json_other_users_size + ', user_seq = ' + user_seq + ', data_clone = ' + JSON.stringify(data_clone)) ;
+                    })() ;
+
                     // check file size. Try to keep data.json file size small for fast communication and small site
                     // always keep messages for last hour.
                     // data.json size must also be <data_json_max_size
@@ -1235,9 +1261,9 @@ angular.module('MoneyNetwork')
                     var outbox_message, no_feedback_expected, no_feedback_received ;
                     while (true) {
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
-                        if (json_raw.length < 10000) break ; // OK - small file
+                        if (json_raw.length < 10000 + data_json_other_users_size) break ; // OK - small file
 
-                        debug('data_cleanup', pgm + 'data.json is big. size ' + json_raw.length + '. removing old data ...') ;
+                        debug('data_cleanup', pgm + 'data.json is big. size ' + json_raw.length + '. limit ' + (10000 + data_json_other_users_size) + ' removing old data ...') ;
                         // todo: looping forever with message - MoneyNetworkService.z_update_data_json fileGet callback: data.json is big. size 14762. removing old data ...
                         count = count + 1 ;
                         if (count > 1000) {
@@ -1388,7 +1414,7 @@ angular.module('MoneyNetwork')
                         for (j=0 ; j<ls_contacts.length ; j++) {
                             contact = ls_contacts[j] ;
                             for (k=0 ; k<contact.messages.length ; k++) {
-                                debug('data_cleanup', pgm + 'd: k = ' + k + ', folder = ' + contact.messages[k].folder + ', zeronet_msg_id = ' + contact.messages[k].zeronet_msg_id);
+                                // debug('data_cleanup', pgm + 'd: k = ' + k + ', folder = ' + contact.messages[k].folder + ', zeronet_msg_id = ' + contact.messages[k].zeronet_msg_id);
                                 if (contact.messages[k].folder != 'outbox') continue;
                                 if (!contact.messages[k].zeronet_msg_id) continue;
                                 if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
@@ -1433,7 +1459,7 @@ angular.module('MoneyNetwork')
                         // specially outgoing chat messages with picture can be a problem
                         error =
                             "Sorry. Cannot send message(s). No more disk space. Missing " + (0-available) + " bytes.<br>" +
-                            "Please delete some outgoing messages or remove image from outgoing chat messages" ;
+                            "Please delete some outgoing messages or remove some images from outgoing chat messages" ;
                         console.log(pgm + error);
                         ZeroFrame.cmd("wrapperNotification", ["error", error]);
                         return ;
@@ -1491,7 +1517,7 @@ angular.module('MoneyNetwork')
         function load_user_info (new_guest_account) {
             var pgm = service + '.load_user_info: ';
             // load user info from local storage
-            var user_info_str, new_user_info, guest_id, is_guest ;
+            var user_info_str, new_user_info ;
             user_info_str = MoneyNetworkHelper.getItem('user_info') ;
             // console.log(pgm + 'user_info loaded from localStorage: ' + user_info_str) ;
             // console.log(pgm + 'user_info_str = ' + user_info_str) ;
@@ -1744,6 +1770,7 @@ angular.module('MoneyNetwork')
             var old_contact ;
             var ls_msg_size_total = 0 ;
             var found_group_tag ;
+            var no_participants ;
 
             // startup. fix old errors. migrate to newer structure.
             for (i=0 ; i<new_contacts.length ; i++) {
@@ -1810,13 +1837,23 @@ angular.module('MoneyNetwork')
 
                 // group chat. add "Group: <n> participants" to search array. Will make it easier to see chat groups in contact list
                 if (new_contact.type == 'group') {
+                    // check number of participants. Some participants may have been deleted
+                    no_participants = 0 ;
+                    for (j=0 ; j<new_contact.participants.length ; j++) {
+                        if (get_contact_by_unique_id(new_contact.participants[i])) no_participants++ ;
+                    }
+                    // set no participants
                     found_group_tag = false ;
                     for (j=0 ; j<new_contact.search.length ; j++) {
-                        if (new_contact.search[j].tag == 'Group') found_group_tag = true ;
+                        if (new_contact.search[j].tag == 'Group') {
+                            found_group_tag = true ;
+                            new_contact.search[j].value = no_participants + ' participant' + (no_participants == 1 ? '' : 's') ;
+                            break ;
+                        }
                     }
                     if (!found_group_tag) new_contact.search.push({
                         tag: 'Group',
-                        value: new_contact.participants.length + ' participants',
+                        value: no_participants + ' participant' + (no_participants == 1 ? '' : 's'),
                         privacy: 'Search'
                     }) ;
                 }
@@ -3185,7 +3222,7 @@ angular.module('MoneyNetwork')
 
             // initialize watch_sender_sha256 array with relevant sender_sha256 addresses
             // that is sha256(pubkey) + any secret sender_sha256 reply addresses sent to contacts in money network
-            var my_pubkey, my_pubkey_sha256, my_prvkey, i, j, contact, auth_address, message, key ;
+            var my_pubkey, my_pubkey_sha256, my_prvkey, i, j, contact, auth_address, reason, message, key ;
             var participant_unique_id, participant, my_auth_address, now ;
             my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
@@ -3213,12 +3250,12 @@ angular.module('MoneyNetwork')
                         if (message.zeronet_msg_id) {
                             if (contact.type == 'group') {
                                 // no auth_address for group contacts. get auth_address from participant (sender of this message)
-                                auth_address = null ;
-                                if (message.participant) participant_unique_id = contact.participants[message.participant-1] ;
-                                if (participant_unique_id) participant = get_contact_by_unique_id(participant_unique_id) ;
-                                if (participant) auth_address = participant.auth_address ;
+                                auth_address = null ; reason = 'No message.participant' ;
+                                if (message.participant) { participant_unique_id = contact.participants[message.participant-1] ; reason = 'No participant_unique_id' }
+                                if (participant_unique_id) { participant = get_contact_by_unique_id(participant_unique_id) ; reason = 'Participant was not found' }
+                                if (participant) { auth_address = participant.auth_address ; reason = 'No auth_address for participant' }
                                 if (!auth_address) {
-                                    console.log(pgm + 'could not find sender/auth_address for group inbox message ' + JSON.stringify(message)) ;
+                                    console.log(pgm + 'could not find sender/auth_address for group inbox message. ' + reason + '. Message = ' + JSON.stringify(message)) ;
                                 }
                             }
                             if (auth_address) {
@@ -3788,6 +3825,7 @@ angular.module('MoneyNetwork')
         var admin_auth_address = '16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH' ;
         function is_admin () {
             var pgm = service + '.is_admin: ' ;
+            if (user_setup.guest) return false ;
             var admin = ZeroFrame.site_info.auth_address == admin_auth_address ;
             // console.log(pgm + 'admin = ' + admin) ;
             return admin ;
@@ -4141,7 +4179,8 @@ angular.module('MoneyNetwork')
 
         // delete contact. note: 2 steps. first messages, then contact
         function contact_delete (contact, callback) {
-            var no_msg, i, message, update_zeronet, now, index, j ;
+            var no_msg, i, message, update_zeronet, now, index, j, contact_type ;
+            contact_type = contact.type == 'group' ? 'group chat' : 'contact' ;
             no_msg = 0 ;
             for (i=0 ; i<contact.messages.length ; i++) {
                 message = contact.messages[i] ;
@@ -4150,7 +4189,7 @@ angular.module('MoneyNetwork')
             if (no_msg > 0) {
                 // delete mark messages. No delete message notification to contact
                 update_zeronet = false ;
-                ZeroFrame.cmd("wrapperConfirm", ["Delete all messages for this contact?", "Delete"], function (confirm) {
+                ZeroFrame.cmd("wrapperConfirm", ["Delete all messages for this " + contact_type + "?", "Delete"], function (confirm) {
                     if (!confirm) return false ;
                     now = new Date().getTime() ;
                     for (i=0 ; i<contact.messages.length ; i++) {
@@ -4174,7 +4213,7 @@ angular.module('MoneyNetwork')
             }
             else {
                 // delete contact.
-                ZeroFrame.cmd("wrapperConfirm", ["Delete contact?", "Delete"], function (confirm) {
+                ZeroFrame.cmd("wrapperConfirm", ["Delete " + contact_type + "?", "Delete"], function (confirm) {
                     if (!confirm) return false ;
                     for (i=ls_contacts.length-1 ; i >= 0 ; i-- ) {
                         if (ls_contacts[i].unique_id == contact.unique_id) {
@@ -4322,6 +4361,7 @@ angular.module('MoneyNetwork')
             // add missing defaults
             guest_id = MoneyNetworkHelper.getItem('guestid');
             guest = (guest_id == '' + user_id) ;
+            if (guest) user_setup.guest = guest ;
             if (!user_setup.contact_filters) user_setup.contact_filters = {
                 all: 'red',
                 new: 'green',
