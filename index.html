@@ -1334,6 +1334,20 @@
                     </td>
                 </tr>
                 </tbody>
+                <tbody ng-hide="a.register == 'N'">
+                <tr>
+                    <td colspan="5">&nbsp;</td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align: center" alt="Create guest account" title="Create guest account">
+                        Keysize:
+                        <input type="radio" ng-model="a.keysize" value="1024">1024
+                        <input type="radio" ng-model="a.keysize" value="2048">2048
+                        <input type="radio" ng-model="a.keysize" value="4096">4096
+                        <input type="radio" ng-model="a.keysize" value="8192">8192
+                    </td>
+                </tr>
+                </tbody>
             </table>
         </form>
 

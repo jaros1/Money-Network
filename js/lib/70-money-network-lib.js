@@ -588,9 +588,9 @@ var MoneyNetworkHelper = (function () {
     // 0 = invalid password, > 0 : userid
     // use create_new_account = true to force create a new user account
     // support for more than one user account
-    function client_login(password, create_new_account) {
+    function client_login(password, create_new_account, keysize) {
         var pgm = module + '.client_login: ' ;
-        var password_sha256, passwords_s, passwords_a, i, userid, did, crypt, pubkey, prvkey, prvkey_aes, giftid_key;
+        var password_sha256, passwords_s, passwords_a, i, userid, crypt, pubkey, prvkey;
         password_sha256 = sha256(password);
         // passwords: array with hashed passwords. size = number of accounts
         passwords_s = getItem('passwords');
@@ -615,13 +615,14 @@ var MoneyNetworkHelper = (function () {
         // password was not found
         if (create_new_account) {
             // create new account
-            console.log(pgm + 'create new account');
+            if ([1024,2048,4096,8192].indexOf(keysize) == -1) keysize = 2048 ;
+            console.log(pgm + 'create new account. keysize = ' + keysize);
             userid = passwords_a.length + 1; // sequence = number of user accounts in local storage
             // setup new account
             passwords_a.push(password_sha256);
             passwords_s = JSON.stringify(passwords_a);
             // generate key pair for client to client RSA encryption
-            crypt = new JSEncrypt({default_key_size: 2048});
+            crypt = new JSEncrypt({default_key_size: keysize});
             crypt.getKey();
             pubkey = crypt.getPublicKey();
             prvkey = crypt.getPrivateKey();

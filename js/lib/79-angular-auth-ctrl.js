@@ -45,14 +45,13 @@ angular.module('MoneyNetwork')
         };
         self.login_or_register = function () {
             var pgm = controller + '.login_or_register: ';
-            console.log(pgm + 'click');
             var create_new_account = (self.register != 'N');
             var create_guest_account = (self.register == 'G');
             if (create_guest_account) {
                 self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
                 MoneyNetworkHelper.delete_guest_account() ;
             }
-            var userid = moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account);
+            var userid = moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize));
             // console.log(pgm + 'userid = ' + JSON.stringify(userid));
             if (userid) {
                 // log in OK - clear login form and redirect
@@ -71,6 +70,7 @@ angular.module('MoneyNetwork')
             }
             else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
         };
+        self.keysize = "2048" ;
 
         // end AuthCtrl
     }])

@@ -3970,10 +3970,10 @@ angular.module('MoneyNetwork')
 
         var user_id = 0 ;
         var my_unique_id ;
-        function client_login(password, create_new_account, guest) {
+        function client_login(password, create_new_account, guest, keysize) {
             // login or register. update sessionStorage and localStorage
             if (!create_new_account) guest = false ;
-            user_id = MoneyNetworkHelper.client_login(password, create_new_account);
+            user_id = MoneyNetworkHelper.client_login(password, create_new_account, keysize);
             if (user_id) {
                 if (create_new_account && guest) MoneyNetworkHelper.setItem('guestid', user_id); // todo: ls_save()?
                 // my unique id in group chats
