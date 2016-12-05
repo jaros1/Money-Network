@@ -1109,6 +1109,14 @@
             <br>
             </span>
 
+            <p title="Select preferred encryption. Will if possible be used for your ingoing and outgoing messages. CryptMessage is new and only new contacts have a public key. Your JSEncrypt key is {{u.keysize}} bits long. CryptMessage is using 256 bits key">
+                Preferred encryption:
+                <input type="radio" ng-model="u.setup.encryption" value="1" ng-change="u.debug_settings_changed()">
+                <a href="https://github.com/travist/jsencrypt" target="_blank" rel="noopener noreferrer">JSEncrypt</a>
+                <input type="radio" ng-model="u.setup.encryption" value="2" ng-change="u.debug_settings_changed()">
+                <a href="https://zeronet.readthedocs.io/en/latest/site_development/zeroframe_api_reference/#plugin-cryptmessage" target="_blank" rel="noopener noreferrer">CryptMessage</a>
+            </p>
+
             <table title="Use this section to enable/disable messages from guests and contacts on ignore list">
                 <tbody>
                 <tr><td colspan="3">Spam filters:</td></tr>

@@ -16,24 +16,24 @@
    "size": 402127
   },
   "dbschema.json": {
-   "sha512": "a3b0df2784d42e2b21c8c7aa7ed5d5fc2ceed3c980e25666b7c97cbeb3374679",
-   "size": 2373
+   "sha512": "102791bcb0da46d5f2827bdfb43c372869a6bbb856045c7c84e2737835839be5",
+   "size": 2405
   },
   "favicon.ico": {
    "sha512": "b1b7e2667c8ed0376d756fdb27ab0aeb9881275cf29b0ef7510aa47271b9ec4e",
    "size": 4286
   },
   "index.html": {
-   "sha512": "702ba65a7a611e3e8c2a6717fd524d0ffa52b14d4c9db61e66c1f977b34b305b",
-   "size": 83325
+   "sha512": "7e9fa965d43c2c0e5b654a0042d81f0eb3f9dfd9e851a0068a1e13c0dfa402cd",
+   "size": 84181
   },
   "js-external/pngencoder.js": {
    "sha512": "ecaadaad552d2610336995b48360253cd6d847b6aa590fc3d96e7245a5d5fe11",
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "b717d9429402840b893c8c976b28d892d5f475874a2cedaa61b85b3470803d28",
-   "size": 2917248
+   "sha512": "dec094dbb58607fa1b714a799f77fb86c1e71a6ad60ba0fc9e9a350ec6c3d02c",
+   "size": 2917674
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -106,15 +106,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1480930627.822881,
+ "modified": 1480939583.01136,
  "postmessage_nonce_security": true,
  "sign": [
-  92339873510742243743826248260771690212149331869895430311258627508651672491187,
-  58961013210212007531549338919948419918189381708532659939582476795292750051050
+  702674209466000909856374737748484476977527282738498045079594772572000957900,
+  20109821390630348091749319465163730526239156285953391247569950926094543361777
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G5wUqfzBfq7FXgwvvmmP5DRkb78/5FPnRs8SOQdMckwb84kgArddD/euPxtd7+YtJhGdNvIrI130pIblaD6Erg4="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HHt8mA5cuMLO7/Z7qQbeEtbKn9vwDGAhRAGs3vNWFv0aEXKEmbyGrujQbMN7A8K4JgJDe9bLEoVFJNFm+CAnxRs="
  },
  "signs_required": 1,
  "title": "Money Network",

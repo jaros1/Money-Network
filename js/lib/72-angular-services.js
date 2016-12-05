@@ -100,7 +100,7 @@ angular.module('MoneyNetwork')
             }
             if (json.version == 6) {
                 // convert from version 5 to 6
-                // just added pubkey2 to users table
+                // just added pubkey2 and encryption to users table
                 json.version = 7 ;
             }
             // etc
@@ -912,7 +912,7 @@ angular.module('MoneyNetwork')
 
                 var pubkey = MoneyNetworkHelper.getItem('pubkey') ; // used in JSEncrypt
                 var pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ; // used in ZeroNet CryptMessage plugin
-                console.log(pgm + 'pubkey = ' + pubkey, ', pubkey2 = ' + pubkey);
+                // console.log(pgm + 'pubkey = ' + pubkey, ', pubkey2 = ' + pubkey);
 
                 var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
                 if (zeronet_file_locked[data_json_path] && (lock_pgm != 'force')) {
@@ -966,6 +966,7 @@ angular.module('MoneyNetwork')
                     }
                     if (user_seq) {
                         data.users[user_i].pubkey2 = pubkey2 ;
+                        data.users[user_i].encryption = user_setup.encryption ;
                         data.users[user_i].avatar = short_avatar ;
                     }
                     else {
@@ -975,6 +976,7 @@ angular.module('MoneyNetwork')
                             user_seq: user_seq,
                             pubkey: pubkey,
                             pubkey2: pubkey2,
+                            encryption: user_setup.encryption,
                             avatar: short_avatar
                         };
                         guest_id = MoneyNetworkHelper.getItem('guestid');
@@ -1163,9 +1165,8 @@ angular.module('MoneyNetwork')
                                     watch_receiver_sha256.push(sender_sha256) ;
                                     // rsa encrypted key, symmetric encrypted message
                                     password = generate_random_password();
-
+                                    if (encrypt.key.n.bitLength() <= 1024) password = password.substr(0,100) ;
                                     key = encrypt.encrypt(password);
-
                                     // console.log(pgm + 'password = ' + password + ', key = ' + key);
                                     if (!key) {
                                         delete zeronet_file_locked[data_json_path] ;
@@ -1897,7 +1898,7 @@ angular.module('MoneyNetwork')
 
             // three nested callbacks: 1) get public key and user seq. 2) refresh avatars and 3) check data.json
 
-            // 1) get pubkey from ZeroNet. Use auth_address and check unique id. also set user_seq and timestamp
+            // 1) get pubkeys from ZeroNet. Use auth_address and check unique id. also set user_seq and timestamp
             var contact, auth_addresses = [] ;
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
@@ -1914,7 +1915,7 @@ angular.module('MoneyNetwork')
 
             var query =
                 "select" +
-                "  substr(data_json.directory,7) as auth_address, users.user_seq, users.pubkey," +
+                "  substr(data_json.directory,7) as auth_address, users.user_seq, users.pubkey, users.pubkey2," +
                 "  status.timestamp " +
                 "from json as data_json, json as content_json, users, json as status_json, status " +
                 "where data_json.directory in " ;
@@ -1952,13 +1953,14 @@ angular.module('MoneyNetwork')
                     res_hash[res[i].auth_address].push({
                         user_seq: res[i].user_seq,
                         pubkey: res[i].pubkey,
+                        pubkey2: res[i].pubkey2,
                         last_updated: Math.round(res[i].timestamp / 1000)
                     });
                 } // for i
                 // console.log(pgm + 'res_hash = ' + JSON.stringify(res_hash));
 
                 // control. check that pubkey in contacts are identical with pubkeys from this query
-                var auth_address, unique_id, found_user_seq, found_pubkey, found_last_updated;
+                var auth_address, unique_id, found_user_seq, found_pubkey, found_pubkey2, found_last_updated;
                 // delete contact helper. keep or delete contact without public key?
                 var delete_contact = function (contact, i) {
                     var msg, last_updated, j, no_msg;
@@ -1994,15 +1996,17 @@ angular.module('MoneyNetwork')
                         if (contact.unique_id == unique_id) {
                             found_user_seq = res_hash[auth_address][j].user_seq;
                             found_pubkey = res_hash[auth_address][j].pubkey;
+                            found_pubkey2 = res_hash[auth_address][j].pubkey2;
                             found_last_updated = res_hash[auth_address][j].last_updated;
                         }
                     }
-                    if (!found_pubkey) {
+                    if (!found_pubkey && !found_pubkey2) {
                         delete_contact(contact, i);
                         continue;
                     }
                     contact.user_seq = found_user_seq;
                     contact.pubkey = found_pubkey;
+                    contact.pubkey2 = found_pubkey2;
                     // update "Last online"
                     set_last_online(contact, found_last_updated);
                     // console.log(pgm + 'contact = ' + JSON.stringify(contact));
@@ -2181,6 +2185,7 @@ angular.module('MoneyNetwork')
                 delete contact.new_alias ;
                 delete contact.user_seq ; // available on ZeroNet
                 delete contact.pubkey ; // available on ZeroNet
+                delete contact.pubkey2 ; // available on ZeroNet
                 if (contact.search) for (j=0 ; j<contact.search.length ; j++) {
                     delete contact.search[j]['$$hashKey'] ;
                     delete contact.search[j].edit_alias ;
@@ -4411,6 +4416,7 @@ angular.module('MoneyNetwork')
             if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
             if (!user_setup.hasOwnProperty('two_panel_chat')) user_setup.two_panel_chat = true ;
             if (!user_setup.alias) user_setup.alias = 'Me';
+            if (!user_setup.encryption) user_setup.encryption = '1' ;
 
         }
         function save_user_setup () {

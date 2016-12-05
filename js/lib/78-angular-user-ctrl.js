@@ -228,11 +228,12 @@ angular.module('MoneyNetwork')
 
         if (self.setup.guest) self.guest_password = MoneyNetworkHelper.getItem('password') ;
 
-        self.clickable_text = function (unique_id) {
-            var pgm = controller + '.clickable_text: ' ;
-            console.log(pgm + 'unique_id = ' + unique_id) ;
-
-        } ;
+        self.keysize = 2048 ;
+        (function(){
+            var encrypt = new JSEncrypt();
+            encrypt.setPublicKey(MoneyNetworkHelper.getItem('pubkey'));
+            self.keysize = encrypt.key.n.bitLength() ;
+        })() ;
 
         // end UserCtrl
     }])

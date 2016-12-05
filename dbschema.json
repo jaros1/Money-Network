@@ -37,6 +37,7 @@
         ["user_seq", "INTEGER"],
         ["pubkey", "TEXT"],
         ["pubkey2", "TEXT"],
+        ["encryption", "TEXT"],
         ["avatar", "TEXT"],
         ["guest", "TEXT"],
         ["json_id", "INTEGER REFERENCES json (json_id)"]
