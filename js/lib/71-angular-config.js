@@ -30,6 +30,7 @@ angular.module('MoneyNetwork')
             })
             .when('/money', {
                 templateUrl: 'money.html',
+                controller: 'MoneyCtrl as m',
                 resolve: {check_auth: check_auth_resolve}
             })
             .when('/network', {

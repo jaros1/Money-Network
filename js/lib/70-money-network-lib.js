@@ -142,7 +142,8 @@ var MoneyNetworkHelper = (function () {
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
         passwords: {session: false, userid: false, compress: false, encrypt: false}, // array with hashed passwords. size = number of accounts
         prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
-        pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication
+        pubkey: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication (JSEncrypt)
+        pubkey2: {session: false, userid: true, compress: true, encrypt: false}, // for encrypted user to user communication (ZeroNet CryptMessage plugin)
         userid: {session: true, userid: false, compress: false, encrypt: false}, // session userid (1, 2, etc) in clear text.
         guestid: {session: false, userid: false, compress: false, encrypt: false}, // guest userid (1, 2, etc). in clear text. Used for cleanup operation
         // user data
@@ -584,6 +585,20 @@ var MoneyNetworkHelper = (function () {
         return password.join('');
     } // generate_random_password
 
+
+    // post login. add pubkey2 (ZeroNet CryptMessage plugin) is pubkey2 does not exists
+    function add_cryptmessage_pubkey2 () {
+        if (getItem('pubkey2')) return ;
+
+        // get pubkey2 for this userid
+        var userid = parseInt(getItem('userid')) ;
+        ZeroFrame.cmd("userPublickey", [userid], function (pubkey2) {
+            setItem('pubkey2', pubkey2) ;
+            ls_save() ;
+        });
+
+    }
+
     // client login (password from device_login_form form)
     // 0 = invalid password, > 0 : userid
     // use create_new_account = true to force create a new user account
@@ -608,6 +623,7 @@ var MoneyNetworkHelper = (function () {
                 // save login
                 setItem('userid', userid);
                 setItem('password', password);
+                add_cryptmessage_pubkey2() ;
                 load_user_setup() ;
                 return userid;
             }
@@ -643,6 +659,7 @@ var MoneyNetworkHelper = (function () {
             setItem('passwords', passwords_s); // array with sha256 hashed passwords. length = number of accounts
             // send local storage updates to ZeroFrame
             ls_save();
+            add_cryptmessage_pubkey2() ;
             return userid;
         }
         // invalid password (create_new_account=false)

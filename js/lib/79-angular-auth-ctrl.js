@@ -47,28 +47,41 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.login_or_register: ';
             var create_new_account = (self.register != 'N');
             var create_guest_account = (self.register == 'G');
-            if (create_guest_account) {
-                self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
-                MoneyNetworkHelper.delete_guest_account() ;
-            }
-            var userid = moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize));
-            // console.log(pgm + 'userid = ' + JSON.stringify(userid));
-            if (userid) {
-                // log in OK - clear login form and redirect
-                ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
-                self.device_password = '';
-                self.confirm_device_password = '';
-                self.register = 'N';
-                var user_info = moneyNetworkService.get_user_info() ;
-                var empty_user_info_str = JSON.stringify([moneyNetworkService.empty_user_info_line()]) ;
-                if ((JSON.stringify(user_info) == empty_user_info_str) || create_guest_account) $location.path('/user');
-                else {
-                    var setup = moneyNetworkService.get_user_setup() ;
-                    $location.path('/chat' + (setup.two_panel_chat ? '2' : ''));
+
+            var login_or_register = function () {
+                if (create_guest_account) {
+                    self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
+                    MoneyNetworkHelper.delete_guest_account() ;
                 }
-                $location.replace();
+                var userid = moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize));
+                // console.log(pgm + 'userid = ' + JSON.stringify(userid));
+                if (userid) {
+                    // log in OK - clear login form and redirect
+                    ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+                    self.device_password = '';
+                    self.confirm_device_password = '';
+                    self.register = 'N';
+                    var user_info = moneyNetworkService.get_user_info() ;
+                    var empty_user_info_str = JSON.stringify([moneyNetworkService.empty_user_info_line()]) ;
+                    if ((JSON.stringify(user_info) == empty_user_info_str) || create_guest_account) $location.path('/user');
+                    else {
+                        var setup = moneyNetworkService.get_user_setup() ;
+                        $location.path('/chat' + (setup.two_panel_chat ? '2' : ''));
+                    }
+                    $location.replace();
+                }
+                else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
+
+            } ;
+
+            // warning if user has selected a long key
+            if ((self.register != 'N') && (self.keysize >= '4096')) {
+                ZeroFrame.cmd("wrapperConfirm", ["Generating a " + self.keysize + " bits key will take some time.<br>Continue?", "OK"], function (confirm) {
+                    if (confirm) login_or_register() ;
+                })
             }
-            else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
+            else login_or_register() ;
+
         };
         self.keysize = "2048" ;
 

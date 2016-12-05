@@ -20,7 +20,7 @@ angular.module('MoneyNetwork')
         }
 
         // convert data.json to newest version. compare dbschema.schema_changed and data.version.
-        var dbschema_version = 6 ;
+        var dbschema_version = 7 ;
         function zeronet_migrate_data (json) {
             var pgm = service + '.zeronet_migrate_data: ' ;
             if (!json.version) json.version = 1 ;
@@ -97,6 +97,11 @@ angular.module('MoneyNetwork')
                 // convert from version 5 to 6
                 // just added guest to users table
                 json.version = 6 ;
+            }
+            if (json.version == 6) {
+                // convert from version 5 to 6
+                // just added pubkey2 to users table
+                json.version = 7 ;
             }
             // etc
             console.log(pgm + 'json version ' + json.version + ' = ' + JSON.stringify(json)) ;
@@ -905,8 +910,9 @@ angular.module('MoneyNetwork')
                 }
                 // console.log(pgm + 'data_json_max_size = ' + data_json_max_size) ;
 
-                var pubkey = MoneyNetworkHelper.getItem('pubkey') ;
-                // console.log(pgm + 'pubkey = ' + pubkey);
+                var pubkey = MoneyNetworkHelper.getItem('pubkey') ; // used in JSEncrypt
+                var pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ; // used in ZeroNet CryptMessage plugin
+                console.log(pgm + 'pubkey = ' + pubkey, ', pubkey2 = ' + pubkey);
 
                 var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
                 if (zeronet_file_locked[data_json_path] && (lock_pgm != 'force')) {
@@ -958,13 +964,17 @@ angular.module('MoneyNetwork')
                         }
                         else if (data.users[i].user_seq > max_user_seq) max_user_seq = data.users[i].user_seq ;
                     }
-                    if (user_seq) data.users[user_i].avatar = short_avatar ;
+                    if (user_seq) {
+                        data.users[user_i].pubkey2 = pubkey2 ;
+                        data.users[user_i].avatar = short_avatar ;
+                    }
                     else {
                         // add current user to data.users array
                         user_seq = max_user_seq + 1 ;
                         new_user_row = {
                             user_seq: user_seq,
                             pubkey: pubkey,
+                            pubkey2: pubkey2,
                             avatar: short_avatar
                         };
                         guest_id = MoneyNetworkHelper.getItem('guestid');
