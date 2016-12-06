@@ -1052,7 +1052,7 @@ angular.module('MoneyNetwork')
                         if (data.msg[i].user_seq == old_guest_user_seq) data.msg.splice(i,1);
                     } // for i (data.msg)
 
-                    // insert & delete outgoing messages in data.msg array in data.json file on ZeroNet
+                    // remove deleted outbox messages from data.json
                     var encrypt, password, key, message_with_envelope, message, encrypted_message_str, message_deleted,
                         error, receiver_sha256, local_msg_seq, sender_sha256, image, sent_at ;
                     for (i=0 ; i<ls_contacts.length ; i++) {
@@ -1105,405 +1105,448 @@ angular.module('MoneyNetwork')
                                 continue
                             } // if
 
-                            // new outgoing messages
-                            if (!message_with_envelope.sent_at) {
-                                // not sent - encrypt and insert new message in data.msg array (data.json)
-                                message = message_with_envelope.message ;
-                                // add local_msg_seq. used as message id
-                                if (message_with_envelope.local_msg_seq) {
-                                    // resending old message - already local_msg_seq already in message
-                                    local_msg_seq = message_with_envelope.local_msg_seq ;
-                                    sent_at = message.sent_at ;
-                                    debug('lost_message', pgm + 'resending lost message with local_msg_seq ' + local_msg_seq);
-                                }
-                                else {
-                                    local_msg_seq = next_local_msg_seq() ;
-                                    message_with_envelope.local_msg_seq = local_msg_seq;
-                                    sent_at = new Date().getTime() ;
-                                }
-                                message.local_msg_seq = local_msg_seq ;
-
-                                if (contact.type == 'group') {
-                                    // simple symmetric encryption only using contact.password
-                                    // problem. too easy to identify group chat messages
-                                    //   a) no key - could add a random key
-                                    //   b) identical receiver_sha256 for all messages in chat group. could add a pseudo random receiver_sha256
-                                    key = null ;
-                                    password = contact.password ;
-                                    receiver_sha256 = CryptoJS.SHA256(password).toString();
-                                }
-                                else {
-                                    // RSA encryption + symmetric encryption with random password
-                                    if (!encrypt) {
-                                        if (!contact.pubkey) {
-                                            // for example messages to deleted guests
-                                            console.log(pgm + 'Cannot send message ' + JSON.stringify(message_with_envelope) + '. contact does not have a public key');
-                                            console.log(pgm + 'contact = ' + JSON.stringify(contact));
-                                            console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
-                                            console.log(pgm + 'deleting message') ;
-                                            // delete invalid message
-                                            contact.messages.splice(j,1);
-                                            for (k=js_messages.length-1 ; k>= 0 ; k--) {
-                                                if (js_messages[k].message == message_with_envelope) {
-                                                    js_messages.splice(k,1) ;
-                                                }
-                                            }
-                                            continue ;
-                                        }
-                                        encrypt = new JSEncrypt();
-                                        encrypt.setPublicKey(contact.pubkey);
-                                    }
-                                    // find receiver_sha256. Use last received sender_sha256 address from contact
-                                    // exception: remove + add contact messages can be used to reset communication
-                                    if (message.msgtype != 'contact added') receiver_sha256 = contact.inbox_last_sender_sha256 ;
-                                    if (!receiver_sha256) receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
-                                    // add random sender_sha256 address
-                                    sender_sha256 = CryptoJS.SHA256(generate_random_password()).toString();
-                                    message_with_envelope.sender_sha256 = sender_sha256;
-                                    message.sender_sha256 = sender_sha256 ;
-                                    // check this new sha256 address in incoming data.json files (file done event / process_incoming_message)
-                                    watch_receiver_sha256.push(sender_sha256) ;
-                                    // rsa encrypted key, symmetric encrypted message
-                                    password = generate_random_password();
-                                    if (encrypt.key.n.bitLength() <= 1024) password = password.substr(0,100) ;
-                                    key = encrypt.encrypt(password);
-                                    // console.log(pgm + 'password = ' + password + ', key = ' + key);
-                                    if (!key) {
-                                        delete zeronet_file_locked[data_json_path] ;
-                                        throw pgm + 'System error. Encryption error. key = ' + key + ', password = ' + password ;
-                                        continue ;
-                                    }
-                                }
-                                // add feedback info to outgoing message
-                                add_feedback_info(receiver_sha256, message_with_envelope, contact) ;
-                                // don't send unchanged images
-                                image = null ;
-                                if (message.replace_unchanged_image_with_x) {
-                                    // x = 'unchanged image'
-                                    delete message.replace_unchanged_image_with_x ;
-                                    image = message.image ;
-                                    message.image = 'x' ;
-                                }
-                                //console.log(pgm + 'debug - some messages are not delivered');
-                                //console.log(pgm + 'sending ' + message.msgtype + ' to ' + receiver_sha256) ;
-                                debug('outbox && unencrypted', pgm + 'sending message = ' + JSON.stringify(message));
-                                encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(message), password);
-                                debug('outbox && encrypted', pgm + 'sending encrypted message = ' + encrypted_message_str);
-                                if (image) message.image = image ; // restore image
-                                delete message.sender_sha256 ; // info is in message_with_envelope
-                                delete message.local_msg_seq ; // info is in message_with_envelope
-                                // delete message.feedback_info ; // todo: no reason to keep feedback info?
-                                message_with_envelope.zeronet_msg_id = CryptoJS.SHA256(encrypted_message_str).toString();
-                                message_with_envelope.sent_at = sent_at ;
-                                // console.log(pgm + 'new local_storage_messages[' + i + '] = ' + JSON.stringify(message));
-                                // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
-                                data.msg.push({
-                                    user_seq: user_seq,
-                                    receiver_sha256: receiver_sha256,
-                                    key: key,
-                                    message: encrypted_message_str,
-                                    message_sha256: message_with_envelope.zeronet_msg_id,
-                                    timestamp: sent_at
-                                });
-                                // keep track of msg disk usage.User may want to delete biggest messages first when running out of disk space on zeronet
-                                message_with_envelope.zeronet_msg_size = JSON.stringify(data.msg[data.msg.length-1]).length ;
-                                message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
-                                // console.log(pgm + 'new data.msg.last = ' + JSON.stringify(data.msg[data.msg.length-1]));
-                                // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
-
-                                if ((message.msgtype == 'chat msg') && !message.message) {
-                                    // logical deleted just sent empty chat messages
-                                    // will be physical deleted in next ls_save_contacts call
-                                    message_with_envelope.deleted_at = new Date().getTime() ;
-                                }
-
-                                local_storage_updated = true ;
-                                continue ;
-                            } // if
-
-                            if (message_with_envelope.zeronet_msg_id && !message_with_envelope.zeronet_msg_size) {
-                                // add new field zeronet_msg_size
-                                for (k=0 ; k<data.msg.length ; k++) {
-                                    if (data.msg[k].message_sha256 == message_with_envelope.zeronet_msg_id) {
-                                        message_with_envelope.zeronet_msg_size = JSON.stringify(data.msg[k]).length ;
-                                    }
-                                } // for k (data.msg)
-                            } // if
                         } // for j (contact.messages)
                     } // for i (contacts)
 
-                    // console.log(pgm + 'localStorage.messages (2) = ' + JSON.stringify(local_storage_messages));
-                    // console.log(pgm + 'ZeroNet data.msg (2) = ' + JSON.stringify(data.msg));
+                    // insert and encrypt new outgoing messages into data.json
+                    // using callback technique (not required for JSEncrypt but used for all cryptMessage plugin calls)
+                    // will call data cleanup, write and publish when finished encrypting messages
+                    z_update_data_encrypt_message (user_seq, local_storage_updated, data_json_max_size, data) ;
 
-                    // How many bytes used by the other users in data.json file?
-                    var data_json_other_users_size ;
-                    (function() {
-                        var data_clone, i, json_raw ;
-                        data_clone = JSON.parse(JSON.stringify(data)) ;
-                        delete data_clone.version ;
-                        for (i=data_clone.users.length-1 ; i>=0 ; i--) {
-                            if (data_clone.users[i].user_seq == user_seq) data_clone.users.splice(i,1) ;
+                }); // fileGet
+            }); // dbQuery
+        } // z_update_data_json
+
+
+        // encrypt new outgoing message(s) in data.json before cleanup, write and publish
+        // callback technique is used - not required for JSEncrypt but used in cryptMessage plugin
+        // three cryptMessage callback calls for each cryptMessage encrypted message
+        function z_update_data_encrypt_message (user_seq, local_storage_updated, data_json_max_size, data) {
+
+            var pgm = service + '.z_update_data_encrypt_message: ' ;
+
+            var i, contact, encrypt, j, message_with_envelope, message, local_msg_seq, sent_at, key, password,
+                receiver_sha256, k, sender_sha256, image, encrypted_message_str ;
+
+            for (i=0 ; i<ls_contacts.length ; i++) {
+                contact = ls_contacts[i] ;
+                encrypt = null ;
+                for (j=contact.messages.length-1 ; j >= 0 ; j--) {
+                    message_with_envelope = contact.messages[j] ;
+                    if (message_with_envelope.folder != 'outbox') continue ;
+
+                    // new outgoing messages
+                    if (!message_with_envelope.sent_at) {
+                        // not sent - encrypt and insert new message in data.msg array (data.json)
+                        message = message_with_envelope.message ;
+                        // add local_msg_seq. used as message id
+                        if (message_with_envelope.local_msg_seq) {
+                            // resending old message - already local_msg_seq already in message
+                            local_msg_seq = message_with_envelope.local_msg_seq ;
+                            sent_at = message.sent_at ;
+                            debug('lost_message', pgm + 'resending lost message with local_msg_seq ' + local_msg_seq);
                         }
-                        if (data_clone.users.length == 0) delete data_clone.users ;
-                        for (i=data_clone.search.length-1 ; i>=0 ; i--) {
-                            if (data_clone.search[i].user_seq == user_seq) data_clone.search.splice(i,1) ;
-                        }
-                        if (data_clone.search.length == 0) delete data_clone.search ;
-                        for (i=data_clone.msg.length-1 ; i>=0 ; i--) {
-                            if (data_clone.msg[i].user_seq == user_seq) data_clone.msg.splice(i,1) ;
-                        }
-                        if (data_clone.msg.length == 0) delete data_clone.msg ;
-                        if (JSON.stringify(data_clone) == JSON.stringify({}))  data_json_other_users_size = 0 ;
                         else {
-                            json_raw = unescape(encodeURIComponent(JSON.stringify(data_clone, null, "\t")));
-                            data_json_other_users_size = json_raw.length ;
+                            local_msg_seq = next_local_msg_seq() ;
+                            message_with_envelope.local_msg_seq = local_msg_seq;
+                            sent_at = new Date().getTime() ;
                         }
-                        // debug('data_cleanup', pgm + 'data_json_other_users_size = ' + data_json_other_users_size + ', user_seq = ' + user_seq + ', data_clone = ' + JSON.stringify(data_clone)) ;
-                    })() ;
+                        message.local_msg_seq = local_msg_seq ;
 
-                    // check file size. Try to keep data.json file size small for fast communication and small site
-                    // always keep messages for last hour.
-                    // data.json size must also be <data_json_max_size
-                    // todo: issue #42 - data.json size - minor problem - should be a 10Kb limit for current user. not all users in data.json file
-                    var now = new Date().getTime() ;
-                    var one_hour_ago = now - 1000*60*60 ;
-                    var msg_user_seqs, inbox_message, data_removed ;
-                    var count = 0, contact_last_online ;
-                    var outbox_message, no_feedback_expected, no_feedback_received ;
-                    while (true) {
-                        json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
-                        if (json_raw.length < 10000 + data_json_other_users_size) break ; // OK - small file
-
-                        debug('data_cleanup', pgm + 'data.json is big. size ' + json_raw.length + '. limit ' + (10000 + data_json_other_users_size) + ' removing old data ...') ;
-                        // todo: looping forever with message - MoneyNetworkService.z_update_data_json fileGet callback: data.json is big. size 14762. removing old data ...
-                        count = count + 1 ;
-                        if (count > 1000) {
-                            console.log(pgm + 'Ups. System error. Something is wrong here. looping forever!') ;
-                            break ;
+                        if (contact.type == 'group') {
+                            // simple symmetric encryption only using contact.password
+                            // problem. too easy to identify group chat messages
+                            //   a) no key - could add a random key
+                            //   b) identical receiver_sha256 for all messages in chat group. could add a pseudo random receiver_sha256
+                            key = null ;
+                            password = contact.password ;
+                            receiver_sha256 = CryptoJS.SHA256(password).toString();
                         }
-                        data_removed = false ;
-
-                        // a) delete users without any messages (not current user)
-                        msg_user_seqs = [] ;
-                        if (!data.msg) data.msg = [] ;
-                        if (!data.search) data.search = [] ;
-                        for (i=0 ; i<data.msg.length ; i++) {
-                            if (msg_user_seqs.indexOf(data.msg[i].user_seq) == -1) msg_user_seqs.push(data.msg[i].user_seq) ;
-                        }
-                        for (i=0 ; i<data.users.length ; i++) {
-                            if (data.users[i].user_seq == user_seq) continue ;
-                            if (msg_user_seqs.indexOf(data.users[i].user_seq) != -1) continue ;
-                            // remove search words
-                            for (j=data.search.length-1 ; j>=0 ; j--) {
-                                if (data.search[j].user_seq == data.users[i].user_seq) data.search.splice(j,1);
-                            }
-                            // remove user and recheck file size
-                            data.users.splice(i,1);
-                            debug('a: data_cleanup', pgm + 'data.json is big. removed user without any messages') ;
-                            data_removed = true ;
-                            break ;
-                        } // for i (users)
-                        if (data_removed) continue ; // recheck data.json size
-
-                        // new b) cleanup msg that has been received by contact. outbox_message.feedback = unix timestamp
-                        // feedback either as inbox.receiver_sha256 = outbox.sendersha256 or as feedback hash in messages
-                        for (i=0 ; i<ls_contacts.length ; i++) {
-                            contact = ls_contacts[i] ;
-                            if (contact.type == 'group') no_feedback_expected = contact.participants.length-1 ;
-                            if (!contact.messages) continue ;
-                            for (j=0 ; j<contact.messages.length ; j++) {
-                                if (contact.messages[j].folder != 'outbox') continue ;
-                                if (!contact.messages[j].zeronet_msg_id) continue ;
-                                if (contact.type == 'group') {
-                                    // group chat. feedback = object. expects one receipt for each participant in group chat
-                                    if (!contact.messages[j].feedback) no_feedback_received = 0 ;
-                                    else no_feedback_received = Object.keys(contact.messages[j].feedback).length ;
-                                    if (no_feedback_received < no_feedback_expected) continue ;
-                                }
-                                else {
-                                    // normal chat. feedback = boolean. expects one receipt
-                                    if (!contact.messages[j].feedback) continue ;
-                                }
-                                outbox_message = contact.messages[j] ;
-                                // found a outbox message that have been received by contact
-                                // remove outbox message from msg array in data.json file
-                                for (k=data.msg.length-1 ; k >= 0 ; k--) {
-                                    if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
-                                    // found a message that can be deleted from ZeroNet (received by contact)
-                                    debug('data_cleanup', pgm + 'b: found a message that can be deleted from ZeroNet (received by contact)') ;
-                                    data.msg.splice(k,1);
-                                    delete outbox_message.zeronet_msg_id ;
-                                    delete outbox_message.zeronet_msg_size ;
-                                    outbox_message.cleanup_at =  now ;
-                                    local_storage_updated = true ;
-                                    data_removed = true ;
-                                    // todo: from old b) implementation. not possible in new b) implementation
-                                    //if (inbox_message.message.msgtype == 'received') {
-                                    //    // logical delete. will be physical deleted in next ls_save_contacts
-                                    //    inbox_message.deleted_at = new Date().getTime() ;
-                                    //}
-                                    break ;
-                                } // for k (data.msg)
-                                if (data_removed) {
-                                    debug('data_cleanup', pgm + 'b: data.json is big. removed outbox message received by contact') ;
-                                    break ;
-                                }
-                                else {
-                                    debug('data_cleanup', pgm + 'b: error. outbox message was not in data.msg array. cleaning up invalid reference') ;
-                                    delete outbox_message.zeronet_msg_id ;
-                                    delete outbox_message.zeronet_msg_size ;
-                                    outbox_message.cleanup_at =  now ;
-                                    local_storage_updated = true ;
-                                    outbox_message = null ;
-                                }
-                            } // for j (contact.messages)
-                            if (data_removed) break ;
-                        } // for i (contacts)
-                        if (data_removed) continue ; // recheck data.json size
-
-                        // c) cleanup image group chat messages where receipts have been received from all participants in group chat
-                        //    image has send in a group chat message (contact.type = group)
-                        //    message has an empty image_receipts array.
-                        //    see chatCtrl.send_chat_msg - initializing image_receipts array
-                        //    see process_incoming_message - removing participants from image_receipts array
-                        for (i=0 ; i<ls_contacts.length ; i++) {
-                            contact = ls_contacts[i];
-                            if (contact.type != 'group') continue ;
-                            if (!contact.messages) continue ;
-                            for (j=0 ; j<contact.messages.length ; j++) {
-                                outbox_message = contact.messages[j] ;
-                                if (outbox_message.folder != 'outbox') continue ;
-                                if (!outbox_message.zeronet_msg_id) continue ;
-                                if (!outbox_message.hasOwnProperty('image_receipts')) continue ;
-                                // debug('data_cleanup', pgm + 'c: found outbox message with an image_receipts array.') ;
-                                if (outbox_message.image_receipts.length > 0) {
-                                    // debug('data_cleanup', pgm + 'c: keeping image. not all receipts have been received. outbox_message.image_receipts = ' + JSON.stringify(outbox_message.image_receipts));
+                        else {
+                            // RSA encryption + symmetric encryption with random password
+                            if (!encrypt) {
+                                if (!contact.pubkey) {
+                                    // for example messages to deleted guests
+                                    console.log(pgm + 'Cannot send message ' + JSON.stringify(message_with_envelope) + '. contact does not have a public key');
+                                    console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                                    console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
+                                    console.log(pgm + 'deleting message') ;
+                                    // delete invalid message
+                                    contact.messages.splice(j,1);
+                                    for (k=js_messages.length-1 ; k>= 0 ; k--) {
+                                        if (js_messages[k].message == message_with_envelope) {
+                                            js_messages.splice(k,1) ;
+                                        }
+                                    }
                                     continue ;
                                 }
-                                debug('data_cleanup', pgm + 'c: all image receipts have been received. Remove message from data.json') ;
-                                delete outbox_message.image_receipts ;
+                                encrypt = new JSEncrypt();
+                                encrypt.setPublicKey(contact.pubkey);
+                            }
+                            // find receiver_sha256. Use last received sender_sha256 address from contact
+                            // exception: remove + add contact messages can be used to reset communication
+                            if (message.msgtype != 'contact added') receiver_sha256 = contact.inbox_last_sender_sha256 ;
+                            if (!receiver_sha256) receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
+                            // add random sender_sha256 address
+                            sender_sha256 = CryptoJS.SHA256(generate_random_password()).toString();
+                            message_with_envelope.sender_sha256 = sender_sha256;
+                            message.sender_sha256 = sender_sha256 ;
+                            // check this new sha256 address in incoming data.json files (file done event / process_incoming_message)
+                            watch_receiver_sha256.push(sender_sha256) ;
+                            // rsa encrypted key, symmetric encrypted message
+                            password = generate_random_password();
+                            if (encrypt.key.n.bitLength() <= 1024) password = password.substr(0,100) ;
+                            key = encrypt.encrypt(password);
+                            // console.log(pgm + 'password = ' + password + ', key = ' + key);
+                            if (!key) {
+                                delete zeronet_file_locked[data_json_path] ;
+                                throw pgm + 'System error. Encryption error. key = ' + key + ', password = ' + password ;
+                                continue ;
+                            }
+                        }
+                        // add feedback info to outgoing message
+                        add_feedback_info(receiver_sha256, message_with_envelope, contact) ;
+                        // don't send unchanged images
+                        image = null ;
+                        if (message.replace_unchanged_image_with_x) {
+                            // x = 'unchanged image'
+                            delete message.replace_unchanged_image_with_x ;
+                            image = message.image ;
+                            message.image = 'x' ;
+                        }
+                        //console.log(pgm + 'debug - some messages are not delivered');
+                        //console.log(pgm + 'sending ' + message.msgtype + ' to ' + receiver_sha256) ;
+                        debug('outbox && unencrypted', pgm + 'sending message = ' + JSON.stringify(message));
+                        encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(message), password);
+                        debug('outbox && encrypted', pgm + 'sending encrypted message = ' + encrypted_message_str);
+                        if (image) message.image = image ; // restore image
+                        delete message.sender_sha256 ; // info is in message_with_envelope
+                        delete message.local_msg_seq ; // info is in message_with_envelope
+                        // delete message.feedback_info ; // todo: no reason to keep feedback info?
+                        message_with_envelope.zeronet_msg_id = CryptoJS.SHA256(encrypted_message_str).toString();
+                        message_with_envelope.sent_at = sent_at ;
+                        // console.log(pgm + 'new local_storage_messages[' + i + '] = ' + JSON.stringify(message));
+                        // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
+                        data.msg.push({
+                            user_seq: user_seq,
+                            receiver_sha256: receiver_sha256,
+                            key: key,
+                            message: encrypted_message_str,
+                            message_sha256: message_with_envelope.zeronet_msg_id,
+                            timestamp: sent_at
+                        });
+                        // keep track of msg disk usage.User may want to delete biggest messages first when running out of disk space on zeronet
+                        message_with_envelope.zeronet_msg_size = JSON.stringify(data.msg[data.msg.length-1]).length ;
+                        message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
+                        // console.log(pgm + 'new data.msg.last = ' + JSON.stringify(data.msg[data.msg.length-1]));
+                        // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
 
-                                // check if outbox message is in data.msg array
-                                for (k=data.msg.length-1 ; k >= 0 ; k--) {
-                                    if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
-                                    // found a message that can be deleted from ZeroNet (received by contact)
-                                    debug('data_cleanup', pgm + 'c: found an image message that can be deleted from ZeroNet (received by all group chat contacts)') ;
-                                    data.msg.splice(k,1);
-                                    delete outbox_message.zeronet_msg_id ;
-                                    delete outbox_message.zeronet_msg_size ;
-                                    outbox_message.cleanup_at =  now ;
-                                    local_storage_updated = true ;
-                                    data_removed = true ;
-                                    break ;
-                                } // for k (data.msg)
-                                if (data_removed) {
-                                    debug('data_cleanup', pgm + 'c: data.json is big. removed outbox image message received by received by all group chat contacts') ;
-                                    break ;
-                                }
-                                else {
-                                    debug('data_cleanup', pgm + 'c: error. outbox message was not in data.msg array. cleaning up invalid reference') ;
-                                    delete outbox_message.zeronet_msg_id ;
-                                    delete outbox_message.zeronet_msg_size ;
-                                    outbox_message.cleanup_at =  now ;
-                                    local_storage_updated = true ;
-                                }
-                            } // for j (contact.messages)
-                            if (data_removed) break ;
-                        } // for i (contacts)
-                        if (data_removed) continue ; // recheck data.json size
+                        if ((message.msgtype == 'chat msg') && !message.message) {
+                            // logical deleted just sent empty chat messages
+                            // will be physical deleted in next ls_save_contacts call
+                            message_with_envelope.deleted_at = new Date().getTime() ;
+                        }
 
-                        // d) delete old msg. only current user_seq
-                        i = -1 ;
-                        for (j=0; ((i==-1) && (j<data.msg.length)) ; j++) if (data.msg[j].user_seq == user_seq) i = j ;
-                        if ((i == -1) || (data.msg[i].timestamp > one_hour_ago)) {
-                            debug('data_cleanup', pgm + 'd: no more old data to remove.');
+                        local_storage_updated = true ;
+                        continue ;
+                    } // if
+
+                    if (message_with_envelope.zeronet_msg_id && !message_with_envelope.zeronet_msg_size) {
+                        // add new field zeronet_msg_size
+                        for (k=0 ; k<data.msg.length ; k++) {
+                            if (data.msg[k].message_sha256 == message_with_envelope.zeronet_msg_id) {
+                                message_with_envelope.zeronet_msg_size = JSON.stringify(data.msg[k]).length ;
+                            }
+                        } // for k (data.msg)
+                    } // if
+
+                } // for j (contact.messages)
+            } // for i (contacts)
+
+            // console.log(pgm + 'localStorage.messages (2) = ' + JSON.stringify(local_storage_messages));
+            // console.log(pgm + 'ZeroNet data.msg (2) = ' + JSON.stringify(data.msg));
+
+            // no more messages to encrypt. continue with cleanup, write and publish data.json
+
+            // cleanup data. try to keep data.json file small. also checking max user dictionary size
+            if (z_update_data_cleanup (user_seq, local_storage_updated, data_json_max_size, data)) {
+                // Cleanup OK - write and publish updated data.json
+                z_update_data_write_publish (user_seq, data) ;
+            }
+
+        } // z_update_data_encrypt_message
+
+
+        // cleanup old data in data.json before write and publish
+        // data.json file must be as small as possible for fast communication
+        // also checking max user directory size
+        // returns true if OK. returns false if data.json er too big for write and publish
+        function z_update_data_cleanup (user_seq, local_storage_updated, data_json_max_size, data) {
+
+            var pgm = service + '.z_update_data_cleanup: ' ;
+
+            var i, j, k, json_raw, data_clone, data_json_other_users_size, now, one_hour_ago, msg_user_seqs, data_removed,
+                count, contact, contact_last_online, outbox_message, no_feedback_expected, no_feedback_received,
+                available, error ;
+
+            // calculate number of bytes used by other users in data.json file
+            data_clone = JSON.parse(JSON.stringify(data));
+            delete data_clone.version;
+            for (i = data_clone.users.length - 1; i >= 0; i--) {
+                if (data_clone.users[i].user_seq == user_seq) data_clone.users.splice(i, 1);
+            }
+            if (data_clone.users.length == 0) delete data_clone.users;
+            for (i = data_clone.search.length - 1; i >= 0; i--) {
+                if (data_clone.search[i].user_seq == user_seq) data_clone.search.splice(i, 1);
+            }
+            if (data_clone.search.length == 0) delete data_clone.search;
+            for (i = data_clone.msg.length - 1; i >= 0; i--) {
+                if (data_clone.msg[i].user_seq == user_seq) data_clone.msg.splice(i, 1);
+            }
+            if (data_clone.msg.length == 0) delete data_clone.msg;
+            if (JSON.stringify(data_clone) == JSON.stringify({}))  data_json_other_users_size = 0;
+            else {
+                json_raw = unescape(encodeURIComponent(JSON.stringify(data_clone, null, "\t")));
+                data_json_other_users_size = json_raw.length;
+            }
+            // debug('data_cleanup', pgm + 'data_json_other_users_size = ' + data_json_other_users_size + ', user_seq = ' + user_seq + ', data_clone = ' + JSON.stringify(data_clone)) ;
+
+            // check file size. Try to keep data.json file size small for fast communication and small site
+            // always keep messages for last hour.
+            // data.json size must also be <data_json_max_size
+            // todo: issue #42 - data.json size - minor problem - should be a 10Kb limit for current user. not all users in data.json file
+            now = new Date().getTime() ;
+            one_hour_ago = now - 1000*60*60 ;
+            count = 0 ;
+            while (true) {
+                json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
+                if (json_raw.length < 10000 + data_json_other_users_size) break ; // OK - small file
+
+                debug('data_cleanup', pgm + 'data.json is big. size ' + json_raw.length + '. limit ' + (10000 + data_json_other_users_size) + ' removing old data ...') ;
+                // todo: looping forever with message - MoneyNetworkService.z_update_data_json fileGet callback: data.json is big. size 14762. removing old data ...
+                count = count + 1 ;
+                if (count > 1000) {
+                    console.log(pgm + 'Ups. System error. Something is wrong here. looping forever!') ;
+                    break ;
+                }
+                data_removed = false ;
+
+                // a) delete users without any messages (not current user)
+                msg_user_seqs = [] ;
+                if (!data.msg) data.msg = [] ;
+                if (!data.search) data.search = [] ;
+                for (i=0 ; i<data.msg.length ; i++) {
+                    if (msg_user_seqs.indexOf(data.msg[i].user_seq) == -1) msg_user_seqs.push(data.msg[i].user_seq) ;
+                }
+                for (i=0 ; i<data.users.length ; i++) {
+                    if (data.users[i].user_seq == user_seq) continue ;
+                    if (msg_user_seqs.indexOf(data.users[i].user_seq) != -1) continue ;
+                    // remove search words
+                    for (j=data.search.length-1 ; j>=0 ; j--) {
+                        if (data.search[j].user_seq == data.users[i].user_seq) data.search.splice(j,1);
+                    }
+                    // remove user and recheck file size
+                    data.users.splice(i,1);
+                    debug('a: data_cleanup', pgm + 'data.json is big. removed user without any messages') ;
+                    data_removed = true ;
+                    break ;
+                } // for i (users)
+                if (data_removed) continue ; // recheck data.json size
+
+                // new b) cleanup msg that has been received by contact. outbox_message.feedback = unix timestamp
+                // feedback either as inbox.receiver_sha256 = outbox.sendersha256 or as feedback hash in messages
+                for (i=0 ; i<ls_contacts.length ; i++) {
+                    contact = ls_contacts[i] ;
+                    if (contact.type == 'group') no_feedback_expected = contact.participants.length-1 ;
+                    if (!contact.messages) continue ;
+                    for (j=0 ; j<contact.messages.length ; j++) {
+                        if (contact.messages[j].folder != 'outbox') continue ;
+                        if (!contact.messages[j].zeronet_msg_id) continue ;
+                        if (contact.type == 'group') {
+                            // group chat. feedback = object. expects one receipt for each participant in group chat
+                            if (!contact.messages[j].feedback) no_feedback_received = 0 ;
+                            else no_feedback_received = Object.keys(contact.messages[j].feedback).length ;
+                            if (no_feedback_received < no_feedback_expected) continue ;
+                        }
+                        else {
+                            // normal chat. feedback = boolean. expects one receipt
+                            if (!contact.messages[j].feedback) continue ;
+                        }
+                        outbox_message = contact.messages[j] ;
+                        // found a outbox message that have been received by contact
+                        // remove outbox message from msg array in data.json file
+                        for (k=data.msg.length-1 ; k >= 0 ; k--) {
+                            if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
+                            // found a message that can be deleted from ZeroNet (received by contact)
+                            debug('data_cleanup', pgm + 'b: found a message that can be deleted from ZeroNet (received by contact)') ;
+                            data.msg.splice(k,1);
+                            delete outbox_message.zeronet_msg_id ;
+                            delete outbox_message.zeronet_msg_size ;
+                            outbox_message.cleanup_at =  now ;
+                            local_storage_updated = true ;
+                            data_removed = true ;
+                            // todo: from old b) implementation. not possible in new b) implementation
+                            //if (inbox_message.message.msgtype == 'received') {
+                            //    // logical delete. will be physical deleted in next ls_save_contacts
+                            //    inbox_message.deleted_at = new Date().getTime() ;
+                            //}
+                            break ;
+                        } // for k (data.msg)
+                        if (data_removed) {
+                            debug('data_cleanup', pgm + 'b: data.json is big. removed outbox message received by contact') ;
                             break ;
                         }
-                        // found old data.msg row. find outbox message
-                        outbox_message = null ;
-                        debug('data_cleanup', pgm + 'd: data.msg[i].message_sha256 = ' + data.msg[i].message_sha256) ;
-                        for (j=0 ; j<ls_contacts.length ; j++) {
-                            contact = ls_contacts[j] ;
-                            for (k=0 ; k<contact.messages.length ; k++) {
-                                // debug('data_cleanup', pgm + 'd: k = ' + k + ', folder = ' + contact.messages[k].folder + ', zeronet_msg_id = ' + contact.messages[k].zeronet_msg_id);
-                                if (contact.messages[k].folder != 'outbox') continue;
-                                if (!contact.messages[k].zeronet_msg_id) continue;
-                                if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
-                                // found outbox message
-                                contact_last_online = get_last_online (contact) ;
-                                if (contact_last_online > contact.messages[k].sent_at) {
-                                    debug('data_cleanup', 'd: removing old probably received outbox message from Zeronet. ' +
-                                        'contact.last_online = ' + contact_last_online +
-                                        ', outbox_message = ' + JSON.stringify(outbox_message)) ;
-                                }
-                                else {
-                                    debug('data_cleanup', 'd: removing old probably not received outbox message from Zeronet. ' +
-                                        'contact.last_online = ' + contact_last_online +
-                                        ', outbox_message = ' + JSON.stringify(outbox_message)) ;
-                                }
-                                outbox_message = contact.messages[k] ;
-                                break ;
-                            } // for k (contact.messages)
-                            if (outbox_message) break ;
-                        } // for j (contacts)
-                        if (outbox_message) {
-                            // remove reference from outbox to zeronet
+                        else {
+                            debug('data_cleanup', pgm + 'b: error. outbox message was not in data.msg array. cleaning up invalid reference') ;
+                            delete outbox_message.zeronet_msg_id ;
+                            delete outbox_message.zeronet_msg_size ;
+                            outbox_message.cleanup_at =  now ;
+                            local_storage_updated = true ;
+                            outbox_message = null ;
+                        }
+                    } // for j (contact.messages)
+                    if (data_removed) break ;
+                } // for i (contacts)
+                if (data_removed) continue ; // recheck data.json size
+
+                // c) cleanup image group chat messages where receipts have been received from all participants in group chat
+                //    image has send in a group chat message (contact.type = group)
+                //    message has an empty image_receipts array.
+                //    see chatCtrl.send_chat_msg - initializing image_receipts array
+                //    see process_incoming_message - removing participants from image_receipts array
+                for (i=0 ; i<ls_contacts.length ; i++) {
+                    contact = ls_contacts[i];
+                    if (contact.type != 'group') continue ;
+                    if (!contact.messages) continue ;
+                    for (j=0 ; j<contact.messages.length ; j++) {
+                        outbox_message = contact.messages[j] ;
+                        if (outbox_message.folder != 'outbox') continue ;
+                        if (!outbox_message.zeronet_msg_id) continue ;
+                        if (!outbox_message.hasOwnProperty('image_receipts')) continue ;
+                        // debug('data_cleanup', pgm + 'c: found outbox message with an image_receipts array.') ;
+                        if (outbox_message.image_receipts.length > 0) {
+                            // debug('data_cleanup', pgm + 'c: keeping image. not all receipts have been received. outbox_message.image_receipts = ' + JSON.stringify(outbox_message.image_receipts));
+                            continue ;
+                        }
+                        debug('data_cleanup', pgm + 'c: all image receipts have been received. Remove message from data.json') ;
+                        delete outbox_message.image_receipts ;
+
+                        // check if outbox message is in data.msg array
+                        for (k=data.msg.length-1 ; k >= 0 ; k--) {
+                            if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
+                            // found a message that can be deleted from ZeroNet (received by contact)
+                            debug('data_cleanup', pgm + 'c: found an image message that can be deleted from ZeroNet (received by all group chat contacts)') ;
+                            data.msg.splice(k,1);
+                            delete outbox_message.zeronet_msg_id ;
+                            delete outbox_message.zeronet_msg_size ;
+                            outbox_message.cleanup_at =  now ;
+                            local_storage_updated = true ;
+                            data_removed = true ;
+                            break ;
+                        } // for k (data.msg)
+                        if (data_removed) {
+                            debug('data_cleanup', pgm + 'c: data.json is big. removed outbox image message received by received by all group chat contacts') ;
+                            break ;
+                        }
+                        else {
+                            debug('data_cleanup', pgm + 'c: error. outbox message was not in data.msg array. cleaning up invalid reference') ;
                             delete outbox_message.zeronet_msg_id ;
                             delete outbox_message.zeronet_msg_size ;
                             outbox_message.cleanup_at =  now ;
                             local_storage_updated = true ;
                         }
-                        else debug('data_cleanup', pgm + 'd: Warning. Could not find outbox message with zeronet_msg_id ' + data.msg[i].message_sha256) ;
-                        // remove from zeronet
-                        data.msg.splice(i,1);
+                    } // for j (contact.messages)
+                    if (data_removed) break ;
+                } // for i (contacts)
+                if (data_removed) continue ; // recheck data.json size
 
-                        debug('data_cleanup', pgm + 'd: data.json is big. deleted old message') ;
-                    } // while true
-
-                    // console.log(pgm + 'localStorage.messages (3) = ' + JSON.stringify(local_storage_messages));
-                    // console.log(pgm + 'ZeroNet data.msg (3) = ' + JSON.stringify(data.msg));
-                    if (local_storage_updated) ls_save_contacts(false) ;
-
-                    var available = data_json_max_size - json_raw.length - 100 ;
-                    if (available < 0) {
-                        // data.json is too big. User have to delete some outgoing messages.
-                        // specially outgoing chat messages with picture can be a problem
-                        error =
-                            "Sorry. Cannot send message(s). No more disk space. Missing " + (0-available) + " bytes.<br>" +
-                            "Please delete some outgoing messages or remove some images from outgoing chat messages" ;
-                        console.log(pgm + error);
-                        ZeroFrame.cmd("wrapperNotification", ["error", error]);
-                        return ;
-                    }
-                    else debug('data_cleanup', pgm + 'OK. ' + available + ' bytes free in user directory on ZeroNet');
-
-                    // console.log(pgm + 'added new rows for user_seq ' + user_seq + ', data = ' + JSON.stringify(data)) ;
-                    // console.log(pgm + 'calling fileWrite: inner_path = ' + data_inner_path + ', data = ' + JSON.stringify(btoa(json_raw)));
-                    ZeroFrame.cmd("fileWrite", [data_json_path, btoa(json_raw)], function (res) {
-                        delete zeronet_file_locked[data_json_path] ;
-                        var pgm = service + '.z_update_data_json fileWrite callback: ' ;
-                        // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                        if (res === "ok") {
-                            // console.log(pgm + 'calling sitePublish: inner_path = ' + content_inner_path) ;
-                            zeronet_site_publish(user_seq) ;
-                            //ZeroFrame.cmd("sitePublish", {inner_path: content_inner_path}, function (res) {
-                            //    var pgm = service + '.z_update_data_json sitePublish callback: ' ;
-                            //    // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                            //    if (res != "ok") {
-                            //        ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish: " + res.error, 5000]);
-                            //        console.log(pgm + 'Error. Failed to publish: ' + res.error);
-                            //        console.log(pgm + 'todo: keep track of failed sitePublish. Could be device temporary offline');
-                            //    }
-                            //}); // sitePublish
+                // d) delete old msg. only current user_seq
+                i = -1 ;
+                for (j=0; ((i==-1) && (j<data.msg.length)) ; j++) if (data.msg[j].user_seq == user_seq) i = j ;
+                if ((i == -1) || (data.msg[i].timestamp > one_hour_ago)) {
+                    debug('data_cleanup', pgm + 'd: no more old data to remove.');
+                    break ;
+                }
+                // found old data.msg row. find outbox message
+                outbox_message = null ;
+                debug('data_cleanup', pgm + 'd: data.msg[i].message_sha256 = ' + data.msg[i].message_sha256) ;
+                for (j=0 ; j<ls_contacts.length ; j++) {
+                    contact = ls_contacts[j] ;
+                    for (k=0 ; k<contact.messages.length ; k++) {
+                        // debug('data_cleanup', pgm + 'd: k = ' + k + ', folder = ' + contact.messages[k].folder + ', zeronet_msg_id = ' + contact.messages[k].zeronet_msg_id);
+                        if (contact.messages[k].folder != 'outbox') continue;
+                        if (!contact.messages[k].zeronet_msg_id) continue;
+                        if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue ;
+                        // found outbox message
+                        contact_last_online = get_last_online (contact) ;
+                        if (contact_last_online > contact.messages[k].sent_at) {
+                            debug('data_cleanup', 'd: removing old probably received outbox message from Zeronet. ' +
+                                'contact.last_online = ' + contact_last_online +
+                                ', outbox_message = ' + JSON.stringify(outbox_message)) ;
                         }
                         else {
-                            ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
-                            console.log(pgm + 'Error. Failed to post: ' + res.error) ;
+                            debug('data_cleanup', 'd: removing old probably not received outbox message from Zeronet. ' +
+                                'contact.last_online = ' + contact_last_online +
+                                ', outbox_message = ' + JSON.stringify(outbox_message)) ;
                         }
-                    }); // fileWrite
-                }); // fileGet
-            }) // dbQuery
-        } // z_update_data_json
+                        outbox_message = contact.messages[k] ;
+                        break ;
+                    } // for k (contact.messages)
+                    if (outbox_message) break ;
+                } // for j (contacts)
+                if (outbox_message) {
+                    // remove reference from outbox to zeronet
+                    delete outbox_message.zeronet_msg_id ;
+                    delete outbox_message.zeronet_msg_size ;
+                    outbox_message.cleanup_at =  now ;
+                    local_storage_updated = true ;
+                }
+                else debug('data_cleanup', pgm + 'd: Warning. Could not find outbox message with zeronet_msg_id ' + data.msg[i].message_sha256) ;
+                // remove from zeronet
+                data.msg.splice(i,1);
+
+                debug('data_cleanup', pgm + 'd: data.json is big. deleted old message') ;
+            } // while true
+
+            // console.log(pgm + 'localStorage.messages (3) = ' + JSON.stringify(local_storage_messages));
+            // console.log(pgm + 'ZeroNet data.msg (3) = ' + JSON.stringify(data.msg));
+            if (local_storage_updated) ls_save_contacts(false) ;
+
+            available = data_json_max_size - json_raw.length - 100 ;
+            if (available < 0) {
+                // data.json is too big. User have to delete some outgoing messages.
+                // specially outgoing chat messages with picture can be a problem
+                error =
+                    "Sorry. Cannot send message(s). No more disk space. Missing " + (0-available) + " bytes.<br>" +
+                    "Please delete some outgoing messages or remove some images from outgoing chat messages" ;
+                console.log(pgm + error);
+                ZeroFrame.cmd("wrapperNotification", ["error", error]);
+                return false ; // stop
+            }
+            else {
+                debug('data_cleanup', pgm + 'OK. ' + available + ' bytes free in user directory on ZeroNet');
+                return true ; // continue. write & publish data.json file
+            }
+
+
+        } // z_update_data_cleanup
+
+
+        // last step in data.json update - write and publish
+        function z_update_data_write_publish (user_seq, data) {
+            var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
+            var json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
+            ZeroFrame.cmd("fileWrite", [data_json_path, btoa(json_raw)], function (res) {
+                delete zeronet_file_locked[data_json_path] ;
+                var pgm = service + '.z_update_data_write_publish fileWrite callback: ' ;
+                // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                if (res === "ok") zeronet_site_publish(user_seq) ;
+                else {
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
+                    console.log(pgm + 'Error. Failed to post: ' + res.error) ;
+                }
+            }); // fileWrite
+        } // z_update_data_write_publish
 
 
         // user info. Array with tag, value and privacy.
@@ -4068,7 +4111,7 @@ angular.module('MoneyNetwork')
             var pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data) {
                 var pgm = service + '.i_am_online fileGet 1 callback: ';
-                // console.log(pgm + 'data = ' + JSON.stringify(data));
+                console.log(pgm + 'data = ' + JSON.stringify(data));
                 if (!data) {
                     console.log(pgm + 'No data.json file' + info) ;
                     return ;
