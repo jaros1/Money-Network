@@ -1164,6 +1164,7 @@ angular.module('MoneyNetwork')
                         }
                         else {
                             // RSA encryption + symmetric encryption with random password
+                            if (contact.encryption == '2') console.log(pgm + 'cryptMessage encryption not yet implemented. Using JSEncrypt instead');
                             if (!encrypt) {
                                 if (!contact.pubkey) {
                                     // for example messages to deleted guests
@@ -1941,7 +1942,8 @@ angular.module('MoneyNetwork')
 
             // three nested callbacks: 1) get public key and user seq. 2) refresh avatars and 3) check data.json
 
-            // 1) get pubkeys from ZeroNet. Use auth_address and check unique id. also set user_seq and timestamp
+            // 1) get pubkeys from ZeroNet and preferred encryption. also set user_seq and timestamp
+            // Use auth_address and check unique id.
             var contact, auth_addresses = [] ;
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
@@ -1959,7 +1961,7 @@ angular.module('MoneyNetwork')
             var query =
                 "select" +
                 "  substr(data_json.directory,7) as auth_address, users.user_seq, users.pubkey, users.pubkey2," +
-                "  status.timestamp " +
+                "  users.encryption, status.timestamp " +
                 "from json as data_json, json as content_json, users, json as status_json, status " +
                 "where data_json.directory in " ;
             for (i = 0; i < auth_addresses.length; i++) {
@@ -1997,17 +1999,18 @@ angular.module('MoneyNetwork')
                         user_seq: res[i].user_seq,
                         pubkey: res[i].pubkey,
                         pubkey2: res[i].pubkey2,
+                        encryption: res[i].encryption,
                         last_updated: Math.round(res[i].timestamp / 1000)
                     });
                 } // for i
                 // console.log(pgm + 'res_hash = ' + JSON.stringify(res_hash));
 
                 // control. check that pubkey in contacts are identical with pubkeys from this query
-                var auth_address, unique_id, found_user_seq, found_pubkey, found_pubkey2, found_last_updated;
+                var auth_address, unique_id, found_user_seq, found_pubkey, found_pubkey2, found_encryption, found_last_updated;
                 // delete contact helper. keep or delete contact without public key?
                 var delete_contact = function (contact, i) {
                     var msg, last_updated, j, no_msg;
-                    msg = 'Public key was not found for ' + get_contact_name(contact);
+                    msg = 'Public keys was not found for ' + get_contact_name(contact);
                     last_updated = get_last_online(contact);
                     if (last_updated) msg += '. Last online ' + date(last_updated * 1000, 'short');
                     if (['new', 'guest'].indexOf(contact.type) != -1) {
@@ -2040,6 +2043,7 @@ angular.module('MoneyNetwork')
                             found_user_seq = res_hash[auth_address][j].user_seq;
                             found_pubkey = res_hash[auth_address][j].pubkey;
                             found_pubkey2 = res_hash[auth_address][j].pubkey2;
+                            found_encryption = res_hash[auth_address][j].encryption;
                             found_last_updated = res_hash[auth_address][j].last_updated;
                         }
                     }
@@ -2050,6 +2054,7 @@ angular.module('MoneyNetwork')
                     contact.user_seq = found_user_seq;
                     contact.pubkey = found_pubkey;
                     contact.pubkey2 = found_pubkey2;
+                    contact.encryption = found_encryption ;
                     // update "Last online"
                     set_last_online(contact, found_last_updated);
                     // console.log(pgm + 'contact = ' + JSON.stringify(contact));
@@ -2229,6 +2234,7 @@ angular.module('MoneyNetwork')
                 delete contact.user_seq ; // available on ZeroNet
                 delete contact.pubkey ; // available on ZeroNet
                 delete contact.pubkey2 ; // available on ZeroNet
+                delete contact.encryption ; // available on ZeroNet
                 if (contact.search) for (j=0 ; j<contact.search.length ; j++) {
                     delete contact.search[j]['$$hashKey'] ;
                     delete contact.search[j].edit_alias ;
@@ -2408,11 +2414,11 @@ angular.module('MoneyNetwork')
                 // find other clients with matching search words using sqlite like operator
                 // Search: tags shared public on ZeroNet. Hidden: tags stored only in localStorage
 
-                // new contacts query without modified timestamp from content.json (keyvalue)
+                // contacts query without modified timestamp from content.json (keyvalue)
                 if (auth_address) debug('select', pgm + 'auth_address = ' + auth_address) ;
                 var contacts_query =
                     "select" +
-                    "  users.user_seq, users.pubkey, users.avatar as users_avatar, users.guest," +
+                    "  users.user_seq, users.pubkey, users.pubkey2, users.encryption, users.avatar as users_avatar, users.guest," +
                     "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
                     "  content_json.json_id as content_json_id," +
                     "  keyvalue.value as cert_user_id," +
@@ -2447,7 +2453,9 @@ angular.module('MoneyNetwork')
                 query =
                     "select" +
                     "  my_search.tag as my_tag, my_search.value as my_value," +
-                    "  contacts.pubkey as other_pubkey, contacts.guest as other_guest, contacts.auth_address as other_auth_address," +
+                    "  contacts.pubkey as other_pubkey, contacts.pubkey2 as other_pubkey2," +
+                    "  contacts.encryption as other_encryption, contacts.guest as other_guest," +
+                    "  contacts.auth_address as other_auth_address," +
                     "  contacts.cert_user_id as other_cert_user_id," +
                     "  contacts.timestamp as other_user_timestamp," +
                     "  search.tag as other_tag, search.value as other_value, " +
@@ -2511,6 +2519,8 @@ angular.module('MoneyNetwork')
                                 auth_address: res[i].other_auth_address,
                                 cert_user_id: res[i].other_cert_user_id,
                                 pubkey: res[i].other_pubkey,
+                                pubkey2: res[i].other_pubkey2,
+                                encryption: res[i].other_encryption,
                                 guest: res[i].other_guest,
                                 avatar: res[i].other_files_avatar || res[i].other_users_avatar,
                                 search: [{ tag: 'Online', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
@@ -2563,6 +2573,7 @@ angular.module('MoneyNetwork')
 
                         // update contact with new search words
                         contact.cert_user_id = res_hash[unique_id].cert_user_id ;
+                        contact.encryption = res_hash[unique_id].encryption ;
                         if (res_hash[unique_id].guest && (contact.type == 'new')) {
                             contact.type = 'guest';
                             contact.guest = true ;
@@ -2593,6 +2604,8 @@ angular.module('MoneyNetwork')
                             cert_user_id: res_hash[unique_id].cert_user_id,
                             avatar: res_hash[unique_id].avatar,
                             pubkey: res_hash[unique_id].pubkey,
+                            pubkey2: res_hash[unique_id].pubkey2,
+                            encryption: res_hash[unique_id].encryption,
                             search: res_hash[unique_id].search,
                             messages: [],
                             outbox_sender_sha256: {},
