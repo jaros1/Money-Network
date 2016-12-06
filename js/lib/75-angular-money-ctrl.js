@@ -14,30 +14,24 @@ angular.module('MoneyNetwork')
             "message_sha256": "c193ed82e2b785b6fa21d005e3d9350ffb542c0055ab1bbb80d7fa8e9e8c4325",
             "timestamp": 1480826880820
         };
-        console.log(controller + 'original_json = ' + JSON.stringify(original_json)) ;
 
         // encrypt step 1 - generate random password
         ZeroFrame.cmd("aesEncrypt", [""], function (res) {
             var pgm = controller + ' aesEncrypt callback 1: ';
-            console.log(pgm + 'res = ' + JSON.stringify(res));
             var password = res[0];
-            console.log(pgm + 'password = ' + password) ;
 
             // encrypt step 2 - ecies encrypted password = key
-            var pubkey2 = MoneyNetworkHelper.getItem('pubkey2'); // userid (integer) has used when generating this public key
+            var pubkey = MoneyNetworkHelper.getItem('pubkey2'); // userid (integer) has used when generating this public key
 
-            return ZeroFrame.cmd("eciesEncrypt", [password, pubkey2], function (key) {
+            return ZeroFrame.cmd("eciesEncrypt", [password, pubkey], function (key) {
                 var pgm = controller + ' eciesEncrypt callback 2: ';
-                console.log(pgm + 'key = ' + JSON.stringify(key));
 
                 // encrypt step 3 - aes encrypt message
                 ZeroFrame.cmd("aesEncrypt", [JSON.stringify(original_json), password], function (res) {
                     var pgm = controller + ' aesEncrypt callback 3: ';
                     var iv = res[1], encrypted = res[2];
                     var original_json_encrypted = iv + "," + encrypted;
-                    console.log(pgm + 'original_json_encryted = ' + original_json_encrypted);
                     var data_json_row = { key: key, message: original_json_encrypted} ;
-                    console.log(pgm + 'encryption done. encrypted_message = ' + JSON.stringify(data_json_row)) ;
 
                     // encrypt step 4 - send message (data.json must be used)
                     decrypt_message(data_json_row) ;
@@ -55,26 +49,20 @@ angular.module('MoneyNetwork')
             // decrypt step 1 - receive encrypted message ;
             var key = data_json_row.key ;
             var message = data_json_row.message ;
-            console.log(pgm + 'key = ' + key);
             var message_array = message.split(',') ;
             var iv = message_array[0] ;
             var encrypted = message_array[1] ;
-            console.log(pgm + 'iv = ' + iv) ;
-            console.log(pgm + 'encrypted = ' + encrypted) ;
 
             // decrypt step 1 - decrypt key = password
             var userid = parseInt(MoneyNetworkHelper.getItem('userid'));
-            console.log(pgm + 'userid = ' + userid) ;
+
             ZeroFrame.cmd("eciesDecrypt", [key, userid], function(password) {
                 var pgm = controller + '.decrypt_message eciesDecrypt callback 1: ' ;
-                console.log(pgm + 'password = ' + password) ;
 
                 // decrypt step 2 - decrypt message
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (res) {
                     var pgm = controller + '.decrypt_message aesDecrypt callback 2: ' ;
-                    console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     var received_json = JSON.parse(res) ;
-                    console.log(pgm + 'received_json = ' + JSON.stringify(received_json));
 
                     if (JSON.stringify(original_json) == JSON.stringify(received_json)) console.log(pgm + 'Test OK') ;
                     else console.log(pgm + 'Test NOT OK') ;
