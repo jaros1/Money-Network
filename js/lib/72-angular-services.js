@@ -1139,6 +1139,24 @@ angular.module('MoneyNetwork')
                     if (!message_with_envelope.sent_at) {
                         // not sent - encrypt and insert new message in data.msg array (data.json)
                         message = message_with_envelope.message ;
+                        // check public key
+                        if (contact.type != 'group') {
+                            if (((contact.encryption != '2') && !contact.pubkey) ||
+                                ((contact.encryption == '2') && !contact.pubkey2)) {
+                                console.log(pgm + 'Cannot send message ' + JSON.stringify(message_with_envelope) + '. contact does not have a public key');
+                                console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                                console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
+                                console.log(pgm + 'deleting message') ;
+                                // delete invalid message
+                                contact.messages.splice(j,1);
+                                for (k=js_messages.length-1 ; k>= 0 ; k--) {
+                                    if (js_messages[k].message == message_with_envelope) {
+                                        js_messages.splice(k,1) ;
+                                    }
+                                }
+                                continue ;
+                            }
+                        }
                         // add local_msg_seq. used as message id
                         if (message_with_envelope.local_msg_seq) {
                             // resending old message - already local_msg_seq already in message
@@ -1152,7 +1170,41 @@ angular.module('MoneyNetwork')
                             sent_at = new Date().getTime() ;
                         }
                         message.local_msg_seq = local_msg_seq ;
+                        // receiver_sha256
+                        if (contact.type == 'group') CryptoJS.SHA256(password).toString(contact.password);
+                        else {
+                            // find receiver_sha256. Use last received sender_sha256 address from contact
+                            // exception: remove + add contact messages can be used to reset communication
+                            if (message.msgtype != 'contact added') receiver_sha256 = contact.inbox_last_sender_sha256 ;
+                            if (!receiver_sha256) receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
+                        }
+                        // sender_sha256
+                        if (contact.type != 'group') {
+                            // add random sender_sha256 address. No sender_sha256 in group chat. see feedback information
+                            sender_sha256 = CryptoJS.SHA256(generate_random_password()).toString();
+                            message_with_envelope.sender_sha256 = sender_sha256;
+                            message.sender_sha256 = sender_sha256 ;
+                            // check this new sha256 address in incoming data.json files (file done event / process_incoming_message)
+                            watch_receiver_sha256.push(sender_sha256) ;
+                        }
+                        // add feedback info to outgoing message
+                        add_feedback_info(receiver_sha256, message_with_envelope, contact) ;
+                        // don't send unchanged images. move to envelope before send and back to message after send
+                        delete message_with_envelope.image ;
+                        if (message.replace_unchanged_image_with_x) {
+                            // x = 'unchanged image'
+                            delete message.replace_unchanged_image_with_x ;
+                            message_with_envelope.image = message.image ;
+                            message.image = 'x' ;
+                        }
+                        //console.log(pgm + 'debug - some messages are not delivered');
+                        //console.log(pgm + 'sending ' + message.msgtype + ' to ' + receiver_sha256) ;
+                        debug('outbox && unencrypted', pgm + 'sending message = ' + JSON.stringify(message));
 
+                        // encrypt. 3 different encryption models.
+                        // group chat. symmetric encryption
+                        // encryption = 1: JSEncrypt. RSA + symmetric encryption. no callbacks
+                        // encryption = 2: cryptMessage plugin. eciesEncrypt + aesEncrypt with callbacks
                         if (contact.type == 'group') {
                             // simple symmetric encryption only using contact.password
                             // problem. too easy to identify group chat messages
@@ -1162,38 +1214,12 @@ angular.module('MoneyNetwork')
                             password = contact.password ;
                             receiver_sha256 = CryptoJS.SHA256(password).toString();
                         }
-                        else {
-                            // RSA encryption + symmetric encryption with random password
-                            if (contact.encryption == '2') console.log(pgm + 'cryptMessage encryption not yet implemented. Using JSEncrypt instead');
+                        else if (contact.encryption != '2') {
+                            // JSEncrypt
                             if (!encrypt) {
-                                if (!contact.pubkey) {
-                                    // for example messages to deleted guests
-                                    console.log(pgm + 'Cannot send message ' + JSON.stringify(message_with_envelope) + '. contact does not have a public key');
-                                    console.log(pgm + 'contact = ' + JSON.stringify(contact));
-                                    console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
-                                    console.log(pgm + 'deleting message') ;
-                                    // delete invalid message
-                                    contact.messages.splice(j,1);
-                                    for (k=js_messages.length-1 ; k>= 0 ; k--) {
-                                        if (js_messages[k].message == message_with_envelope) {
-                                            js_messages.splice(k,1) ;
-                                        }
-                                    }
-                                    continue ;
-                                }
                                 encrypt = new JSEncrypt();
                                 encrypt.setPublicKey(contact.pubkey);
                             }
-                            // find receiver_sha256. Use last received sender_sha256 address from contact
-                            // exception: remove + add contact messages can be used to reset communication
-                            if (message.msgtype != 'contact added') receiver_sha256 = contact.inbox_last_sender_sha256 ;
-                            if (!receiver_sha256) receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
-                            // add random sender_sha256 address
-                            sender_sha256 = CryptoJS.SHA256(generate_random_password()).toString();
-                            message_with_envelope.sender_sha256 = sender_sha256;
-                            message.sender_sha256 = sender_sha256 ;
-                            // check this new sha256 address in incoming data.json files (file done event / process_incoming_message)
-                            watch_receiver_sha256.push(sender_sha256) ;
                             // rsa encrypted key, symmetric encrypted message
                             password = generate_random_password();
                             if (encrypt.key.n.bitLength() <= 1024) password = password.substr(0,100) ;
@@ -1205,22 +1231,24 @@ angular.module('MoneyNetwork')
                                 continue ;
                             }
                         }
-                        // add feedback info to outgoing message
-                        add_feedback_info(receiver_sha256, message_with_envelope, contact) ;
-                        // don't send unchanged images
-                        image = null ;
-                        if (message.replace_unchanged_image_with_x) {
-                            // x = 'unchanged image'
-                            delete message.replace_unchanged_image_with_x ;
-                            image = message.image ;
-                            message.image = 'x' ;
+                        else {
+                            // cryptMessage plugin encryption
+                            // 3 callbacks. 1) generate password, 2) encrypt password=key and 3) encrypt message,
+                            z_update_data_cryptmessage (
+                                user_seq, local_storage_updated, data_json_max_size, data, contact.pubkey2,
+                                message_with_envelope, receiver_sha256, sent_at
+                            ) ;
+                            // stop. z_update_data_cryptmessage will callback to this function when done with this message
+                            return ;
+
                         }
-                        //console.log(pgm + 'debug - some messages are not delivered');
-                        //console.log(pgm + 'sending ' + message.msgtype + ' to ' + receiver_sha256) ;
-                        debug('outbox && unencrypted', pgm + 'sending message = ' + JSON.stringify(message));
                         encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(message), password);
                         debug('outbox && encrypted', pgm + 'sending encrypted message = ' + encrypted_message_str);
-                        if (image) message.image = image ; // restore image
+                        if (message_with_envelope.image) {
+                            // restore image
+                            message.image = message_with_envelope.image ;
+                            delete message_with_envelope.image ;
+                        }
                         delete message.sender_sha256 ; // info is in message_with_envelope
                         delete message.local_msg_seq ; // info is in message_with_envelope
                         // delete message.feedback_info ; // todo: no reason to keep feedback info?
@@ -1276,6 +1304,75 @@ angular.module('MoneyNetwork')
             }
 
         } // z_update_data_encrypt_message
+
+
+        // Zeronet cryptMessage plugin - three callbacks and "return" to z_update_data_encrypt_message when done
+        function z_update_data_cryptmessage (user_seq, local_storage_updated, data_json_max_size, data, pubkey2, message_with_envelope, receiver_sha256, sent_at) {
+
+            var pgm = service + '.z_update_data_cryptmessage: ' ;
+
+            ZeroFrame.cmd("aesEncrypt", [""], function (res) {
+                var pgm = service + '.z_update_data_cryptmessage aesEncrypt callback 1: ';
+                var password = res[0];
+
+                return ZeroFrame.cmd("eciesEncrypt", [password, pubkey2], function (key) {
+                    var pgm = service + '.z_update_data_cryptmessage eciesEncrypt callback 2: ';
+
+                    // encrypt step 3 - aes encrypt message
+                    ZeroFrame.cmd("aesEncrypt", [JSON.stringify(message_with_envelope.message), password], function (res) {
+                        var pgm = service + '.z_update_data_cryptmessage aesEncrypt callback 3: ';
+                        var iv, encrypted_message_str, message ;
+
+                        iv = res[1] ;
+                        encrypted_message_str = res[2];
+                        debug('outbox && encrypted', pgm + 'iv = ' + iv + ', encrypted_message_str = ' + encrypted_message_str);
+
+                        // post encryption cleanup
+                        message = message_with_envelope.message ;
+                        if (message_with_envelope.image) {
+                            // restore image
+                            message.image = message_with_envelope.image ;
+                            delete message_with_envelope.image ;
+                        }
+                        delete message.sender_sha256 ; // info is in message_with_envelope
+                        delete message.local_msg_seq ; // info is in message_with_envelope
+                        // delete message.feedback_info ; // todo: no reason to keep feedback info?
+                        message_with_envelope.zeronet_msg_id = CryptoJS.SHA256(encrypted_message_str).toString();
+                        message_with_envelope.sent_at = sent_at ;
+                        // console.log(pgm + 'new local_storage_messages[' + i + '] = ' + JSON.stringify(message));
+                        // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
+
+                        // insert into data.msg array
+                        data.msg.push({
+                            user_seq: user_seq,
+                            receiver_sha256: receiver_sha256,
+                            key: key,
+                            message: iv + ',' + encrypted_message_str,
+                            message_sha256: message_with_envelope.zeronet_msg_id,
+                            timestamp: sent_at
+                        });
+                        // keep track of msg disk usage.User may want to delete biggest messages first when running out of disk space on zeronet
+                        message_with_envelope.zeronet_msg_size = JSON.stringify(data.msg[data.msg.length-1]).length ;
+                        message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
+                        // console.log(pgm + 'new data.msg.last = ' + JSON.stringify(data.msg[data.msg.length-1]));
+                        // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
+
+                        if ((message.msgtype == 'chat msg') && !message.message) {
+                            // logical deleted just sent empty chat messages
+                            // will be physical deleted in next ls_save_contacts call
+                            message_with_envelope.deleted_at = new Date().getTime() ;
+                        }
+
+                        // continue with other messages to encrypt - callback to z_update_data_encrypt_message
+                        z_update_data_encrypt_message (user_seq, local_storage_updated, data_json_max_size, data) ;
+
+                    }); // callback 3
+
+                }); // callback 2
+
+            }); // callback 1
+
+        } // z_update_data_cryptmessage_1
 
 
         // cleanup old data in data.json before write and publish
@@ -4124,7 +4221,7 @@ angular.module('MoneyNetwork')
             var pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data) {
                 var pgm = service + '.i_am_online fileGet 1 callback: ';
-                console.log(pgm + 'data = ' + JSON.stringify(data));
+                // console.log(pgm + 'data = ' + JSON.stringify(data));
                 if (!data) {
                     console.log(pgm + 'No data.json file' + info) ;
                     return ;
