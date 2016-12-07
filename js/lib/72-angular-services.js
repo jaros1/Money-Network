@@ -20,7 +20,7 @@ angular.module('MoneyNetwork')
         }
 
         // convert data.json to newest version. compare dbschema.schema_changed and data.version.
-        var dbschema_version = 7 ;
+        var dbschema_version = 8 ;
         function zeronet_migrate_data (json) {
             var pgm = service + '.zeronet_migrate_data: ' ;
             if (!json.version) json.version = 1 ;
@@ -102,6 +102,10 @@ angular.module('MoneyNetwork')
                 // convert from version 5 to 6
                 // just added pubkey2 and encryption to users table
                 json.version = 7 ;
+            }
+            if (json.version == 7) {
+                // trying to fix some communication problems. maybe db schemaes is out if sync?
+                json.version = 8 ;
             }
             // etc
             console.log(pgm + 'json version ' + json.version + ' = ' + JSON.stringify(json)) ;
@@ -1235,7 +1239,7 @@ angular.module('MoneyNetwork')
                             // cryptMessage plugin encryption
                             // 3 callbacks. 1) generate password, 2) encrypt password=key and 3) encrypt message,
                             z_update_data_cryptmessage (
-                                user_seq, local_storage_updated, data_json_max_size, data, contact.pubkey2,
+                                user_seq, true, data_json_max_size, data, contact.pubkey2,
                                 message_with_envelope, receiver_sha256, sent_at
                             ) ;
                             // stop. z_update_data_cryptmessage will callback to this function when done with this message
@@ -2782,22 +2786,8 @@ angular.module('MoneyNetwork')
 
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
 
-            if (res.key) {
-                // RSA public private key encryption
-                my_prvkey = MoneyNetworkHelper.getItem('prvkey');
-                encrypt = new JSEncrypt();
-                encrypt.setPrivateKey(my_prvkey);
-                try {
-                    password = encrypt.decrypt(res.key);
-                    decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, password)
-                }
-                catch (err) {
-                    console.log(pgm + 'Ignoring message with invalid encryption. error = ' + err.message) ;
-                    return false
-                }
-            }
-            else {
-                // no RSA key - must be a group chat message.
+            if (!res.key) {
+                // no key - must be a symmetric group chat message.
 
                 // find pseudo group chat contact from receiver_sha256 address
                 group_chat_contact = get_contact_by_password_sha256(res.receiver_sha256) ;
@@ -2815,9 +2805,42 @@ angular.module('MoneyNetwork')
                     return false
                 }
             }
+            else if (res.message.indexOf(',') == -1) {
+                // key and no iv in message - JSEncrypt encryption
+
+                my_prvkey = MoneyNetworkHelper.getItem('prvkey');
+                encrypt = new JSEncrypt();
+                encrypt.setPrivateKey(my_prvkey);
+                try {
+                    password = encrypt.decrypt(res.key);
+                    decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, password)
+                }
+                catch (err) {
+                    console.log(pgm + 'Ignoring message with invalid encryption. error = ' + err.message) ;
+                    return false
+                }
+            }
+            else {
+                // key and iv in message - cryptMessage plugin encryption
+                if (!res.hasOwnProperty('decrypted_message_str')) {
+                    // decrypt and callback to this function. two cryptMessage callbacks and return to this function when done
+                    process_incoming_cryptmessage(res, unique_id) ;
+                    // stop.
+                    return false ;
+                }
+                // already decrypted. continue
+                decrypted_message_str = res.decrypted_message_str ;
+            }
 
             // console.log(pgm + 'decrypted message = ' + decrypted_message_str) ;
-            decrypted_message = JSON.parse(decrypted_message_str);
+            try {
+                decrypted_message = JSON.parse(decrypted_message_str);
+            }
+            catch (err) {
+                console.log(pgm + 'ignored new incoming message with invalid json. decrypted_message_str = ' + decrypted_message_str + ', error = ' + err.message) ;
+                return false ;
+
+            }
 
             // who is message from? find contact from unique_id.
             contact = get_contact_by_unique_id(unique_id) ;
@@ -3208,6 +3231,60 @@ angular.module('MoneyNetwork')
             return true ;
 
         } // process_incoming_message
+
+
+        // process incoming cryptMessage encrypted message
+        function process_incoming_cryptmessage (res, unique_id) {
+            var pgm = service + '.process_incoming_cryptmessage: ' ;
+
+            var message_array = res.message.split(',') ;
+            var iv = message_array[0] ;
+            var encrypted = message_array[1] ;
+            // console.log(pgm + 'iv = ' + iv + ', encrypted = ' + encrypted) ;
+
+            ZeroFrame.cmd("eciesDecrypt", [res.key, user_id], function(password) {
+                var pgm = service + '.process_incoming_cryptmessage eciesDecrypt callback 1: ' ;
+                // console.log(pgm + 'password = ' + password) ;
+
+                // decrypt step 2 - decrypt message
+                ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
+                    var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
+                    // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
+
+                    // done. save decrypted message and return to process_incoming_message
+                    res.decrypted_message_str = decrypted_message_str ;
+
+                    var contacts_updated = false ;
+                    // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                    if (process_incoming_message(res, unique_id)) contacts_updated = true ;
+
+                    // same post processing as in file_done_event
+                    // any receipts to sent?
+                    if (new_outgoing_receipts.length > 0) {
+                        // send receipts. will update localStorage and ZeroNet
+                        new_incoming_receipts = 0 ;
+                        send_new_receipts() ;
+                    }
+                    else if (new_incoming_receipts > 0) {
+                        // remove chat messages with images from ZeroNet
+                        contacts_updated = false ;
+                        new_incoming_receipts = 0 ;
+                        z_update_data_json(pgm) ;
+                        $rootScope.$apply() ;
+                    }
+                    else if (contacts_updated) {
+                        $rootScope.$apply() ;
+                        ls_save_contacts(false) ;
+                    }
+
+                    // any message with unknown unique id in incoming file?
+                    if (new_unknown_contacts.length > 0) create_new_unknown_contacts() ;
+
+                });  // callback 2
+
+            }); // callback 1
+
+        } // process_crypt_message
 
 
         // from processing new incoming messages. Any receipts to send. for example used for chat messages with image attachments.

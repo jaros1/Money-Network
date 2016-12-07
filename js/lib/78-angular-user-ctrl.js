@@ -221,6 +221,10 @@ angular.module('MoneyNetwork')
             var old_force_lost_message = self.setup_copy.test && self.setup_copy.test.force_lost_message ;
             var new_force_lost_message = self.setup.test && self.setup.test.force_lost_message ;
             if (!old_force_lost_message && new_force_lost_message) testcase_message_lost_in_cyberspace() ;
+            if (self.setup.encryption != self.setup_copy.encryption) {
+                ZeroFrame.cmd('wrapperNotification', ['info', 'Preferred encryption was changed.<br>Save user information or send a new message to publish change to peers', 5000]);
+            }
+
             copy_setup() ;
             moneyNetworkService.save_user_setup() ;
             MoneyNetworkHelper.load_user_setup() ;
