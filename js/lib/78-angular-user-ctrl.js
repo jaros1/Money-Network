@@ -232,6 +232,7 @@ angular.module('MoneyNetwork')
 
         if (self.setup.guest) self.guest_password = MoneyNetworkHelper.getItem('password') ;
 
+        // find JSEncrypt keysize. Used in mouse over title
         self.keysize = 2048 ;
         (function(){
             var encrypt = new JSEncrypt();

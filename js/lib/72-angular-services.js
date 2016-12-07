@@ -4217,13 +4217,13 @@ angular.module('MoneyNetwork')
         var my_unique_id ;
         function client_login(password, create_new_account, guest, keysize) {
             // login or register. update sessionStorage and localStorage
-            if (!create_new_account) guest = false ;
+            if (!create_new_account) { guest = false ; keysize = 0 } ;
             user_id = MoneyNetworkHelper.client_login(password, create_new_account, keysize);
             if (user_id) {
-                if (create_new_account && guest) MoneyNetworkHelper.setItem('guestid', user_id); // todo: ls_save()?
+                if (create_new_account && guest) MoneyNetworkHelper.setItem('guestid', user_id);
                 // my unique id in group chats
                 // load user information from localStorage
-                load_user_setup() ;
+                load_user_setup(keysize) ;
                 load_avatar() ;
                 load_user_info(guest) ;
                 ls_load_contacts() ;
@@ -4620,7 +4620,7 @@ angular.module('MoneyNetwork')
 
         // user setup: avatar, alias, contact sort, contact filters, chat sort, spam filters
         var user_setup = {} ;
-        function load_user_setup () {
+        function load_user_setup (keysize) {
             var new_user_setup, key, guest_id, guest, alias ;
             new_user_setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
             for (key in user_setup) delete user_setup[key] ;
@@ -4646,8 +4646,7 @@ angular.module('MoneyNetwork')
             if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
             if (!user_setup.hasOwnProperty('two_panel_chat')) user_setup.two_panel_chat = true ;
             if (!user_setup.alias) user_setup.alias = 'Me';
-            if (!user_setup.encryption) user_setup.encryption = '1' ;
-
+            if (!user_setup.encryption) user_setup.encryption = keysize == 256 ? '2' : '1' ;
         }
         function save_user_setup () {
             MoneyNetworkHelper.setItem('setup', JSON.stringify(user_setup));

@@ -631,8 +631,9 @@ var MoneyNetworkHelper = (function () {
         // password was not found
         if (create_new_account) {
             // create new account
-            if ([1024,2048,4096,8192].indexOf(keysize) == -1) keysize = 2048 ;
-            console.log(pgm + 'create new account. keysize = ' + keysize);
+            if (keysize == 256) keysize = 1024 ; // user has selected cryptMessage. generate a 1024 JSEncrypt key anyway
+            else if ([1024,2048,4096,8192].indexOf(keysize) == -1) keysize = 2048 ;
+            console.log(pgm + 'create new account. JSEncrypt keysize = ' + keysize);
             userid = passwords_a.length + 1; // sequence = number of user accounts in local storage
             // setup new account
             passwords_a.push(password_sha256);

@@ -83,6 +83,8 @@ angular.module('MoneyNetwork')
             else login_or_register() ;
 
         };
+
+        // default. Use JSEncrypt and 2048 bits keys for ingoing messages
         self.keysize = "2048" ;
 
         // end AuthCtrl
