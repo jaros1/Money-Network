@@ -50,7 +50,7 @@
                     is being for client communication.
                 </li>
                 <li>Contacts. Search, add, verify contacts in Money Network.</li>
-                <li>Chat with contacts. Quick chatlike dialog. Small picture supported. Group chat supported.</li>
+                <li>Chat with contacts, quick dialog, pictures, group chat and deep links to conversations.</li>
                 <li>todo: Free money definition. Use existing money definitions from network or create your own type of
                     money.
                 </li>
@@ -60,9 +60,13 @@
                     on <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
                 </li>
                 <li>Full client and server side encryption. Only very little information is shared public and
-                    unencrypted.
-                    Public private encryption using <a href="https://github.com/travist/jsencrypt" target="_top"
-                                                       rel="noopener noreferrer">JSEncrypt</a>.
+                    unencrypted.<br>
+                    Public private encryption using either
+                    <a href="https://github.com/travist/jsencrypt" target="_blank" rel="noopener noreferrer">JSEncrypt</a> (RSA)
+                    or ZeroNet's
+                    <a href="https://zeronet.readthedocs.io/en/latest/site_development/zeroframe_api_reference/#plugin-cryptmessage"
+                       target="_blank" rel="noopener noreferrer">CryptMessage</a>
+                    plugin (BitCoin).
                 </li>
                 <li>A client network. Data on clients. Minimum data on servers. Servers are used for communication
                     between
@@ -800,6 +804,11 @@
                             <td></td>
                             <td ng-bind-html="s.privacy"></td>
                         </tr>
+                        <tr>
+                            <td colspan="7">
+                                Chat address: {{c.contact|chatAddress}}
+                            </td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
@@ -832,6 +841,12 @@
                             </tbody>
                         </table>
                     </span>
+
+                    <table style="width: 100%" ng-show="c.contact && (c.contact.type == 'group') && !c.editing_grp_chat">
+                        <tbody>
+                        <tr><td>Chat address: {{c.contact|chatAddress}}</td></tr></tbody>
+                    </table>
+
                 </div>
 
             </div>
@@ -1197,6 +1212,11 @@
             <br>
             </span>
 
+            <p title="Your unique chat address. Publish this URL to allow direct chat with you"
+               alt="Your unique chat address. Publish this URL to allow direct chat with you">
+                Chat address: {{u.my_chat_url}}
+            </p>
+
             <p title="Select preferred encryption for ingoing messages. Your JSEncrypt key is {{u.keysize}} bits long. CryptMessage is using 256 bits key">
                 Preferred encryption:
                 <input type="radio" ng-model="u.setup.encryption" value="1" ng-change="u.debug_settings_changed()">
@@ -1388,7 +1408,8 @@
 
             <p>
                 Login is used to protect data stored in your browser.
-                Password and your data is stored encrypted in your browser. Not on a server.
+                Password and your data is stored encrypted in your browser. Not on a server.<br>
+                ZeroNet ID is used for communication with other ZeroNet users. @moneynetwork cert is created for anonymous communication.
             </p>
 
             <form ng-hide="a.is_logged_in()" name="device_login_form" ng-submit="a.login_or_register()">
@@ -1408,7 +1429,10 @@
                         <td colspan="5" style="text-align: center">
                             Log in <input type="radio" ng-model="a.register" value="N"> &nbsp;&nbsp;
                             Register <input type="radio" ng-model="a.register" value="Y"> &nbsp;&nbsp;
-                            Guest <input type="radio" ng-model="a.register" value="G"> &nbsp;&nbsp;
+                            Guest <input type="radio" ng-model="a.register" value="G"> &nbsp;&nbsp;&nbsp;&nbsp;
+                            Current ZeroNet ID:
+                            <a href="" ng-bind="a.site_info.cert_user_id|shortCertId" ng-click="a.select_zeronet_cert()"
+                                    title="{{a.site_info.cert_user_id}}" alt="{{a.site_info.cert_user_id}}">select ...</a>
                         </td>
                     </tr>
                     <tr>
@@ -1473,9 +1497,9 @@
             </p>
 
             <span ng-hide="a.register == 'N'"
-                  alt="Select preferred encryption method for your ingoing messages. Recommend 2048 bits keys (JSEncrypt)"
-                  title="Select preferred encryption method for your ingoing messages. Recommend 2048 bits keys (JSEncrypt)">
-                Preferred encryption:
+                  alt="Select encryption method for your ingoing messages. Recommend 2048 bits keys (JSEncrypt)"
+                  title="Select encryption method for your ingoing messages. Recommend 2048 bits keys (JSEncrypt)">
+                Preferred public key encryption:
             <table>
                 <tbody>
                 <tr>

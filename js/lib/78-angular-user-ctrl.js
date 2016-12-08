@@ -1,6 +1,6 @@
 angular.module('MoneyNetwork')
     
-    .controller('UserCtrl', ['$scope', '$rootScope', '$timeout', 'MoneyNetworkService', function($scope, $rootScope, $timeout, moneyNetworkService) {
+    .controller('UserCtrl', ['$scope', '$rootScope', '$timeout', 'MoneyNetworkService', '$location', function($scope, $rootScope, $timeout, moneyNetworkService, $location) {
         var self = this;
         var controller = 'UserCtrl';
         if (!MoneyNetworkHelper.getItem('userid')) return ; // not logged in - skip initialization of controller
@@ -239,6 +239,10 @@ angular.module('MoneyNetwork')
             encrypt.setPublicKey(MoneyNetworkHelper.getItem('pubkey'));
             self.keysize = encrypt.key.n.bitLength() ;
         })() ;
+
+        // deep chat link
+        self.my_chat_url = $location.protocol() + '://' + $location.host() + ':43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/?path=/chat/' + moneyNetworkService.get_my_unique_id() ;
+        // console.log(controller + ': my_chat_url = ' + self.my_chat_url) ;
 
         // end UserCtrl
     }])

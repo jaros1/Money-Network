@@ -1175,7 +1175,7 @@ angular.module('MoneyNetwork')
                         }
                         message.local_msg_seq = local_msg_seq ;
                         // receiver_sha256
-                        if (contact.type == 'group') CryptoJS.SHA256(password).toString(contact.password);
+                        if (contact.type == 'group') receiver_sha256 = CryptoJS.SHA256(contact.password).toString();
                         else {
                             // find receiver_sha256. Use last received sender_sha256 address from contact
                             // exception: remove + add contact messages can be used to reset communication
@@ -2492,6 +2492,7 @@ angular.module('MoneyNetwork')
                 "and users.json_id = json.json_id " +
                 "and users.pubkey = '" + pubkey + "'";
             debug('select', pgm + 'query 1 = ' + query) ;
+            if (auth_address) debug('file_done', pgm + 'query 1 = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.z_contact_search dbQuery callback 1: ' ;
                 var error ;
@@ -2515,8 +2516,8 @@ angular.module('MoneyNetwork')
                 // find other clients with matching search words using sqlite like operator
                 // Search: tags shared public on ZeroNet. Hidden: tags stored only in localStorage
 
-                // contacts query without modified timestamp from content.json (keyvalue)
-                if (auth_address) debug('select', pgm + 'auth_address = ' + auth_address) ;
+                // contacts query. getting timestamp in a column sub query as status.data json file often get received after data.json file
+                if (auth_address) debug('select || file_done', pgm + 'auth_address = ' + auth_address) ;
                 var contacts_query =
                     "select" +
                     "  users.user_seq, users.pubkey, users.pubkey2, users.encryption, users.avatar as users_avatar, users.guest," +
@@ -2528,8 +2529,12 @@ angular.module('MoneyNetwork')
                     "   where files.filename like 'avatar%'" +
                     "   and avatar_json.json_id = files.json_id" +
                     "   and avatar_json.directory = data_json.directory) as files_avatar," +
-                    "  status.timestamp " +
-                    "from users, json as data_json, json as content_json, keyvalue, json as status_json, status " ;
+                    "  (select status.timestamp" +
+                    "   from json as status_json, status" +
+                    "   where status_json.directory = data_json.directory" +
+                    "   and    status.json_id = status_json.json_id" +
+                    "   and    status.user_seq = users.user_seq) as timestamp " +
+                    "from users, json as data_json, json as content_json, keyvalue " ;
                 if (auth_address) {
                     // file done event. check only info from this auth_address
                     contacts_query += "where data_json.directory = 'users/" + auth_address + "' " ;
@@ -2543,12 +2548,9 @@ angular.module('MoneyNetwork')
                     "and content_json.directory = data_json.directory " +
                     "and content_json.file_name = 'content.json' " +
                     "and keyvalue.json_id = content_json.json_id " +
-                    "and keyvalue.key = 'cert_user_id' " +
-                    "and status_json.directory = data_json.directory " +
-                    "and status_json.file_name = 'status.json' " +
-                    "and status.json_id = status_json.json_id " +
-                    "and status.user_seq = users.user_seq" ;
+                    "and keyvalue.key = 'cert_user_id'" ;
                 debug('select', pgm + 'contacts_query = ' + contacts_query) ;
+                if (auth_address) debug('file_done', pgm + 'contacts_query = ' + contacts_query) ;
 
                 // find contacts with matching tags
                 query =
@@ -2612,6 +2614,15 @@ angular.module('MoneyNetwork')
                         // - public/private localStorage key pairs can have been exported to other devices
                         unique_id = CryptoJS.SHA256(res[i].other_auth_address + '/'  + res[i].other_pubkey).toString();
                         res[i].other_unique_id = unique_id;
+                        if (!res[i].other_user_timestamp) {
+                            // must be a new contact received in file done event. data.json file received before status.json file
+                            if (auth_address) debug('file_done', pgm + 'file done event. data.json received before status.json. Using now as timestamp') ;
+                            else {
+                                console.log(pgm + 'Ignoring contact without timestamp. res[i] = ' + JSON.stringify(res[i])) ;
+                                continue ;
+                            }
+                            res[i].other_user_timestamp = new Date().getTime() ;
+                        }
                         last_updated = Math.round(res[i].other_user_timestamp / 1000) ;
                         if (unique_ids.indexOf(res[i].other_unique_id)==-1) unique_ids.push(res[i].other_unique_id) ;
                         if (!res_hash.hasOwnProperty(unique_id)) {
@@ -2727,7 +2738,7 @@ angular.module('MoneyNetwork')
                             }
                         }
                         add_contact(new_contact) ;
-                        // console.log(pgm + 'new_contact = ' + JSON.stringify(new_contact));
+                        if (auth_address) debug('file_done', pgm + 'new_contact = ' + JSON.stringify(new_contact));
                     }
                     // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
 
@@ -2821,6 +2832,13 @@ angular.module('MoneyNetwork')
                 }
             }
             else {
+
+                // todo: find a way to handle :
+                //   Internal error: AttributeError: 'NoneType' object has no attribute 'decode'
+                //   UiWebsocket.py line 99 > UiWebsocket.py line 184 > CryptMessagePlugin.py line 103
+                // must be mismatch between ingoing message and current zeronet certificate
+                // user have changed certificate and are reading messages encrypted with the previous certificate
+
                 // key and iv in message - cryptMessage plugin encryption
                 if (!res.hasOwnProperty('decrypted_message_str')) {
                     // decrypt and callback to this function. two cryptMessage callbacks and return to this function when done
@@ -3233,9 +3251,53 @@ angular.module('MoneyNetwork')
         } // process_incoming_message
 
 
+        // track cryptMessage decrypt. decrypt errors are reported in UI. not in callback functions
+        var cryptmessages = {} ;
+
         // process incoming cryptMessage encrypted message
         function process_incoming_cryptmessage (res, unique_id) {
             var pgm = service + '.process_incoming_cryptmessage: ' ;
+
+            // keep track of cryptMessage. errors are reported in UI. Not in callbacks
+            if (cryptmessages[res.message_sha256]) {
+                // error. this message has already been tried decrypted.
+                console.log(pgm + 'message has already been tried decrypted. res = ' + JSON.stringify(res)) ;
+                res.decrypted_message_str = 'error' ;
+
+                // callback with error to process_incoming_message
+                var contacts_updated = false ;
+                // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                if (process_incoming_message(res, unique_id)) contacts_updated = true ;
+
+                // same post processing as in file_done_event
+                // any receipts to sent?
+                if (new_outgoing_receipts.length > 0) {
+                    // send receipts. will update localStorage and ZeroNet
+                    new_incoming_receipts = 0 ;
+                    send_new_receipts() ;
+                }
+                else if (new_incoming_receipts > 0) {
+                    // remove chat messages with images from ZeroNet
+                    contacts_updated = false ;
+                    new_incoming_receipts = 0 ;
+                    z_update_data_json(pgm) ;
+                    $rootScope.$apply() ;
+                }
+                else if (contacts_updated) {
+                    $rootScope.$apply() ;
+                    ls_save_contacts(false) ;
+                }
+
+                // any message with unknown unique id in incoming file?
+                if (new_unknown_contacts.length > 0) create_new_unknown_contacts() ;
+
+                return ;
+            }
+            cryptmessages[res.message_sha256] = {
+                timestamp: new Date().getTime(),
+                res: res,
+                unique_id: unique_id
+            } ;
 
             var message_array = res.message.split(',') ;
             var iv = message_array[0] ;
@@ -3250,6 +3312,9 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
                     // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
+
+                    // OK decrypt processing.
+                    delete cryptmessages[res.message_sha256] ;
 
                     // done. save decrypted message and return to process_incoming_message
                     res.decrypted_message_str = decrypted_message_str ;
@@ -3868,7 +3933,10 @@ angular.module('MoneyNetwork')
                     // check contacts
                     var public_avatars, avatar_short_path ;
                     contact = get_contact_by_cert_user_id(res.cert_user_id);
-                    if (!contact) return ;
+                    if (!contact) {
+                        debug('file_done', pgm + 'checking avatar. must be a new contact. no contact found with cert_user_id ' + res.cert_user_id);
+                        return ;
+                    }
                     if (contact.avatar == content_json_avatar) return ;
 
                     // avatar (maybe) updated
@@ -4027,6 +4095,51 @@ angular.module('MoneyNetwork')
 
                     // any message with unknown unique id in incoming file?
                     if (new_unknown_contacts.length > 0) create_new_unknown_contacts() ;
+
+                    // debug. keep track if cryptMessage failed decryptions
+                    console.log(pgm + 'cryptmessages = ' + JSON.stringify(cryptmessages));
+                    //cryptmessages = {
+                    //    "7ef44805b233fe253a07811297fb34be3d907ebeeed6fa7b6f30153a9da76c8a": {
+                    //        "timestamp": 1481219172836,
+                    //        "res": {
+                    //            "user_seq": 1,
+                    //            "receiver_sha256": "c56a6ec570d681940b140b7f7ce3ff2f3f4f9a7612d05e0f1c348fccd1fcb40a",
+                    //            "key": "RvJRi/jVk0PPXplxurz/jQLKACALdSu5mE1mvA0UdeeWSrHjEwA32MTeueotf926Y2wfbgAgm8L1v2DA6vZ4h/vk2JUExpCOGUJEmsdSl9plwDBUcXEMFNcX2ekfew+r8o2HBy/M4T2vOfYrqOKnNYMIGKEhvZl5Q99bqZvhSLAu38PMM4gL82XuUE7JEAJE1EQPkMOKOOP5tWZm6cqrFzvU+ygMWg==",
+                    //            "message": "8UuLPZdUCudZMGraDSxibw==,Dv0KSnDIxJ4SH3LEkn8OWUELjesIWoEhiXxw3KPDZQTLFK5Lq0Ugf2l121jADUczi8B44TYChORekzZyypnZt+KCF1I5J1207tymirbukdpCh5hmRw2dniMI+SVsEwm2hzX1fkZXF4bl7nHsgB2+kU+d6pcJfOr6Ctop01ASlFzzduoXR3wzFId2lOZqo1Lhi0JUyXD4Z3vVLKvRXQecKF7Puz5yvPfT5zW76FXHpWg=",
+                    //            "message_sha256": "7ef44805b233fe253a07811297fb34be3d907ebeeed6fa7b6f30153a9da76c8a",
+                    //            "timestamp": 1481214384980,
+                    //            "auth_address": "139Vw5VEAhpS8a4canC4teWPgsnRywQp3B"
+                    //        },
+                    //        "unique_id": "8b22ef99a8bcc79c6c7b2af55e48a58b6639a864cf0494aed28eb6d16297c1c4"
+                    //    },
+                    //    "eca29e19473d201da654757e08e6671b0aa1f562c6ef48a0897c982385fa55fb": {
+                    //        "timestamp": 1481219172837,
+                    //        "res": {
+                    //            "user_seq": 1,
+                    //            "receiver_sha256": "15eb9f2a9ca47be6ef44251f6973d992a55d8cc9174a9732d4eb93974e153271",
+                    //            "key": "NAo3TvpoTs1sT/1LUAwumgLKACBjMSeR7Q+OTSLKTo9X4NVYfduxcQL5K3aHoMRUmXu5bQAg97X3SL0D/VMy04UiQe9BgqNQiSZUxuBsdka3CayFpKsZ7U+YlfQuiDI/0GINXeNq4svuCK2+w549XesLMR6I4oil+M+yVy3rVqyIgvRTYB8R2NTyY7hUnmsXmnYtfUYBjWz3m7TzLnWbNwcJJKIkfg==",
+                    //            "message": "G41tf/zM4UjMDKMsNge5Ug==,AWuCyptHsEb4YB7tRm1oE22sP3W38IW62lmaRlOuYn84QDy3Gkj0XVpNDS8t60xB5MdaI6Wp/NfADYj9eTqmLtXKRy3h5lM350cA/T4wTBPC4P8FkvlZ8qAy5MrOdmUdDNvkolrP7VNBIbwACSh5MBSGIB4N6AvQgN57whhOysPkQwR9YTC2LgvQaaDQfKMBhEe+KgD1bkLyUZwqxxfrxs1m/wvyxy0KDoG9f5GEO74=",
+                    //            "message_sha256": "eca29e19473d201da654757e08e6671b0aa1f562c6ef48a0897c982385fa55fb",
+                    //            "timestamp": 1481214385121,
+                    //            "auth_address": "139Vw5VEAhpS8a4canC4teWPgsnRywQp3B"
+                    //        },
+                    //        "unique_id": "8b22ef99a8bcc79c6c7b2af55e48a58b6639a864cf0494aed28eb6d16297c1c4"
+                    //    },
+                    //    "8a32d3424ec266c64379056e9676e0f3b1361b7ad3f49d32528f41d1ab525dba": {
+                    //        "timestamp": 1481219172838,
+                    //        "res": {
+                    //            "user_seq": 1,
+                    //            "receiver_sha256": "c56a6ec570d681940b140b7f7ce3ff2f3f4f9a7612d05e0f1c348fccd1fcb40a",
+                    //            "key": "b4UF4sNXm5XT00z1rSyLJwLKACDRMuWAlZCmJqsWQZNlFFOgzfYy4Fk2pZ0F4ewzH3EpSQAgcAnJiTbb/s/zcL5IOCYOkWUPwCS/vzdwt9q87VGDT4h8/4mPO0As4w8wGLps4xS0rwGJ1sd8JVfw75JfztySE/4aMrA8PYyTSW18a70FFEDG3vP9ioslXxVfZYm1h62LW64Y12y0i1NRkSa1GZisIQ==",
+                    //            "message": "SI5YucdXlZVAANYSgDZL0A==,YeuAKALudWoxMhpjmf4DyBhK2v0GHnCwO7JS2+GX6GiUVSd/cZvf5ZwFhDtqbAQ/XaiNTe5VKa0JEXm+r9wYuFqfODFpp15CK4ThmzIvbJe5VRRuu+WXdN7gBkv/SOFtSdehC4ExAKY9f9NF6cIrjmPOxrQbKBhaHK9OPy5X6Aq1eRyB6yXtqmYSh1eWdN/B1Jrd4Wfp1SLtm7IhHOXNaA==",
+                    //            "message_sha256": "8a32d3424ec266c64379056e9676e0f3b1361b7ad3f49d32528f41d1ab525dba",
+                    //            "timestamp": 1481214385254,
+                    //            "auth_address": "139Vw5VEAhpS8a4canC4teWPgsnRywQp3B"
+                    //        },
+                    //        "unique_id": "8b22ef99a8bcc79c6c7b2af55e48a58b6639a864cf0494aed28eb6d16297c1c4"
+                    //    }
+                    //};
+
                     return
                 } // end reading data.json
 
@@ -4255,6 +4368,7 @@ angular.module('MoneyNetwork')
             user_contents_max_size = null ;
             admin_key = null ;
             for (key in user_setup) delete user_setup[key] ;
+            for (key in cryptmessages) delete cryptmessages[key] ;
             // redirect
             $location.path('/auth');
             $location.replace();
@@ -4347,6 +4461,7 @@ angular.module('MoneyNetwork')
                 }); // fileGet 2 (status.json)
 
             }); // fileGet 1 (data.json)
+
         } // i_am_online
 
 

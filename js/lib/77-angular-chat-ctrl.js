@@ -215,7 +215,10 @@ angular.module('MoneyNetwork')
             self.contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
             // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
             self.zeronet_search_contacts = function() {
-                moneyNetworkService.z_contact_search(function () {$scope.$apply()}, null) ;
+                moneyNetworkService.z_contact_search(function () {
+                    if ($routeParams.unique_id) find_contact();
+                    $scope.$apply()
+                }, null) ;
             };
             self.zeronet_search_contacts() ;
 
@@ -230,17 +233,28 @@ angular.module('MoneyNetwork')
             function find_contact() {
                 var pgm = controller + '.find_contact: ';
                 var unique_id = $routeParams.unique_id;
+                if (unique_id === undefined) return ;
+                if (!unique_id) return ;
+                console.log(pgm + 'unique_id = ' + JSON.stringify(unique_id));
                 for (var i = 0; i < self.contacts.length; i++) {
                     if (self.contacts[i].unique_id == unique_id) {
                         self.contact = self.contacts[i];
                         if (!self.contact.messages) self.contact.messages = [];
                         // console.log(pgm + 'contact = ' + JSON.stringify(self.contact));
+                        if (self.contact.type == 'group') init_group_chat_contacts(self.contact) ; // xxx
+                        else {
+                            moneyNetworkService.notification_if_old_contact(self.contact);
+                            self.group_chat = false ;
+                            self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
+                        }
+                        // console.log(pgm + 'self.group_chat = ' + self.group_chat) ;
+                        // console.log(pgm + 'self.contact = ' + (self.contact ? true : false)) ;
                         return
                     }
                 }
                 console.log(pgm + 'contact with unique id ' + unique_id + ' was not found');
             } // find_contact
-            if ($routeParams.unique_id) find_contact();
+            // if ($routeParams.unique_id) find_contact();
 
             function init_group_chat_contacts (contact) {
                 var pgm = controller + '.init_group_chat_contacts: ' ;
@@ -683,10 +697,18 @@ angular.module('MoneyNetwork')
                     match = ((message.contact.type == 'group') && (message.contact.participants.indexOf(self.contact.unique_id) != -1)) ;
                     reason = 5 ;
                 }
+
+                var message_x ;
+                try {
+                    message_x = message.message.message.message ? ', message = ' + message.message.message.message.substr(0,40) : '' ;
+                }
+                catch (err) {
+                    message_x = ''
+                }
                 debug('chat_filter',
                     pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder +
                     ', match = ' + match + ', reason = ' + reason + ', image = ' + image + ', msgtype = ' + message.message.msgtype +
-                    (message.message.message.message ? ', message = ' + message.message.message.message.substr(0,40) : ''));
+                    message_x);
 
                 // if ([200, 201, 202].indexOf(message.message.local_msg_seq) != -1) debug('chat_filter', pgm + 'message.message = ' + JSON.stringify(message.message)) ;
                 return match;
@@ -739,10 +761,11 @@ angular.module('MoneyNetwork')
                 return moneyNetworkService.chat_order_by(message) ;
             }; // chat_order_by
 
-            // todo: also chat_contact method in network controller. refactor
+            // start chat with contact
             self.chat_contact = function (contact) {
-                // var pgm = controller + '.chat_contact: ';
+                var pgm = controller + '.chat_contact: ';
                 if (self.contact && (self.contact.unique_id == contact.unique_id)) return ;
+                // console.log(pgm + 'contact.unique_id = ' + contact.unique_id);
                 // clear any old not sent chat
                 self.new_chat_msg = '';
                 self.new_chat_src = null ;

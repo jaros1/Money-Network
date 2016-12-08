@@ -546,11 +546,31 @@ angular.module('MoneyNetwork')
         // end formatSearchTitle filter
     }])
 
-    // format contact Last Updated
     .filter('contactType', [ function () {
         // short format for unix timestamp used in chat
         return function (contact) {
             return '(' + contact.type + ')' ;
+        } ;
+        // end formatSearchTitle filter
+    }])
+
+    .filter('chatAddress', [ '$location', function ($location) {
+        // short format for unix timestamp used in chat
+        return function (contact) {
+            if (!contact) return '' ;
+            return $location.protocol() + '://' + $location.host() + ':43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/?path=/chat/' + contact.unique_id ;
+        } ;
+        // end formatSearchTitle filter
+    }])
+
+    .filter('shortCertId', [ function () {
+        // short format for unix timestamp used in chat
+        return function (cert_user_id) {
+            var index ;
+            if (!cert_user_id) return 'select ...' ;
+            index = cert_user_id.indexOf('@') ;
+            if (index == -1) return cert_user_id ;
+            else return cert_user_id.substr(0,index);
         } ;
         // end formatSearchTitle filter
     }])
