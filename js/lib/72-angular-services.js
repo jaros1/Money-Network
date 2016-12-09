@@ -279,8 +279,17 @@ angular.module('MoneyNetwork')
         function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
             var feedback, i, message, local_msg_seqs, local_msg_seq, factor, now, key, j, my_unique_id, participant,
-                show_receiver_sha256 ;
+                show_receiver_sha256, error ;
             now = new Date().getTime() ;
+
+            // check that json still is valid before adding feedback information to outgoing messages
+            // problem with null values in sent and received arrays
+            message = message_with_envelope.message ;
+            error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'cannot add feedback info to invalid outgoing message');
+            if (error) {
+                console.log(pgm , error) ;
+                return;
+            }
 
             feedback = {} ;
 
@@ -431,6 +440,17 @@ angular.module('MoneyNetwork')
                 // feedback = {"received":[1],"sent":[445,447,448,449,450]} ;
                 message_with_envelope.message.feedback = feedback ;
                 debug('feedback_info', pgm + 'feedback = ' + JSON.stringify(feedback) + ', message_with_envelope = ' + JSON.stringify(message_with_envelope));
+
+                // check that json still is valid after adding feedback information to outgoing messages
+                // problem with null values in sent and received arrays
+                message = message_with_envelope.message ;
+                error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'cannot add invalid feedback info to outgoing message');
+                if (error) {
+                    console.log(pgm , error) ;
+                    delete message_with_envelope.message.feedback ;
+                    return;
+                }
+
             }
 
         } // add_feedback_info
@@ -508,7 +528,10 @@ angular.module('MoneyNetwork')
                             received.splice(index, 1);
                         }
                         if (lost_message) {
-                            debug('lost_message', pgm + 'message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. must be a message sent and removed from ZeroNet when contact was offline');
+                            debug('lost_message',
+                                pgm + 'Message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. ' +
+                                'Could be a message sent and removed from ZeroNet when contact was offline. ' +
+                                'Could be a message lost due to cryptMessage decrypt error');
                             debug('lost_message', pgm + 'message = ' + JSON.stringify(message));
                             //message = {
                             //    "folder": "outbox",
@@ -519,7 +542,14 @@ angular.module('MoneyNetwork')
                             //    "ls_msg_size": 218,
                             //    "msgtype": "chat msg"
                             //};
-                            if (message.zeronet_msg_id) console.log(pgm + 'error. lost message has a zeronet_msg_id and should still be in data.json file');
+                            if (message.zeronet_msg_id) {
+                                // received a negative local_msg_id in received array: feedback = {"received":[-6]},
+                                // message not received, but message is still on ZeroNet (data.json)
+                                // could be an error or could be decryption error due to changed ZeroNet certificate (cryptMessage)
+                                debug('lost_message', pgm + 'warning. lost message with local_msg_seq ' + local_msg_seq +
+                                    ' has a zeronet_msg_id and should still be in data.json file. ' +
+                                    'Maybe user has changed ZeroNet certificate and is getting cryptMessage decryption error?');
+                            }
                             else if (!message.sent_at) console.log(pgm + 'error. lost message has never been sent. sent_at is null');
                             else {
                                 debug('lost_message', pgm + 'resend old message with old local_msg_id. add old sent_at to message');
@@ -653,7 +683,7 @@ angular.module('MoneyNetwork')
                         // receive_feedback_info: messages with local_msg_seq [1,2] were not found in inbox
                         // receive_feedback_info: contact.deleted_inbox_messages = {}Object.keys(contact.deleted_inbox_messages) = ["2"]
 
-                        // create "lost message" notification in inbox? User should know that some messages were lost in cyberspace
+                        // create "lost message" notification in inbox. So that user knows that some messages have been lost in cyberspace
                         for (i=0 ; i<sent.length ; i++) {
                             local_msg_seq = sent[i] ;
                             lost_message = { msgtype: 'lost msg', local_msg_seq: local_msg_seq} ;
@@ -722,7 +752,10 @@ angular.module('MoneyNetwork')
                             received.splice(index,1) ;
                         }
                         if (lost_message) {
-                            debug('lost_message', pgm + 'message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. must be a message sent and removed from ZeroNet when contact was offline');
+                            debug(
+                                'lost_message', pgm + 'Message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. ' +
+                                'Could be a message sent and removed from ZeroNet when contact was offline. ' +
+                                'Could be a message lost due to cryptMessage decrypt error');
                             debug('lost_message', pgm + 'message = ' + JSON.stringify(message)) ;
                             //message = {
                             //    "folder": "outbox",
@@ -733,7 +766,12 @@ angular.module('MoneyNetwork')
                             //    "ls_msg_size": 218,
                             //    "msgtype": "chat msg"
                             //};
-                            if (message.zeronet_msg_id) console.log(pgm + 'error. lost message has a zeronet_msg_id and should still be in data.json file') ;
+                            if (message.zeronet_msg_id) {
+                                debug(
+                                    'lost_message', pgm + 'Message with local_msg_seq ' + local_msg_seq +
+                                    ' has a zeronet_msg_id and should still be in data.json file. ' +
+                                    'Maybe cryptMessage encrypted and user has switched to an other ZeroNet certificate') ;
+                            }
                             else if (!message.sent_at) console.log(pgm + 'error. lost message has never been sent. sent_at is null') ;
                             else  {
                                 debug('lost_message', pgm + 'resend old message with old local_msg_id. add old sent_at to message') ;
@@ -1657,6 +1695,20 @@ angular.module('MoneyNetwork')
         function empty_user_info_line() {
             return { tag: '', value: '', privacy: ''} ;
         }
+        function is_user_info_empty () {
+            var user_info_clone, empty_user_info_line_str, i, row ;
+            if (user_info.length == 0) return true ;
+            empty_user_info_line_str = JSON.stringify(empty_user_info_line()) ;
+            user_info_clone = JSON.parse(JSON.stringify(user_info)) ;
+            for (i=0 ; i<user_info_clone.length ; i++) {
+                row = user_info_clone[i] ;
+                delete row['$$hashKey'] ;
+                if (JSON.stringify(row) != empty_user_info_line_str) return false ;
+            }
+            return true ;
+        } //  is_user_info_empty
+
+
         function guest_account_user_info() {
             var pgm = service + '.guest_account_user_info: ' ;
             // todo: add more info to new guest account
@@ -2618,7 +2670,7 @@ angular.module('MoneyNetwork')
                             // must be a new contact received in file done event. data.json file received before status.json file
                             if (auth_address) debug('file_done', pgm + 'file done event. data.json received before status.json. Using now as timestamp') ;
                             else {
-                                console.log(pgm + 'Ignoring contact without timestamp. res[i] = ' + JSON.stringify(res[i])) ;
+                                // console.log(pgm + 'Ignoring contact without timestamp. res[i] = ' + JSON.stringify(res[i])) ;
                                 continue ;
                             }
                             res[i].other_user_timestamp = new Date().getTime() ;
@@ -3256,14 +3308,10 @@ angular.module('MoneyNetwork')
 
         // process incoming cryptMessage encrypted message
         function process_incoming_cryptmessage (res, unique_id) {
-            var pgm = service + '.process_incoming_cryptmessage: ' ;
+            var pgm = service + '.process_incoming_cryptmessage : ' ;
 
-            // keep track of cryptMessage. errors are reported in UI. Not in callbacks
-            if (cryptmessages[res.message_sha256]) {
-                // error. this message has already been tried decrypted.
-                console.log(pgm + 'message has already been tried decrypted. res = ' + JSON.stringify(res)) ;
-                res.decrypted_message_str = 'error' ;
-
+            // callback to process_incoming_message when done
+            var cb = function () {
                 // callback with error to process_incoming_message
                 var contacts_updated = false ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
@@ -3292,6 +3340,15 @@ angular.module('MoneyNetwork')
                 if (new_unknown_contacts.length > 0) create_new_unknown_contacts() ;
 
                 return ;
+            } ; // cb
+
+            // keep track of failed cryptMessage decrypts. errors are reported in UI. Not in callbacks. should no longer be a problem
+            if (cryptmessages[res.message_sha256]) {
+                // error. this message has already been tried decrypted.
+                console.log(pgm + 'message has already been tried cryptMessage decrypted. res = ' + JSON.stringify(res)) ;
+                res.decrypted_message_str = 'error1' ;
+                cb() ;
+                return ;
             }
             cryptmessages[res.message_sha256] = {
                 timestamp: new Date().getTime(),
@@ -3304,11 +3361,77 @@ angular.module('MoneyNetwork')
             var encrypted = message_array[1] ;
             // console.log(pgm + 'iv = ' + iv + ', encrypted = ' + encrypted) ;
 
+            // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling eciesDecrypt with " + JSON.stringify([res.key, user_id])) ;
             ZeroFrame.cmd("eciesDecrypt", [res.key, user_id], function(password) {
                 var pgm = service + '.process_incoming_cryptmessage eciesDecrypt callback 1: ' ;
+                var pubkey, query ;
                 // console.log(pgm + 'password = ' + password) ;
+                if (!password) {
+                    // cryptMessage decrypt error!
+                    delete cryptmessages[res.message_sha256] ;
+                    debug('lost_message',
+                        pgm + 'password is null. must be mismatch between encryption in message and current private key. ' +
+                        'maybe user has switched zeronet certificate. checking if current user has more than one certificate') ;
+
+                    // check if user has been using other ZeroNet certificates
+                    pubkey = MoneyNetworkHelper.getItem('pubkey') ;
+                    query =
+                        "select keyvalue.value as cert_user_id, status.timestamp, users.encryption, users.guest " +
+                        "from users, json as data_json, json as content_json, keyvalue, json as status_json, status " +
+                        "where users.pubkey = '" + pubkey + "' " +
+                        "and data_json.json_id = users.json_id " +
+                        "and content_json.directory = data_json.directory " +
+                        "and content_json.file_name = 'content.json' " +
+                        "and keyvalue.json_id = content_json.json_id " +
+                        "and keyvalue.value <> '" + ZeroFrame.site_info.cert_user_id + "' " +
+                        "and status_json.directory = data_json.directory " +
+                        "and status_json.file_name = 'status.json' " +
+                        "and status.json_id = status_json.json_id " +
+                        "and status.user_seq = users.user_seq" ;
+                    debug('select', pgm + 'query = ' + query) ;
+
+                    ZeroFrame.cmd("dbQuery", [query], function (res2) {
+                        var pgm = service + '.process_incoming_cryptmessage dbQuery callback 1: ';
+                        var cert_user_ids, i ;
+
+                        if (res2.error) {
+                            console.log(pgm + "certificate check failed: " + res2.error) ;
+                            console.log(pgm + 'query = ' + query) ;
+                            res.decrypted_message_str = 'error2' ;
+                            cb() ;
+                            return;
+                        }
+                        if (res2.length == 0) {
+                            // something is wrong. got cryptMessage decrypt error but found only one user certificate
+                            console.log(
+                                pgm + 'password is null. must be mismatch between encryption in message and current private key. ' +
+                                'but no other certificates were found with identical localStorage user');
+                            res.decrypted_message_str = 'error3' ;
+                            cb() ;
+                            return;
+                        }
+
+                        // OK. User has being using other ZeroNet certificates. Should create a lost message in UI and return feedback info in next outgoing message to contact
+                        // list other certificates
+                        cert_user_ids = [] ;
+                        for (i=0 ; i<res2.length ; i++) cert_user_ids.push(res2[i].cert_user_id) ;
+                        console.log(pgm + 'decrypt failed for ingoing message but that is ok. current user have more than one ZeroNet certificate and message was encrypted to a previous used certificate');
+                        console.log(pgm + 'message = ' + JSON.stringify(res)) ;
+                        console.log(pgm + 'current cert_user_id = ' + ZeroFrame.site_info.cert_user_id) ;
+                        console.log(pgm + 'other cert_user_ids  = ' + cert_user_ids.join(', ')) ;
+
+                        res.decrypted_message_str = 'changed cert error' ;
+                        cb() ;
+                        return;
+
+                    }); // dbQuery callback
+
+                    // stop. dbQuery callback will callback to process_incoming_message
+                    return;
+                }
 
                 // decrypt step 2 - decrypt message
+                // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
                     // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
@@ -3318,32 +3441,8 @@ angular.module('MoneyNetwork')
 
                     // done. save decrypted message and return to process_incoming_message
                     res.decrypted_message_str = decrypted_message_str ;
-
-                    var contacts_updated = false ;
-                    // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                    if (process_incoming_message(res, unique_id)) contacts_updated = true ;
-
-                    // same post processing as in file_done_event
-                    // any receipts to sent?
-                    if (new_outgoing_receipts.length > 0) {
-                        // send receipts. will update localStorage and ZeroNet
-                        new_incoming_receipts = 0 ;
-                        send_new_receipts() ;
-                    }
-                    else if (new_incoming_receipts > 0) {
-                        // remove chat messages with images from ZeroNet
-                        contacts_updated = false ;
-                        new_incoming_receipts = 0 ;
-                        z_update_data_json(pgm) ;
-                        $rootScope.$apply() ;
-                    }
-                    else if (contacts_updated) {
-                        $rootScope.$apply() ;
-                        ls_save_contacts(false) ;
-                    }
-
-                    // any message with unknown unique id in incoming file?
-                    if (new_unknown_contacts.length > 0) create_new_unknown_contacts() ;
+                    cb() ;
+                    return ;
 
                 });  // callback 2
 
@@ -3834,7 +3933,7 @@ angular.module('MoneyNetwork')
             if (user_setup.avatar && (['jpg','png'].indexOf(user_setup.avatar) == -1)) {
                 // public avatar found in user setup
                 avatar.src = 'public/images/avatar' + user_setup.avatar ;
-                console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
+                // console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
             }
             // check ZeroFrame status
             var retry_load_avatar = function () {
@@ -4406,31 +4505,57 @@ angular.module('MoneyNetwork')
                 return;
             }
             var user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            console.log(pgm + 'My auth address is ' + ZeroFrame.site_info.auth_address + ' and my unique id ' + get_my_unique_id()) ;
+
+            // some information nice to have when debugging
+            console.log(
+                pgm + 'My cert_user_id is ' + ZeroFrame.site_info.cert_user_id +
+                ', my auth address is ' + ZeroFrame.site_info.auth_address +
+                ' and my unique id ' + get_my_unique_id()) ;
 
             // find user_seq in data.json
             var pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data) {
                 var pgm = service + '.i_am_online fileGet 1 callback: ';
+                var user_seq, user_seqs, i, pubkey2 ;
                 // console.log(pgm + 'data = ' + JSON.stringify(data));
                 if (!data) {
-                    console.log(pgm + 'No data.json file' + info) ;
+                    if (is_user_info_empty()) console.log(pgm + 'New empty user account. No data.json file' + info) ;
+                    else {
+                        // non empty user account. Must be changed ZeroNet certificate.
+                        // create missing data.json file. will also add a status.json file with a last online timestamp
+                        console.log(pgm + 'Changed ZeroNet certificate. Creating data.json file') ;
+                        z_update_data_json(pgm) ;
+                    }
                     return ;
                 }
                 data = JSON.parse(data);
                 if (!data.users || (data.users.length == 0)) {
-                    console.log(pgm + 'No users in data.json' + info) ;
+                    console.log(pgm + 'System error. No users in data.json. Updating data.json file') ;
+                    z_update_data_json(pgm) ;
                     return ;
                 }
-                var user_seq = null ;
-                var user_seqs = [] ;
-                for (var i=0 ; i<data.users.length ; i++) {
+                user_seq = null ;
+                user_seqs = [] ;
+                for (i=0 ; i<data.users.length ; i++) {
                     user_seqs.push(data.users[i].user_seq) ;
-                    if (data.users[i].pubkey == pubkey) user_seq = data.users[i].user_seq ;
+                    if (data.users[i].pubkey == pubkey) {
+                        user_seq = data.users[i].user_seq ;
+                        // just a check. is pubkey2 in data.json = pubkey2 in localStorage. user can have changed ZeroNet cert
+                        // pubkey2 in localStorage is updated after login. See MoneyNetworkHelper.client_login
+                        // pubkey2 in data.json is updated in z_update_data_json
+                        // see above: Changed ZeroNet certificate. Creating data.json file
+                        pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
+                        if (pubkey2 != data.users[i].pubkey2) {
+                            console.log(pgm + 'warning. user must have switched ZeroNet certificate. ' +
+                                'pubkey2 from localStorage is ' + pubkey2 +
+                                ', pubkey2 in data.json file is ' + data.users[i].pubkey2) ;
+                        }
+                    }
                 }
                 // console.log(pgm + 'user_seq = ' + user_seq) ;
                 if (!user_seq) {
-                    console.log(pgm + 'User was not found in data.json' + info) ;
+                    console.log(pgm + 'User was not found in data.json. Updating data.json file') ;
+                    z_update_data_json(pgm) ;
                     return ;
                 }
 

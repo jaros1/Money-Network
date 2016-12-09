@@ -2,6 +2,7 @@
 <html ng-app="MoneyNetwork">
 <head>
     <title ng-bind="n.texts.appname">Money Network loading</title>
+    <meta name="keywords" content="money,chat,privacy,encryption">
     <link rel="stylesheet" media="all" href="css/all.css"/>
 
     <!-- angularJS templates - subpages in single page site - same sequence as in main menu -->
@@ -1433,6 +1434,7 @@
                             Current ZeroNet ID:
                             <a href="" ng-bind="a.site_info.cert_user_id|shortCertId" ng-click="a.select_zeronet_cert()"
                                     title="{{a.site_info.cert_user_id}}" alt="{{a.site_info.cert_user_id}}">select ...</a>
+                            <a href="" id="zeronet_cert_changed_link" ng-click="a.zeronet_cert_changed()" style="display: none"></a>
                         </td>
                     </tr>
                     <tr>

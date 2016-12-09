@@ -563,7 +563,6 @@ var MoneyNetworkHelper = (function () {
                     else texts.push(JSON.stringify(arguments[i]));
             } // switch
         }
-        ;
         // strip empty fields from end of sha256 input
         while ((texts.length > 0) && (texts[texts.length - 1] == '')) texts.length = texts.length - 1;
         var text = texts.length == 0 ? '' : texts.join(',');
@@ -581,23 +580,24 @@ var MoneyNetworkHelper = (function () {
             char = character_set.substr(index, 1);
             password.push(char);
         }
-        ;
         return password.join('');
     } // generate_random_password
 
 
-    // post login. add pubkey2 (ZeroNet CryptMessage plugin) is pubkey2 does not exists
-    function add_cryptmessage_pubkey2 () {
-        if (getItem('pubkey2')) return ;
-
+    // post login. add/update pubkey2 (used in ZeroNet CryptMessage plugin)
+    function get_cryptmessage_pubkey2 () {
+        var pgm = module + '.get_cryptmessage_pubkey2: ' ;
+        var old_pubkey2 = getItem('pubkey2') ;
         // get pubkey2 for this userid
         var userid = parseInt(getItem('userid')) ;
         ZeroFrame.cmd("userPublickey", [userid], function (pubkey2) {
+            if (old_pubkey2 == pubkey2) return ;
+            if (old_pubkey2) console.log(pgm + 'updating pubkey2. user must have switched ZeroNet certificate') ;
             setItem('pubkey2', pubkey2) ;
             ls_save() ;
-        });
+        }); // userPublickey
+    } // get_cryptmessage_pubkey2
 
-    }
 
     // client login (password from device_login_form form)
     // 0 = invalid password, > 0 : userid
@@ -623,7 +623,7 @@ var MoneyNetworkHelper = (function () {
                 // save login
                 setItem('userid', userid);
                 setItem('password', password);
-                add_cryptmessage_pubkey2() ;
+                get_cryptmessage_pubkey2() ;
                 load_user_setup() ;
                 return userid;
             }
@@ -660,7 +660,7 @@ var MoneyNetworkHelper = (function () {
             setItem('passwords', passwords_s); // array with sha256 hashed passwords. length = number of accounts
             // send local storage updates to ZeroFrame
             ls_save();
-            add_cryptmessage_pubkey2() ;
+            get_cryptmessage_pubkey2() ;
             return userid;
         }
         // invalid password (create_new_account=false)

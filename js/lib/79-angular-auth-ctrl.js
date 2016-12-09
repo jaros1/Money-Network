@@ -126,6 +126,12 @@ angular.module('MoneyNetwork')
             });
         };
 
+        // callback from ZeroFrame. ZeroFrame.prototype.route
+        // update Current ZeroNet ID user id
+        self.zeronet_cert_changed = function () {
+            get_site_info() ;
+        };
+
         // end AuthCtrl
     }])
 

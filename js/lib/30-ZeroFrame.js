@@ -70,6 +70,10 @@ ZeroFrame = (function() {
             if (message.params.event) {
                 for (var i=0 ; i<this.event_callbacks.length ; i++) this.event_callbacks[i].apply(undefined, message.params.event);
             }
+            // a little dirty. callback to authCtrl and update ZeroNet ID link in log in page
+            var link = document.getElementById('zeronet_cert_changed_link') ;
+            if (!link) return ;
+            try { link.click()} catch (err) {} ;
         }
         else this.log("ZeroFrame.prototype.route - ignored command", message);
     };
