@@ -921,12 +921,24 @@ var MoneyNetworkHelper = (function () {
     } ;
     json_schemas['lost msg'] = {
         "type": 'object',
-        "title": 'Dummy lost inbox message. Is never sent or received. See receive_feedback_info',
+        "title": 'Lost message notification in UI',
+        "description": 'Lost message detected in feedback information. See add_feedback_info and receive_feedback_info',
         "properties": {
             "msgtype": { "type": 'string', pattern: '^lost msg$'},
             "local_msg_seq": { "type": 'integer'}
         },
         "required": ['msgtype', 'local_msg_seq'],
+        "additionalProperties": false
+    } ;
+    json_schemas['lost msg2'] = {
+        "type": 'object',
+        "title": 'Lost message notification in UI',
+        "description": 'Decrypt error when reading message. Happens for cryptMessage encrypted to an other ZeroNet certificate. User has switched certificate. See process_incoming_cryptmessage',
+        "properties": {
+            "msgtype": { "type": 'string', pattern: '^lost msg2$'},
+            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+        },
+        "required": ['msgtype', 'message_sha256'],
         "additionalProperties": false
     } ;
 

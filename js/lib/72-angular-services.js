@@ -415,6 +415,8 @@ angular.module('MoneyNetwork')
                     if (message.feedback) continue ; // feedback loop complete - outbox message have been received by contact
                     // request feedback info from contact. has this outbox message been received?
                     local_msg_seqs.push(message.local_msg_seq) ;
+                    // todo: why is null added to sent array?
+                    if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array. message = ' + JSON.stringify(local_msg_seqs));
                 } // for i (contact.messages)
                 // check deleted outbox messages - todo: any reason to ask for feedback info for deleted outbox messages?
                 if (contact.deleted_outbox_messages) {
@@ -425,6 +427,8 @@ angular.module('MoneyNetwork')
                         if (contact.deleted_outbox_messages[local_msg_seq]) continue ; // feedback loop complete - deleted outbox message have been received by contact
                         // request feedback info from contact. has this deleted outbox message been received?
                         local_msg_seqs.push(parseInt(local_msg_seq)) ;
+                        // todo: why is null added to sent array?
+                        if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array.');
                     }
                 } // for local_msg_seq (deleted_outbox_messages)
                 if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
@@ -1378,7 +1382,7 @@ angular.module('MoneyNetwork')
                         }
                         delete message.sender_sha256 ; // info is in message_with_envelope
                         delete message.local_msg_seq ; // info is in message_with_envelope
-                        // delete message.feedback_info ; // todo: no reason to keep feedback info?
+                        // delete message.feedback_info ; // todo: any reason to keep feedback info in message?
                         message_with_envelope.zeronet_msg_id = CryptoJS.SHA256(encrypted_message_str).toString();
                         message_with_envelope.sent_at = sent_at ;
                         // console.log(pgm + 'new local_storage_messages[' + i + '] = ' + JSON.stringify(message));
@@ -2544,7 +2548,7 @@ angular.module('MoneyNetwork')
                 "and users.json_id = json.json_id " +
                 "and users.pubkey = '" + pubkey + "'";
             debug('select', pgm + 'query 1 = ' + query) ;
-            if (auth_address) debug('file_done', pgm + 'query 1 = ' + query) ;
+            // if (auth_address) debug('file_done', pgm + 'query 1 = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.z_contact_search dbQuery callback 1: ' ;
                 var error ;
@@ -2900,6 +2904,11 @@ angular.module('MoneyNetwork')
                 }
                 // already decrypted. continue
                 decrypted_message_str = res.decrypted_message_str ;
+                if (decrypted_message_str == 'changed cert error' ) {
+                    // cryptMessage decrypt error but used has more than one ZeroNet certificate and maybe the message was encrypted using an other ZeroNet certificate
+                    // create a lost msg2 notification for contact. Return true to save contacts and update angularJS UI
+                    return true ;
+                }
             }
 
             // console.log(pgm + 'decrypted message = ' + decrypted_message_str) ;
@@ -3392,7 +3401,7 @@ angular.module('MoneyNetwork')
 
                     ZeroFrame.cmd("dbQuery", [query], function (res2) {
                         var pgm = service + '.process_incoming_cryptmessage dbQuery callback 1: ';
-                        var cert_user_ids, i ;
+                        var cert_user_ids, i, lost_message, error, local_msg_seq, lost_message_with_envelope, contact ;
 
                         if (res2.error) {
                             console.log(pgm + "certificate check failed: " + res2.error) ;
@@ -3419,6 +3428,31 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'message = ' + JSON.stringify(res)) ;
                         console.log(pgm + 'current cert_user_id = ' + ZeroFrame.site_info.cert_user_id) ;
                         console.log(pgm + 'other cert_user_ids  = ' + cert_user_ids.join(', ')) ;
+
+
+                        // todo: create lost message here or in process_incoming_message?
+                        lost_message = { msgtype: 'lost msg2', message_sha256: res.message_sha256} ;
+                        // validate json
+                        error = MoneyNetworkHelper.validate_json(pgm, lost_message, lost_message.msgtype, 'Cannot insert dummy lost inbox message in UI. message_sha256 = ' + res.message_sha256);
+                        if (error) {
+                            console.log(pgm + error) ;
+                        }
+                        else {
+                            // insert into inbox
+                            local_msg_seq = next_local_msg_seq() ;
+                            lost_message_with_envelope = {
+                                local_msg_seq: local_msg_seq,
+                                folder: 'inbox',
+                                message: lost_message,
+                                sent_at: res.timestamp,
+                                received_at: new Date().getTime()
+                            } ;
+                            lost_message_with_envelope.ls_msg_size = JSON.stringify(lost_message_with_envelope).length ;
+                            contact = get_contact_by_unique_id(unique_id) ;
+                            contact.messages.push(lost_message_with_envelope) ;
+                            js_messages.push({contact: contact, message: lost_message_with_envelope}) ;
+                            console.log(pgm + 'created lost inbox message in the UI. lost_message_with_envelope = ' + JSON.stringify(lost_message_with_envelope)) ;
+                        }
 
                         res.decrypted_message_str = 'changed cert error' ;
                         cb() ;

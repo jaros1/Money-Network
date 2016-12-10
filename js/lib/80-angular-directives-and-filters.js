@@ -405,6 +405,11 @@ angular.module('MoneyNetwork')
                 return greeting + '. Sorry. Message with local_msg_seq ' + message.message.message.local_msg_seq +
                     ' was lost in cyberspace. If possible I will resend the lost message next time we talk' ;
             }
+            if (msgtype == 'lost msg2') {
+                // received feedback info request with an unknown local_msg_seq. Must be a message lost in cyberspace
+                return greeting + '. Sorry. Message with sha256 address ' + message.message.message.message_sha256 +
+                    ' could not be decrypted. Probably cryptMessage encrypted for one of your other ZeroNet certificates' ;
+            }
 
             // other "unknown" messages. Just return JSON dump
             str = JSON.stringify(message.message) ;
