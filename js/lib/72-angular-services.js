@@ -280,7 +280,7 @@ angular.module('MoneyNetwork')
         function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
             var feedback, i, message, local_msg_seqs, local_msg_seq, factor, now, key, j, my_unique_id, participant,
-                show_receiver_sha256, error ;
+                show_receiver_sha256, error, contact2 ;
             now = new Date().getTime() ;
 
             // check that json still is valid before adding feedback information to outgoing messages
@@ -365,77 +365,101 @@ angular.module('MoneyNetwork')
                 // - listening for any response to this address (receiver_sha256) and remove message from ZeroNet (data.json) after having received response
                 // - see section b) in data.json cleanup routine (z_update_data_json)
 
-                // check inbox. messages received from contact
                 local_msg_seqs = [] ;
                 show_receiver_sha256 = true ;
-                for (i=0 ; i<contact.messages.length ; i++) {
-                    message = contact.messages[i] ;
-                    if (message.message.msgtype == 'lost msg2') debug('lost_message', pgm + 'lost msg2 in inbox. message = ' + JSON.stringify(message));
-                    if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
-                    //  inbox message with a local_msg_seq (contacts local_msg_seq for this message)
-                    // console.log(pgm + 'inbox message.sender_sha256 = ' + message.sender_sha256);
-                    if (message.feedback) {
-                        // feedback loop complete - contact knows that this message has been received
-                        continue ;
-                    }
-                    message.feedback = now ;
-                    if (message.sender_sha256 == receiver_sha256) {
-                        // current outbox message.receiver_sha256 = inbox message.sender_sha256.
-                        // no reason also to add this inbox message to feedback.received
-                        if (show_receiver_sha256) {
-                            debug('feedback_info', pgm + 'receiver_sha256 = ' + receiver_sha256) ;
-                            show_receiver_sha256 = false ;
-                        }
-                        continue ;
-                    }
-                    // factor = -1. received feedback request for unknown message. has already created a lost message
-                    // notification in the UI. Tell contact that message has never been received. contact will resend the
-                    // lost message next time the contacts talk
-                    factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
-                    local_msg_seqs.push(factor* message.message.local_msg_seq) ;
-                } // for i (contact.messages)
 
-                // check deleted inbox messages.
-                if (contact.deleted_inbox_messages) for (local_msg_seq in contact.deleted_inbox_messages) {
-                    if (contact.deleted_inbox_messages[local_msg_seq]) {
-                        // feedback loop complete - contact knows that this deleted message has been received
-                        continue ;
-                    }
-                    // feedback loop not finished. tell contact that this deleted inbox message has been received
-                    contact.deleted_inbox_messages[local_msg_seq] = now ;
-                    local_msg_seqs.push(parseInt(local_msg_seq));
-                } // for local_msg_seq (deleted_inbox_messages)
+                // loop through inbox and deleted inbox messages for contacts with identical pubkey = identical localStorage
+                for (i=0 ; i<ls_contacts.length ; i++) {
+                    contact2 = ls_contacts[i] ;
+                    if (contact2.pubkey != contact.pubkey) continue ;
+
+                    // check inbox. messages received from contact2
+                    for (j=0 ; j<contact2.messages.length ; j++) {
+                        message = contact2.messages[j] ;
+                        if (message.message.msgtype == 'lost msg2') debug('lost_message', pgm + 'lost msg2 in inbox. message = ' + JSON.stringify(message));
+                        if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
+                        //  inbox message with a local_msg_seq (contacts local_msg_seq for this message)
+                        // console.log(pgm + 'inbox message.sender_sha256 = ' + message.sender_sha256);
+                        if (message.feedback) {
+                            // feedback loop complete - contact knows that this message has been received
+                            continue ;
+                        }
+                        message.feedback = now ;
+                        if (message.sender_sha256 == receiver_sha256) {
+                            // current outbox message.receiver_sha256 = inbox message.sender_sha256.
+                            // no reason also to add this inbox message to feedback.received
+                            if (show_receiver_sha256) {
+                                debug('feedback_info', pgm + 'receiver_sha256 = ' + receiver_sha256) ;
+                                show_receiver_sha256 = false ;
+                            }
+                            continue ;
+                        }
+                        // factor = -1. received feedback request for unknown message. has already created a lost message
+                        // notification in the UI. Tell contact that message has never been received. contact will resend the
+                        // lost message next time the contacts talk
+                        factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
+                        local_msg_seqs.push(factor* message.message.local_msg_seq) ;
+                    } // for i (contact2.messages)
+
+                    // check deleted inbox messages.
+                    if (contact2.deleted_inbox_messages) for (local_msg_seq in contact2.deleted_inbox_messages) {
+                        if (contact2.deleted_inbox_messages[local_msg_seq]) {
+                            // feedback loop complete - contact knows that this deleted message has been received
+                            continue ;
+                        }
+                        // feedback loop not finished. tell contact that this deleted inbox message has been received
+                        contact2.deleted_inbox_messages[local_msg_seq] = now ;
+                        local_msg_seqs.push(parseInt(local_msg_seq));
+                    } // for local_msg_seq (deleted_inbox_messages)
+
+
+
+                } // i (contacts)
+
                 if (local_msg_seqs.length > 0) feedback.received = local_msg_seqs ;
+
 
                 // check outbox. messages sent to contact without having received feedback. request feedback info for outbox messages.
                 // two kind of feedback.
                 //   a) inbox.receiver_sha256 = outbox.sender_sha256. have received an inbox message with sha256 address sent in a outbox message
                 //   b) feedback.received array in ingoing messages.
                 local_msg_seqs = [] ;
-                for (i=0 ; i<contact.messages.length ; i++) {
-                    message = contact.messages[i] ;
-                    if (message.folder != 'outbox') continue ;
-                    if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ; // sending current outbox message
-                    if (message.feedback) continue ; // feedback loop complete - outbox message have been received by contact
-                    // request feedback info from contact. has this outbox message been received?
-                    local_msg_seqs.push(message.local_msg_seq) ;
-                    // todo: why is null added to sent array?
-                    if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array. message = ' + JSON.stringify(local_msg_seqs));
-                } // for i (contact.messages)
-                // check deleted outbox messages - todo: any reason to ask for feedback info for deleted outbox messages?
-                if (contact.deleted_outbox_messages) {
-                    debug('feedback_info', pgm + 'contact.deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages));
-                    debug('feedback_info', pgm + 'Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages)));
-                    for (local_msg_seq in contact.deleted_outbox_messages) {
-                        // debug('feedback_info', pgm + 'local_msg_seq = ' + local_msg_seq) ;
-                        if (contact.deleted_outbox_messages[local_msg_seq]) continue ; // feedback loop complete - deleted outbox message have been received by contact
-                        // request feedback info from contact. has this deleted outbox message been received?
-                        local_msg_seqs.push(parseInt(local_msg_seq)) ;
+
+                // loop trough outbox and deleted outbox messages from contacts with identical pubkey = identical localStorage
+                for (i=0 ; i<ls_contacts.length ; i++) {
+                    contact2 = ls_contacts[i] ;
+                    if (contact2.pubkey != contact.pubkey) continue ;
+
+                    // check outbox messages
+                    for (j=0 ; j<contact2.messages.length ; j++) {
+                        message = contact2.messages[j] ;
+                        if (message.folder != 'outbox') continue ;
+                        if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ; // sending current outbox message
+                        if (message.feedback) continue ; // feedback loop complete - outbox message have been received by contact
+                        // request feedback info from contact. has this outbox message been received?
+                        local_msg_seqs.push(message.local_msg_seq) ;
                         // todo: why is null added to sent array?
-                        if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array.');
-                    }
-                } // for local_msg_seq (deleted_outbox_messages)
+                        if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array. message = ' + JSON.stringify(local_msg_seqs));
+                    } // for j (contact2.messages)
+
+                    // check deleted outbox messages - todo: any reason to ask for feedback info for deleted outbox messages?
+                    if (contact2.deleted_outbox_messages) {
+                        debug('feedback_info', pgm + 'contact2.deleted_outbox_messages = ' + JSON.stringify(contact2.deleted_outbox_messages));
+                        debug('feedback_info', pgm + 'Object.keys(contact2.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact2.deleted_outbox_messages)));
+                        for (local_msg_seq in contact2.deleted_outbox_messages) {
+                            // debug('feedback_info', pgm + 'local_msg_seq = ' + local_msg_seq) ;
+                            if (contact2.deleted_outbox_messages[local_msg_seq]) continue ; // feedback loop complete - deleted outbox message have been received by contact
+                            // request feedback info from contact. has this deleted outbox message been received?
+                            local_msg_seqs.push(parseInt(local_msg_seq)) ;
+                            // todo: why is null added to sent array?
+                            if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array.');
+                        }
+                    } // for local_msg_seq (deleted_outbox_messages)
+
+                } // for i (contacts)
+
                 if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
+
             }
 
             // any feedback info to add?
@@ -463,12 +487,13 @@ angular.module('MoneyNetwork')
 
         } // add_feedback_info
 
+
         // process feedback information in ingoing message
         function receive_feedback_info (message_with_envelope, contact) {
             var pgm = service + '.receive_feedback_info: ' ;
             var feedback, received, sent, i, message, index, local_msg_seq, old_feedback, now, error, lost_message,
                 lost_message_with_envelope, lost_messages, my_unique_id, my_participant, participant_and_local_msg_seq,
-                from_participant, key, contact2;
+                from_participant, key, contact2, j;
             feedback = message_with_envelope.message.feedback ;
             now = new Date().getTime() ;
 
@@ -745,71 +770,84 @@ angular.module('MoneyNetwork')
                         }
                     }
                     if (lost_messages.length > 0) debug('lost_message', pgm + 'lost_messages = ' + JSON.stringify(lost_messages));
-                    // check outbox
-                    for (i=0 ; i<contact.messages.length ; i++) {
-                        message = contact.messages[i] ;
-                        if (message.folder != 'outbox') continue ;
-                        // outbox
-                        local_msg_seq = message.local_msg_seq ;
-                        index = lost_messages.indexOf(local_msg_seq) ;
-                        if (index != -1) {
-                            // message lost in cyberspace. should be resend to contact
-                            lost_message = true ;
-                            lost_messages.splice(index,1) ;
-                        }
-                        else {
-                            index = received.indexOf(message.local_msg_seq) ;
-                            if (index == -1) continue ; // not relevant
-                            received.splice(index,1) ;
-                        }
-                        if (lost_message) {
-                            debug(
-                                'lost_message', pgm + 'Message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. ' +
-                                'Could be a message sent and removed from ZeroNet when contact was offline. ' +
-                                'Could be a message lost due to cryptMessage decrypt error');
-                            debug('lost_message', pgm + 'message = ' + JSON.stringify(message)) ;
-                            //message = {
-                            //    "folder": "outbox",
-                            //    "message": {"msgtype": "chat msg", "message": "message 2 lost in cyberspace"},
-                            //    "local_msg_seq": 2,
-                            //    "sender_sha256": "1da65defff8140656d966c84b01411911802b401a37dc090cafdc5d02bc54c5d",
-                            //    "sent_at": 1480497004317,
-                            //    "ls_msg_size": 218,
-                            //    "msgtype": "chat msg"
-                            //};
-                            if (message.zeronet_msg_id) {
-                                debug('lost_message', pgm + 'lost message with local_msg_seq ' + local_msg_seq +
-                                    ' has a zeronet_msg_id and should still be on ZeroNet. ' +
-                                    'Maybe user has changed ZeroNet certificate and is getting cryptMessage decryption error. '+
-                                    'Maybe message was sent to a sha256 address that contact was not listening to any more') ;
 
 
+                    // loop through outbox and deleted outbox messages for contacts with identical pubkey = identical localStorage
+                    // update feedback info for received messages and also keep track og any lost messages
+                    for (i=0 ; i<ls_contacts.length ; i++) {
+                        contact2 = ls_contacts[i] ;
+                        if (contact2.pubkey != contact.pubkey) continue ;
+
+
+                        // check outbox
+                        for (j=0 ; j<contact2.messages.length ; j++) {
+                            message = contact2.messages[j] ;
+                            if (message.folder != 'outbox') continue ;
+                            // outbox
+                            local_msg_seq = message.local_msg_seq ;
+                            index = lost_messages.indexOf(local_msg_seq) ;
+                            if (index != -1) {
+                                // message lost in cyberspace. should be resend to contact
+                                lost_message = true ;
+                                lost_messages.splice(index,1) ;
                             }
-                            else if (!message.sent_at) console.log(pgm + 'error. lost message has never been sent. sent_at is null') ;
-                            else  {
-                                debug('lost_message', pgm + 'resend old message with old local_msg_id. add old sent_at to message') ;
-                                if (!message.message.sent_at) message.message.sent_at = message.sent_at ;
-                                delete message.sent_at ;
-                                delete message.cleanup_at ;
-                                delete message.feedback ;
-                                // force data.json update after processing of incomming messages
-                                new_incoming_receipts++ ;
+                            else {
+                                index = received.indexOf(message.local_msg_seq) ;
+                                if (index == -1) continue ; // not relevant
+                                received.splice(index,1) ;
+                            }
+                            if (lost_message) {
+                                debug(
+                                    'lost_message', pgm + 'Message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. ' +
+                                    'Could be a message sent and removed from ZeroNet when contact was offline. ' +
+                                    'Could be a message lost due to cryptMessage decrypt error');
+                                debug('lost_message', pgm + 'message = ' + JSON.stringify(message)) ;
+                                //message = {
+                                //    "folder": "outbox",
+                                //    "message": {"msgtype": "chat msg", "message": "message 2 lost in cyberspace"},
+                                //    "local_msg_seq": 2,
+                                //    "sender_sha256": "1da65defff8140656d966c84b01411911802b401a37dc090cafdc5d02bc54c5d",
+                                //    "sent_at": 1480497004317,
+                                //    "ls_msg_size": 218,
+                                //    "msgtype": "chat msg"
+                                //};
+                                if (message.zeronet_msg_id) {
+                                    debug('lost_message', pgm + 'lost message with local_msg_seq ' + local_msg_seq +
+                                        ' has a zeronet_msg_id and should still be on ZeroNet. ' +
+                                        'Maybe user has changed ZeroNet certificate and is getting cryptMessage decryption error. '+
+                                        'Maybe message was sent to a sha256 address that contact was not listening to any more') ;
+
+
+                                }
+                                else if (!message.sent_at) console.log(pgm + 'error. lost message has never been sent. sent_at is null') ;
+                                else  {
+                                    debug('lost_message', pgm + 'resend old message with old local_msg_id. add old sent_at to message') ;
+                                    if (!message.message.sent_at) message.message.sent_at = message.sent_at ;
+                                    delete message.sent_at ;
+                                    delete message.cleanup_at ;
+                                    delete message.feedback ;
+                                    // force data.json update after processing of incomming messages
+                                    new_incoming_receipts++ ;
+                                }
+                            }
+                            else {
+                                if (message.feedback) debug('feedback_info', pgm + 'warning. have already received feedback info for outbox message with local_msg_seq ' + message.local_msg_seq + ' earlier. Old timestamp = ' + message.feedback + ', new timestamp = ' + now) ;
+                                message.feedback = now ;
                             }
                         }
-                        else {
-                            if (message.feedback) debug('feedback_info', pgm + 'warning. have already received feedback info for outbox message with local_msg_seq ' + message.local_msg_seq + ' earlier. Old timestamp = ' + message.feedback + ', new timestamp = ' + now) ;
-                            message.feedback = now ;
+
+                        // check also deleted outbox messages
+                        if (received.length && contact2.deleted_outbox_messages) for (j=received.length-1 ; j >= 0 ; j--) {
+                            local_msg_seq = '' + received[j] ;
+                            // debug('feedback_info', pgm + 'j = ' + i + ', local_msg_seq = ' + JSON.stringify(local_msg_seq)) ;
+                            if (!contact2.deleted_outbox_messages.hasOwnProperty(local_msg_seq)) continue ; // error - unknown local_msg_seq
+                            received.splice(j,1);
+                            if (contact2.deleted_outbox_messages[local_msg_seq]) debug('feedback_info', pgm + 'warning. have already received feedback info for deleted outbox message with local_msg_seq ' + message.local_msg_seq + ' earlier. Old timestamp = ' + contact2.deleted_outbox_messages[local_msg_seq] + ', new timestamp = ' + now) ;
+                            contact2.deleted_outbox_messages[local_msg_seq] = now ;
                         }
-                    }
-                    // check also deleted outbox messages
-                    if (received.length && contact.deleted_outbox_messages) for (i=received.length-1 ; i >= 0 ; i--) {
-                        local_msg_seq = '' + received[i] ;
-                        debug('feedback_info', pgm + 'i = ' + i + ', local_msg_seq = ' + JSON.stringify(local_msg_seq)) ;
-                        if (!contact.deleted_outbox_messages.hasOwnProperty(local_msg_seq)) continue ; // error - unknown local_msg_seq
-                        received.splice(i,1);
-                        if (contact.deleted_outbox_messages[local_msg_seq]) debug('feedback_info', pgm + 'warning. have already received feedback info for deleted outbox message with local_msg_seq ' + message.local_msg_seq + ' earlier. Old timestamp = ' + contact.deleted_outbox_messages[local_msg_seq] + ', new timestamp = ' + now) ;
-                        contact.deleted_outbox_messages[local_msg_seq] = now ;
-                    }
+
+                    } // for i (contacts)
+
 
                     if (received.length) {
                         // error: received feedback info for one or more messages not in outbox and not in deleted_outbox_messages
@@ -900,6 +938,7 @@ angular.module('MoneyNetwork')
                         // could be lost not received inbox messages or could be an error.
                         debug('lost_message', pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
                         if (contact.deleted_inbox_messages) {
+                            // todo: should show deleted_inbox_messages for all contacts with identical pubkey
                             debug('lost_message',
                                 pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
                                 ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
