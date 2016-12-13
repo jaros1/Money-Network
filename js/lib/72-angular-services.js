@@ -378,7 +378,8 @@ angular.module('MoneyNetwork')
                     for (j=0 ; j<contact2.messages.length ; j++) {
                         message = contact2.messages[j] ;
                         if (message.message.msgtype == 'lost msg2') debug('lost_message', pgm + 'lost msg2 in inbox. message = ' + JSON.stringify(message));
-                        if ((message.folder != 'inbox') || !message.message.local_msg_seq) continue ;
+                        if (message.folder != 'inbox') continue ;
+                        if (!message.message.local_msg_seq && !message.message.message_sha256) continue ;
                         //  inbox message with a local_msg_seq (contacts local_msg_seq for this message)
                         // console.log(pgm + 'inbox message.sender_sha256 = ' + message.sender_sha256);
                         if (message.feedback) {
@@ -395,11 +396,14 @@ angular.module('MoneyNetwork')
                             }
                             continue ;
                         }
-                        // factor = -1. received feedback request for unknown message. has already created a lost message
-                        // notification in the UI. Tell contact that message has never been received. contact will resend the
-                        // lost message next time the contacts talk
-                        factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
-                        local_msg_seqs.push(factor* message.message.local_msg_seq) ;
+                        // notice special format in feedback.received for lost messages
+                        // - positive local_msg_seq: tell contact that message has been received
+                        // - negative local_msg_seq: tell contact that message has not been received (please resend)
+                        // - sha256 address: tell contact that message with sha256 address was received with a decrypt error (please resend)
+                        if (message.message.msgtype == 'lost msg2') local_msg_seqs.push(message.message.message_sha256) ;
+                        else if (message.message.msgtype == 'lost msg') local_msg_seqs.push(-message.message.local_msg_seq) ;
+                        else local_msg_seqs.push(message.message.local_msg_seq) ;
+
                     } // for i (contact2.messages)
 
                     // check deleted inbox messages.
@@ -500,7 +504,7 @@ angular.module('MoneyNetwork')
             var feedback, received, sent, i, message, index, local_msg_seq, old_feedback, now, error, lost_message,
                 lost_message_with_envelope, lost_messages, my_unique_id, my_participant, participant_and_local_msg_seq,
                 from_participant, key, contact2, j, changed_zeronet_cert, move_lost_messages, seq, js_messages_row,
-                found_message;
+                found_message, index2 ;
             feedback = message_with_envelope.message.feedback ;
             now = new Date().getTime() ;
 
@@ -767,13 +771,20 @@ angular.module('MoneyNetwork')
                     // Check outbox and mark messages as received
                     received = JSON.parse(JSON.stringify(feedback.received)) ;
 
-                    // any not received messages with negativ local_msg_seq - message lost in cyberspace
+                    // lost_messages
+                    // - negative local_msg_seq - message has not been received
+                    // - sha256 address - message received but with decrypt error (changed ZeroNet certificate)
                     lost_messages = [] ;
                     for (i=received.length-1 ; i >= 0 ; i--) {
-                        local_msg_seq = received[i] ;
-                        if (local_msg_seq < 0) {
+                        if ((typeof received[i] == 'number') && (received[i] < 0)) {
+                            // lost msg - message has not been received
+                            lost_messages.push(-received[i]) ;
                             received.splice(i,1) ;
-                            lost_messages.push(-local_msg_seq) ;
+                        }
+                        else if (typeof received[i] == 'string') {
+                            // lost msg2 - message received but with decrypt error
+                            lost_messages.push(received[i]) ;
+                            received.splice(i,1) ;
                         }
                     }
                     if (lost_messages.length > 0) debug('lost_message', pgm + 'lost_messages = ' + JSON.stringify(lost_messages));
@@ -796,11 +807,13 @@ angular.module('MoneyNetwork')
                             // outbox
                             local_msg_seq = message.local_msg_seq ;
                             index = lost_messages.indexOf(local_msg_seq) ;
-                            if (index != -1) {
+                            index2 = lost_messages.indexOf(message.zeronet_msg_id) ;
+                            if ((index != -1) || (index2 != -1)) {
                                 // message lost in cyberspace. should be resend to contact
                                 lost_message = true ;
                                 changed_zeronet_cert = (contact.auth_address != contact2.auth_address) ;
-                                lost_messages.splice(index,1) ;
+                                if (index != -1) lost_messages.splice(index,1) ;
+                                else lost_messages.splice(index2,1) ;
                             }
                             else {
                                 index = received.indexOf(message.local_msg_seq) ;

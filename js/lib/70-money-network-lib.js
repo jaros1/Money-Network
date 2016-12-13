@@ -731,7 +731,8 @@ var MoneyNetworkHelper = (function () {
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'}
+            "sent_at": { "type": 'integer'},
+            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
         },
         "required": ['msgtype', 'search'],
         "additionalProperties": false
@@ -759,7 +760,8 @@ var MoneyNetworkHelper = (function () {
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'}
+            "sent_at": { "type": 'integer'},
+            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
         },
         "required": ['msgtype'],
         "additionalProperties": false
@@ -823,7 +825,8 @@ var MoneyNetworkHelper = (function () {
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'}
+            "sent_at": { "type": 'integer'},
+            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
         },
         "required": ['msgtype', 'password_sha256'],
         "additionalProperties": false
@@ -852,7 +855,8 @@ var MoneyNetworkHelper = (function () {
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'}
+            "sent_at": { "type": 'integer'},
+            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
         },
         "required": ['msgtype', 'password'],
         "additionalProperties": false
@@ -881,7 +885,8 @@ var MoneyNetworkHelper = (function () {
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'}
+            "sent_at": { "type": 'integer'},
+            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
         },
         "required": ['msgtype', 'remote_msg_seq'],
         "additionalProperties": false
