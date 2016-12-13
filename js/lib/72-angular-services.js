@@ -839,6 +839,7 @@ angular.module('MoneyNetwork')
                                     // using this trick should do it.
                                     // see z_update_data_json "lost message. resending outbox messages that still is in data.json file"
                                     if (!message.message.sent_at) message.message.sent_at = message.sent_at ;
+                                    if (!message.message.message_sha256) message.message.message_sha256 = message.zeronet_msg_id ;
                                     debug('lost_message', pgm + 'marked message with message.message.sent_at = ' + message.message.sent_at + '. resending together with next outbox message');
                                     if (changed_zeronet_cert && (message.encryption == 2)) {
                                         debug('lost_message',
@@ -2101,6 +2102,32 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'inserted sender_sha256 address ' + message.sender_sha256 + ' into js_messages sender_sha256 index') ;
             }
         } // add_message
+
+        function remove_message (js_messages_row) {
+            var pgm = service + '.remove_message' ;
+            var contact, message, i, seq ;
+            contact = js_messages_row.contact ;
+            message = js_messages_row.message ;
+            seq = message.seq ;
+            // remove from contact.messages
+            for (i=0 ; i<contact.messages.length ; i++) {
+                if (contact.messages[i].seq == seq) {
+                    contact.messages.splice(i,1) ;
+                    break ;
+                }
+            }
+            // remove from js_messages
+            for (i=0 ; i<js_messages.length ; i++) {
+                if (js_messages[i].message.seq == seq) {
+                    js_messages.splice(i,1) ;
+                    break ;
+                }
+            }
+            // remove from indexes
+            delete js_messages_index.seq[seq] ;
+            if (message.sender_sha256) delete js_messages_index.sender_sha256[message.sender_sha256] ;
+        } // remove_message
+
         function get_message_by_seq (seq) {
             var pgm = service + '.get_message_by_seq: ' ;
             var js_messages_row = js_messages_index.seq[seq] ;
@@ -3125,7 +3152,7 @@ angular.module('MoneyNetwork')
         function process_incoming_message (res, unique_id) {
             var pgm = service + '.process_incoming_message: ' ;
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256, error ;
-            var local_msg_seq, message, contact_or_group ;
+            var local_msg_seq, message, contact_or_group, found_lost_msg, found_lost_msg2, js_messages_row, placeholders ;
 
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
 
@@ -3264,36 +3291,45 @@ angular.module('MoneyNetwork')
             //    "sent_at": 1480518136131,
             //    "local_msg_seq": 2
             //};
+
+            // sent_at timestamp in incoming message. is used when resending lost messages. two kind of lost messages:
+            // a) lost messages detected in feedback info loop. sent but now received. "lost msg" notification in the UI until receiving the original message
+            // b) cryptMessage decrypt error. contact resend message encrypted for changed certificate. "lost msg2" notification in the UI until receiving the original message
+            // c) an incoming message can match both type of errors. identified with original local_msg_seq and message_sha256 information inside the received message
+
             if (decrypted_message.sent_at) {
                 debug('lost_message', pgm + 'message with sent_at timestamp. must be contact resending a lost message');
                 debug('lost_message', pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
-                // 1) find message with same local_msg_seq
+                found_lost_msg = false ;
+                found_lost_msg2 = false ;
+                // 1) find message with same local_msg_seq - this technique can only be used for "lost msg"
                 index = -1;
-                for (i = 0; i < contact_or_group.messages.length; i++) {
+                for (i = contact_or_group.messages.length-1; i >= 0 ; i--) {
                     message = contact_or_group.messages[i];
                     if (message.folder != 'inbox') continue;
-                    if (message.message.local_msg_seq != decrypted_message.local_msg_seq) continue;
-                    if (message.message.msgtype != 'lost msg') {
-                        debug('lost_message', 'message with local_msg_seq ' + decrypted_message.local_msg_seq + ' is in inbox but is not a lost message any longer. Ignoring ingoing message');
-                        return false;
+                    if ((message.message.msgtype == 'lost msg') && (message.message.local_msg_seq == decrypted_message.local_msg_seq)) {
+                        // found matching lost message notification in UI
+                        debug('lost_message', pgm + 'old lost msg placeholder was found. deleting it');
+                        found_lost_msg = true ;
+                        js_messages_row = get_message_by_seq(message.seq) ;
+                        remove_message(js_messages_row) ;
+                        continue ;
                     }
-                    index = i;
-                    break;
-                }
-                if (index != -1) {
-                    // OK - delete lost msg
-                    debug('lost_message', pgm + 'old lost msg placeholder was found. deleting it');
-                    message = contact_or_group.messages[index];
-                    contact_or_group.messages.splice(index, 1);
-                    for (i = js_messages.length - 1; i >= 0; i--) {
-                        if (js_messages[i].message.local_msg_seq != message.local_msg_seq) continue;
-                        js_messages.splice(i, 1);
-                        break;
+                    if ((message.message.msgtype == 'lost msg2') && (message.message.message_sha256 == decrypted_message.message_sha256)) {
+                        // found matching decrypt error message in UI
+                        debug('lost_message', pgm + 'old decrypt error placeholder was found. deleting it');
+                        found_lost_msg2 = true ;
+                        js_messages_row = get_message_by_seq(message.seq) ;
+                        remove_message(js_messages_row) ;
+                        continue ;
                     }
-                }
-                else {
+                } // for i (contact_or_group.messages)
+                if (!found_lost_msg && !found_lost_msg2) {
                     // lost msg not found. continue as normal new msg
-                    debug('lost_message', pgm + 'lost msg placeholder with local_msg_seq ' + decrypted_message.local_msg_seq + ' was not found. continue as normal new incoming message');
+                    placeholders = [] ;
+                    if (decrypted_message.local_msg_seq) placeholders.push('local_msg_seq ' + decrypted_message.local_msg_seq) ;
+                    if (decrypted_message.message_sha256) placeholders.push('message_sha256 ' + decrypted_message.message_sha256) ;
+                    debug('lost_message', pgm + 'lost msg placeholder with ' + placeholders.join(' or ') + ' was not found. continue processing as normal new incoming message');
                     delete decrypted_message.sent_at;
                 }
 

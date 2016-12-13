@@ -767,7 +767,7 @@ var MoneyNetworkHelper = (function () {
     json_schemas['chat msg'] = {
         "type": 'object',
         "title": 'Send chat message to contact',
-        "description": 'Message is required unless delete old chat message. old_local_msg_seq is reference to old chat message to be changed or deleted. Image must be base64uri',
+        "description": 'Message is required unless delete old chat message. old_local_msg_seq is reference to old chat message to be changed or deleted. Image must be base64uri. sent_at and message_sha256 are used when resending lost messages',
         "properties": {
             "msgtype": { "type": 'string', pattern: '^chat msg$'},
             "message": { "type": 'string'},
@@ -792,7 +792,8 @@ var MoneyNetworkHelper = (function () {
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'}
+            "sent_at": { "type": 'integer'},
+            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
         },
         "required": ['msgtype'],
         "additionalProperties": false
