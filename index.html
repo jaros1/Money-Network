@@ -1348,6 +1348,12 @@
                     <td><input type="checkbox" ng-model="u.setup.debug.lost_message"
                                ng-change="u.debug_settings_changed()"></td>
                 </tr>
+                <tr title="Click to show debug information about spam filter">
+                    <td>Show spam filter?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.spam_filter"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
                 <tr title="Click to check sha256 addresses after every sitePublish call. Old maybe solved issue">
                     <td>Check sha256 addresses?</td>
                     <td>&nbsp;&nbsp;</td>

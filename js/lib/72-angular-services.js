@@ -280,7 +280,7 @@ angular.module('MoneyNetwork')
         function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
             var feedback, i, message, local_msg_seqs, local_msg_seq, factor, now, key, j, my_unique_id, participant,
-                show_receiver_sha256, error, contact2 ;
+                show_receiver_sha256, error, contact2, message2 ;
             now = new Date().getTime() ;
 
             // check that json still is valid before adding feedback information to outgoing messages
@@ -291,6 +291,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm , error) ;
                 return;
             }
+            message = null ;
 
             feedback = {} ;
 
@@ -438,8 +439,13 @@ angular.module('MoneyNetwork')
                         if (message.feedback) continue ; // feedback loop complete - outbox message have been received by contact
                         // request feedback info from contact. has this outbox message been received?
                         local_msg_seqs.push(message.local_msg_seq) ;
-                        // todo: why is null added to sent array?
-                        if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array. message = ' + JSON.stringify(local_msg_seqs));
+                        if (!local_msg_seqs[local_msg_seqs.length-1]) {
+                            // debugging. todo: why null in sent array sometimes?
+                            console.log(
+                                pgm + 'error. added null to feedback.sent array (1). message.local_msg_seq = ' + message.local_msg_seq +
+                                ', message_with_envelope.local_msg_seq = ' + message_with_envelope.local_msg_seq +
+                                ', message = ' + JSON.stringify(message));
+                        }
                     } // for j (contact2.messages)
 
                     // check deleted outbox messages - todo: any reason to ask for feedback info for deleted outbox messages?
@@ -452,7 +458,7 @@ angular.module('MoneyNetwork')
                             // request feedback info from contact. has this deleted outbox message been received?
                             local_msg_seqs.push(parseInt(local_msg_seq)) ;
                             // todo: why is null added to sent array?
-                            if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array.');
+                            if (!local_msg_seqs[local_msg_seqs.length-1]) console.log(pgm + 'error. added null to feedback.sent array (2).');
                         }
                     } // for local_msg_seq (deleted_outbox_messages)
 
@@ -493,7 +499,8 @@ angular.module('MoneyNetwork')
             var pgm = service + '.receive_feedback_info: ' ;
             var feedback, received, sent, i, message, index, local_msg_seq, old_feedback, now, error, lost_message,
                 lost_message_with_envelope, lost_messages, my_unique_id, my_participant, participant_and_local_msg_seq,
-                from_participant, key, contact2, j;
+                from_participant, key, contact2, j, changed_zeronet_cert, move_lost_messages, seq, js_messages_row,
+                found_message;
             feedback = message_with_envelope.message.feedback ;
             now = new Date().getTime() ;
 
@@ -581,8 +588,7 @@ angular.module('MoneyNetwork')
                                 // could be an error or could be decryption error due to changed ZeroNet certificate (cryptMessage)
                                 debug('lost_message', pgm + 'lost message with local_msg_seq ' + local_msg_seq +
                                     ' has a zeronet_msg_id and should still be on ZeroNet. ' +
-                                    'Maybe user has changed ZeroNet certificate and is getting cryptMessage decryption error. '+
-                                    'Maybe message was sent to a sha256 address that contact was not listening to any more');
+                                    'Maybe user has changed ZeroNet certificate and is getting cryptMessage decryption error');
                             }
                             else if (!message.sent_at) console.log(pgm + 'error. lost message has never been sent. sent_at is null');
                             else {
@@ -740,7 +746,7 @@ angular.module('MoneyNetwork')
                             } ;
                             lost_message_with_envelope.ls_msg_size = JSON.stringify(lost_message_with_envelope).length ;
                             add_message(contact, lost_message_with_envelope) ;
-
+                            debug('lost_message', 'added lost msg to inbox. lost_message_with_envelope = ' + JSON.stringify(lost_message_with_envelope));
                         } // for i (sent)
 
                     } // if sent.length > 0
@@ -760,6 +766,7 @@ angular.module('MoneyNetwork')
                     // array with one or more received messages from contact. '
                     // Check outbox and mark messages as received
                     received = JSON.parse(JSON.stringify(feedback.received)) ;
+
                     // any not received messages with negativ local_msg_seq - message lost in cyberspace
                     lost_messages = [] ;
                     for (i=received.length-1 ; i >= 0 ; i--) {
@@ -771,13 +778,16 @@ angular.module('MoneyNetwork')
                     }
                     if (lost_messages.length > 0) debug('lost_message', pgm + 'lost_messages = ' + JSON.stringify(lost_messages));
 
+                    // buffer lost messages where the problem is cryptMessage and changed ZeroNet certificate
+                    // receiver has more than one certificate and message was encrypted with a previous certificate
+                    // move messages with decrypt errors and resend togerther with next outbox message
+                    move_lost_messages = [] ;
 
                     // loop through outbox and deleted outbox messages for contacts with identical pubkey = identical localStorage
                     // update feedback info for received messages and also keep track og any lost messages
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         contact2 = ls_contacts[i] ;
                         if (contact2.pubkey != contact.pubkey) continue ;
-
 
                         // check outbox
                         for (j=0 ; j<contact2.messages.length ; j++) {
@@ -789,18 +799,28 @@ angular.module('MoneyNetwork')
                             if (index != -1) {
                                 // message lost in cyberspace. should be resend to contact
                                 lost_message = true ;
+                                changed_zeronet_cert = (contact.auth_address != contact2.auth_address) ;
                                 lost_messages.splice(index,1) ;
                             }
                             else {
                                 index = received.indexOf(message.local_msg_seq) ;
                                 if (index == -1) continue ; // not relevant
                                 received.splice(index,1) ;
+                                lost_message = false ;
                             }
                             if (lost_message) {
-                                debug(
-                                    'lost_message', pgm + 'Message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. ' +
-                                    'Could be a message sent and removed from ZeroNet when contact was offline. ' +
-                                    'Could be a message lost due to cryptMessage decrypt error');
+                                if (changed_zeronet_cert && (message.encryption == 2)) {
+                                    debug(
+                                        'lost_message', pgm + 'Message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. ' +
+                                        'Probably cryptMessage decrypt error. Contact has changed ZeroNet certificate');
+                                }
+                                else {
+                                    debug(
+                                        'lost_message', pgm + 'Message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. ' +
+                                        'Could be a message sent and removed from ZeroNet when contact was offline. ' +
+                                        'Could be a message lost due to cryptMessage decrypt error. ' +
+                                        'changed zeroid cert = ' + changed_zeronet_cert + ', message.encryption = ' + message.encryption);
+                                }
                                 debug('lost_message', pgm + 'message = ' + JSON.stringify(message)) ;
                                 //message = {
                                 //    "folder": "outbox",
@@ -813,11 +833,23 @@ angular.module('MoneyNetwork')
                                 //};
                                 if (message.zeronet_msg_id) {
                                     debug('lost_message', pgm + 'lost message with local_msg_seq ' + local_msg_seq +
-                                        ' has a zeronet_msg_id and should still be on ZeroNet. ' +
-                                        'Maybe user has changed ZeroNet certificate and is getting cryptMessage decryption error. '+
-                                        'Maybe message was sent to a sha256 address that contact was not listening to any more') ;
-
-
+                                        ' has a zeronet_msg_id and should still be on ZeroNet. ') ;
+                                    if (changed_zeronet_cert) debug('lost_message', pgm + 'User has changed ZeroNet certificate and is probably getting cryptMessage decryption error') ;
+                                    // should be resend in next z_update_data_json. delete old message from data.msg array and send again.
+                                    // using this trick should do it.
+                                    // see z_update_data_json "lost message. resending outbox messages that still is in data.json file"
+                                    if (!message.message.sent_at) message.message.sent_at = message.sent_at ;
+                                    debug('lost_message', pgm + 'marked message with message.message.sent_at = ' + message.message.sent_at + '. resending together with next outbox message');
+                                    if (changed_zeronet_cert && (message.encryption == 2)) {
+                                        debug('lost_message',
+                                            pgm + 'message must be moved from old contact to new contact before resending. ' +
+                                            'old contact = ' + contact2.unique_id + ', new contact = ' + contact.unique_id) ;
+                                        move_lost_messages.push({
+                                            seq: message.seq,
+                                            old_contact: contact2.unique_id, // original contact
+                                            new_contact: contact.unique_id // current contact where feedback info were received from
+                                        })
+                                    }
                                 }
                                 else if (!message.sent_at) console.log(pgm + 'error. lost message has never been sent. sent_at is null') ;
                                 else  {
@@ -937,14 +969,18 @@ angular.module('MoneyNetwork')
                         // received feedback request for one or more messages not in inbox and not in deleted_inbox_messages
                         // could be lost not received inbox messages or could be an error.
                         debug('lost_message', pgm + 'messages with local_msg_seq ' + JSON.stringify(sent) + ' were not found in inbox');
-                        if (contact.deleted_inbox_messages) {
-                            // todo: should show deleted_inbox_messages for all contacts with identical pubkey
-                            debug('lost_message',
-                                pgm + 'contact.deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
-                                ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
-                        }
                         // receive_feedback_info: messages with local_msg_seq [1,2] were not found in inbox
-                        // receive_feedback_info: contact.deleted_inbox_messages = {}Object.keys(contact.deleted_inbox_messages) = ["2"]
+                        // debug. show relevant deleted_inbox_messages in log
+                        for (i=0 ; i<ls_contacts.length ; i++) {
+                            contact2 = ls_contacts[i] ;
+                            if (contact2.pubkey != contact.pubkey) continue ;
+                            if (contact2.deleted_inbox_messages) {
+                                debug('lost_message',
+                                    pgm + 'contact2.deleted_inbox_messages = ' + JSON.stringify(contact2.deleted_inbox_messages) +
+                                    ', Object.keys(contact2.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact2.deleted_inbox_messages)));
+                                // receive_feedback_info: contact.deleted_inbox_messages = {}Object.keys(contact.deleted_inbox_messages) = ["2"]
+                            }
+                        } // for i (contacts)
 
                         // create "lost message" notification in inbox? User should know that some messages were lost in cyberspace
                         for (i=0 ; i<sent.length ; i++) {
@@ -968,12 +1004,68 @@ angular.module('MoneyNetwork')
                             } ;
                             lost_message_with_envelope.ls_msg_size = JSON.stringify(lost_message_with_envelope).length ;
                             add_message(contact, lost_message_with_envelope) ;
+                            debug('lost_message', 'added lost msg to inbox. lost_message_with_envelope = ' + JSON.stringify(lost_message_with_envelope));
+                            //lost_message_with_envelope = {
+                            //    "local_msg_seq": 199,
+                            //    "folder": "inbox",
+                            //    "message": {"msgtype": "lost msg", "local_msg_seq": 448},
+                            //    "sent_at": 1481539270908,
+                            //    "received_at": 1481539270908,
+                            //    "feedback": false,
+                            //    "ls_msg_size": 160,
+                            //    "seq": 29
+                            //} ;
 
                         } // for i (sent)
 
                     } // if sent.length > 0
 
                 } // if feedback.sent
+
+                if (move_lost_messages && (move_lost_messages.length > 0)) {
+                    // received lost message feedback (negative local_msg_seq)
+                    // message has not been received by contact
+                    // contact is using cryptMessage encryption and has changed certificate (decrypt error in contact inbox)
+                    // message will be resend together with next outbox message
+                    // move message from contact with old certificate to contact with now certificate
+                    debug('lost_message', pgm + 'move_lost_messages = ' + JSON.stringify(move_lost_messages)) ;
+                    for (i=0 ; i<move_lost_messages.length ; i++) {
+                        seq = move_lost_messages[i].seq ;
+                        js_messages_row = get_message_by_seq(move_lost_messages[i].seq) ;
+                        if (!js_messages_row) {
+                            console.log(pgm + 'move message failed. did not find message with seq ' + seq) ;
+                            continue ;
+                        }
+                        contact = get_contact_by_unique_id(move_lost_messages[i].new_contact) ;
+                        if (!contact) {
+                            console.log(pgm + 'move message failed. did not find new contact with unique id ' + move_lost_messages[i].new_contact) ;
+                            continue ;
+                        }
+                        contact2 = get_contact_by_unique_id(move_lost_messages[i].old_contact) ;
+                        if (!contact2) {
+                            console.log(pgm + 'move message failed. did not find old contact with unique id ' + move_lost_messages[i].old_contact) ;
+                            continue ;
+                        }
+                        // remove message from old contact2
+                        found_message = false ;
+                        for (j=0 ; j<contact2.messages.length ; j++) {
+                            message = contact2.messages[j] ;
+                            if (message.seq == seq) {
+                                found_message = true ;
+                                contact2.messages.splice(j,1) ;
+                                break ;
+                            }
+                        } // for j (contact2.messages)
+                        if (!found_message) {
+                            console.log(pgm + 'move message failed. Did not found message with seq ' + seq) ;
+                            continue ;
+                        }
+                        // add message to new contact
+                        contact.messages.push(js_messages_row.message) ;
+                        // update js_messages array
+                        js_messages_row.contact = contact ;
+                    } // for i (move_lost_messages)
+                }
 
                 // end normal chat
             }
@@ -1227,7 +1319,6 @@ angular.module('MoneyNetwork')
                             // can be messages sent to a sha256 address that contact was not listening to
                             // can be messages where contact did get a decrypt error (encrypted to an other ZeroNet certificate)
                             if (contact.messages[j].zeronet_msg_id && contact.messages[j].message.sent_at) {
-                                console.log(pgm + 'resend message still in data.json file not yet implemented') ;
 
                                 message_deleted = false ;
                                 // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
@@ -1262,7 +1353,7 @@ angular.module('MoneyNetwork')
                     } // for i (contacts)
 
                     // insert and encrypt new outgoing messages into data.json
-                    // using callback technique (not required for JSEncrypt but used for all cryptMessage plugin calls)
+                    // using callback technique (not required for JSEncrypt but used in cryptMessage plugin)
                     // will call data cleanup, write and publish when finished encrypting messages
                     z_update_data_encrypt_message (user_seq, local_storage_updated, data_json_max_size, data) ;
 
@@ -1279,7 +1370,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.z_update_data_encrypt_message: ' ;
 
             var i, contact, encrypt, j, message_with_envelope, message, local_msg_seq, sent_at, key, password,
-                receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row ;
+                receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend ;
 
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
@@ -1294,8 +1385,7 @@ angular.module('MoneyNetwork')
                         message = message_with_envelope.message ;
                         // check public key
                         if (contact.type != 'group') {
-                            if (((contact.encryption != '2') && !contact.pubkey) ||
-                                ((contact.encryption == '2') && !contact.pubkey2)) {
+                            if (!contact.pubkey || ((contact.encryption == '2') && !contact.pubkey2)) {
                                 console.log(pgm + 'Cannot send message ' + JSON.stringify(message_with_envelope) + '. contact does not have a public key');
                                 console.log(pgm + 'contact = ' + JSON.stringify(contact));
                                 console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
@@ -1315,12 +1405,15 @@ angular.module('MoneyNetwork')
                             // resending old message - already local_msg_seq already in message
                             local_msg_seq = message_with_envelope.local_msg_seq ;
                             sent_at = message.sent_at ;
-                            debug('lost_message', pgm + 'resending lost message with local_msg_seq ' + local_msg_seq);
+                            debug('lost_message', pgm + 'resending lost message with local_msg_seq ' + local_msg_seq +
+                                ', message_with_envelope = ' + JSON.stringify(message_with_envelope));
+                            resend = true ; // extra debug messages
                         }
                         else {
                             local_msg_seq = next_local_msg_seq() ;
                             message_with_envelope.local_msg_seq = local_msg_seq;
                             sent_at = new Date().getTime() ;
+                            resend = false ;
                         }
                         message.local_msg_seq = local_msg_seq ;
                         // receiver_sha256
@@ -1329,7 +1422,10 @@ angular.module('MoneyNetwork')
                             // find receiver_sha256. Use last received sender_sha256 address from contact
                             // exception: remove + add contact messages can be used to reset communication
                             if (message.msgtype != 'contact added') receiver_sha256 = contact.inbox_last_sender_sha256 ;
-                            if (!receiver_sha256) receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
+                            if (!receiver_sha256) {
+                                receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
+                                console.log(pgm + 'first contact. using sha256 values of JSEncrypt pubkey as receiver_sha256. pubkey = ' + contact.pubkey + ', receiver_sha256 = ' + receiver_sha256);
+                            }
                         }
                         // sender_sha256
                         if (contact.type != 'group') {
@@ -1353,8 +1449,18 @@ angular.module('MoneyNetwork')
                             // check this new sha256 address in incoming data.json files (file done event / process_incoming_message)
                             watch_receiver_sha256.push(sender_sha256) ;
                         }
-                        // add feedback info to outgoing message
+
+                        // add feedback info to outgoing message. todo: problem with feedback info and resend old message
+                        if (resend) {
+                            console.log(pgm + 'resend. calling add_feedback_info for old message with local_msg_seq ' + local_msg_seq +
+                                ', message = ' + JSON.stringify(message)) ;
+                        }
                         add_feedback_info(receiver_sha256, message_with_envelope, contact) ;
+                        if (resend) {
+                            console.log(pgm + 'resend. called add_feedback_info for old message with local_msg_seq ' + local_msg_seq +
+                                ', message = ' + JSON.stringify(message)) ;
+                        }
+
                         // don't send unchanged images. move to envelope before send and back to message after send
                         delete message_with_envelope.image ;
                         if (message.replace_unchanged_image_with_x) {
@@ -1382,6 +1488,7 @@ angular.module('MoneyNetwork')
                         }
                         else if (contact.encryption != '2') {
                             // JSEncrypt
+                            message_with_envelope.encryption = 1 ;
                             if (!encrypt) {
                                 encrypt = new JSEncrypt();
                                 encrypt.setPublicKey(contact.pubkey);
@@ -1399,7 +1506,9 @@ angular.module('MoneyNetwork')
                         }
                         else {
                             // cryptMessage plugin encryption
+                            message_with_envelope.encryption = 2 ;
                             // 3 callbacks. 1) generate password, 2) encrypt password=key and 3) encrypt message,
+                            if (resend) console.log(pgm + 'resend. calling z_update_data_cryptmessage for old message with local_msg_seq ' + local_msg_seq) ;
                             z_update_data_cryptmessage (
                                 user_seq, true, data_json_max_size, data, contact.pubkey2,
                                 message_with_envelope, receiver_sha256, sent_at
@@ -1408,8 +1517,8 @@ angular.module('MoneyNetwork')
                             return ;
 
                         }
+                        // same post encryption cleanup as in z_update_data_cryptmessage
                         encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(message), password);
-                        debug('outbox && encrypted', pgm + 'sending encrypted message = ' + encrypted_message_str);
                         if (message_with_envelope.image) {
                             // restore image
                             message.image = message_with_envelope.image ;
@@ -1433,7 +1542,7 @@ angular.module('MoneyNetwork')
                         // keep track of msg disk usage.User may want to delete biggest messages first when running out of disk space on zeronet
                         message_with_envelope.zeronet_msg_size = JSON.stringify(data.msg[data.msg.length-1]).length ;
                         message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
-                        // console.log(pgm + 'new data.msg.last = ' + JSON.stringify(data.msg[data.msg.length-1]));
+                        debug('outbox && encrypted', 'new data.msg row = ' + JSON.stringify(data.msg[data.msg.length-1]));
                         // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
 
                         if ((message.msgtype == 'chat msg') && !message.message) {
@@ -1493,7 +1602,7 @@ angular.module('MoneyNetwork')
                         encrypted_message_str = res[2];
                         debug('outbox && encrypted', pgm + 'iv = ' + iv + ', encrypted_message_str = ' + encrypted_message_str);
 
-                        // post encryption cleanup
+                        // same post encryption cleanup as in z_update_data_encrypt_message
                         message = message_with_envelope.message ;
                         if (message_with_envelope.image) {
                             // restore image
@@ -1992,6 +2101,11 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'inserted sender_sha256 address ' + message.sender_sha256 + ' into js_messages sender_sha256 index') ;
             }
         } // add_message
+        function get_message_by_seq (seq) {
+            var pgm = service + '.get_message_by_seq: ' ;
+            var js_messages_row = js_messages_index.seq[seq] ;
+            return js_messages_row ;
+        }
         function get_message_by_sender_sha256 (sender_sha256) {
             var pgm = service + '.get_message_by_sender_sha256: ' ;
             var js_messages_row = js_messages_index.sender_sha256[sender_sha256] ;
@@ -2503,14 +2617,14 @@ angular.module('MoneyNetwork')
                             if (!contact.deleted_inbox_messages) contact.deleted_inbox_messages = {};
                             key = contact.type == 'group' ? message.participant + ',' + local_msg_seq : local_msg_seq ;
                             contact.deleted_inbox_messages[key] = message.feedback;
-                            debug('feedback_info', pgm + 'contact ' + contact.auth_address +
+                            debug('feedback_info', pgm + 'feedback_info: contact ' + contact.auth_address +
                                 ', deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
                                 ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
                         }
                     }
                     else if (message.zeronet_msg_id) {
                         // outbox. wait. zeronet_msg_id reference should be removed in z_update_data_json first before physical delete here
-                        debug('data_cleanup', pgm + 'waiting with physical delete of outbox message. zeronet_msg_id has yet been removed. should be done in next z_update_data_json call. message = ' + JSON.stringify(message)) ;
+                        debug('data_cleanup', pgm + 'data_cleanup: waiting with physical delete of outbox message. zeronet_msg_id has yet been removed. should be done in next z_update_data_json call. message = ' + JSON.stringify(message)) ;
                         continue ;
                     }
                     else {
@@ -2526,11 +2640,11 @@ angular.module('MoneyNetwork')
                         }
                         // remember local_msg_seq from deleted outbox messages. Contact may feedback info for this local_msg_seq later
                         local_msg_seq = message.local_msg_seq ;
-                        debug('feedback_info', pgm + 'local_msg_seq = ' + local_msg_seq);
+                        // debug('feedback_info', pgm + 'local_msg_seq = ' + local_msg_seq);
                         if (local_msg_seq) {
                             if (!contact.deleted_outbox_messages) contact.deleted_outbox_messages = {} ;
                             contact.deleted_outbox_messages[message.local_msg_seq] = message.feedback ;
-                            debug('feedback_info', pgm + 'contact ' + contact.auth_address +
+                            debug('feedback_info', pgm + 'feedback_info: contact ' + contact.auth_address +
                                 ', deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
                                 ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages))) ;
                         }
@@ -3061,7 +3175,10 @@ angular.module('MoneyNetwork')
                 decrypted_message_str = res.decrypted_message_str ;
                 if (decrypted_message_str == 'changed cert error' ) {
                     // cryptMessage decrypt error but user has more than one ZeroNet certificate and maybe the message
-                    // was encrypted using an other ZeroNet certificate. created a lost msg2 notification for contact.
+                    // probably encrypted using an other ZeroNet certificate. added a lost msg2 notification in UI
+                    // do not receive this inbox message again
+                    if (!ignore_zeronet_msg_id[res.auth_address]) ignore_zeronet_msg_id[res.auth_address] = [] ;
+                    ignore_zeronet_msg_id[res.auth_address].push(res.message_sha256) ;
                     // Return true to save contacts and refresh angularJS UI
                     return true ;
                 }
@@ -3093,21 +3210,21 @@ angular.module('MoneyNetwork')
             // check spam filters block_guests and block_ignored from user setup
             if (contact.type == 'guest') {
                 if (user_setup.block_guests) {
-                    // console.log(pgm + 'blocking quests and ignoring message from guest ' + JSON.stringify(contact));
+                    debug('spam_filter', pgm + 'blocking quests and ignoring message from guest ' + JSON.stringify(contact));
                     return false ;
                 }
                 if (user_setup.block_guests_at && (res.timestamp < user_setup.block_guests_at)) {
-                    // console.log(pgm + 'no longer blocking quests but ignoring old blocked message from guest ' + JSON.stringify(contact));
+                    debug('spam_filter', pgm + 'no longer blocking quests but ignoring old blocked message from guest ' + JSON.stringify(contact));
                     return false ;
                 }
             }
             if (contact.type == 'ignored') {
                 if (user_setup.block_ignored) {
-                    // console.log(pgm + 'blocking message from contact on ignored list ' + JSON.stringify(contact));
+                    debug('spam_filter', pgm + 'blocking message from contact on ignored list ' + JSON.stringify(contact));
                     return false ;
                 }
                 if (user_setup.block_ignored_at && (res.timestamp < user_setup.block_ignored_at)) {
-                    // console.log(pgm + 'no longer blocking messages from ignored list but ignoring old blocked message from contact ' + JSON.stringify(contact));
+                    debug('spam_filter', pgm + 'no longer blocking messages from ignored list but ignoring old blocked message from contact ' + JSON.stringify(contact));
                     return false ;
                 }
             }
@@ -3206,7 +3323,6 @@ angular.module('MoneyNetwork')
                 }
             }
             message.ls_msg_size = JSON.stringify(message).length ;
-
 
             if (!res.auth_address) console.log(pgm + 'todo: please add auth_address to res. res = ' + JSON.stringify(res)) ;
             else {
@@ -3827,6 +3943,7 @@ angular.module('MoneyNetwork')
             watch_receiver_sha256.splice(0, watch_receiver_sha256.length);
             for (auth_address in ignore_zeronet_msg_id) delete ignore_zeronet_msg_id[auth_address] ;
             watch_receiver_sha256.push(my_pubkey_sha256);
+            console.log(pgm + 'watching messages for sha256(pubkey). my_pubkey_sha256 = ' + my_pubkey_sha256);
             for (i = 0; i < ls_contacts.length; i++) {
                 contact = ls_contacts[i];
                 auth_address = contact.auth_address ;
@@ -4196,7 +4313,8 @@ angular.module('MoneyNetwork')
             // read json file (content.json, data.json or status.json)
             ZeroFrame.cmd("fileGet", [filename, false], function (res) {
                 var pgm = service + '.event_file_done fileGet callback: ';
-                var content_json_avatar, i, contact, auth_address, contacts_updated, index ;
+                var content_json_avatar, i, contact, auth_address, contacts_updated, index, my_pubkey_sha256,
+                    using_my_pubkey, cleanup_inbox_messages_lng1, cleanup_inbox_messages_lng2, cleanup_inbox_messages_lng3 ;
                 if (!res) res = {} ;
                 else res = JSON.parse(res) ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
@@ -4255,15 +4373,17 @@ angular.module('MoneyNetwork')
                     // debug('file_done', pgm + 'watch_receiver_sha256 = ' + JSON.stringify(watch_receiver_sha256));
                     // debug('file_done', pgm + 'res.msg.length before = ' + res.msg.length) ;
 
-                    // find inbox messages that have been cleanup from zeronet
-                    // maybe cleanup after contact has received feedback info
-                    // maybe contact data.json file has too big
+                    // find inbox messages that have been removed from zeronet
+                    // - removed after contact has received feedback info (message has been received by you)
+                    // - removed when contacts data.json file was too big
                     if (ignore_zeronet_msg_id[auth_address]) {
                         cleanup_inbox_messages = JSON.parse(JSON.stringify(ignore_zeronet_msg_id[auth_address])) ;
+                        cleanup_inbox_messages_lng1 = cleanup_inbox_messages.length ;
                         for (i=0 ; i<res.msg.length ; i++) {
                             index = cleanup_inbox_messages.indexOf(res.msg[i].message_sha256) ;
                             if (index != -1) cleanup_inbox_messages.splice(index,1) ;
                         }
+                        cleanup_inbox_messages_lng2 = cleanup_inbox_messages.length ;
                         if (cleanup_inbox_messages.length > 0) {
                             debug('file_done', pgm + 'cleanup_inbox_messages = ' + JSON.stringify(cleanup_inbox_messages)) ;
                             for (i=0 ; i<ls_contacts.length ; i++) {
@@ -4301,28 +4421,40 @@ angular.module('MoneyNetwork')
                                     contacts_updated = true ;
                                 }
                             } // for i (contacts)
+                            cleanup_inbox_messages_lng3 = cleanup_inbox_messages.length ;
 
                             // recheck cleanup_inbox_messages.length. should be empty now!
                             if (cleanup_inbox_messages.length > 0) {
                                 // only debug info if in case of error
-                                debug('file_done', pgm + 'processing new incoming messages from msg array. should also detect previously received messages that have been deleted from msg array');
-                                debug('file_done', pgm + 'res.msg = ' + JSON.stringify(res.msg)) ;
+                                debug('file_done', pgm + 'one or more sha256 addresses in cleanup_inbox_messages was not found for contacts with auth_address ' + auth_address) ;
                                 debug('file_done', pgm + 'ignore_zeronet_msg_id[auth_address] = ' + JSON.stringify(ignore_zeronet_msg_id[auth_address])) ;
-                                debug('file_done', 'one or more sha256 addresses in cleanup_inbox_messages was not found for contacts with auth_address ' + auth_address + '. cleanup_inbox_messages ' + JSON.stringify(cleanup_inbox_messages));
+                                debug('file_done', pgm + 'res.msg = ' + JSON.stringify(res.msg)) ;
+                                debug('file_done', pgm + 'cleanup_inbox_messages_lng1 = ' + cleanup_inbox_messages_lng1) ;
+                                debug('file_done', pgm + 'cleanup_inbox_messages_lng2 = ' + cleanup_inbox_messages_lng2) ;
+                                debug('file_done', pgm + 'cleanup_inbox_messages_lng3 = ' + cleanup_inbox_messages_lng3) ;
+                                debug('file_done', pgm + 'cleanup_inbox_messages ' + JSON.stringify(cleanup_inbox_messages)) ;
                             }
 
                         }
                     }
 
+                    my_pubkey_sha256 = watch_receiver_sha256[0] ; // todo: should always listening for sha256(pubkey) address
+                    // debug('file_done', pgm + 'my_pubkey_sha256 = ' + my_pubkey_sha256) ;
+
                     for (i=0 ; i<res.msg.length ; i++) {
+                        // debug - always listening to sha256(pubkey)
+                        using_my_pubkey = (res.msg[i].receiver_sha256 == my_pubkey_sha256) ;
+                        // if (using_my_pubkey) debug('file_done', 'res.msg[' + i + '] = ' + JSON.stringify(res.msg[i])) ;
                         // debug('file_done', pgm + 'res.msg[' + i + '].receiver_sha256 = ' + res.msg[i].receiver_sha256);
                         if (watch_receiver_sha256.indexOf(res.msg[i].receiver_sha256) == -1) {
+                            // if (using_my_pubkey) debug('file_done', 'res.msg[' + i + ']: UPS: should always receive messages using sha256(pubkey) as address') ;
                             // not listening for this sha256 address
                             continue ;
                         }
                         if (ignore_zeronet_msg_id[auth_address] &&
                             (ignore_zeronet_msg_id[auth_address].indexOf(res.msg[i].message_sha256) != -1)) {
                             // message already received
+                            // if (using_my_pubkey) debug('file_done', 'res.msg[' + i + ']: has already been received');
                             continue ;
                         }
                         // debug('file_done', pgm + 'receive message ' + JSON.stringify(res.msg[i]));
@@ -4338,10 +4470,14 @@ angular.module('MoneyNetwork')
                         res.msg[i].auth_address = auth_address ; // used if create new unknown contacts
                         // debug('file_done', pgm + 'unique_id = ' + unique_id);
 
+                        // if (using_my_pubkey) debug('file_done', 'res.msg[' + i + ']: calling process_incoming_message');
                         if (process_incoming_message(res.msg[i], unique_id)) {
                             // debug('file_done', pgm + 'js_messages.length = ' + js_messages.length) ;
                             debug('file_done', pgm + 'last message = ' + JSON.stringify(js_messages[js_messages.length-1].message)) ;
                             contacts_updated = true ;
+                        }
+                        else {
+                            // if (using_my_pubkey) debug('file_done', 'res.msg[' + i + ']: UPS. process_incoming_message failed ...');
                         }
                     } // for i (res.msg)
                     // console.log(pgm + 'res.msg.length after = ' + res.msg.length) ;
