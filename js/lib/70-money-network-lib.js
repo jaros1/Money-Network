@@ -939,12 +939,20 @@ var MoneyNetworkHelper = (function () {
     json_schemas['lost msg2'] = {
         "type": 'object',
         "title": 'Lost message notification in UI',
-        "description": 'Decrypt error when reading message. Happens for cryptMessage encrypted to an other ZeroNet certificate. User has switched certificate. See process_incoming_cryptmessage',
+        "description": 'Decrypt error when reading message. Happens for cryptMessage encrypted to an other ZeroNet certificate. User has switched certificate. See process_incoming_cryptmessage. cert_user_ids are possible ZeroNet certificates for decryption. Unique and res are original parameters for process_incoming_cryptmessage call',
         "properties": {
             "msgtype": { "type": 'string', pattern: '^lost msg2$'},
-            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'}
+            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "cert_user_ids": {
+                "type": 'array',
+                "items": { "type": 'string' },
+                "minItems": 1},
+            "unique_id": { "type": 'string', "pattern": '^[0-9a-f]{64}$' },
+            "res": {
+                "type": 'object'
+            }
         },
-        "required": ['msgtype', 'message_sha256'],
+        "required": ['msgtype', 'message_sha256', 'cert_user_ids', 'unique_id', 'res'],
         "additionalProperties": false
     } ;
 

@@ -1636,7 +1636,7 @@ angular.module('MoneyNetwork')
                         message_with_envelope.sent_at = sent_at ;
                         if (message_with_envelope.message.sent_at) {
                             debug('lost_message', pgm + 'resend OK for local_msg_seq ' + message_with_envelope.local_msg_seq +
-                                '. removing old sent_at timestamp and old message_sha256 from sent message') ;
+                                '. removing resend information sent_at and message_sha256 message') ;
                             delete message_with_envelope.message.sent_at ;
                             delete message_with_envelope.message.message_sha256 ;
                         }
@@ -3713,9 +3713,9 @@ angular.module('MoneyNetwork')
             var message_array = res.message.split(',') ;
             var iv = message_array[0] ;
             var encrypted = message_array[1] ;
-            // console.log(pgm + 'iv = ' + iv + ', encrypted = ' + encrypted) ;
+            console.log(pgm + 'iv = ' + iv + ', encrypted = ' + encrypted) ;
 
-            // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling eciesDecrypt with " + JSON.stringify([res.key, user_id])) ;
+            console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling eciesDecrypt with " + JSON.stringify([res.key, user_id])) ;
             ZeroFrame.cmd("eciesDecrypt", [res.key, user_id], function(password) {
                 var pgm = service + '.process_incoming_cryptmessage eciesDecrypt callback 1: ' ;
                 var pubkey, query ;
@@ -3773,9 +3773,14 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'current cert_user_id = ' + ZeroFrame.site_info.cert_user_id) ;
                         console.log(pgm + 'other cert_user_ids  = ' + cert_user_ids.join(', ')) ;
 
-
-                        // todo: create lost message here or in process_incoming_message?
-                        lost_message = { msgtype: 'lost msg2', message_sha256: res.message_sha256} ;
+                        // create lost msg2 notification
+                        lost_message = {
+                            msgtype: 'lost msg2',
+                            message_sha256: res.message_sha256,
+                            cert_user_ids: cert_user_ids,
+                            unique_id: unique_id,
+                            res: res
+                        } ;
                         // validate json
                         error = MoneyNetworkHelper.validate_json(pgm, lost_message, lost_message.msgtype, 'Cannot insert dummy lost inbox message in UI. message_sha256 = ' + res.message_sha256);
                         if (error) {
@@ -3805,13 +3810,14 @@ angular.module('MoneyNetwork')
 
                     // stop. dbQuery callback will callback to process_incoming_message
                     return;
-                }
 
-                // decrypt step 2 - decrypt message
-                // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
+                } // if !password
+
+                // decrypt step 2 - password OK - decrypt message
+                console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
-                    // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
+                    console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
 
                     // done. save decrypted message and return to process_incoming_message
                     res.decrypted_message_str = decrypted_message_str ;
@@ -4002,7 +4008,7 @@ angular.module('MoneyNetwork')
         } // create_unknown_contacts
 
 
-        // after login - check for new ingoing messages (dbQuery)
+        // after login - check for new ingoing messages since last login
         var watch_receiver_sha256 = [] ; // listen for sha256 addresses
         var ignore_zeronet_msg_id = {} ; // ignore already read messages. hash auth_address => [ sha256 addresses ]
         function local_storage_read_messages () {
@@ -4243,6 +4249,82 @@ angular.module('MoneyNetwork')
             });
 
         } // local_storage_read_messages
+
+
+
+        // post login - find any "lost msg2" decrypt error waiting to be solved
+        // that is cryptMessage encrypted to a previous used ZeroNet certificate
+        // feedback info in ingoing and outgoing messages should solve the problems after 1-2 chat messages (resend message)
+        // feedback info solution works only if contact is online
+        // this function rechecks old pending "lost msg2" messages and tries to decrypt then again
+        function recheck_old_decrypt_errors () {
+            var pgm = service + '.recheck_old_decrypt_errors: ' ;
+
+            var cert_user_id, decrypt_errors, i, contact, j, message_with_envelope, message, contacts_updated, res ;
+
+            cert_user_id = ZeroFrame.site_info.cert_user_id ;
+            decrypt_errors = [] ;
+            for (i=0 ; i<ls_contacts.length ; i++) {
+                contact = ls_contacts[i] ;
+                if (contact.type == 'group') continue ;
+                if (!contact.messages) continue ;
+                for (j=0 ; j<contact.messages.length ; j++) {
+                    message_with_envelope = contact.messages[j] ;
+                    if (message_with_envelope.folder != 'inbox') continue ;
+                    message = message_with_envelope.message ;
+                    if (message.msgtype != 'lost msg2') continue ;
+                    if (!message.cert_user_ids || !message.unique_id || !message.res) continue ;
+                    if (message.cert_user_ids.indexOf(cert_user_id) == -1) continue ;
+                    decrypt_errors.push({unique_id: message.unique_id, res: message.res })
+                } // for j (messages)
+            } // for j (contacts)
+            console.log(pgm + 'decrypt_errors = ' + JSON.stringify(decrypt_errors)) ;
+            //decrypt_errors = [{
+            //    "unique_id": "c564425bf6eef8bf2477e6ee6c8a22843d3ea7211d7fe03aca697c719f1807b7",
+            //    "res": {
+            //        "user_seq": 23,
+            //        "receiver_sha256": "34a1c21891ca24b710ec3f0f3fabd129b222df87399577c3e2ac63838fa74703",
+            //        "key": "8ADcSj5c/H9s8xt7cIv9tALKACCeme/aL1IOaUIiydlxZLg0BOKANx5Zn/JPJyUcWkhgbAAgWaSzQknmF7IdX0j5ektBAuYh5Pnt1Ex67u9kxjNnG2aeOAJAyMiQfgrJMgvlGK9dnq3DOHkX9/pW2FX9sYdOR012ylcrFnmRUZLVwNZQW7UeFddCEQ9PwN5ZZ8Q3YtpLQadbYgm3MxJiQWKqHUDStQ==",
+            //        "message": "OJTJk+d5+AB2EteXUyij7g==,HbcgiSwFZ6izU144+3jwr3Ukm9O8NLJv6jMXQE7wO9r7sDlypivO76zlfK2EwMT5m+IuYpNLz2Zx+myjQzHgguNpzJnKsDVIInsT7asBcu0ETLnmuKxkjmO/U/rk2/RokrZw6ro0hwB3tENYTh+Lm+EGf5G25dqoa6orc38hwgtQM29rpiVACZmuMCR8BrMEkoVsrmm26sT8nfjDEtmXXAwSQEjELHqHtUGnMre3NG0Qax9t/KSg0JKv+2/tfoA2XZFL28GG3y6jJxS2guBYH63sYZ8o0J3Ta83oiZwNwYwhv4aILhuPToN3AOGK/Xjsae1mhfoPKDSWmNeXTwJ4iPVzby0MO+t97CBVYw92e592bLLzXAqnrMZOmkhZHTfB",
+            //        "message_sha256": "95a428959cd2b0cc17c5b521b15d8601cf16a444c1ecdd39a9eb6712dead2a56",
+            //        "timestamp": 1481737128987,
+            //        "auth_address": "16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH",
+            //        "decrypted_message_str": "changed cert error"
+            //    }
+            //}];
+            if (decrypt_errors.length == 0) return ;
+
+            // reprocess old decrypt error messages
+            contacts_updated = false ;
+            for (i=0 ; i<decrypt_errors.length ; i++) {
+                res = JSON.parse(JSON.stringify(decrypt_errors[i].res)) ;
+                delete res.decrypted_message_str ;
+                if (process_incoming_message(res, decrypt_errors[i].unique_id)) contacts_updated = true ;
+                console.log(pgm + 'i = ' + i + ', res = ' + JSON.stringify(res)) ;
+            }
+
+            // same post processing as in file_done_event
+            // any receipts to sent?
+            if (new_outgoing_receipts.length > 0) {
+                // send receipts. will update localStorage and ZeroNet
+                new_incoming_receipts = 0 ;
+                send_new_receipts() ;
+            }
+            else if (new_incoming_receipts > 0) {
+                // remove chat messages with images from ZeroNet
+                new_incoming_receipts = 0 ;
+                z_update_data_json(pgm) ;
+                $rootScope.$apply() ;
+            }
+            else if (contacts_updated) {
+                $rootScope.$apply() ;
+                ls_save_contacts(false) ;
+            }
+
+            // any message with unknown unique id in incoming file?
+            if (new_unknown_contacts.length > 0) create_new_unknown_contacts() ;
+
+        } // recheck_old_decrypt_errors
 
 
         // add message to contact
@@ -4788,6 +4870,7 @@ angular.module('MoneyNetwork')
                 load_user_info(guest) ;
                 ls_load_contacts() ;
                 local_storage_read_messages() ;
+                recheck_old_decrypt_errors() ;
                 i_am_online() ;
                 load_user_contents_max_size() ;
                 cleanup_inactive_users() ;
@@ -5254,8 +5337,9 @@ angular.module('MoneyNetwork')
         // used in chat_contact methods in network and chat controllers
         // optional confirm param: false: notification, true: return text for confirm dialog box
         function is_old_contact (contact, confirm) {
+            var pgm = service + '.is_old_contact: ' ;
             // find last updated for this contact
-            var last_updated, last_updated2, i, j, newer_contacts, contact2 ;
+            var last_updated, last_updated2, i, j, newer_contacts, contact2, now, one_day_ago, msg ;
             last_updated = get_last_online(contact) ;
             // console.log(pgm + 'last_updated = ' + last_updated + ', contact = ' + JSON.stringify(contact)) ;
 
@@ -5269,23 +5353,32 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'last_updated2 = ' + last_updated2 + ', contact2 = ' + JSON.stringify(contact2));
                 if (last_updated2 > last_updated) newer_contacts.push(contact2);
             } // for i (self.contacts)
-            if (newer_contacts.length == 0) return null ;
 
-            // add warning.
-            var msg;
-            msg =
-                'You are chatting with an old contact.<br>' +
-                'Found ' + newer_contacts.length + ' contact' + ((newer_contacts.length > 1) ? 's' : '') + ' with newer online timestamp.';
-            for (i = 0; i < newer_contacts.length; i++) {
-                contact2 = newer_contacts[i];
-                last_updated2 = get_last_online(contact2);
-                msg += '<br>' + (i + 1) + ' : Last online ' + date(last_updated2 * 1000, 'short') + '. ';
-                msg += 'Identical ' + ((contact.cert_user_id == contact2.cert_user_id) ? 'zeronet user' : 'local public key') + '.';
+            if (newer_contacts.length == 0) {
+                if (contact.type != 'guest') return ;
+                // check old guest account
+                now = new Date().getTime() ;
+                one_day_ago = Math.round((now - 1000*60*60*24) / 1000) ;
+                console.log(pgm + 'last_updated = ' + last_updated + ', one_day_ago = ' + one_day_ago) ;
+                // oneyNetworkService.is_old_contact: last_updated = 1481713129, one_day_ago = 1481629619986
+                if (last_updated >= one_day_ago) return ;
+                msg = 'You are chatting with an old guest account. Last online ' + date(last_updated * 1000, 'short') ;
+            }
+            else {
+                msg =
+                    'You are chatting with an old contact.<br>' +
+                    'Found ' + newer_contacts.length + ' contact' + ((newer_contacts.length > 1) ? 's' : '') + ' with newer online timestamp.';
+                for (i = 0; i < newer_contacts.length; i++) {
+                    contact2 = newer_contacts[i];
+                    last_updated2 = get_last_online(contact2);
+                    msg += '<br>' + (i + 1) + ' : Last online ' + date(last_updated2 * 1000, 'short') + '. ';
+                    msg += 'Identical ' + ((contact.cert_user_id == contact2.cert_user_id) ? 'zeronet user' : 'local public key') + '.';
+                }
             }
 
-            // notification (click on avatar) or confirm dialog (send chat msg)
-            if (confirm) return msg ;
-            else ZeroFrame.cmd("wrapperNotification", ["info", msg, 5000]);
+            // notification (chat - click on avatar) or confirm dialog (chatCtrl.send_chat_msg)
+            if (!confirm) ZeroFrame.cmd("wrapperNotification", ["info", msg, 5000]);
+            return msg ;
         } // is_old_contact
 
 

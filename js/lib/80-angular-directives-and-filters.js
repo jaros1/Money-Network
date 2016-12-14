@@ -287,7 +287,7 @@ angular.module('MoneyNetwork')
             // find receiver
             var pgm = 'formatChatMessage: ' ;
             // console.log(pgm + 'message = ' + JSON.stringify(message));
-            var setup, alias, greeting, i, group_contact, unique_id ;
+            var setup, alias, greeting, i, group_contact, unique_id, cert_user_ids ;
             setup = moneyNetworkService.get_user_setup() ;
             if (message.message.folder == 'outbox') {
                 // outbox: send message to contact. alias is receiver. contact or group
@@ -407,8 +407,19 @@ angular.module('MoneyNetwork')
             }
             if (msgtype == 'lost msg2') {
                 // received feedback info request with an unknown local_msg_seq. Must be a message lost in cyberspace
-                return greeting + '. Sorry. Message with sha256 address ' + message.message.message.message_sha256 +
-                    ' could not be decrypted. Probably cryptMessage encrypted for one of your other ZeroNet certificates' ;
+                str = greeting + '. Sorry. Message with sha256 address ' + message.message.message.message_sha256 +
+                    ' could not be decrypted. ' + 'Probably cryptMessage encrypted for your ' ;
+                cert_user_ids = message.message.message.cert_user_ids ;
+                if (!cert_user_ids) return str + ' other ZeroNet certificates' ;
+                for (i=0 ; i<cert_user_ids.length ; i++) {
+                    if (i==0) ;
+                    else if (i==cert_user_ids.length-1) str += ' or ' ;
+                    else str += ', ' ;
+                    str += cert_user_ids[i] ;
+                }
+                str += ' certificate' ;
+                if (cert_user_ids.length > 1) str += 's' ;
+                return str ;
             }
 
             // other "unknown" messages. Just return JSON dump
