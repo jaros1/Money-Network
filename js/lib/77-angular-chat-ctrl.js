@@ -41,6 +41,7 @@ angular.module('MoneyNetwork')
 
             // contact removed from top of chat. see all chat messages
             self.see_all_chat = function () {
+                clear_chat_filter_cache() ;
                 self.contact = null ;
                 self.group_chat = false ;
                 self.group_chat_contacts.splice(self.group_chat_contacts.length) ;
@@ -144,6 +145,7 @@ angular.module('MoneyNetwork')
 
             self.stop_editing_grp_chat = function () {
                 var pgm = controller + '.stop_edit_grp_chat: ' ;
+                clear_chat_filter_cache() ;
                 if (self.group_chat_contacts.length == 0) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Please some participants to chat first", 5000]);
                     return ;
@@ -243,7 +245,7 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'contact = ' + JSON.stringify(self.contact));
                         if (self.contact.type == 'group') init_group_chat_contacts(self.contact) ; // xxx
                         else {
-                            moneyNetworkService.notification_if_old_contact(self.contact);
+                            moneyNetworkService.is_old_contact(self.contact);
                             self.group_chat = false ;
                             self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
                         }
@@ -428,6 +430,7 @@ angular.module('MoneyNetwork')
             // todo: refactor: same functions are used in network controller
             self.toggle_filter = function (filter) {
                 var pgm = controller + '.toggle_filter: ' ;
+                clear_chat_filter_cache() ;
                 if (self.setup.contact_filters[filter] == 'green') self.setup.contact_filters[filter] = 'red' ;
                 else self.setup.contact_filters[filter] = 'green' ;
                 // special action for all
@@ -450,15 +453,19 @@ angular.module('MoneyNetwork')
             };
 
             self.contact_add = function () {
+                clear_chat_filter_cache() ;
                 moneyNetworkService.contact_add(self.contact);
             };
             self.contact_ignore = function () {
+                clear_chat_filter_cache() ;
                 moneyNetworkService.contact_ignore(self.contact);
             }; // unignore new contact
             self.contact_unplonk = function () {
+                clear_chat_filter_cache() ;
                 moneyNetworkService.contact_unplonk(self.contact);
             };
             self.contact_verify = function () {
+                clear_chat_filter_cache() ;
                 moneyNetworkService.contact_verify(self.contact);
             };
 
@@ -478,6 +485,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.contact_delete: ' ;
                 moneyNetworkService.contact_delete(self.contact, function () {
                     // contact deleted. show chat for all contacts
+                    clear_chat_filter_cache() ;
                     self.contact = null ;
                 }) ;
             };
@@ -490,6 +498,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.group_delete: ';
                 moneyNetworkService.contact_delete(self.contact, function () {
                     // group contact deleted. show chat for all contacts
+                    clear_chat_filter_cache() ;
                     self.contact = null ;
                     self.group_chat = false ;
                 }) ;
@@ -540,6 +549,7 @@ angular.module('MoneyNetwork')
                 });
             }; // enter_password
             self.contact_remove = function () {
+                clear_chat_filter_cache() ;
                 moneyNetworkService.contact_remove(self.contact);
             };
 
@@ -615,8 +625,17 @@ angular.module('MoneyNetwork')
             }; // delete user
 
             // filter and order by used in ng-repeat messages filter
+            function clear_chat_filter_cache () {
+                for (var i=0 ; i<self.messages.length ; i++) {
+                    delete self.messages[i].chat_filter ;
+                }
+            }
+
             self.chat_filter = function (message, index, messages) {
                 var pgm = controller + '.chat_filter: ';
+                // check cache
+                if (message.hasOwnProperty('chat_filter')) return message.chat_filter ;
+                // not in cache
                 var match, reason, image, i, unique_id, participant, remote_msg_seq, message2 ;
                 image = message.message.message.image? true : false ;
                 if (message.message.deleted_at) {
@@ -711,6 +730,7 @@ angular.module('MoneyNetwork')
                     message_x);
 
                 // if ([200, 201, 202].indexOf(message.message.local_msg_seq) != -1) debug('chat_filter', pgm + 'message.message = ' + JSON.stringify(message.message)) ;
+                message.chat_filter = match ;
                 return match;
             }; // chat_filter
 
@@ -765,6 +785,7 @@ angular.module('MoneyNetwork')
             self.chat_contact = function (contact) {
                 var pgm = controller + '.chat_contact: ';
                 if (self.contact && (self.contact.unique_id == contact.unique_id)) return ;
+                clear_chat_filter_cache() ;
                 // console.log(pgm + 'contact.unique_id = ' + contact.unique_id);
                 // clear any old not sent chat
                 self.new_chat_msg = '';
@@ -773,7 +794,7 @@ angular.module('MoneyNetwork')
                 self.contact = contact ;
                 if (contact.type == 'group') init_group_chat_contacts(contact) ;
                 else {
-                    moneyNetworkService.notification_if_old_contact(contact);
+                    moneyNetworkService.is_old_contact(contact);
                     self.group_chat = false ;
                     self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
                 }
@@ -790,8 +811,11 @@ angular.module('MoneyNetwork')
                 element.style.height = 0;
                 element.style.height = element.scrollHeight + 'px';
             };
+
+            self.confirmed_send_chat = null ;
             self.send_chat_msg = function () {
                 var pgm = controller + '.send_chat_msg: ';
+
                 // check image attachment
                 if (self.new_chat_src && !moneyNetworkService.get_image_ext_from_base64uri(self.new_chat_src)) {
                     ZeroFrame.cmd(
@@ -801,7 +825,8 @@ angular.module('MoneyNetwork')
                     self.new_chat_src='';
                 }
 
-                var i, j, contact, password, password, my_pubkey, my_auth_address, my_unique_id, message, error ;
+                var i, j, contact, password, password, my_pubkey, my_auth_address, my_unique_id, message, error,
+                    warning;
                 // group chat? find/create pseudo contact for this chat group.
                 self.editing_grp_chat = false ;
                 if (self.group_chat) {
@@ -840,45 +865,64 @@ angular.module('MoneyNetwork')
                 }
                 else contact = self.contact ;
 
-                // send chat message to contact
-                message = {
-                    msgtype: 'chat msg',
-                    message: self.new_chat_msg
-                };
-                if (self.new_chat_src) message.image = self.new_chat_src ;
-                MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
-                // validate json
-                error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
-                if (error) {
-                    ZeroFrame.cmd("wrapperNotification", ["Error", error]);
-                    return;
-                }
-                // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
-                // send message
-                moneyNetworkService.add_msg(contact, message);
-                if (self.group_chat && self.new_chat_src) {
-                    // sending a group chat message with an image.
-                    // expects one receipt for each participant in chat group except me
-                    // remove image chat message from zeronet (data.json) when all image receipts have been received
-                    // see process_incoming_message - post processing of image receipts
-                    // see z_update_data_json - data.json too big - xxxxxx
-                    my_unique_id = moneyNetworkService.get_my_unique_id() ;
-                    var message_with_envelope = contact.messages[contact.messages.length-1] ;
-                    message_with_envelope.image_receipts = [] ;
-                    for (i=0 ; i<contact.participants.length ; i++) {
-                        if (contact.participants[i] == my_unique_id) continue ;
-                        message_with_envelope.image_receipts.push(contact.participants[i]) ;
+                // callback function - send chat message
+                var cb = function () {
+                    // send chat message to contact
+                    message = {
+                        msgtype: 'chat msg',
+                        message: self.new_chat_msg
+                    };
+                    if (self.new_chat_src) message.image = self.new_chat_src ;
+                    MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
+                    // validate json
+                    error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
+                    if (error) {
+                        ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                        return;
                     }
-                    debug('outbox && unencrypted', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
-                }
+                    // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
+                    // send message
+                    moneyNetworkService.add_msg(contact, message);
+                    if (self.group_chat && self.new_chat_src) {
+                        // sending a group chat message with an image.
+                        // expects one receipt for each participant in chat group except me
+                        // remove image chat message from zeronet (data.json) when all image receipts have been received
+                        // see process_incoming_message - post processing of image receipts
+                        // see z_update_data_json - data.json too big - xxxxxx
+                        my_unique_id = moneyNetworkService.get_my_unique_id() ;
+                        var message_with_envelope = contact.messages[contact.messages.length-1] ;
+                        message_with_envelope.image_receipts = [] ;
+                        for (i=0 ; i<contact.participants.length ; i++) {
+                            if (contact.participants[i] == my_unique_id) continue ;
+                            message_with_envelope.image_receipts.push(contact.participants[i]) ;
+                        }
+                        debug('outbox && unencrypted', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                    }
 
-                // ready for next chat msg
-                self.new_chat_msg = '';
-                self.new_chat_src = null ;
-                // console.log(pgm + 'contact = ' + JSON.stringify(contact));
-                // update localStorage and ZeroNet
-                // console.log(pgm + 'calling ls_save_contacts');
-                moneyNetworkService.ls_save_contacts(true);
+                    // ready for next chat msg
+                    self.new_chat_msg = '';
+                    self.new_chat_src = null ;
+                    // console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                    // update localStorage and ZeroNet
+                    // console.log(pgm + 'calling ls_save_contacts');
+                    moneyNetworkService.ls_save_contacts(true);
+
+                } ; // cb
+
+                // send msg. confirm send if chatting to an "old" contact
+                if ((contact.type != 'group') &&
+                    (warning=moneyNetworkService.is_old_contact(contact,true)) &&
+                    (self.confirmed_send_chat != contact.unique_id)) {
+                    ZeroFrame.cmd("wrapperConfirm", [warning + '<br>Send message anyway?', "Send"], function (confirm) {
+                        if (!confirm) return ;
+                        // only ask for confirmation once for contact
+                        self.confirmed_send_chat = contact.unique_id ;
+                        cb() ;
+                    }) ;
+                }
+                else cb() ;
+                if (!warning) self.confirmed_send_chat = null ;
+
             }; // send_chat_msg
 
             self.changed_chat_msg = "";

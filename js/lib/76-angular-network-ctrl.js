@@ -125,7 +125,7 @@ angular.module('MoneyNetwork')
         // todo: also chat_contact method in chat controller. refactor
         self.chat_contact = function (contact) {
             // notification if starting chat with an older contact (Last online timestamp)
-            moneyNetworkService.notification_if_old_contact(contact);
+            moneyNetworkService.is_old_contact(contact);
             $location.path('/chat2/' + contact.unique_id);
             $location.replace();
         };

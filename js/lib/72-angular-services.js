@@ -440,6 +440,7 @@ angular.module('MoneyNetwork')
                         message = contact2.messages[j] ;
                         if (message.folder != 'outbox') continue ;
                         if (message.local_msg_seq == message_with_envelope.local_msg_seq) continue ; // sending current outbox message
+                        if (!message.local_msg_seq) continue ; // other not yet sent outbox messages (error or pending)
                         if (message.feedback) continue ; // feedback loop complete - outbox message have been received by contact
                         // request feedback info from contact. has this outbox message been received?
                         local_msg_seqs.push(message.local_msg_seq) ;
@@ -1280,8 +1281,7 @@ angular.module('MoneyNetwork')
                     } // for i (data.msg)
 
                     // remove deleted outbox messages from data.json
-                    var encrypt, password, key, message_with_envelope, message, encrypted_message_str, message_deleted,
-                        error, receiver_sha256, local_msg_seq, sender_sha256, image, sent_at ;
+                    var encrypt, key, message_with_envelope, message, message_deleted, error ;
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         contact = ls_contacts[i] ;
                         encrypt = null ;
@@ -1362,6 +1362,7 @@ angular.module('MoneyNetwork')
                                     continue ;
                                 }
                                 // OK. message removed from data.json file. ready for resend
+                                debug('lost_message', pgm + 'resend: message with local_msg_seq ' + contact.messages[j].local_msg_seq + ' was removed from data.json file and is now ready for resend') ;
                                 delete contact.messages[j].zeronet_msg_id ;
                                 delete contact.messages[j].sent_at ;
                                 delete contact.messages[j].cleanup_at ;
@@ -1527,7 +1528,7 @@ angular.module('MoneyNetwork')
                             // cryptMessage plugin encryption
                             message_with_envelope.encryption = 2 ;
                             // 3 callbacks. 1) generate password, 2) encrypt password=key and 3) encrypt message,
-                            if (resend) debug('lost_message', 'resend. calling z_update_data_cryptmessage for old message with local_msg_seq ' + local_msg_seq) ;
+                            if (resend) debug('lost_message', pgm + 'resend. calling z_update_data_cryptmessage for old message with local_msg_seq ' + local_msg_seq) ;
                             z_update_data_cryptmessage (
                                 user_seq, true, data_json_max_size, data, contact.pubkey2,
                                 message_with_envelope, receiver_sha256, sent_at
@@ -1633,6 +1634,12 @@ angular.module('MoneyNetwork')
                         // delete message.feedback_info ; // todo: any reason to keep feedback info in message?
                         message_with_envelope.zeronet_msg_id = CryptoJS.SHA256(encrypted_message_str).toString();
                         message_with_envelope.sent_at = sent_at ;
+                        if (message_with_envelope.message.sent_at) {
+                            debug('lost_message', pgm + 'resend OK for local_msg_seq ' + message_with_envelope.local_msg_seq +
+                                '. removing old sent_at timestamp and old message_sha256 from sent message') ;
+                            delete message_with_envelope.message.sent_at ;
+                            delete message_with_envelope.message.message_sha256 ;
+                        }
                         // console.log(pgm + 'new local_storage_messages[' + i + '] = ' + JSON.stringify(message));
                         // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
 
@@ -3310,11 +3317,11 @@ angular.module('MoneyNetwork')
             //    "local_msg_seq": 2
             //};
 
-            // sent_at timestamp in incoming message. is used when resending lost messages. two kind of lost messages:
+            // "sent_at" timestamp in incoming message together with "local_msg_seq" or "message_sha256" in incomming message.
+            // is used when resending lost messages. two kind of lost messages:
             // a) lost messages detected in feedback info loop. sent but now received. "lost msg" notification in the UI until receiving the original message
             // b) cryptMessage decrypt error. contact resend message encrypted for changed certificate. "lost msg2" notification in the UI until receiving the original message
             // c) an incoming message can match both type of errors. identified with original local_msg_seq and message_sha256 information inside the received message
-
             if (decrypted_message.sent_at) {
                 debug('lost_message', pgm + 'message with sent_at timestamp. must be contact resending a lost message');
                 debug('lost_message', pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
@@ -5243,10 +5250,10 @@ angular.module('MoneyNetwork')
             return user_setup ;
         }
 
-
-        // start chat. write a notification if starting a chat with old contact (Last online timestamp)
+        // start chat. notification or confirm dialog if chat with old contact (Last online timestamp)
         // used in chat_contact methods in network and chat controllers
-        function notification_if_old_contact (contact) {
+        // optional confirm param: false: notification, true: return text for confirm dialog box
+        function is_old_contact (contact, confirm) {
             // find last updated for this contact
             var last_updated, last_updated2, i, j, newer_contacts, contact2 ;
             last_updated = get_last_online(contact) ;
@@ -5262,24 +5269,24 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'last_updated2 = ' + last_updated2 + ', contact2 = ' + JSON.stringify(contact2));
                 if (last_updated2 > last_updated) newer_contacts.push(contact2);
             } // for i (self.contacts)
+            if (newer_contacts.length == 0) return null ;
 
-            if (newer_contacts.length > 0) {
-                // add warning.
-                var msg ;
-                msg =
-                    'Warning. You maybe starting chat with an old inactive contact.<br>' +
-                    'Found ' + newer_contacts.length + ' newer updated contact' +
-                    ((newer_contacts.length > 1) ? 's' : '') + '.';
-                for (i=0 ; i<newer_contacts.length ; i++) {
-                    contact2 = newer_contacts[i] ;
-                    last_updated2 = get_last_online(contact2) ;
-                    msg += '<br>' + (i+1) + ' : Last online ' + date(last_updated2*1000, 'short') + '. ';
-                    msg += 'Identical ' + ((contact.cert_user_id == contact2.cert_user_id) ? 'zeronet user' : 'browser public key') + '.' ;
-                }
-                ZeroFrame.cmd("wrapperNotification", ["info", msg, 5000]);
+            // add warning.
+            var msg;
+            msg =
+                'You are chatting with an old contact.<br>' +
+                'Found ' + newer_contacts.length + ' contact' + ((newer_contacts.length > 1) ? 's' : '') + ' with newer online timestamp.';
+            for (i = 0; i < newer_contacts.length; i++) {
+                contact2 = newer_contacts[i];
+                last_updated2 = get_last_online(contact2);
+                msg += '<br>' + (i + 1) + ' : Last online ' + date(last_updated2 * 1000, 'short') + '. ';
+                msg += 'Identical ' + ((contact.cert_user_id == contact2.cert_user_id) ? 'zeronet user' : 'local public key') + '.';
             }
 
-        } // notification_if_old_contact
+            // notification (click on avatar) or confirm dialog (send chat msg)
+            if (confirm) return msg ;
+            else ZeroFrame.cmd("wrapperNotification", ["info", msg, 5000]);
+        } // is_old_contact
 
 
         // output debug info in log. For key, see user page and setup.debug hash
@@ -5338,7 +5345,7 @@ angular.module('MoneyNetwork')
             get_chat_sort_options: get_chat_sort_options,
             get_chat_sort_title: get_chat_sort_title,
             chat_order_by: chat_order_by,
-            notification_if_old_contact: notification_if_old_contact,
+            is_old_contact: is_old_contact,
             is_admin: is_admin,
             confirm_admin_task: confirm_admin_task
         };
