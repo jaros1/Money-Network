@@ -804,11 +804,6 @@
                             <td></td>
                             <td ng-bind-html="s.privacy"></td>
                         </tr>
-                        <tr>
-                            <td colspan="7">
-                                Chat address: {{c.contact|chatAddress}}
-                            </td>
-                        </tr>
                         </tbody>
                     </table>
                 </div>
@@ -841,11 +836,6 @@
                             </tbody>
                         </table>
                     </span>
-
-                    <table style="width: 100%" ng-show="c.contact && (c.contact.type == 'group') && !c.editing_grp_chat">
-                        <tbody>
-                        <tr><td>Chat address: {{c.contact|chatAddress}}</td></tr></tbody>
-                    </table>
 
                 </div>
 

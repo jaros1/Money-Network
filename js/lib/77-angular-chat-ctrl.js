@@ -48,12 +48,16 @@ angular.module('MoneyNetwork')
 
             // contact removed from top of chat. see all chat messages
             self.see_all_chat = function () {
+                var a_path, z_path ;
                 clear_chat_filter_cache() ;
                 self.contact = null ;
                 self.group_chat = false ;
                 self.group_chat_contacts.splice(self.group_chat_contacts.length) ;
                 self.editing_grp_chat = false ;
-            };
+                a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
+                z_path = "?path=" + a_path ;
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
+            }; // self.see_all_chat
 
             // group contact functions.
             // click on glyphicon-pushpin to edit participants in group chat
@@ -152,6 +156,7 @@ angular.module('MoneyNetwork')
 
             self.stop_editing_grp_chat = function () {
                 var pgm = controller + '.stop_edit_grp_chat: ' ;
+                var contact, path1, path2, a_path, z_path ;
                 clear_chat_filter_cache() ;
                 if (self.group_chat_contacts.length == 0) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Please some participants to chat first", 5000]);
@@ -172,6 +177,16 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
                     if (contact && (typeof contact == 'object')) self.contact = contact ;
                 }
+                contact = self.contact ;
+
+                // update ZeroNet Url
+                path1 = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
+                if (!contact) path2 = '' ;
+                else if ((contact.type == 'group') || (moneyNetworkService.is_old_contact(contact, true))) path2 = '/' + contact.unique_id ;
+                else path2 = '/' + contact.cert_user_id ;
+                a_path = path1 + path2 ;
+                z_path = "?path=" + a_path ;
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
             }; // stop_editing_grp_chat
 
             self.grp_chat_add = function (contact) {
@@ -269,7 +284,7 @@ angular.module('MoneyNetwork')
                 }
                 else if ((unique_id.indexOf('@') != -1) && (unique_id != ZeroFrame.site_info.cert_user_id)) {
                     // check if unique_id is a known cert_user_id
-                    console.log(pgm + 'check if unique_id is a known cert_user_id') ;
+                    // console.log(pgm + 'check if unique_id is a known cert_user_id') ;
                     for (i=0 ; i<self.contacts.length ; i++) {
                         if (self.contacts[i].type == 'group') continue ;
                         if (self.contacts[i].cert_user_id == unique_id) {
@@ -822,7 +837,7 @@ angular.module('MoneyNetwork')
             self.chat_contact = function (contact) {
                 var pgm = controller + '.chat_contact: ';
                 if (self.contact && (self.contact.unique_id == contact.unique_id)) return ;
-                var old_contact, two_panel_chat, a_path, z_path ;
+                var old_contact, a_path, z_path ;
                 clear_chat_filter_cache() ;
                 // console.log(pgm + 'contact.unique_id = ' + contact.unique_id);
                 // clear any old not sent chat
@@ -838,8 +853,7 @@ angular.module('MoneyNetwork')
                 }
                 // update zeronet path - no angularJS redirect
                 // console.log(pgm + '$location.path = ' + $location.path()) ;
-                two_panel_chat = ($location.path().substr(0,6) == '/chat2')
-                a_path = two_panel_chat ? '/chat2' : '/chat' ;
+                a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
                 if ((contact.type == 'group') || old_contact) a_path += '/' + contact.unique_id ;
                 else a_path += '/' + contact.cert_user_id ;
                 z_path = "?path=" + a_path ;
