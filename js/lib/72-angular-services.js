@@ -3173,12 +3173,21 @@ angular.module('MoneyNetwork')
         var new_incoming_receipts = 0 ;
         var new_outgoing_receipts = [] ;
 
-        // helper. Used on local_storage_read_messages (after login) and event_file_done (incoming files after login)
-        function process_incoming_message (res, unique_id) {
+        // process inbox message. Used from
+        // - local_storage_read_messages (post login function)
+        // - event_file_done (incoming files)
+        // - recheck_old_decrypt_errors (post login function)
+        // params:
+        // - res. row from data.json msg array + auth_address
+        // - unique_id. contact unique id
+        // - sent_at. only used by recheck_old_decrypt_errors. retrying decrypt after login and maybe changed ZeroNet certificate.
+        //   cleanup old "lost msg2" message (decrypt error) after processing message
+        function process_incoming_message (res, unique_id, sent_at) {
             var pgm = service + '.process_incoming_message: ' ;
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256, error ;
             var local_msg_seq, message, contact_or_group, found_lost_msg, found_lost_msg2, js_messages_row, placeholders ;
 
+            debug('lost_message', pgm + 'sent_at = ' + sent_at) ;
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
 
             if (!res.key) {
@@ -3219,7 +3228,7 @@ angular.module('MoneyNetwork')
                 // key and iv in message - cryptMessage plugin encryption
                 if (!res.hasOwnProperty('decrypted_message_str')) {
                     // decrypt and callback to this function. two cryptMessage callbacks and return to this function when done
-                    process_incoming_cryptmessage(res, unique_id) ;
+                    process_incoming_cryptmessage(res, unique_id, sent_at) ;
                     // stop.
                     return false ;
                 }
@@ -3322,7 +3331,7 @@ angular.module('MoneyNetwork')
             // a) lost messages detected in feedback info loop. sent but now received. "lost msg" notification in the UI until receiving the original message
             // b) cryptMessage decrypt error. contact resend message encrypted for changed certificate. "lost msg2" notification in the UI until receiving the original message
             // c) an incoming message can match both type of errors. identified with original local_msg_seq and message_sha256 information inside the received message
-            if (decrypted_message.sent_at) {
+            if (decrypted_message.sent_at || sent_at) {
                 debug('lost_message', pgm + 'message with sent_at timestamp. must be contact resending a lost message');
                 debug('lost_message', pgm + 'decrypted_message = ' + JSON.stringify(decrypted_message));
                 found_lost_msg = false ;
@@ -3332,7 +3341,7 @@ angular.module('MoneyNetwork')
                 for (i = contact_or_group.messages.length-1; i >= 0 ; i--) {
                     message = contact_or_group.messages[i];
                     if (message.folder != 'inbox') continue;
-                    if ((message.message.msgtype == 'lost msg') && (message.message.local_msg_seq == decrypted_message.local_msg_seq)) {
+                    if ((message.message.msgtype == 'lost msg') && !sent_at && (message.message.local_msg_seq == decrypted_message.local_msg_seq)) {
                         // found matching lost message notification in UI
                         debug('lost_message', pgm + 'old lost msg placeholder was found. deleting it');
                         found_lost_msg = true ;
@@ -3472,10 +3481,14 @@ angular.module('MoneyNetwork')
 
             }
 
-
             // post processing new incoming messages
 
             // any feedback info?
+            if (sent_at) {
+                // process_incoming_message is called from recheck_old_decrypt_errors
+                // feedback information maybe be out of date
+                delete decrypted_message.feedback ;
+            }
             var feedback = decrypted_message.feedback ;
             if (feedback) {
                 // received feedback info. what messages have contact sent. what messages is contact waiting for feedback for
@@ -3675,15 +3688,18 @@ angular.module('MoneyNetwork')
 
 
         // process incoming cryptMessage encrypted message
-        function process_incoming_cryptmessage (res, unique_id) {
+        // same parameters as process_incoming_message. will callback to process_incoming_message when finished decrypting message
+        // sent_at parameter is only used when called from recheck_old_decrypt_errors
+        function process_incoming_cryptmessage (res, unique_id, sent_at) {
             var pgm = service + '.process_incoming_cryptmessage : ' ;
+            debug('lost_message', pgm + 'sent_at = ' + sent_at) ;
 
             // callback to process_incoming_message when done
             var cb = function () {
                 // callback with error to process_incoming_message
                 var contacts_updated = false ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                if (process_incoming_message(res, unique_id)) contacts_updated = true ;
+                if (process_incoming_message(res, unique_id, sent_at)) contacts_updated = true ;
 
                 // same post processing as in file_done_event
                 // any receipts to sent?
@@ -3713,9 +3729,9 @@ angular.module('MoneyNetwork')
             var message_array = res.message.split(',') ;
             var iv = message_array[0] ;
             var encrypted = message_array[1] ;
-            console.log(pgm + 'iv = ' + iv + ', encrypted = ' + encrypted) ;
+            // console.log(pgm + 'iv = ' + iv + ', encrypted = ' + encrypted) ;
 
-            console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling eciesDecrypt with " + JSON.stringify([res.key, user_id])) ;
+            // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling eciesDecrypt with " + JSON.stringify([res.key, user_id])) ;
             ZeroFrame.cmd("eciesDecrypt", [res.key, user_id], function(password) {
                 var pgm = service + '.process_incoming_cryptmessage eciesDecrypt callback 1: ' ;
                 var pubkey, query ;
@@ -3814,10 +3830,21 @@ angular.module('MoneyNetwork')
                 } // if !password
 
                 // decrypt step 2 - password OK - decrypt message
-                console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
+                // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
-                    console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
+                    var decrypted_message ;
+                    // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
+
+                    if (sent_at) {
+                        // process_incoming_message was called from recheck_old_decrypt_errors
+                        // user has log out, changed ZeroNet cert, logged in again and no longer decrypt error
+                        // adding message_sha256 and sent_at to message so that lost msg2 cleanup in process_incoming_message will work
+                        decrypted_message = JSON.parse(decrypted_message_str) ;
+                        decrypted_message.sent_at = sent_at ;
+                        decrypted_message.message_sha256 = res.message_sha256 ;
+                        decrypted_message_str = JSON.stringify(decrypted_message) ;
+                    }
 
                     // done. save decrypted message and return to process_incoming_message
                     res.decrypted_message_str = decrypted_message_str ;
@@ -4278,20 +4305,7 @@ angular.module('MoneyNetwork')
                     decrypt_errors.push({unique_id: message.unique_id, res: message.res })
                 } // for j (messages)
             } // for j (contacts)
-            console.log(pgm + 'decrypt_errors = ' + JSON.stringify(decrypt_errors)) ;
-            //decrypt_errors = [{
-            //    "unique_id": "c564425bf6eef8bf2477e6ee6c8a22843d3ea7211d7fe03aca697c719f1807b7",
-            //    "res": {
-            //        "user_seq": 23,
-            //        "receiver_sha256": "34a1c21891ca24b710ec3f0f3fabd129b222df87399577c3e2ac63838fa74703",
-            //        "key": "8ADcSj5c/H9s8xt7cIv9tALKACCeme/aL1IOaUIiydlxZLg0BOKANx5Zn/JPJyUcWkhgbAAgWaSzQknmF7IdX0j5ektBAuYh5Pnt1Ex67u9kxjNnG2aeOAJAyMiQfgrJMgvlGK9dnq3DOHkX9/pW2FX9sYdOR012ylcrFnmRUZLVwNZQW7UeFddCEQ9PwN5ZZ8Q3YtpLQadbYgm3MxJiQWKqHUDStQ==",
-            //        "message": "OJTJk+d5+AB2EteXUyij7g==,HbcgiSwFZ6izU144+3jwr3Ukm9O8NLJv6jMXQE7wO9r7sDlypivO76zlfK2EwMT5m+IuYpNLz2Zx+myjQzHgguNpzJnKsDVIInsT7asBcu0ETLnmuKxkjmO/U/rk2/RokrZw6ro0hwB3tENYTh+Lm+EGf5G25dqoa6orc38hwgtQM29rpiVACZmuMCR8BrMEkoVsrmm26sT8nfjDEtmXXAwSQEjELHqHtUGnMre3NG0Qax9t/KSg0JKv+2/tfoA2XZFL28GG3y6jJxS2guBYH63sYZ8o0J3Ta83oiZwNwYwhv4aILhuPToN3AOGK/Xjsae1mhfoPKDSWmNeXTwJ4iPVzby0MO+t97CBVYw92e592bLLzXAqnrMZOmkhZHTfB",
-            //        "message_sha256": "95a428959cd2b0cc17c5b521b15d8601cf16a444c1ecdd39a9eb6712dead2a56",
-            //        "timestamp": 1481737128987,
-            //        "auth_address": "16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH",
-            //        "decrypted_message_str": "changed cert error"
-            //    }
-            //}];
+            // console.log(pgm + 'decrypt_errors = ' + JSON.stringify(decrypt_errors)) ;
             if (decrypt_errors.length == 0) return ;
 
             // reprocess old decrypt error messages
@@ -4299,8 +4313,18 @@ angular.module('MoneyNetwork')
             for (i=0 ; i<decrypt_errors.length ; i++) {
                 res = JSON.parse(JSON.stringify(decrypt_errors[i].res)) ;
                 delete res.decrypted_message_str ;
-                if (process_incoming_message(res, decrypt_errors[i].unique_id)) contacts_updated = true ;
-                console.log(pgm + 'i = ' + i + ', res = ' + JSON.stringify(res)) ;
+                // calling process_incoming_message. note param 3 sent_at. used to trigger lost msg2 cleanup. remove old decrypt error from UI
+                if (process_incoming_message(res, decrypt_errors[i].unique_id, res.timestamp)) contacts_updated = true ;
+                // console.log(pgm + 'i = ' + i + ', res = ' + JSON.stringify(res)) ;
+                //res = {
+                //    "user_seq": 23,
+                //    "receiver_sha256": "34a1c21891ca24b710ec3f0f3fabd129b222df87399577c3e2ac63838fa74703",
+                //    "key": "8ADcSj5c/H9s8xt7cIv9tALKACCeme/aL1IOaUIiydlxZLg0BOKANx5Zn/JPJyUcWkhgbAAgWaSzQknmF7IdX0j5ektBAuYh5Pnt1Ex67u9kxjNnG2aeOAJAyMiQfgrJMgvlGK9dnq3DOHkX9/pW2FX9sYdOR012ylcrFnmRUZLVwNZQW7UeFddCEQ9PwN5ZZ8Q3YtpLQadbYgm3MxJiQWKqHUDStQ==",
+                //    "message": "OJTJk+d5+AB2EteXUyij7g==,HbcgiSwFZ6izU144+3jwr3Ukm9O8NLJv6jMXQE7wO9r7sDlypivO76zlfK2EwMT5m+IuYpNLz2Zx+myjQzHgguNpzJnKsDVIInsT7asBcu0ETLnmuKxkjmO/U/rk2/RokrZw6ro0hwB3tENYTh+Lm+EGf5G25dqoa6orc38hwgtQM29rpiVACZmuMCR8BrMEkoVsrmm26sT8nfjDEtmXXAwSQEjELHqHtUGnMre3NG0Qax9t/KSg0JKv+2/tfoA2XZFL28GG3y6jJxS2guBYH63sYZ8o0J3Ta83oiZwNwYwhv4aILhuPToN3AOGK/Xjsae1mhfoPKDSWmNeXTwJ4iPVzby0MO+t97CBVYw92e592bLLzXAqnrMZOmkhZHTfB",
+                //    "message_sha256": "95a428959cd2b0cc17c5b521b15d8601cf16a444c1ecdd39a9eb6712dead2a56",
+                //    "timestamp": 1481737128987,
+                //    "auth_address": "16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH"
+                //};
             }
 
             // same post processing as in file_done_event
