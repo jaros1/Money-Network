@@ -231,30 +231,61 @@ angular.module('MoneyNetwork')
             // disabled chat. contact without public key. span with explanation about deleting old inactive accounts
             self.no_days_before_cleanup = moneyNetworkService.get_no_days_before_cleanup() ;
 
-            // find contact. only relevant if chat is called from contact page
+            // find contact. relevant if chat is called from contact page or when using deep link to start chat
             function find_contact() {
                 var pgm = controller + '.find_contact: ';
-                var unique_id = $routeParams.unique_id;
+                var unique_id, i, contact, online, last_online, last_contact ;
+                unique_id = $routeParams.unique_id;
                 if (unique_id === undefined) return ;
                 if (!unique_id) return ;
                 console.log(pgm + 'unique_id = ' + JSON.stringify(unique_id));
-                for (var i = 0; i < self.contacts.length; i++) {
-                    if (self.contacts[i].unique_id == unique_id) {
-                        self.contact = self.contacts[i];
-                        if (!self.contact.messages) self.contact.messages = [];
-                        // console.log(pgm + 'contact = ' + JSON.stringify(self.contact));
-                        if (self.contact.type == 'group') init_group_chat_contacts(self.contact) ; // xxx
-                        else {
-                            moneyNetworkService.is_old_contact(self.contact);
-                            self.group_chat = false ;
-                            self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
+                if (unique_id.match(/^[0-9a-f]{64}$/)) {
+                    // valid unique id
+                    console.og(pgm + 'unique_id is a valid sha256 address');
+                    for (i = 0; i < self.contacts.length; i++) {
+                        if (self.contacts[i].unique_id == unique_id) {
+                            self.contact = self.contacts[i];
+                            if (!self.contact.messages) self.contact.messages = [];
+                            // console.log(pgm + 'contact = ' + JSON.stringify(self.contact));
+                            if (self.contact.type == 'group') init_group_chat_contacts(self.contact) ; // xxx
+                            else {
+                                moneyNetworkService.is_old_contact(self.contact);
+                                self.group_chat = false ;
+                                self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
+                            }
+                            // console.log(pgm + 'self.group_chat = ' + self.group_chat) ;
+                            // console.log(pgm + 'self.contact = ' + (self.contact ? true : false)) ;
+                            return
                         }
-                        // console.log(pgm + 'self.group_chat = ' + self.group_chat) ;
-                        // console.log(pgm + 'self.contact = ' + (self.contact ? true : false)) ;
-                        return
                     }
+                    console.log(pgm + 'contact with unique id ' + unique_id + ' was not found');
+                    return ;
                 }
-                console.log(pgm + 'contact with unique id ' + unique_id + ' was not found');
+                else if ((unique_id.indexOf('@') != -1) && (unique_id != ZeroFrame.site_info.cert_user_id)) {
+                    // check if unique_id is a known cert_user_id
+                    console.log(pgm + 'unique_id is not a sha256 address. maybe a cert_user_id ...') ;
+                    for (i=0 ; i<self.contacts.length ; i++) {
+                        if (self.contacts[i].type == 'group') continue ;
+                        if (self.contacts[i].cert_user_id == unique_id) {
+                            contact = self.contacts[i] ;
+                            online =  MoneyNetworkHelper.get_last_online(contact) ;
+                            if (!last_online || (online > last_online)) {
+                                last_contact = contact ;
+                                last_online = online ;
+                            }
+                        }
+                    }
+                    if (last_contact) {
+                        self.contact = last_contact ;
+                        if (!self.contact.messages) self.contact.messages = [];
+                        self.group_chat = false ;
+                        self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
+                        return ;
+                    }
+                    console.log(pgm + 'contact with cert_user_id ' + unique_id + ' was not found');
+                    return ;
+                }
+                console.log(pgm + 'contact with id ' + unique_id + ' was not found');
             } // find_contact
             // if ($routeParams.unique_id) find_contact();
 

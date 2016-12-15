@@ -4086,7 +4086,13 @@ angular.module('MoneyNetwork')
                                 if (ignore_zeronet_msg_id[auth_address].indexOf(message.zeronet_msg_id) != -1) {
                                     // problem with doublet contacts. maybe also problem with doublet messages ....
                                     console.log(pgm + 'Error. Message with sha256 ' + message.zeronet_msg_id + ' found more than one in inbox');
-                                    console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                                    // skip some testcase error messages
+                                    // Message with sha256 ecc6b46bf37d739d8075ce3cc03fa0a93e92c0724a1cf7a36ddea441085f0de8 found more than one in inbox
+                                    // Message with sha256 e09422c12e377cab678ffc266e98788ef942549c05724fbe29a6d6e59162dde3 found more than one in inbox
+                                    if (['ecc6b46bf37d739d8075ce3cc03fa0a93e92c0724a1cf7a36ddea441085f0de8',
+                                            'e09422c12e377cab678ffc266e98788ef942549c05724fbe29a6d6e59162dde3'].indexOf(message.zeronet_msg_id) == -1) {
+                                        console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                                    }
                                 }
                                 else ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id);
                             }
