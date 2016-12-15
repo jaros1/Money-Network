@@ -8,30 +8,55 @@ angular.module('MoneyNetwork')
         var pgm = 'routeProvider: ' ;
 
         // resolve: check if user is logged. check is used in multiple routes
-        var check_auth_resolve = ['$location', '$routeParams', function ($location, $routeParams) {
+        var check_auth_resolve = ['$location', function ($location) {
+            var pgm = 'routeProvider.check_auth_resolve: ';
             if (!MoneyNetworkHelper.getUserId()) {
-                var pgm = 'routeProvider.check_auth_resolve: ';
-                var path = $location.path() ;
-                var unique_id = path.split('/')[2] ;
-                console.log(pgm + 'unique_id = ' + JSON.stringify(unique_id));
-                if (!unique_id) unique_id = '' ;
-                var info ;
+                // notification and redirect to auth. remember path for redirect after log in
+                var old_a_path, new_a_path, z_path, info ;
+                old_a_path = $location.path() ;
                 info = 'Not allowed. Please log in ' ;
-                if (path == '/money') info += 'to see your wallet' ;
-                else if (path == '/network') info += 'to see your contacts' ;
-                else if (path.substr(0,5) == '/chat') info += 'to chat' ;
-                else if (path == '/user') info += 'to see you user profile' ;
+                if (old_a_path == '/money') info += 'to see your wallet' ;
+                else if (old_a_path == '/network') info += 'to see your contacts' ;
+                else if (old_a_path.substr(0,5) == '/chat') info += 'to chat' ;
+                else if (old_a_path == '/user') info += 'to see you user profile' ;
+                new_a_path = '/auth' ;
+                z_path = "?path=/user&redirect=" + old_a_path ;
                 ZeroFrame.cmd("wrapperNotification", ['info', info , 3000]);
-                $location.path('/auth/' + unique_id);
+                $location.path(new_a_path).search('redirect', old_a_path);
                 $location.replace();
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]) ;
+                // console.log(pgm + 'old angularjs path = ' + old_a_path + ', new angularjs path = ' + new_a_path + ', z_path = ' + z_path + ', info = ' + info) ;
             }
+            else {
+                var a_path, a_search, key ;
+                a_path = $location.path() ;
+                a_search = $location.search() ;
+                z_path = "?path=" + a_path ;
+                for (key in a_search) z_path += '&' + key + '=' + a_search[key] ;
+                // console.log(pgm + 'z_path = ' + z_path) ;
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
+                return z_path ;
+            }
+        }];
+
+        var set_z_path = ['$location', function ($location) {
+            var pgm = 'routeProvider.set_z_path: ';
+            var a_path, a_search, z_path, key ;
+            a_path = $location.path() ;
+            a_search = $location.search() ;
+            z_path = "?path=" + a_path ;
+            for (key in a_search) z_path += '&' + key + '=' + a_search[key] ;
+            console.log(pgm + 'z_path = ' + z_path) ;
+            ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
+            return z_path ;
         }];
 
         // setup routes. see ng-template in index.html page. same sequence as in menu
         $routeProvider
             .when('/about', {
                 templateUrl: 'about.html',
-                controller: 'AboutCtrl as a'
+                controller: 'AboutCtrl as a',
+                resolve: {check_auth: set_z_path}
             })
             .when('/money', {
                 templateUrl: 'money.html',
@@ -71,25 +96,32 @@ angular.module('MoneyNetwork')
             .when('/auth/:unique_id', {
                 templateUrl: 'auth.html',
                 controller: 'AuthCtrl as a',
+                resolve: {check_auth: set_z_path}
             })
             .when('/auth', {
                 templateUrl: 'auth.html',
                 controller: 'AuthCtrl as a',
+                resolve: {check_auth: set_z_path}
             })
             .otherwise({
                 redirectTo: function () {
-                    // error or startup
+                    // error or startup. Check deep link. redirect to auth or deep link
                     var pgm = 'routeProvider.otherwise: ' ;
-                    var search, i, path ;
-                    // start url was http://127.0.0.1:43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/?path=/chat/d313edf9b48b930c5e2c8d0f5c9914ddcf62d9b3904dfc25bffb4d7dbae45f88
+                    var search, a_path, z_path, i ;
                     search = window.location.search ;
+                    // check for deep link
                     i = search.indexOf('path=') ;
-                    if (i==-1) return '/auth' ; // error or no path in startup url
-                    // redirect to startup path
-                    path = search.substr(i+5) ;
-                    i = path.indexOf('&') ;
-                    if (i!=-1) path = path.substr(0,i) ;
-                    return path;
+                    if (i==-1) a_path = '/auth' ; // error or no path in startup url
+                    else {
+                        // deep link
+                        a_path = search.substr(i+5) ;
+                        i = a_path.indexOf('&') ;
+                        if (i!=-1) a_path = a_path.substr(0,i) ;
+                    }
+                    z_path = "?path=" + a_path ;
+                    // console.log(pgm + 'window.location.search = ' + search + ', angularjs_path = ' + a_path + ', z_path = ' + z_path) ;
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]) ;
+                    return a_path;
                 }
             });
         // end config (ng-routes)

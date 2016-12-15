@@ -47,53 +47,68 @@ angular.module('MoneyNetwork')
         };
         self.login_or_register = function () {
             var pgm = controller + '.login_or_register: ';
-            var create_new_account = (self.register != 'N');
-            var create_guest_account = (self.register == 'G');
-            var unique_id, setup ;
+            var create_new_account, create_guest_account ;
+            create_new_account = (self.register != 'N');
+            create_guest_account = (self.register == 'G');
 
-            var login_or_register = function () {
+            // callback. warning if user has selected a long key
+            var login_or_register_cb = function () {
+                var pgm = controller + '.login_or_register_cb: ' ;
+                var unique_id, setup, a_path, z_path, z_title ;
                 if (create_guest_account) {
                     self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
                     MoneyNetworkHelper.delete_guest_account() ;
                 }
-                var userid = moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize));
-                // console.log(pgm + 'userid = ' + JSON.stringify(userid));
-                if (userid) {
+                // login or register
+                if (moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize))) {
                     // log in OK - clear login form and redirect
                     ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
                     self.device_password = '';
                     self.confirm_device_password = '';
                     self.register = 'N';
-                    // log in with a deep link (unique_id in path)
-                    unique_id = $routeParams.unique_id ;
-                    if (unique_id === undefined) unique_id = '' ;
-                    console.log(pgm + 'unique_id = ' + JSON.stringify(unique_id));
-                    if (unique_id && (unique_id == moneyNetworkService.get_my_unique_id())) unique_id = '' ;
+                    // redirect to deep link?
+                    a_path = $location.search('redirect') ;
+                    if (a_path) {
+                        z_path = "?path=" + a_path ;
+                        $location.path(a_path) ;
+                        $location.replace();
+                        ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
+                        return ;
+                    }
+                    // no deep link. redirect to Account or Chat pages
                     // empty user setup - go to Account page first
                     var user_info = moneyNetworkService.get_user_info() ;
                     var empty_user_info_str = JSON.stringify([moneyNetworkService.empty_user_info_line()]) ;
-                    if ((JSON.stringify(user_info) == empty_user_info_str) || create_guest_account) $location.path('/user/' + unique_id);
-                    else {
-                        // check setup. one or two panel chat. unique_id = deep link
-                        setup = moneyNetworkService.get_user_setup() ;
-                        if (!setup.hasOwnProperty('two_panel_chat')) setup.two_panel_chat = true ; // loading?
-                        $location.path('/chat' + (setup.two_panel_chat ? '2' : '') + '/' + unique_id);
+                    if ((JSON.stringify(user_info) == empty_user_info_str) || create_guest_account) {
+                        // empty or new user
+                        a_path = '/user';
+                        z_title = 'Account' ;
                     }
+                    else {
+                        // old non empty user
+                        setup = moneyNetworkService.get_user_setup() ;
+                        if (!setup.hasOwnProperty('two_panel_chat')) setup.two_panel_chat = true ;
+                        a_path = '/chat' + (setup.two_panel_chat ? '2' : '') ;
+                        z_title = 'Chat' ;
+                    }
+                    z_path = "?path=" + a_path ;
+                    // redirect to Account or Chat
+                    $location.path(a_path) ;
                     $location.replace();
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, z_title, z_path]) ;
                 }
                 else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
+            } ; // login_or_register_cb
 
-            } ;
-
-            // warning if user has selected a long key
+            // warning before login user has selected a long key for a new account
             if ((self.register != 'N') && (self.keysize >= '4096')) {
                 ZeroFrame.cmd("wrapperConfirm", ["Generating a " + self.keysize + " bits key will take some time.<br>Continue?", "OK"], function (confirm) {
-                    if (confirm) login_or_register() ;
+                    if (confirm) login_or_register_cb() ;
                 })
             }
-            else login_or_register() ;
+            else login_or_register_cb() ;
 
-        };
+        }; // self.login_or_register
 
         // default. Use JSEncrypt and 2048 bits keys for ingoing messages
         self.keysize = "2048" ;

@@ -124,10 +124,14 @@ angular.module('MoneyNetwork')
         };
         // todo: also chat_contact method in chat controller. refactor
         self.chat_contact = function (contact) {
-            // notification if starting chat with an older contact (Last online timestamp)
-            moneyNetworkService.is_old_contact(contact);
-            $location.path('/chat2/' + contact.unique_id);
+            var a_path, z_path ;
+            // notification if starting chat with an older contact (Last online) or an old guest account
+            if (moneyNetworkService.is_old_contact(contact)) a_path = '/chat2/' + contact.unique_id ;
+            else a_path = '/chat2/' + contact.cert_user_id ;
+            z_path = "?path=" + a_path ;
+            $location.path(a_path);
             $location.replace();
+            ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
         };
         self.contact_remove = function (contact) {
             moneyNetworkService.contact_remove(contact);

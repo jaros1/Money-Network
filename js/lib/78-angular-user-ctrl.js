@@ -239,8 +239,12 @@ angular.module('MoneyNetwork')
         })() ;
 
         // deep chat link
-        self.my_chat_url = $location.protocol() + '://' + $location.host() + ':43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/?path=/chat/' + moneyNetworkService.get_my_unique_id() ;
+        self.my_chat_url = $location.protocol() + '://' + $location.host() + ':' + $location.port() + '/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/?path=/chat2/' + ZeroFrame.site_info.cert_user_id ;
         // console.log(controller + ': my_chat_url = ' + self.my_chat_url) ;
+
+        ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", "?path=/user"]) ;
+
+
 
         // end UserCtrl
     }])

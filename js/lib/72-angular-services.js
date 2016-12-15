@@ -4910,7 +4910,7 @@ angular.module('MoneyNetwork')
 
         function client_logout() {
             // notification
-            var key ;
+            var key, a_path, z_path ;
             ZeroFrame.cmd("wrapperNotification", ['done', 'Log out OK', 3000]);
             // clear sessionStorage
             MoneyNetworkHelper.client_logout();
@@ -4930,8 +4930,11 @@ angular.module('MoneyNetwork')
             admin_key = null ;
             for (key in user_setup) delete user_setup[key] ;
             // redirect
-            $location.path('/auth');
+            a_path = '/auth' ;
+            z_path = "?path=" + a_path ;
+            $location.path(a_path);
             $location.replace();
+            ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]) ;
         } // client_logout
 
         function get_my_unique_id () {
@@ -5368,6 +5371,7 @@ angular.module('MoneyNetwork')
         // optional confirm param: false: notification, true: return text for confirm dialog box
         function is_old_contact (contact, confirm) {
             var pgm = service + '.is_old_contact: ' ;
+            if (contact.type == 'group') return ;
             // find last updated for this contact
             var last_updated, last_updated2, i, j, newer_contacts, contact2, now, one_day_ago, msg ;
             last_updated = get_last_online(contact) ;
@@ -5389,7 +5393,7 @@ angular.module('MoneyNetwork')
                 // check old guest account
                 now = new Date().getTime() ;
                 one_day_ago = Math.round((now - 1000*60*60*24) / 1000) ;
-                console.log(pgm + 'last_updated = ' + last_updated + ', one_day_ago = ' + one_day_ago) ;
+                // console.log(pgm + 'last_updated = ' + last_updated + ', one_day_ago = ' + one_day_ago) ;
                 // oneyNetworkService.is_old_contact: last_updated = 1481713129, one_day_ago = 1481629619986
                 if (last_updated >= one_day_ago) return ;
                 msg = 'You are chatting with an old guest account. Last online ' + date(last_updated * 1000, 'short') ;

@@ -30,13 +30,20 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.two_panel_chat_changed: ' ;
                 moneyNetworkService.save_user_setup() ;
                 // keep contact / group chat context when redirect between one and two panel chat pages
-                var contact, path1, path2 ;
+                console.log(pgm + '$location.path = ' + $location.path()) ;
+                var contact, path1, path2, a_path, z_path ;
                 if (self.group_chat) contact = find_group_chat_contact(true) ;
                 else contact = self.contact ;
+                // redirect to other chat page (chat / chat2 ). keep chat context and update angularJS and ZeroNet path
                 path1 = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
-                path2 = contact ? '/' + contact.unique_id : '' ;
-                $location.path(path1 + path2);
+                if (!contact) path2 = '' ;
+                else if ((contact.type == 'group') || (moneyNetworkService.is_old_contact(contact, true))) path2 = '/' + contact.unique_id ;
+                else path2 = '/' + contact.cert_user_id ;
+                a_path = path1 + path2 ;
+                z_path = "?path=" + a_path ;
+                $location.path(a_path);
                 $location.replace();
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
             };
 
             // contact removed from top of chat. see all chat messages
@@ -238,10 +245,9 @@ angular.module('MoneyNetwork')
                 unique_id = $routeParams.unique_id;
                 if (unique_id === undefined) return ;
                 if (!unique_id) return ;
-                console.log(pgm + 'unique_id = ' + JSON.stringify(unique_id));
                 if (unique_id.match(/^[0-9a-f]{64}$/)) {
                     // valid unique id
-                    console.og(pgm + 'unique_id is a valid sha256 address');
+                    console.log(pgm + 'unique_id is a valid sha256 address');
                     for (i = 0; i < self.contacts.length; i++) {
                         if (self.contacts[i].unique_id == unique_id) {
                             self.contact = self.contacts[i];
@@ -263,7 +269,7 @@ angular.module('MoneyNetwork')
                 }
                 else if ((unique_id.indexOf('@') != -1) && (unique_id != ZeroFrame.site_info.cert_user_id)) {
                     // check if unique_id is a known cert_user_id
-                    console.log(pgm + 'unique_id is not a sha256 address. maybe a cert_user_id ...') ;
+                    console.log(pgm + 'check if unique_id is a known cert_user_id') ;
                     for (i=0 ; i<self.contacts.length ; i++) {
                         if (self.contacts[i].type == 'group') continue ;
                         if (self.contacts[i].cert_user_id == unique_id) {
@@ -816,6 +822,7 @@ angular.module('MoneyNetwork')
             self.chat_contact = function (contact) {
                 var pgm = controller + '.chat_contact: ';
                 if (self.contact && (self.contact.unique_id == contact.unique_id)) return ;
+                var old_contact, two_panel_chat, a_path, z_path ;
                 clear_chat_filter_cache() ;
                 // console.log(pgm + 'contact.unique_id = ' + contact.unique_id);
                 // clear any old not sent chat
@@ -825,10 +832,18 @@ angular.module('MoneyNetwork')
                 self.contact = contact ;
                 if (contact.type == 'group') init_group_chat_contacts(contact) ;
                 else {
-                    moneyNetworkService.is_old_contact(contact);
+                    old_contact = moneyNetworkService.is_old_contact(contact);
                     self.group_chat = false ;
                     self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
                 }
+                // update zeronet path - no angularJS redirect
+                // console.log(pgm + '$location.path = ' + $location.path()) ;
+                two_panel_chat = ($location.path().substr(0,6) == '/chat2')
+                a_path = two_panel_chat ? '/chat2' : '/chat' ;
+                if ((contact.type == 'group') || old_contact) a_path += '/' + contact.unique_id ;
+                else a_path += '/' + contact.cert_user_id ;
+                z_path = "?path=" + a_path ;
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
             }; // chat_contact
 
             self.new_chat_msg = '';
