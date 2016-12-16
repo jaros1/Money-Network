@@ -1971,7 +1971,6 @@ angular.module('MoneyNetwork')
         function guest_account_user_info() {
             var pgm = service + '.guest_account_user_info: ' ;
             // todo: add more info to new guest account
-            // - a) could not get html5 geolocation to work. Could be angularJS, ZeroNet or ?
             var timezone = (new Date()).getTimezoneOffset()/60 ;
             var language = navigator.languages ? navigator.languages[0] : navigator.language;
             return [
@@ -1981,25 +1980,46 @@ angular.module('MoneyNetwork')
                 { tag: 'Language', value: '' + language, privacy: 'Hidden'}
             ] ;
         }
-        function load_user_info (new_guest_account) {
+
+        function new_account_user_info() {
+            var pgm = service + '.new_account_user_info: ' ;
+            var cert_user_id, index, name, alias, timezone, language ;
+            cert_user_id = ZeroFrame.site_info.cert_user_id ;
+            if (!cert_user_id) name = MoneyNetworkHelper.get_fake_name() ;
+            else {
+                index = cert_user_id.indexOf('@') ;
+                if (cert_user_id.substr(index) == '@moneynetwork') name = MoneyNetworkHelper.get_fake_name() ;
+                else name = cert_user_id.substr(0,index) ;
+            }
+            index = name.indexOf(' ') ;
+            if (index == -1) alias = name ;
+            else alias = name.substr(0,index);
+            user_setup.alias = alias ;
+            timezone = (new Date()).getTimezoneOffset()/60 ;
+            language = navigator.languages ? navigator.languages[0] : navigator.language;
+            return [
+                { tag: 'Name', value: name, privacy: 'Search'},
+                { tag: '%', value: '%', privacy: 'Search'},
+                { tag: 'Timezone', value: '' + timezone, privacy: 'Hidden'},
+                { tag: 'Language', value: '' + language, privacy: 'Hidden'}
+            ] ;
+        }
+        function load_user_info (create_new_account, guest) {
             var pgm = service + '.load_user_info: ';
             // load user info from local storage
             var user_info_str, new_user_info ;
-            user_info_str = MoneyNetworkHelper.getItem('user_info') ;
-            // console.log(pgm + 'user_info loaded from localStorage: ' + user_info_str) ;
-            // console.log(pgm + 'user_info_str = ' + user_info_str) ;
-            if (user_info_str) {
-                new_user_info = JSON.parse(user_info_str) ;
-                new_guest_account = false ;
+            if (create_new_account) {
+                if (guest) new_user_info = guest_account_user_info();
+                else new_user_info = new_account_user_info() ;
             }
-            else if (new_guest_account) new_user_info = guest_account_user_info();
-            else new_user_info = [empty_user_info_line()] ;
+            else {
+                user_info_str = MoneyNetworkHelper.getItem('user_info') ;
+                if (user_info_str) new_user_info = JSON.parse(user_info_str) ;
+                else new_user_info = [empty_user_info_line()] ;
+            }
             user_info.splice(0,user_info.length) ;
             for (var i=0 ; i<new_user_info.length ; i++) user_info.push(new_user_info[i]) ;
-            if (new_guest_account) save_user_info() ;
-            // load user info from ZeroNet
-            //// compare
-            //console.log(pgm + 'todo: user info loaded from localStorage. must compare with user_info stored in data.json') ;
+            if (create_new_account) save_user_info() ;
         }
         function get_user_info () {
             return user_info ;
@@ -4897,7 +4917,7 @@ angular.module('MoneyNetwork')
                 // load user information from localStorage
                 load_user_setup(keysize) ;
                 load_avatar() ;
-                load_user_info(guest) ;
+                load_user_info(create_new_account, guest) ;
                 ls_load_contacts() ;
                 local_storage_read_messages() ;
                 recheck_old_decrypt_errors() ;

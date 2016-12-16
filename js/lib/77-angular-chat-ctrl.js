@@ -256,13 +256,13 @@ angular.module('MoneyNetwork')
             // find contact. relevant if chat is called from contact page or when using deep link to start chat
             function find_contact() {
                 var pgm = controller + '.find_contact: ';
-                var unique_id, i, contact, online, last_online, last_contact ;
+                var unique_id, i, contact, online, last_online, last_contact, a_path, z_path ;
                 unique_id = $routeParams.unique_id;
                 if (unique_id === undefined) return ;
                 if (!unique_id) return ;
                 if (unique_id.match(/^[0-9a-f]{64}$/)) {
                     // valid unique id
-                    console.log(pgm + 'unique_id is a valid sha256 address');
+                    // console.log(pgm + 'unique_id is a valid sha256 address');
                     for (i = 0; i < self.contacts.length; i++) {
                         if (self.contacts[i].unique_id == unique_id) {
                             self.contact = self.contacts[i];
@@ -280,6 +280,10 @@ angular.module('MoneyNetwork')
                         }
                     }
                     console.log(pgm + 'contact with unique id ' + unique_id + ' was not found');
+                    // remove invalid deep link from z_url
+                    a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
+                    z_path = "?path=" + a_path ;
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
                     return ;
                 }
                 else if ((unique_id.indexOf('@') != -1) && (unique_id != ZeroFrame.site_info.cert_user_id)) {
@@ -304,11 +308,18 @@ angular.module('MoneyNetwork')
                         return ;
                     }
                     console.log(pgm + 'contact with cert_user_id ' + unique_id + ' was not found');
+                    // remove invalid deep link from z_url
+                    a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
+                    z_path = "?path=" + a_path ;
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
                     return ;
                 }
+                // remove invalid deep link from z_url
+                a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
+                z_path = "?path=" + a_path ;
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
                 console.log(pgm + 'contact with id ' + unique_id + ' was not found');
             } // find_contact
-            // if ($routeParams.unique_id) find_contact();
 
             function init_group_chat_contacts (contact) {
                 var pgm = controller + '.init_group_chat_contacts: ' ;
@@ -691,8 +702,14 @@ angular.module('MoneyNetwork')
                 var match, reason, image, i, unique_id, participant, remote_msg_seq, message2 ;
                 image = message.message.message.image? true : false ;
                 if (message.message.deleted_at) {
+                    // logical deleted message
                     match = false ;
-                    reason = 1 ;
+                    reason = 1.1 ;
+                }
+                else if (message.message.message.msgtype == 'received') {
+                    // hide image receipts
+                    match = false ;
+                    reason = 1.2 ;
                 }
                 else if (!self.contact && !self.group_chat) {
                     // no context - show chat for all contacts. Use green/red filter in top of page

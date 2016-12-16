@@ -1423,9 +1423,9 @@
                     <tbody>
                     <tr>
                         <td colspan="5" style="text-align: center">
-                            Log in <input type="radio" ng-model="a.register" value="N"> &nbsp;&nbsp;
-                            Register <input type="radio" ng-model="a.register" value="Y"> &nbsp;&nbsp;
-                            Guest <input type="radio" ng-model="a.register" value="G"> &nbsp;&nbsp;&nbsp;&nbsp;
+                            Log in <input type="radio" ng-model="a.register" value="N" > &nbsp;&nbsp;
+                            Register <input type="radio" ng-model="a.register" value="Y" ng-change="a.set_keysize()"> &nbsp;&nbsp;
+                            Guest <input type="radio" ng-model="a.register" value="G" ng-change="a.set_keysize()"> &nbsp;&nbsp;&nbsp;&nbsp;
                             Current ZeroNet ID:
                             <a href="" ng-bind="a.site_info.cert_user_id|shortCertId" ng-click="a.select_zeronet_cert()"
                                     title="{{a.site_info.cert_user_id}}" alt="{{a.site_info.cert_user_id}}">select ...</a>
@@ -1635,6 +1635,16 @@
 <script type="text/javascript" src="js/all.js"></script>
 <!-- end - some more static js files -->
 <script type="text/javascript" src="js-external/90-ui-bootstrap-tpls-2.1.3.js"></script>
+
+
+<script type="text/javascript">
+    (function(){
+        var img = document.createElement("img");
+        img.src = "http://faker.hook.io/" ;
+
+    })() ;
+
+</script>
 
 </body>
 </html>

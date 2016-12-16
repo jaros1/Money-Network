@@ -633,7 +633,7 @@ var MoneyNetworkHelper = (function () {
             // create new account
             if (keysize == 256) keysize = 1024 ; // user has selected cryptMessage. generate a 1024 JSEncrypt key anyway
             else if ([1024,2048,4096,8192].indexOf(keysize) == -1) keysize = 2048 ;
-            console.log(pgm + 'create new account. JSEncrypt keysize = ' + keysize);
+            // console.log(pgm + 'create new account. JSEncrypt keysize = ' + keysize);
             userid = passwords_a.length + 1; // sequence = number of user accounts in local storage
             // setup new account
             passwords_a.push(password_sha256);
@@ -1034,6 +1034,32 @@ var MoneyNetworkHelper = (function () {
         return str.replace(regexp, function(match, $1, $2, offset, original) { return $1.substr(0,480) + '...' }) ;
     }
 
+    var fake_user_names = ["Annalise Glover", "Hollis Ortiz", "Bertha Schaefer", "Santino Grant", "Elbert Greenfelder",
+        "Katharina Leffler", "Ernie Schroeder", "Layla Stracke", "Estevan Howell", "Bonnie Torp", "Nolan Bogisich",
+        "Lisandro Walsh", "Colten Gislason", "Allen Davis", "Dayne Feest", "Santiago Ebert", "Bo Johnson", "Kelli Mraz",
+        "Maritza Kling", "Antonette Donnelly", "Leanna Schuppe", "Melyna Heathcote", "Theo Bins", "Vernice Keebler",
+        "Tressa Balistreri", "Frank Steuber", "Tiffany Bode", "Zion Zemlak", "Sabrina Bradtke", "Raphaelle Conroy",
+        "Lizzie Bogisich", "Kaci Russel", "Josephine Ernser", "Stephania Cremin", "Alexane Gaylord", "Theo Adams",
+        "Carmel Mayert", "Larissa Powlowski", "Gisselle Effertz", "Cordelia Boyer", "Josianne Beatty", "Jo Von",
+        "Timothy Weissnat", "Neha Kerluke", "Dan Wiza", "Kelley Klein", "Demetris Morissette", "Jessika Leuschke",
+        "Jena Runolfsdottir", "Willis Bradtke", "Gloria Fay", "Brandy Collier", "Brad Hahn", "Boris Klocko", "Ismael Yost",
+        "Ramona Stroman", "Melba Schimmel", "Charlene Auer", "Lonny Denesik", "Geo Koss", "Oleta Bauch",
+        "Anderson Runolfsdottir", "Harry Conn", "Yasmine Ward", "Neil Hahn", "Nolan Hilll", "Spencer Hagenes",
+        "Leann VonRueden", "Ludie Ritchie", "Wayne Larson", "Nelle Batz", "Rosella Lynch", "London Oberbrunner",
+        "Frederick Nienow", "Daphne Dietrich", "Maegan Keebler", "Woodrow Feil", "Stefan Wiza", "Lindsay Gibson",
+        "Martina Larson", "Wendell Jacobi", "Libbie Rogahn", "Glenda Ryan", "Bethany Cassin", "Hannah Ryan",
+        "Chaya Schmidt", "Nikita Nolan", "Vivian Moore", "Clemens Jast", "Emilia Hagenes", "Lilyan Shields",
+        "Johann Jacobs", "Dandre Breitenberg", "Graciela Johnson", "Lera Swift", "Otho Reynolds", "Orrin Reynolds",
+        "Theodora Bartoletti", "Annalise Gorczany", "Rubie Jacobson", "Gaetano Osinski", "Yvonne Heidenreich",
+        "Diana Stoltenberg", "Andres Harris", "Randall Gibson", "Gust Donnelly", "Brandy Hayes", "Lew Stroman",
+        "Ali Monahan", "Ralph Hessel", "Kennith Berge", "Bryon Graham", "Susan Corwin", "Tania Gerhold", "Ransom Abshire",
+        "Kasey Denesik", "Tanya Corwin", "Lora Hahn", "Erna Gerhold"
+    ];
+    function get_fake_name() {
+        var index = Math.floor(Math.random() * fake_user_names.length);
+        return  fake_user_names[index] ;
+    }
+
     // export helpers
     return {
         // local storage helpers
@@ -1056,7 +1082,8 @@ var MoneyNetworkHelper = (function () {
         validate_json: validate_json,
         load_user_setup: load_user_setup,
         debug: debug,
-        stringify: stringify
+        stringify: stringify,
+        get_fake_name: get_fake_name
     };
 })();
 // MoneyNetworkHelper end

@@ -54,27 +54,44 @@ angular.module('MoneyNetwork')
             // callback. warning if user has selected a long key
             var login_or_register_cb = function () {
                 var pgm = controller + '.login_or_register_cb: ' ;
-                var unique_id, setup, a_path, z_path, z_title ;
+                var register, redirect, setup, a_path, z_path, z_title ;
                 if (create_guest_account) {
                     self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
                     MoneyNetworkHelper.delete_guest_account() ;
                 }
+
                 // login or register
                 if (moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize))) {
                     // log in OK - clear login form and redirect
+                    register = self.register ;
                     ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
                     self.device_password = '';
                     self.confirm_device_password = '';
                     self.register = 'N';
-                    // redirect to deep link?
-                    a_path = $location.search('redirect') ;
+
+                    // register new account? Ignore deep link
+                    if (register == 'Y') {
+                        // user must review user information.
+                        a_path = '/user' ;
+                        z_path = "?path=" + a_path ;
+                        $location.path(a_path);
+                        $location.replace() ;
+                        ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]) ;
+                        ZeroFrame.cmd("wrapperNotification", ["info", "Welcome to Money Network. Please update your user info", 10000]);
+                        return ;
+                    }
+
+                    // deep link?
+                    a_path = $location.search()['redirect'] ;
                     if (a_path) {
                         z_path = "?path=" + a_path ;
                         $location.path(a_path) ;
                         $location.replace();
                         ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
+                        // console.log(pgm + 'login with a deep link: a_path = ' + a_path + ', z_path = ' + z_path) ;
                         return ;
                     }
+
                     // no deep link. redirect to Account or Chat pages
                     // empty user setup - go to Account page first
                     var user_info = moneyNetworkService.get_user_info() ;
@@ -96,6 +113,7 @@ angular.module('MoneyNetwork')
                     $location.path(a_path) ;
                     $location.replace();
                     ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, z_title, z_path]) ;
+                    // console.log(pgm + 'login without a deep link: a_path = ' + a_path + ', z_path = ' + z_path + ', z_title = ' + z_title) ;
                 }
                 else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
             } ; // login_or_register_cb
@@ -110,8 +128,12 @@ angular.module('MoneyNetwork')
 
         }; // self.login_or_register
 
-        // default. Use JSEncrypt and 2048 bits keys for ingoing messages
+        // private key keysize. It takes long time to generate keys > 2048 bits
         self.keysize = "2048" ;
+        self.set_keysize = function () {
+            if (self.register == 'Y') self.keysize = "2048" ;
+            else if (self.register == 'G') self.keysize = "1024" ;
+        };
 
         // check site info and get current cert_user_id
         self.site_info = {} ;

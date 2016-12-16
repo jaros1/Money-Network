@@ -46,7 +46,7 @@ angular.module('MoneyNetwork')
             a_search = $location.search() ;
             z_path = "?path=" + a_path ;
             for (key in a_search) z_path += '&' + key + '=' + a_search[key] ;
-            console.log(pgm + 'z_path = ' + z_path) ;
+            // console.log(pgm + 'z_path = ' + z_path) ;
             ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
             return z_path ;
         }];
