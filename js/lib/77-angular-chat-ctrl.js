@@ -411,7 +411,7 @@ angular.module('MoneyNetwork')
                 // start up hints - user is not chatting
                 if (chat_hint_account_page()) return 'No contacts were found. Please go to "Account" page and enter/update search tags.' ;
                 if (chat_hint_network_page()) return 'Click on "Network page" or enable "Two panel chat" to see contacts' ;
-                if (chat_hint_start_chat()) return 'Click on an avatar to start chat';
+                if (chat_hint_start_chat()) return 'Click on an avatar to start private chat';
 
                 // user is chatting - concatenate hints
                 var send, pubkey, avatar, pushpin, ok, x  ;
@@ -795,8 +795,9 @@ angular.module('MoneyNetwork')
                 }
                 debug('chat_filter',
                     pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', folder = ' + message.message.folder +
-                    ', match = ' + match + ', reason = ' + reason + ', image = ' + image + ', msgtype = ' + message.message.msgtype +
+                    ', match = ' + match + ', reason = ' + reason + ', image = ' + image + ', msgtype = ' + message.message.message.msgtype +
                     message_x);
+                // debug('chat_filter', pgm + 'message.message = ' + JSON.stringify(message.message)) ;
 
                 // if ([200, 201, 202].indexOf(message.message.local_msg_seq) != -1) debug('chat_filter', pgm + 'message.message = ' + JSON.stringify(message.message)) ;
                 message.chat_filter = match ;
@@ -854,6 +855,7 @@ angular.module('MoneyNetwork')
             self.chat_contact = function (contact) {
                 var pgm = controller + '.chat_contact: ';
                 if (self.contact && (self.contact.unique_id == contact.unique_id)) return ;
+                // console.log(pgm + 'contact = ' + JSON.stringify(contact));
                 var old_contact, a_path, z_path ;
                 clear_chat_filter_cache() ;
                 // console.log(pgm + 'contact.unique_id = ' + contact.unique_id);
@@ -987,7 +989,7 @@ angular.module('MoneyNetwork')
                 } ; // cb
 
                 // send msg. confirm send if chatting to an "old" contact
-                if ((contact.type != 'group') &&
+                if (contact && (contact.type != 'group') &&
                     (warning=moneyNetworkService.is_old_contact(contact,true)) &&
                     (self.confirmed_send_chat != contact.unique_id)) {
                     ZeroFrame.cmd("wrapperConfirm", [warning + '<br>Send message anyway?', "Send"], function (confirm) {

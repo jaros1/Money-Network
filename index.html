@@ -493,7 +493,7 @@
                                               title="Message size in browser and on ZeroNet"> {{m.message|formatMsgSize}}</span>
                                         <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
                                                 class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
-                                        <a class="icon icon-edit" href="" ng-show="m.message.msgtype = 'chat msg'"
+                                        <a class="icon icon-edit" href="" ng-show="m.message.msgtype == 'chat msg'"
                                            ng-click="c.edit_chat_msg(m)"></a>
                                     </td>
                                 </tr>
@@ -846,7 +846,7 @@
 
             <ul class="list-unstyled media-block">
 
-                <li ng-show="c.contact || c.group_chat">
+                <li ng-show="c.contact || c.group_chat || !c.setup.block_public">
 
                     <div class="media-left">
                         <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Avatar">
@@ -858,16 +858,18 @@
                                 <table class="speech" style="width: 100%">
                                     <tbody style="display: table; width: inherit;">
                                     <tr>
-                                        <td style="white-space: nowrap;"><a href="#" class="media-heading"
-                                                                            ng-bind-html="c.setup.alias">Me</a></td>
+                                        <td class="media-heading" style="white-space: nowrap;">
+                                            <span ng-bind-html="c.setup.alias">Me</span>
+                                            <span class="glyphicon glyphicon-forward"/>
+                                            <span ng-bind-html="(c.contact|contactAlias)||'Public'">Public</span>
+                                        </td>
                                         <td style="text-align: right; vertical-align: top; width: 99%">
                                             <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td colspan="2" style="width: 99%">
-                                        <textarea ng-show="c.contact || c.group_chat"
-                                                  class="autosize postfield new_chat_msg" id="new_chat_msg"
+                                        <textarea class="autosize postfield new_chat_msg" id="new_chat_msg"
                                                   placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox"
                                                   rows="1" required
                                                   ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
@@ -907,7 +909,7 @@
                                             </div>
 
                                             <button type="submit" ng-click="c.send_chat_msg()"
-                                                    ng-disabled="new_chat_msg_form.$invalid || !c.chat_hint_send()">Send
+                                                    ng-disabled="new_chat_msg_form.$invalid">Send
                                             </button>
                                         </td>
                                     </tr>
@@ -939,7 +941,7 @@
                                           title="Message size in browser and on ZeroNet"> {{m.message|formatMsgSize}}</span>
                                     <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
                                             class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
-                                    <a class="icon icon-edit" href="" ng-show="m.message.msgtype = 'chat msg'"
+                                    <a class="icon icon-edit" href="" ng-show="m.message.msgtype == 'chat msg'"
                                        ng-click="c.edit_chat_msg(m)"></a>
                                 </td>
                             </tr>
@@ -1216,7 +1218,7 @@
                    target="_blank" rel="noopener noreferrer">CryptMessage</a>  256 bits key
             </p>
 
-            <table title="Use this section to enable/disable messages from guests and contacts on ignore list">
+            <table title="Use this section to enable/disable messages from guests, contacts on ignore list and public chat">
                 <tbody>
                 <tr>
                     <td colspan="3">Spam filters:</td>
@@ -1231,6 +1233,12 @@
                     <td>Block messages from Ignored list?</td>
                     <td></td>
                     <td><input type="checkbox" ng-model="u.setup.block_ignored" ng-change="u.spam_settings_changed()">
+                    </td>
+                </tr>
+                <tr title="Public chat is unencrypted and messages are shared with everyone">
+                    <td>Block public chat messages?</td>
+                    <td></td>
+                    <td><input type="checkbox" ng-model="u.setup.block_public" ng-change="u.spam_settings_changed()">
                     </td>
                 </tr>
                 </tbody>
@@ -1426,7 +1434,7 @@
                             Log in <input type="radio" ng-model="a.register" value="N" > &nbsp;&nbsp;
                             Register <input type="radio" ng-model="a.register" value="Y" ng-change="a.set_keysize()"> &nbsp;&nbsp;
                             Guest <input type="radio" ng-model="a.register" value="G" ng-change="a.set_keysize()"> &nbsp;&nbsp;&nbsp;&nbsp;
-                            Current ZeroNet ID:
+                            ZeroNet ID:
                             <a href="" ng-bind="a.site_info.cert_user_id|shortCertId" ng-click="a.select_zeronet_cert()"
                                     title="{{a.site_info.cert_user_id}}" alt="{{a.site_info.cert_user_id}}">select ...</a>
                             <a href="" id="zeronet_cert_changed_link" ng-click="a.zeronet_cert_changed()" style="display: none"></a>
