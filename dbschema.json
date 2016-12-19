@@ -12,7 +12,8 @@
     "users/.+/content.json": {
       "to_keyvalue": [ "cert_user_id" ],
       "to_table": [
-        { "node": "files", "table": "files", "key_col": "filename"}
+        { "node": "files", "table": "files", "key_col": "filename"},
+        { "node": "files_optional", "table": "files_optional", "key_col": "filename"}
       ]
     },
     "users/.+/status.json": {
@@ -57,6 +58,16 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX files_i1 ON files(json_id)"],
+      "schema_changed": 8
+    },
+    "files_optional": {
+      "cols": [
+        ["filename", "TEXT"],
+        ["sha512", "TEXT"],
+        ["size", "INTEGER"],
+        ["json_id", "INTEGER REFERENCES json (json_id)"]
+      ],
+      "indexes": ["CREATE INDEX files_optional_i1 ON files_optional(json_id)"],
       "schema_changed": 8
     },
     "messages": {
