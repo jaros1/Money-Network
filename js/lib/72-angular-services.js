@@ -227,22 +227,12 @@ angular.module('MoneyNetwork')
                             var json_raw, optional_regexp, key, key_a ;
 
                             // optional files support:
-                            // 1) chat-<user_seq>-<timestamp>.json - unix timestamp with milliseconds for last chat msg in json file
-                            optional_regexp = '(chat-[0-9]+-[0-9]{13}.json)' ;
+                            // 1) <timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for last chat msg in json file
+                            optional_regexp = '([0-9]{13}-[0-9]+-chat.json)' ;
                             content = JSON.parse(content) ;
                             if (content.optional == optional_regexp) {
                                 // optional file support also in place. save to my_files_optional. used in public chat
-                                for (key in my_files_optional) delete my_files_optional[key];
-                                if (content.files_optional) {
-                                    for (key in content.files_optional) {
-                                        if (user_seq) {
-                                            // check user_seq in filename. for example "chat-1-1482081231234.json" when user_seq = 1
-                                            key_a = key.split('-') ;
-                                            if (key_a[1] != '' + user_seq) continue ;
-                                        }
-                                        my_files_optional[key] = content.files_optional[key] ;
-                                    } // for key
-                                }
+                                save_my_files_optional(content.files_optional, user_seq) ;
                                 return ;
                             }
                             content.optional = optional_regexp ;
@@ -2021,20 +2011,13 @@ angular.module('MoneyNetwork')
         } // z_update_data_write_publish
 
 
-        // update zeronet step 5. create and/or delete chat-<user_seq>-<timestamp>.json files with public chat
-        // - public chat is not saved in localStorage
-        // - outbox messages are loaded from user directory after login
-        // - other outbox messages are loaded lazy from optional files to JS
-        // - must implement endless scroll (ngInfiniteScroll?) and load more public chat messages when needed
-        // check:
-        // - delete old public outbox messages
-        // - add new public outbox messages
-        // called from z_update_4_data_json_write after finished updating data.json file. publish true if data.json file was updated
-        // also called from z_update_5_public_chat after each create/delete operation
+        // update zeronet step 5. create and/or delete <timestamp>-<user_seq>-chat.json files with public chat
+        // note that public chat is unencrypted and saved in optional json files on ZeroNet
+        // public chat messages are not saved in localStorage
         function z_update_5_public_chat (user_seq, publish) {
             var pgm = service + '.z_update_5_public_chat: ' ;
-            var contact, user_path, now, i, message_with_envelope, file_path, j, last_chat_file, last_timestamp, key, key_a,
-                timestamp, message ;
+            var contact, user_path, now, i, message_with_envelope, file_path, j, z_filename, last_timestamp, key,
+                key_a, timestamp, message, new_z_filename, new_file_path, write_file, message_with_envelope2 ;
 
             contact = get_public_contact(false) ;
             user_path = "data/users/" + ZeroFrame.site_info.auth_address;
@@ -2046,17 +2029,19 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<contact.messages.length ; i++) {
                     message_with_envelope = contact.messages[i] ;
                     if (message_with_envelope.sent_at && message_with_envelope.z_filename && message_with_envelope.deleted_at) {
-                        // remove message from file or delete file from chat-*.json file
+
+                        // remove message from file or delete file from *-chat.json file
                         if (!my_files_optional[message_with_envelope.z_filename]) {
                             console.log(pgm + 'UPS. File ' + message_with_envelope.z_filename + ' was not found in my_files_optional') ;
                             delete message_with_envelope.z_filename ;
                             message_with_envelope.cleanup_at = now ;
                             continue ;
                         }
+
                         file_path = user_path + '/' + message_with_envelope.z_filename ;
                         ZeroFrame.cmd("fileGet", [file_path, false], function (chat) {
                             var pgm = service + '.z_update_5_public_chat fileGet callback 1a: ' ;
-                            var callback, j, msg_found, json_raw, error ;
+                            var callback, j, msg_found, json_raw, error, message_with_envelope2 ;
                             callback = function () {
                                 delete message_with_envelope.z_filename ;
                                 message_with_envelope.cleanup_at = now ;
@@ -2064,35 +2049,40 @@ angular.module('MoneyNetwork')
                                 z_update_5_public_chat (user_seq, true) ;
                             };
                             if (!chat) {
-                                // no action - file has been deleted since page start
+                                // file has been deleted since page start
                                 console.log(
-                                    pgm + 'cannot delete public outbox message ' + message_with_envelope.local_msg_seq +
+                                    pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
                                     '. file ' + message_with_envelope.z_filename + ' has already been deleted') ;
                                 callback() ;
                                 return ;
                             }
                             chat = JSON.parse(chat) ;
-                            if (!chat.msg || (chat.msg.length == 0)) {
-                                // ups - empty chat.jsonn file - delete file
+                            if (!chat.msg || !chat.msg.length) {
+                                // empty chat.json file - delete file
                                 console.log(
-                                    pgm + 'cannot delete public outbox message ' + message_with_envelope.local_msg_seq +
+                                    pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
                                     '. file ' + message_with_envelope.z_filename + ' was invalid or empty' +
                                     '. chat = ' + JSON.stringify(chat));
                                 ZeroFrame.cmd("fileDelete", message_with_envelope.z_filename, function (res) { callback() });
                                 return ;
                             }
                             msg_found = false ;
+                            last_timestamp = null ;
                             for (j=chat.msg.length-1 ; j>=0 ; j--) {
                                 if (chat.msg[j].timestamp == message_with_envelope.sent_at) {
                                     chat.msg.splice(j,1) ;
                                     msg_found = true ;
                                 }
+                                else if (!last_timestamp || (chat.msg[j].timestamp > last_timestamp)) last_timestamp = chat.msg[j] ;
                             } // for j (chat.msg)
+                            if (last_timestamp) {
+                                new_z_filename = last_timestamp + '-' + user_seq + '-chat.json' ;
+                                new_file_path = user_path + '/' + new_z_filename ;
+                            }
                             if (!msg_found) {
                                 console.log(
-                                    pgm + 'cannot delete public outbox message ' + message_with_envelope.local_msg_seq +
-                                    ', message with timestamp ' + message_with_envelope.sent_at +
-                                    ' was not found in file ' + message_with_envelope.z_filename);
+                                    pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
+                                    '. message was not found in file ' + message_with_envelope.z_filename);
                                 callback() ;
                                 return ;
                             }
@@ -2101,23 +2091,55 @@ angular.module('MoneyNetwork')
                                 message_with_envelope.z_filename);
                             if (msg.length == 0) {
                                 console.log(pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq + ' and file ' + message_with_envelope.z_filename) ;
-                                ZeroFrame.cmd("fileDelete", message_with_envelope.z_filename, function (res) { callback() });
+                                ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
                             }
                             else {
-                                console.log(pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq + ' and updating file ' + message_with_envelope.z_filename);
-                                json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
-                                ZeroFrame.cmd("fileWrite", [message_with_envelope.z_filename, btoa(json_raw)], function (res) {
-                                    var pgm = service + '.z_update_5_public_chat fileWrite callback 2a: ';
-                                    // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                                    if (res === "ok") callback() ;
-                                    else {
-                                        error = 'failed to write file ' + message_with_envelope.z_filename + ', res = ' + res ;
-                                        console.log(pgm + error) ;
-                                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
-                                        // stop. changes were not published
-                                        return ;
-                                    }
-                                }); // fileWrite callback 2a
+                                if (message_with_envelope.z_filename == new_z_filename) {
+                                    console.log(pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq +
+                                        ' and updating file ' + message_with_envelope.z_filename);
+                                }
+                                else {
+                                    console.log(pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq +
+                                        ', deleting file ' + message_with_envelope.z_filename +
+                                        ' and creating file ' + new_z_filename);
+                                }
+                                write_file = function () {
+                                    json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
+                                    ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
+                                        var pgm = service + '.z_update_5_public_chat fileWrite callback 2a: ';
+                                        // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                                        if (res === "ok") {
+                                            // write OK
+                                            if (!my_files_optional[new_z_filename]) my_files_optional[new_z_filename] = {} ;
+                                            my_files_optional[new_z_filename].size = json_raw.length ;
+                                            callback() ;
+                                        }
+                                        else {
+                                            error = 'failed to write file ' + message_with_envelope.z_filename + ', res = ' + res ;
+                                            console.log(pgm + error) ;
+                                            ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                            // stop. changes were not published
+                                            return ;
+                                        }
+                                    }); // fileWrite callback 2a
+
+                                }; // write_file
+
+                                if (message_with_envelope.z_filename == new_z_filename) {
+                                    // unchange filename - just write
+                                    write_file() ;
+                                }
+                                else {
+                                    // changed filename - delete + write
+                                    my_files_optional[new_z_filename] = my_files_optional[message_with_envelope.z_filename] ;
+                                    delete my_files_optional[message_with_envelope.z_filename] ;
+                                    for (j=0 ; j<contact.messages.length ; j++) {
+                                        message_with_envelope2 = contact.messages[j] ;
+                                        if (message_with_envelope2.z_filename == message_with_envelope.z_filename) message_with_envelope2.z_filename = new_z_filename ;
+                                    } // for j
+                                    // delete + write
+                                    ZeroFrame.cmd("fileDelete", file_path, function (res) { write_file() });
+                                }
                             }
 
                         }) ; // fileGet callback 1a
@@ -2136,38 +2158,43 @@ angular.module('MoneyNetwork')
 
                         message = message_with_envelope.message ;
 
-                        // new public outbox message. find chat filename
+                        // new public outbox message. find chat file with newest timestamp
                         if (message.image) {
                             // image chat - create new json file
-                            last_chat_file = null ;
+                            z_filename = null ;
                         }
                         else  {
-                            // find last chat-* file. format chat-1-1482081231234.json
+                            // find last *-chat* file. format 1482081231234-1-chat.json
                             // console.log(pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
-                            last_chat_file = null ;
+                            z_filename = null ;
                             last_timestamp = 0 ;
                             for (key in my_files_optional) {
                                 key_a = key.split(/[.-]/) ;
                                 if (key_a[1] != '' + user_seq) continue ; // not actual user
-                                timestamp = parseInt(key_a[2]) ;
+                                timestamp = parseInt(key_a[0]) ;
                                 if (timestamp > last_timestamp) {
-                                    last_chat_file = key ;
+                                    z_filename = key ;
                                     last_timestamp = timestamp ;
                                 }
                             } // for key
                             // console.log(pgm + 'last_key = ' + last_chat_file + ', last_timestamp = ' + last_timestamp) ;
                             // check size
-                            if (last_chat_file && (my_files_optional[last_chat_file]['size'] > 10000)) last_chat_file = null ;
+                            if (z_filename && (my_files_optional[z_filename]['size'] > 10000)) z_filename = null ;
                         }
-                        if (!last_chat_file) last_chat_file = 'chat-' + user_seq + '-' + now + '.json' ;
 
                         // ready. add public outbox message to chat file
-                        file_path = user_path + '/' + last_chat_file ;
+                        new_z_filename = now + '-' + user_seq + '-chat.json' ;
+                        if (!z_filename) z_filename = new_z_filename ;
+                        file_path = user_path + '/' + z_filename ;
+                        new_file_path = user_path + '/' + new_z_filename ;
+
+                        // ready. read old chat file
                         ZeroFrame.cmd("fileGet", [file_path, false], function (chat) {
                             var pgm = service + '.z_update_5_public_chat fileGet callback 1b: ';
                             var new_msg, json_raw ;
                             if (!chat) chat = { version: 8, msg: []} ;
                             else chat = JSON.parse(chat) ;
+                            // add message to chat file
                             new_msg = {
                                 user_seq: user_seq,
                                 timestamp: now,
@@ -2175,34 +2202,50 @@ angular.module('MoneyNetwork')
                             } ;
                             if (message.image) new_msg.image = message.image ;
                             chat.msg.push(new_msg) ;
-                            console.log(pgm + 'added new message to ' + last_chat_file + '. new_msg = ' + JSON.stringify(new_msg)) ;
+                            console.log(pgm + 'added new message to ' + z_filename + '. new_msg = ' + JSON.stringify(new_msg)) ;
 
-                            // write chat file
-                            json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
-                            ZeroFrame.cmd("fileWrite", [file_path, btoa(json_raw)], function (res) {
-                                var pgm = service + '.z_update_5_public_chat fileWrite callback 2b: ';
-                                var error ;
-                                // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                                if (res === "ok") {
-                                    // write ok.
-                                    if (!my_files_optional[last_chat_file]) my_files_optional[last_chat_file] = {} ;
-                                    my_files_optional[last_chat_file].size = json_raw.length ;
-                                    message_with_envelope.sent_at = now ;
-                                    message_with_envelope.z_filename = last_chat_file ;
-                                    message_with_envelope.local_msg_seq = next_local_msg_seq() ;
-                                    console.log(pgm + 'done. message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
-                                    // callback. continue with other public chat outbox messages and publish when done
-                                    z_update_5_public_chat(user_seq, true) ;
-                                    return ;
-                                }
-                                else {
-                                    error = 'failed to write file ' + file_path + ', res = ' + res ;
-                                    console.log(pgm + error) ;
-                                    ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
-                                    // stop. changes were not published
-                                    return ;
-                                }
-                            }); // fileWrite callback 2b
+                            write_file = function () {
+                                // write chat file
+                                json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
+                                ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
+                                    var pgm = service + '.z_update_5_public_chat fileWrite callback 2b: ';
+                                    var error ;
+                                    // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                                    if (res === "ok") {
+                                        // write ok.
+                                        if (!my_files_optional[new_z_filename]) my_files_optional[new_z_filename] = {} ;
+                                        my_files_optional[new_z_filename].size = json_raw.length ;
+                                        message_with_envelope.sent_at = now ;
+                                        message_with_envelope.z_filename = new_z_filename ;
+                                        message_with_envelope.local_msg_seq = next_local_msg_seq() ;
+                                        console.log(pgm + 'done. message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                                        // callback. continue with other public chat outbox messages and publish when done
+                                        z_update_5_public_chat(user_seq, true) ;
+                                        return ;
+                                    }
+                                    else {
+                                        error = 'failed to write file ' + file_path + ', res = ' + res ;
+                                        console.log(pgm + error) ;
+                                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                        // stop. changes were not published
+                                        return ;
+                                    }
+                                }); // fileWrite callback 2b
+
+                            } ; // write_file
+
+                            if (z_filename == new_z_filename) write_file() ;
+                            else {
+                                // changed filename - delete + write
+                                my_files_optional[new_z_filename] = my_files_optional[z_filename] ;
+                                delete my_files_optional[z_filename] ;
+                                for (j=0 ; j<contact.messages.length ; j++) {
+                                    message_with_envelope2 = contact.messages[j] ;
+                                    if (message_with_envelope2.z_filename == z_filename) message_with_envelope2.z_filename = new_z_filename ;
+                                } // for j
+                                // delete + write
+                                ZeroFrame.cmd("fileDelete", file_path, function (res) { write_file() });
+                            }
 
                         }) ; // fileGet callback 1b
 
@@ -2220,6 +2263,9 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("wrapperNotification", ["info", "No more updates to publish", 5000]);
                 return ;
             }
+
+            ls_save_contacts(false); // todo: remove when load public messages is implemented. post login utility
+
             zeronet_site_publish(user_seq) ;
 
         } // z_update_5_public_chat
@@ -4727,9 +4773,26 @@ angular.module('MoneyNetwork')
             return zeronet_update ;
         } // remove_msg
 
+        var my_files_optional = {} ;
+        function save_my_files_optional (files_optional, user_seq) {
+            var pgm = service + '.save_my_files_optional: ' ;
+            var key, key_a, optional_regexp, now ;
+            for (key in my_files_optional) delete my_files_optional[key] ;
+            if (!files_optional) return ;
+
+            optional_regexp = new RegExp('^[0-9]{13}-[0-9]+-chat.json$') ;
+            now = new Date().getTime() ;
+            for (key in files_optional) {
+                key_a = key.split('-') ;
+                if (!key.match(optional_regexp)) console.log(pgm + 'invalid files_optional key ' + key) ; // invalid optional file name
+                else if (key_a[0] > '' + now) console.log(pgm + 'invalid files_optional key ' + key) ; // timestamp in the future
+                else if (!user_seq || ('' + user_seq == key_a[1])) my_files_optional[key] = files_optional[key] ; // ok
+            } // for key
+            // console.log(pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional) );
+        } // save_my_files_optional
+
         // return avatar for user or assign a random avatar to user
         var avatar = { src: "public/images/avatar1.png", loaded: false } ;
-        var my_files_optional = {} ;
         function load_avatar () {
             var pgm = service + '.load_avatar: ';
             if (avatar.loaded) return ; // already loaded
@@ -4766,12 +4829,14 @@ angular.module('MoneyNetwork')
             var user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
             ZeroFrame.cmd("fileGet", [user_path + "/content.json", false], function (res) {
                 var pgm = service + '.load_avatar fileGet callback 1: ';
-                var key, ls_avatar, public_avatars, index ;
+                var ls_avatar, public_avatars, index ;
                 if (res) res = JSON.parse(res);
                 else res = { files: {}, files_optional: {} } ;
                 console.log(pgm + 'res = ' + JSON.stringify(res));
+
                 // remember actual list of actual files. Used in public chat
-                for (key in res.files_optional) my_files_optional[key] = res.files_optional[key] ;
+                save_my_files_optional(res.files_optional) ;
+
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 if (res.files["avatar.jpg"]) {
                     // console.log(pgm + 'found avatar.jpg') ;
