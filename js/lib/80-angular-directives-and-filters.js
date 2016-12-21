@@ -165,6 +165,7 @@ angular.module('MoneyNetwork')
                 return 'data/users/' + contact.auth_address + '/avatar.' + contact.avatar ;
             }
             // must be contact with a random assigned avatar
+
             return 'public/images/avatar' + contact.avatar ;
         } ;
         // end findContactAvatar filter

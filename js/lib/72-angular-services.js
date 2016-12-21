@@ -1214,6 +1214,7 @@ angular.module('MoneyNetwork')
                     // - data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/avatar.jpg => jpg
                     // - data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/avatar.png => png
                     // - public/images/avatar1.png                                => 1.png
+                    // - public/images/avatar1.png                                => 1.png
                     // uploaded avatars will be found in files table (from contents.json files)
                     // random assigned avatar in data.users array
                     if (avatar.src.substr(0,20) == 'public/images/avatar') short_avatar = avatar.src.substr(20,avatar.src.length-20);
@@ -1592,7 +1593,7 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'new local_storage_messages[' + i + '] = ' + JSON.stringify(message));
                         // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
                         data.msg.push({
-                            user_seq: user_seq,
+                            user_seq: z_cache.user_seq,
                             receiver_sha256: receiver_sha256,
                             key: key,
                             message: encrypted_message_str,
@@ -2030,7 +2031,7 @@ angular.module('MoneyNetwork')
 
                         // remove message from file or delete file from *-chat.json file
                         if (!my_files_optional[message_with_envelope.z_filename]) {
-                            console.log(pgm + 'UPS. File ' + message_with_envelope.z_filename + ' was not found in my_files_optional') ;
+                            debug('public_chat', pgm + 'UPS. File ' + message_with_envelope.z_filename + ' was not found in my_files_optional') ;
                             delete message_with_envelope.z_filename ;
                             message_with_envelope.cleanup_at = now ;
                             continue ;
@@ -2048,7 +2049,7 @@ angular.module('MoneyNetwork')
                             };
                             if (!chat) {
                                 // file has been deleted since page start
-                                console.log(
+                                debug('public_chat',
                                     pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
                                     '. file ' + message_with_envelope.z_filename + ' has already been deleted') ;
                                 callback() ;
@@ -2078,26 +2079,27 @@ angular.module('MoneyNetwork')
                                 new_file_path = user_path + '/' + new_z_filename ;
                             }
                             if (!msg_found) {
-                                console.log(
+                                debug('public_chat',
                                     pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
                                     '. message was not found in file ' + message_with_envelope.z_filename);
                                 callback() ;
                                 return ;
                             }
-                            console.log(
+
+                            debug('public_chat',
                                 pgm + 'Ok. message ' + message_with_envelope.local_msg_seq + ' was found in file ' +
                                 message_with_envelope.z_filename);
-                            if (msg.length == 0) {
-                                console.log(pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq + ' and file ' + message_with_envelope.z_filename) ;
+                            if (chat.msg.length == 0) {
+                                debug('public_chat', pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq + ' and file ' + message_with_envelope.z_filename) ;
                                 ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
                             }
                             else {
                                 if (message_with_envelope.z_filename == new_z_filename) {
-                                    console.log(pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq +
+                                    debug('public_chat', pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq +
                                         ' and updating file ' + message_with_envelope.z_filename);
                                 }
                                 else {
-                                    console.log(pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq +
+                                    debug('public_chat', pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq +
                                         ', deleting file ' + message_with_envelope.z_filename +
                                         ' and creating file ' + new_z_filename);
                                 }
@@ -2105,7 +2107,7 @@ angular.module('MoneyNetwork')
                                     json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
                                     ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
                                         var pgm = service + '.z_update_5_public_chat fileWrite callback 2a: ';
-                                        // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                                        // debug('public_chat', pgm + 'res = ' + JSON.stringify(res)) ;
                                         if (res === "ok") {
                                             // write OK
                                             if (!my_files_optional[new_z_filename]) my_files_optional[new_z_filename] = {} ;
@@ -2114,7 +2116,7 @@ angular.module('MoneyNetwork')
                                         }
                                         else {
                                             error = 'failed to write file ' + message_with_envelope.z_filename + ', res = ' + res ;
-                                            console.log(pgm + error) ;
+                                            debug('public_chat', pgm + error) ;
                                             ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
                                             // stop. changes were not published
                                             return ;
@@ -2163,7 +2165,7 @@ angular.module('MoneyNetwork')
                         }
                         else  {
                             // find last *-chat* file. format 1482081231234-1-chat.json
-                            // console.log(pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
+                            // debug('public_chat', pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
                             z_filename = null ;
                             last_timestamp = 0 ;
                             for (key in my_files_optional) {
@@ -2175,7 +2177,7 @@ angular.module('MoneyNetwork')
                                     last_timestamp = timestamp ;
                                 }
                             } // for key
-                            // console.log(pgm + 'last_key = ' + last_chat_file + ', last_timestamp = ' + last_timestamp) ;
+                            // debug('public_chat', pgm + 'last_key = ' + last_chat_file + ', last_timestamp = ' + last_timestamp) ;
                             // check size
                             if (z_filename && (my_files_optional[z_filename]['size'] > 10000)) z_filename = null ;
                         }
@@ -2200,7 +2202,7 @@ angular.module('MoneyNetwork')
                             } ;
                             if (message.image) new_msg.image = message.image ;
                             chat.msg.push(new_msg) ;
-                            console.log(pgm + 'added new message to ' + z_filename + '. new_msg = ' + JSON.stringify(new_msg)) ;
+                            debug('public_chat', pgm + 'added new message to ' + z_filename + '. new_msg = ' + JSON.stringify(new_msg)) ;
 
                             write_file = function () {
                                 // write chat file
@@ -2208,7 +2210,7 @@ angular.module('MoneyNetwork')
                                 ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
                                     var pgm = service + '.z_update_5_public_chat fileWrite callback 2b: ';
                                     var error ;
-                                    // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                                    // debug('public_chat', pgm + 'res = ' + JSON.stringify(res)) ;
                                     if (res === "ok") {
                                         // write ok.
                                         if (!my_files_optional[new_z_filename]) my_files_optional[new_z_filename] = {} ;
@@ -2216,7 +2218,8 @@ angular.module('MoneyNetwork')
                                         message_with_envelope.sent_at = now ;
                                         message_with_envelope.z_filename = new_z_filename ;
                                         message_with_envelope.local_msg_seq = next_local_msg_seq() ;
-                                        console.log(pgm + 'done. message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                                        message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
+                                        debug('public_chat', pgm + 'done. message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                                         // callback. continue with other public chat outbox messages and publish when done
                                         z_update_5_public_chat(true) ;
                                         return ;
@@ -2253,6 +2256,9 @@ angular.module('MoneyNetwork')
                     } // if sent_at
 
                 } // for i (contact.messages)
+
+
+                // todo: merge check. merge smaller *chat.json files. for sample 2 5000 bytes file to one 10000 bytes file?
 
             } // if contact
 
@@ -2450,7 +2456,9 @@ angular.module('MoneyNetwork')
                 cert_user_id: unique_id.substr(0,13) + '@moneynetwork',
                 type: 'public',
                 search: [],
-                messages: []
+                messages: [],
+                avatar: 'z.png', // zeronet logo,
+                alias: 'world'
             };
             // add search info
             contact.search.push({
@@ -2981,7 +2989,7 @@ angular.module('MoneyNetwork')
                             contact.avatar = '1.png' ;
                         }
                         else {
-                            index = Math.floor(Math.random() * public_avatars.length);
+                            index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                             contact.avatar = public_avatars[index] ;
                         }
                     } // for i (contacts)
@@ -3488,7 +3496,7 @@ angular.module('MoneyNetwork')
                                 new_contact.avatar = '1.png' ;
                             }
                             else {
-                                var index = Math.floor(Math.random() * public_avatars.length);
+                                var index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                                 new_contact.avatar = public_avatars[index] ;
                             }
                         }
@@ -4026,7 +4034,7 @@ angular.module('MoneyNetwork')
                 if (!group_chat_contact) {
                     // create pseudo chat group contact
                     var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                    index = Math.floor(Math.random() * public_avatars.length);
+                    index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                     var avatar = public_avatars[index] ;
                     group_chat_contact = {
                         unique_id: group_chat_unique_id,
@@ -4281,9 +4289,45 @@ angular.module('MoneyNetwork')
                 return ;
             }
 
+            // old query with status in main where clause. will not work if data.json files arrives before status.json file
+            //// build query for contact information.
+            //// auth_address is used is where condition and select will sometimes return more than one user for each auth_address
+            //// only users with correct unique_id are relevant
+            //var contacts_query =
+            //    "select" +
+            //    "  users.user_seq, users.pubkey, users.avatar as users_avatar," +
+            //    "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
+            //    "  content_json.json_id as content_json_id," +
+            //    "  keyvalue.value as cert_user_id," +
+            //    "  (select substr(files.filename,8)" +
+            //    "   from files, json as avatar_json " +
+            //    "   where files.filename like 'avatar%'" +
+            //    "   and avatar_json.json_id = files.json_id" +
+            //    "   and avatar_json.directory = data_json.directory) as files_avatar, " +
+            //    "  status.timestamp " +
+            //    "from users, json as data_json, json as content_json, keyvalue as keyvalue, json as status_json, status " +
+            //    "where data_json.json_id = users.json_id " +
+            //    "and substr(data_json.directory, 7) in " ;
+            //for (i=0 ; i<expected_auth_addresses.length ; i++) {
+            //    if (i==0) contacts_query = contacts_query + '(' ;
+            //    else contacts_query = contacts_query + ', ' ;
+            //    contacts_query = contacts_query + "'" + expected_auth_addresses[i] + "'" ;
+            //} // for i
+            //contacts_query = contacts_query + ") " +
+            //    "and content_json.directory = data_json.directory " +
+            //    "and content_json.file_name = 'content.json' " +
+            //    "and keyvalue.json_id = content_json.json_id " +
+            //    "and keyvalue.key = 'cert_user_id' " +
+            //    "and status_json.directory = data_json.directory " +
+            //    "and status_json.file_name = 'status.json' " +
+            //    "and status.json_id = status_json.json_id " +
+            //    "and status.user_seq = users.user_seq" ;
+            //debug('select', pgm + 'contacts_query = ' + contacts_query) ;
+
             // build query for contact information.
             // auth_address is used is where condition and select will sometimes return more than one user for each auth_address
             // only users with correct unique_id are relevant
+            // timestamp from status table will be missing if data.json file is received before status.json file
             var contacts_query =
                 "select" +
                 "  users.user_seq, users.pubkey, users.avatar as users_avatar," +
@@ -4295,8 +4339,13 @@ angular.module('MoneyNetwork')
                 "   where files.filename like 'avatar%'" +
                 "   and avatar_json.json_id = files.json_id" +
                 "   and avatar_json.directory = data_json.directory) as files_avatar, " +
-                "  status.timestamp " +
-                "from users, json as data_json, json as content_json, keyvalue as keyvalue, json as status_json, status " +
+                "  (select status.timestamp" +
+                "   from json as status_json, status as status" +
+                "   where status_json.directory = data_json.directory" +
+                "   status_json.file_name = 'status.json'" +
+                "   status.json_id = status_json.json_id" +
+                "   and status.user_seq = users.user_seq) as timestamp " +
+                "from users, json as data_json, json as content_json, keyvalue as keyvalue " +
                 "where data_json.json_id = users.json_id " +
                 "and substr(data_json.directory, 7) in " ;
             for (i=0 ; i<expected_auth_addresses.length ; i++) {
@@ -4308,11 +4357,7 @@ angular.module('MoneyNetwork')
                 "and content_json.directory = data_json.directory " +
                 "and content_json.file_name = 'content.json' " +
                 "and keyvalue.json_id = content_json.json_id " +
-                "and keyvalue.key = 'cert_user_id' " +
-                "and status_json.directory = data_json.directory " +
-                "and status_json.file_name = 'status.json' " +
-                "and status.json_id = status_json.json_id " +
-                "and status.user_seq = users.user_seq" ;
+                "and keyvalue.key = 'cert_user_id'" ;
             debug('select', pgm + 'contacts_query = ' + contacts_query) ;
 
             ZeroFrame.cmd("dbQuery", [contacts_query], function (res) {
@@ -4367,7 +4412,7 @@ angular.module('MoneyNetwork')
                             new_contact.avatar = '1.png' ;
                         }
                         else {
-                            index = Math.floor(Math.random() * public_avatars.length);
+                            index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                             new_contact.avatar = public_avatars[index] ;
                         }
                     }
@@ -4780,10 +4825,11 @@ angular.module('MoneyNetwork')
         var my_files_optional = {} ;
         function save_my_files_optional (files_optional) {
             var pgm = service + '.save_my_files_optional: ' ;
-            console.log(pgm + 'files_optional = ' + JSON.stringify(files_optional));
+            // console.log(pgm + 'files_optional = ' + JSON.stringify(files_optional));
             get_user_seq(function(user_seq) {
                 var key, key_a, optional_regexp, now ;
-                console.log(pgm + 'user_seq = ' + user_seq) ;
+                // console.log(pgm + 'user_seq = ' + user_seq) ;
+                // ready. update z_cache.files_optional (full list) and my_files_optional (filter with user_seq)
                 for (key in my_files_optional) delete my_files_optional[key] ;
                 z_cache.files_optional = files_optional || {} ;
                 if (!files_optional) return ;
@@ -4796,7 +4842,7 @@ angular.module('MoneyNetwork')
                     else if (key_a[0] > '' + now) console.log(pgm + 'invalid files_optional key ' + key) ; // timestamp in the future
                     else if (!user_seq || ('' + user_seq == key_a[1])) my_files_optional[key] = files_optional[key] ; // ok
                 } // for key
-                console.log(pgm + 'user_seq = ' + user_seq + ', my_files_optional = ' + JSON.stringify(my_files_optional)) ;
+                // console.log(pgm + 'user_seq = ' + user_seq + ', my_files_optional = ' + JSON.stringify(my_files_optional)) ;
             }) ; // get_user_seq
         } // save_my_files_optional
 
@@ -4841,7 +4887,7 @@ angular.module('MoneyNetwork')
                 var ls_avatar, public_avatars, index ;
                 if (content) content = JSON.parse(content);
                 else content = { files: {} } ;
-                console.log(pgm + 'res = ' + JSON.stringify(content));
+                // console.log(pgm + 'res = ' + JSON.stringify(content));
 
                 // remember actual list of actual files. Used in public chat
                 if (content.optional == CONTENT_OPTIONAL) save_my_files_optional(content.files_optional || {}) ;
@@ -4873,7 +4919,7 @@ angular.module('MoneyNetwork')
                 // 3) assign random avatar from public/images/avatar
                 // console.log(pgm + 'assigned random avatar') ;
                 public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                index = Math.floor(Math.random() * public_avatars.length);
+                index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                 avatar.src = "public/images/avatar" + public_avatars[index] ;
                 avatar.loaded = true ;
                 $rootScope.$apply() ;
@@ -4896,7 +4942,7 @@ angular.module('MoneyNetwork')
             // - ignore all other files from Money Network
             if (filename.substr(0,11) != 'data/users/') return ;
             if (!filename.match(/json$/)) return ;
-            // must be content.json or data.json
+            // must be content.json, data.json or status.json
             debug('file_done', pgm + 'filename = ' + filename) ;
 
             // read json file (content.json, data.json or status.json)
@@ -4932,7 +4978,7 @@ angular.module('MoneyNetwork')
                         if (['jpg', 'png'].indexOf(contact.avatar) != -1) {
                             // previosly uploaded avatar has been deleted. Assign random avatar to contact.
                             public_avatars = MoneyNetworkHelper.get_public_avatars();
-                            index = Math.floor(Math.random() * public_avatars.length);
+                            index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                             avatar_short_path = public_avatars[index];
                             contact.avatar = avatar_short_path;
                         }
@@ -5151,6 +5197,7 @@ angular.module('MoneyNetwork')
         // cache some important informations from zeronet files
         // - user_seq: from users array in data.json file. using "pubkey" as index to users array
         // - files_optional: from content.json file. loaded at startup and updated after every sign and publish
+        //   todo: add option to enable/disable files_optional cache. must be disabled if multiple users are using same zeronet cert at the same time
         var z_cache = {} ;
 
         // get user_seq from z_cache or read from data.json file
@@ -5202,23 +5249,23 @@ angular.module('MoneyNetwork')
             var user_path ;
             // check z_cache
             if (z_cache.files_optional) {
-                console.log(pgm + 'found files_optional in cache') ;
+                // console.log(pgm + 'found files_optional in cache') ;
                 if (cb) cb(z_cache.files_optional) ;
                 return z_cache.files_optional ;
             }
             // not in z_cache. check zeronet
-            console.log(pgm + 'files_option was not in cache. reading content.json file');
+            // console.log(pgm + 'files_option was not in cache. reading content.json file');
             user_path = "data/users/" + ZeroFrame.site_info.auth_address;
             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                 var pgm = service + '.get_user_seq fileGet 1 callback: ';
                 if (!content) {
-                    console.log(pgm + 'content.json file was not found') ;
+                    // console.log(pgm + 'content.json file was not found') ;
                     if (cb) cb(null) ;
                     return ;
                 }
                 content = JSON.parse(content) ;
                 if (content.optional != CONTENT_OPTIONAL) {
-                    console.log(pgm + 'optional option not ready in content.json file. will be added/updated after next publish') ;
+                    // console.log(pgm + 'optional option not ready in content.json file. will be added/updated after next publish') ;
                     if (cb) cb(null) ;
                     return ;
                 }
@@ -5238,42 +5285,50 @@ angular.module('MoneyNetwork')
             get_user_seq(function (user_seq) {
                 var pgm = service + '.load_public_chat get_user_seq callback 1: ' ;
                 if (!user_seq) return ; // new user. not found in users array in data.json file
-                console.log(pgm + 'user_seq = ' + user_seq) ;
+                debug('public_chat', pgm + 'user_seq = ' + user_seq) ;
 
                 // 2 - check if my_files_optional has been loaded from content.json (also setting my_files_optional)
                 get_files_optional(function (files_optional) {
                     var pgm = service + '.load_public_chat get_file_optional callback 2: ' ;
-                    var user_path, contact, key, key_a, file_path ;
-                    console.log(pgm + 'files_optional = ' + JSON.stringify(files_optional)) ;
-                    console.log(pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
+                    var user_path, contact, key, key_a, file_path, callback_info ;
+                    debug('public_chat', pgm + 'files_optional = ' + JSON.stringify(files_optional)) ;
+                    debug('public_chat', pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
                     if (!files_optional) return ; // new user. no content.json file was found
                     if (Object.keys(my_files_optional).length == 0) return ; // no *chat.json files were found for user
 
                     user_path = "data/users/" + ZeroFrame.site_info.auth_address;
                     contact = get_public_contact(true) ;
+                    callback_info = { processes: 0 } ; // keep track of number of pending fileGet callback. refresh UI when done
 
                     // load *chat files into JS.
                     for (key in my_files_optional) {
                         key_a = key.split('-') ;
                         if (key_a[1] != '' + user_seq) continue ; // just to be sure. maybe content.json was checked before data.json file
                         file_path = user_path + '/' + key ;
-                        console.log(pgm + 'file_path = ' + file_path) ;
+                        callback_info.processes++ ;
                         ZeroFrame.cmd("fileGet", {inner_path: file_path, required: false}, function (chat) {
                             var pgm = service + '.load_public_chat fileGet callback 3: ' ;
-                            var i, message, local_msg_seq, message_with_envelope ;
+                            var i, message, local_msg_seq, message_with_envelope, refresh_ui ;
+                            // refresh angularJS?
+                            refresh_ui = function () {
+                                callback_info.processes-- ;
+                                if (callback_info.processes == 0) $rootScope.$apply() ;
+                            };
                             if (!chat) {
-                                console.log(pgm + 'error. chat file ' + key + ' in content.json but was not found') ;
+                                debug('public_chat', pgm + 'error. chat file ' + key + ' in content.json but was not found') ;
+                                refresh_ui() ;
                                 return ;
                             }
                             chat = JSON.parse(chat) ;
                             // console.log(pgm + 'file ' + key + ', chat = ' + JSON.stringify(chat)) ;
                             if (!chat.msg || !chat.msg.length) {
                                 console.log(pgm + 'error. no chat messages were found in chat file ' + key) ;
+                                refresh_ui() ;
                                 return ;
                             }
                             for (i=0 ; i<chat.msg.length ; i++) {
                                 message = {
-                                    msgtype: 'chat',
+                                    msgtype: 'chat msg',
                                     message: chat.msg[i].message
                                 } ;
                                 if (chat.msg[i].image) message.image = chat.msg[i].image ; // todo: check allowed image types
@@ -5286,10 +5341,10 @@ angular.module('MoneyNetwork')
                                     z_filename: key
                                 } ;
                                 message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
-                                console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                                debug('public_chat', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                                 add_message(contact, message_with_envelope, true) ;
                             } // for i
-
+                            refresh_ui() ;
                         }); // fileGet callback 3
 
                     } // for key

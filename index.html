@@ -489,11 +489,11 @@
                                           alt="Click to continue chat" title="Click to continue chat">Me</span>
                                     </td>
                                     <td style="text-align: right; vertical-align: top">
-                                        <span class="speech-time" alt="Message size in browser and on ZeroNet"
-                                              title="Message size in browser and on ZeroNet"> {{m.message|formatMsgSize}}</span>
+                                        <span class="speech-time" alt="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"
+                                              title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
                                         <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
                                                 class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
-                                        <a class="icon icon-edit" href="" ng-show="m.message.msgtype == 'chat msg'"
+                                        <a class="icon icon-edit" href="" ng-show="(m.message.message.msgtype == 'chat msg')"
                                            ng-click="c.edit_chat_msg(m)"></a>
                                     </td>
                                 </tr>
@@ -937,11 +937,11 @@
                                           alt="Click to continue chat" title="Click to continue chat">Me</span>
                                 </td>
                                 <td style="text-align: right; vertical-align: top">
-                                    <span class="speech-time" alt="Message size in browser and on ZeroNet"
-                                          title="Message size in browser and on ZeroNet"> {{m.message|formatMsgSize}}</span>
+                                    <span class="speech-time" alt="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"
+                                          title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
                                     <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
                                             class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
-                                    <a class="icon icon-edit" href="" ng-show="m.message.msgtype == 'chat msg'"
+                                    <a class="icon icon-edit" href="" ng-show="(m.message.message.msgtype == 'chat msg')"
                                        ng-click="c.edit_chat_msg(m)"></a>
                                 </td>
                             </tr>
@@ -1295,6 +1295,12 @@
                     <td>Show encrypted messages?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.encrypted"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to see public chat messages">
+                    <td>Show public chat messages?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.public_chat"
                                ng-change="u.debug_settings_changed()"></td>
                 </tr>
                 <tr title="Click to show data cleanup process for data.json file. Trying to keep data.json file small for fast communication">

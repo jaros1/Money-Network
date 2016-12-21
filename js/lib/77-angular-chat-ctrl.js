@@ -714,6 +714,7 @@ angular.module('MoneyNetwork')
                 else if (!self.contact && !self.group_chat) {
                     // no context - show chat for all contacts. Use green/red filter in top of page
                     if (message.contact.type == 'group') {
+                        // group chat
                         if (self.setup.contact_filters['all'] == 'green')  {
                             // always show - including empty chat groups
                             reason = 2.1 ;
@@ -734,9 +735,22 @@ angular.module('MoneyNetwork')
                             } // for i (participants)
                         }
                     }
+                    else if (message.contact.type == 'public') {
+                        // unencrypted public chat
+                        if (message.message.folder == 'outbox') {
+                            // always show
+                            reason = 2.3 ;
+                            match = true ;
+                        }
+                        else {
+                            reason = 2.4 ;
+                            match = !self.setup.block_public ;
+                        }
+                    }
                     else {
+                        // private chat
                         match = (self.setup.contact_filters[message.contact.type] == 'green');
-                        reason = 2.3 ;
+                        reason = 2.5 ;
                     }
                 }
                 else if (self.contact.unique_id == message.contact.unique_id) {

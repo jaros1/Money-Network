@@ -25,8 +25,8 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "ffb8fb77582b3df78c95f7b7acd0a2b44f2df91dd12681b7476e2216f8cfe7b1",
-   "size": 93519
+   "sha512": "9283206c1540ada6e01a43c09990c269087f6c8686ad8327457ec65aaafeec06",
+   "size": 94054
   },
   "js-external/10-jquery.js": {
    "sha512": "061f9fa1e47d489b721d76abff0f7039e133294575237f8c64c02d54efdbf75d",
@@ -117,8 +117,8 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "5acd2f23498e54ba0c4172c2cdaace4445e18876284fd1d1721b7ede96cb6217",
-   "size": 557533
+   "sha512": "91c720f268f85846f93a8f0945eae0e61adf79358d253577a2a61d7f8e60bf95",
+   "size": 562447
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -180,7 +180,7 @@
    "sha512": "9c83f18082fbc50566dbb6684feb95ae5d0f83b951063280c9a7314be0115653",
    "size": 4256
   },
-  "public/images/zeronet.png": {
+  "public/images/avatarz.png": {
    "sha512": "5b8147b42da6c0b6b466510bd010d898fbcf7e3a88f1a74804b0c761cfa936e2",
    "size": 1622
   }
@@ -195,15 +195,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1482255414.594654,
+ "modified": 1482341096.980783,
  "postmessage_nonce_security": true,
  "sign": [
-  77355970243569857808453177990287941962227931126813417184621384090936557583561,
-  17508342735340382711920320421336186786834593207561931835248600803581618721017
+  6451142518654148450712093029542874028062729100144718390783892329455724467801,
+  78599616760673530935567165603491454099948788081659938915166602571008167791688
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HJL+7zEwNlY5f6Y3H/MClbHhG5c8o2yjoxssudRQ1Z39Ujz8l9twiWYuiLa543jAzyjfM70ZKCmryduMi/5vVgc="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HI/hWFZNFC5hMWjSPlIOTU8ZvPh/A0hel9uCeg+Nfe9mMMMUXMeX3SZ2F64LntPcSk1zwLu0xcU5awTmDIFjbHw="
  },
  "signs_required": 1,
  "title": "Money Network",

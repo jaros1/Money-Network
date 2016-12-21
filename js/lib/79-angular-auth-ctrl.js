@@ -158,7 +158,7 @@ angular.module('MoneyNetwork')
         self.select_zeronet_cert = function() {
             var pgm = controller + '.select_zeronet_cert: ' ;
             console.log(pgm + 'click');
-            ZeroFrame.cmd("certSelect", [["moneynetwork", "nanasi", "zeroid.bit"]], function() {
+            ZeroFrame.cmd("certSelect", [["moneynetwork", "nanasi", "zeroid.bit", "kaffie.bit"]], function() {
                 get_site_info() ;
             });
         };
