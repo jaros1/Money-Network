@@ -3718,7 +3718,7 @@ angular.module('MoneyNetwork')
                 found_lost_msg = false ;
                 found_lost_msg2 = false ;
                 // 1) find message with same local_msg_seq - this technique can only be used for "lost msg"
-                index = -1; //
+                index = -1;
                 for (i = contact_or_group.messages.length-1; i >= 0 ; i--) {
                     message = contact_or_group.messages[i];
                     if (message.folder != 'inbox') continue;
