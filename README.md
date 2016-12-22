@@ -14,7 +14,7 @@ Spare time project, work in progress, no money in here yet. For now just a socia
 Implemented:
 - End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags are stored in clear on ZeroNet. 
 - Contact list: Categories: New, Unverified, Verified and Ignored.
-- Chat: One and two panel chat. Contact list in left side and chat in right. Group chat and public chat.
+- Chat: One and two panel chat. Encrypted personal and group chat. Unencrypted public chat.
 
 Todo:
 - Chat. More social network like UI. Add comments. Follow and unfollw. Endless scroll
