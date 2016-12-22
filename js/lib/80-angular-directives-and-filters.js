@@ -133,7 +133,7 @@ angular.module('MoneyNetwork')
     .filter('contactAlias', ['MoneyNetworkService', function (moneyNetworkService   ) {
         // return part of cert_user_id before @
         return function (contact) {
-            if (!contact) return 'Public' ;
+            if (!contact) return 'World' ;
             return moneyNetworkService.get_contact_name(contact);
         } ;
         // end contactAlias filter

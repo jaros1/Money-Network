@@ -693,6 +693,7 @@ angular.module('MoneyNetwork')
                     delete self.messages[i].chat_filter ;
                 }
             }
+            clear_chat_filter_cache() ;
 
             self.chat_filter = function (message, index, messages) {
                 var pgm = controller + '.chat_filter: ';
