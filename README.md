@@ -17,7 +17,7 @@ Implemented:
 - Chat: One and two panel chat. Encrypted personal and group chat. Unencrypted public chat.
 
 Todo:
-- Chat. More social network like UI. Add comments. Follow and unfollw. Endless scroll
+- Chat. More social network like UI. Add comments. Follow and unfollow public chat. Endless scroll
 - Wallet, Money API and interface to external money systems.  
 
 ## Demo
