@@ -383,11 +383,11 @@ angular.module('MoneyNetwork')
             function chat_hint_network_page () {
                 return (!self.setup.two_panel_chat && !self.contact && (self.messages.length == 0))
             }
-            function chat_hint_start_chat () {
+            self.chat_hint_start_chat = function () {
                 return (!self.contact && !self.group_chat)
-            }
+            };
             self.chat_hint_chatting = function () {
-                if (chat_hint_account_page() || chat_hint_network_page() || chat_hint_start_chat()) return false ;
+                if (chat_hint_account_page() || chat_hint_network_page() || self.chat_hint_start_chat()) return false ;
                 else return true ;
             };
             self.chat_hint_send = function () {
@@ -411,7 +411,7 @@ angular.module('MoneyNetwork')
                 // start up hints - user is not chatting
                 if (chat_hint_account_page()) return 'No contacts were found. Please go to "Account" page and enter/update search tags.' ;
                 if (chat_hint_network_page()) return 'Click on "Network page" or enable "Two panel chat" to see contacts' ;
-                if (chat_hint_start_chat()) return 'Click on an avatar to start private chat';
+                if (self.chat_hint_start_chat()) return 'Click on an avatar to start private chat';
 
                 // user is chatting - concatenate hints
                 var send, pubkey, avatar, pushpin, ok, x  ;
@@ -744,7 +744,7 @@ angular.module('MoneyNetwork')
                         }
                         else {
                             reason = 2.4 ;
-                            match = !self.setup.block_public ;
+                            match = self.setup.public_chat ;
                         }
                     }
                     else {
@@ -1236,6 +1236,11 @@ angular.module('MoneyNetwork')
             self.new_char_src_remove = function() {
                 self.new_chat_src = '' ;
             } ;
+
+            self.debug_settings_changed = function () {
+                moneyNetworkService.save_user_setup() ;
+                MoneyNetworkHelper.load_user_setup() ;
+            };
 
             // ChatCtrl
         }])

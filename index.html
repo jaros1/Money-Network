@@ -278,22 +278,28 @@
                             <td ng-bind="c.chat_hint()">
                             <td>
                             <td style="text-align: right; vertical-align: top; white-space: nowrap;">
+
+                            <span ng-show="c.chat_hint_start_chat()">
+                                Public chat?
+                                <input type="checkbox" ng-model="c.setup.public_chat" ng-change="c.debug_settings_changed()">
+                            </span>
                             <span ng-hide="!c.chat_hint_chatting()">
                                 <span ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
                                       class="glyphicon glyphicon-pushpin"
-                                      title="Click to remove participants from this chat"
-                                      alt="Click to remove participants from this chat">
+                                      title="Click to update participants in this chat"
+                                      alt="Click to update participants in this chat">
                                 </span>
                                 <span ng-show="c.editing_grp_chat" ng-click="c.stop_editing_grp_chat()"
                                       class="glyphicon glyphicon-ok"
-                                      title="Click when finished removing participants from group chat"
-                                      alt="Click when finished removing participants from group chat">
+                                      title="Click when finished updating participants in group chat"
+                                      alt="Click when finished updating participants in group chat">
                                 </span>
                                 <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
                                       title="Click to see all chat messages" alt="Click to see all chat messages">
                                 </span>
 
                             </span>
+
                             </td>
                         </tr>
                         </tbody>
@@ -400,7 +406,7 @@
 
                 <ul class="list-unstyled media-block">
 
-                    <li ng-show="c.contact || c.group_chat">
+                    <li ng-show="c.contact || c.group_chat || c.setup.public_chat">
 
                         <div class="media-left">
                             <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Avatar">
@@ -412,16 +418,21 @@
                                     <table class="speech" style="width: 100%">
                                         <tbody style="display: table; width: inherit;">
                                         <tr>
-                                            <td style="white-space: nowrap;"><a href="#" class="media-heading"
-                                                                                ng-bind-html="c.setup.alias">Me</a></td>
+                                            <td class="media-heading" style="white-space: nowrap;">
+                                                <span ng-bind-html="c.setup.alias">Me</span>
+                                                <span class="glyphicon glyphicon-forward"/>
+                                                <span ng-bind-html="c.contact|contactAlias"/>
+                                            <span ng-class="c.contact|contactGlyphicon"
+                                                  title="{{c.contact|contactGlyphiconTitle}}" alt="{{c.contact|contactGlyphiconTitle}}"/>
+                                            </td>
+
                                             <td style="text-align: right; vertical-align: top; width: 99%">
                                                 <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
                                             </td>
                                         </tr>
                                         <tr>
                                             <td colspan="2" style="width: 99%">
-                                        <textarea ng-show="c.contact || c.group_chat"
-                                                  class="autosize postfield new_chat_msg" id="new_chat_msg"
+                                        <textarea class="autosize postfield new_chat_msg" id="new_chat_msg"
                                                   placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox"
                                                   rows="1" required
                                                   ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
@@ -459,8 +470,7 @@
                                                 </div>
 
                                                 <button type="submit" ng-click="c.send_chat_msg()"
-                                                        ng-disabled="new_chat_msg_form.$invalid || !c.chat_hint_send()">
-                                                    Send
+                                                        ng-disabled="new_chat_msg_form.$invalid">Send
                                                 </button>
                                             </td>
                                         </tr>
@@ -716,9 +726,12 @@
                 <table style="width: 100%">
                     <tbody>
                     <tr>
-                        <td ng-bind="c.chat_hint()">
-                        <td>
+                        <td ng-bind="c.chat_hint()"/>
                         <td style="text-align: right; vertical-align: top; white-space: nowrap;">
+                            <span ng-show="c.chat_hint_start_chat()">
+                                Public chat?
+                                <input type="checkbox" ng-model="c.setup.public_chat" ng-change="c.debug_settings_changed()">
+                            </span>
                             <span ng-hide="!c.chat_hint_chatting()">
                                 <span ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
                                       class="glyphicon glyphicon-pushpin"
@@ -846,7 +859,7 @@
 
             <ul class="list-unstyled media-block">
 
-                <li ng-show="c.contact || c.group_chat || !c.setup.block_public">
+                <li ng-show="c.contact || c.group_chat || c.setup.public_chat">
 
                     <div class="media-left">
                         <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Avatar">
@@ -858,11 +871,15 @@
                                 <table class="speech" style="width: 100%">
                                     <tbody style="display: table; width: inherit;">
                                     <tr>
+
                                         <td class="media-heading" style="white-space: nowrap;">
                                             <span ng-bind-html="c.setup.alias">Me</span>
                                             <span class="glyphicon glyphicon-forward"/>
-                                            <span ng-bind-html="(c.contact|contactAlias)||'Public'">Public</span>
+                                            <span ng-bind-html="c.contact|contactAlias"/>
+                                            <span ng-class="c.contact|contactGlyphicon"
+                                                  title="{{c.contact|contactGlyphiconTitle}}" alt="{{c.contact|contactGlyphiconTitle}}"/>
                                         </td>
+
                                         <td style="text-align: right; vertical-align: top; width: 99%">
                                             <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
                                         </td>
@@ -1236,9 +1253,9 @@
                     </td>
                 </tr>
                 <tr title="Public chat is unencrypted and messages are shared with everyone">
-                    <td>Block public chat messages?</td>
+                    <td>Enable public chat?</td>
                     <td></td>
-                    <td><input type="checkbox" ng-model="u.setup.block_public" ng-change="u.spam_settings_changed()">
+                    <td><input type="checkbox" ng-model="u.setup.public_chat" ng-change="u.spam_settings_changed()">
                     </td>
                 </tr>
                 </tbody>

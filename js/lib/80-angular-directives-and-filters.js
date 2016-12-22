@@ -133,11 +133,32 @@ angular.module('MoneyNetwork')
     .filter('contactAlias', ['MoneyNetworkService', function (moneyNetworkService   ) {
         // return part of cert_user_id before @
         return function (contact) {
-            if (!contact) return '' ;
+            if (!contact) return 'Public' ;
             return moneyNetworkService.get_contact_name(contact);
         } ;
         // end contactAlias filter
     }])
+
+    .filter('contactGlyphicon', [function () {
+        // return glyphicon class for contact type
+        return function (contact) {
+            if (!contact || (contact.type == 'public')) return 'glyphicon glyphicon-globe' ;
+            else if (contact.type == 'group') return 'glyphicon glyphicon-pushpin';
+            else return 'glyphicon glyphicon-user';
+        } ;
+        // end contactAlias filter
+    }])
+
+    .filter('contactGlyphiconTitle', [function () {
+        // return glyphicon class for contact type
+        return function (contact) {
+            if (!contact || (contact.type == 'public')) return 'Public and unencrypted chat. Everyone can see this!' ;
+            else if (contact.type == 'group') return 'Encrypted group chat';
+            else return 'Encrypted personal chat';
+        } ;
+        // end contactAlias filter
+    }])
+
 
     .filter('messageAlias', ['MoneyNetworkService', 'contactAliasFilter', function (moneyNetworkService, contactAlias) {
         // return part of cert_user_id before @ - as contactAlias - used for group chat inbox

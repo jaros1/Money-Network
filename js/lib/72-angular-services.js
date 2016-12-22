@@ -1983,10 +1983,11 @@ angular.module('MoneyNetwork')
         // update zeronet step 4. write "data.json" file.
         // last step in data.json update - write and publish
         function z_update_4_data_json_write (data, data_str) {
+            var pgm = service + '.z_update_4_data_json_write: ' ;
             // any changes to data.json file?
             var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
             if (data_str == JSON.stringify(data)) {
-                // nothing to write. check public chat messages and publish
+                console.log(pgm + 'no updates to data.json. continue with public chat messages and publish') ;
                 delete zeronet_file_locked[data_json_path] ;
                 z_update_5_public_chat (false) ;
                 return ;
@@ -1999,6 +2000,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                 if (res === "ok") {
                     // data.json ok. check public chat and publish
+                    console.log(pgm + 'data.json updated. continue with public chat messages and publish') ;
                     z_update_5_public_chat(true) ;
                 }
                 else {
@@ -5965,7 +5967,7 @@ angular.module('MoneyNetwork')
             if (!user_setup.chat_sort) user_setup.chat_sort = chat_sort_options[0] ;
             if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = !guest ;
             if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
-            if (!user_setup.hasOwnProperty('block_public')) user_setup.block_public = true ;
+            if (!user_setup.hasOwnProperty('public_chat')) user_setup.public_chat = false ;
             if (!user_setup.hasOwnProperty('two_panel_chat')) user_setup.two_panel_chat = true ;
             if (!user_setup.alias) user_setup.alias = 'Me';
             if (!user_setup.encryption) user_setup.encryption = keysize == 256 ? '2' : '1' ;
