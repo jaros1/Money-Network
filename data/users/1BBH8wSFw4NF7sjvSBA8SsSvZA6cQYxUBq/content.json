@@ -1,0 +1,21 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "cert_auth_type": "web",
+ "cert_sign": "HAxHY20g+lAs7DI5OGl67dnB4b+mfU+BxYxL33/BFOJJS+gzFo+ODVDKEEtLKvFcOCMjMysWxQx+yZ6cPoOMvWY=",
+ "cert_user_id": "5thvortex@zeroid.bit",
+ "files": {
+  "data.json": {
+   "sha512": "bce3e68c73f76fe9d4fa79bdf1ac961a7e9cd09aa3e1b918d7acbb2a31f4f60f",
+   "size": 1422
+  },
+  "status.json": {
+   "sha512": "a91e3157d16b8f5526966880eebc096da251e1dd0c8cdf68db12ff2519317dd1",
+   "size": 147
+  }
+ },
+ "inner_path": "data/users/1BBH8wSFw4NF7sjvSBA8SsSvZA6cQYxUBq/content.json",
+ "modified": 1481516430.225,
+ "signs": {
+  "1BBH8wSFw4NF7sjvSBA8SsSvZA6cQYxUBq": "GxFq8gNtTTlNRceUbxaOqEvKQlOUwvpSFzEJ56jSyDdViQ2rtYJI6+Mdb8FlnLUBFyI3oz0DCjUmgAh2Imq7GNc="
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "cert_auth_type": "web",
+ "cert_sign": "HIkp9CuKPBw8wYYeGmiKxI9TTOlCNvUrZz2t4zDS9Ga8HxnZWdarHmci3tYu0eu6NlR4hgJ4eyYydN38NEAZ9u4=",
+ "cert_user_id": "1CAgpw6vxWGK9@moneynetwork",
+ "files": {
+  "data.json": {
+   "sha512": "079610a3f11168946d71895bdfcf47a196c0ff33813fe334ac7e60b113356cec",
+   "size": 725
+  },
+  "status.json": {
+   "sha512": "3f01192608a0c8d6b5d3913db9c9420e0a8aa7c63f229b6f69bb1298fd4da8d6",
+   "size": 90
+  }
+ },
+ "inner_path": "data/users/1CAgpw6vxWGK9pUY2UX81GPVq6zDtWkZ2e/content.json",
+ "modified": 1480801814.046176,
+ "signs": {
+  "1CAgpw6vxWGK9pUY2UX81GPVq6zDtWkZ2e": "G3epbGgisW3FL1RPu5xVPM05Eoah8JtVecz7HPbDLOxN/Y0bZWfYmypxK6SIb7bklM3ayXsW4ozIx0l3HxkEK1Y="
+ }
+}

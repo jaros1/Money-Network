@@ -1,0 +1,12 @@
+{
+	"version": 6,
+	"users": [
+		{
+			"user_seq": 1,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBldKSzd8DnK9uDrw43eCTV\niTYad4i+UTuIg+9pyJV7YnveMT8I/p3LcyYZvLXcrxASJMN1OgQUOzp6nQbLcquk\nhqGUptp5rnieT9cPbaRpu037i7/Mna/+2m5l4wqBkVPpOswyOg7lEolX4z5jpGx4\nyenVIj1+WdLhXe9ZodRKiNq2NqfGM4fl5vSrlTX6rUlF7Qn2Fsm7y9XZDuZpoyV7\nQG07mTrINrUvkEIJtcxfrKs6zc12eZ/PC1J0gfJxXfIi20AKxzpu9qHwwI78res+\n3abJbQfTfrHqXy9FNucWvsnNzNBhBvMnAec9/1IO6mt8oXe/OE2luK7VS12KXcMf\nAgMBAAE=\n-----END PUBLIC KEY-----",
+			"avatar": "jpg"
+		}
+	],
+	"search": [],
+	"msg": []
+}

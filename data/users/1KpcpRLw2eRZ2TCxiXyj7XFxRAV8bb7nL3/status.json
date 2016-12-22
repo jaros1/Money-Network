@@ -1,0 +1,29 @@
+{
+	"version": 5,
+	"status": [
+		{
+			"user_seq": 1,
+			"timestamp": 1482306203109
+		},
+		{
+			"user_seq": 2,
+			"timestamp": 1482306635381
+		},
+		{
+			"user_seq": 3,
+			"timestamp": 1482307212654
+		},
+		{
+			"user_seq": 4,
+			"timestamp": 1482342484471
+		},
+		{
+			"user_seq": 5,
+			"timestamp": 1482343353150
+		},
+		{
+			"user_seq": 6,
+			"timestamp": 1482390230146
+		}
+	]
+}

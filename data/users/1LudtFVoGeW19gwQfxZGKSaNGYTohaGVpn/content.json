@@ -1,0 +1,22 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "cert_auth_type": "web",
+ "cert_sign": "IFlCiOAvE5BAMDCpNFDt8pGRYVb2/kHbKrFWRICKUMOraNhsSZqNZYFC4Oesu5cVrzCoJqj5smnbkwqRXJzlzi4=",
+ "cert_user_id": "1LudtFVoGeW19@nanasi",
+ "files": {
+  "data.json": {
+   "sha512": "518fa41ef675b6e59e529ecf502b1d35486b2b36110dc3865cefbb40500ae6c9",
+   "size": 1536
+  },
+  "status.json": {
+   "sha512": "67271a23d0d6713f986c76d8362a1a2eaea27969211f64886335842978086295",
+   "size": 147
+  }
+ },
+ "inner_path": "data/users/1LudtFVoGeW19gwQfxZGKSaNGYTohaGVpn/content.json",
+ "modified": 1482356572.910431,
+ "optional": "([0-9]{13}-[0-9]+-chat.json)",
+ "signs": {
+  "1LudtFVoGeW19gwQfxZGKSaNGYTohaGVpn": "HGig2KSyHGNRnrc+TZWZeTEjSH0/ztJIaM7dNrUrBjEHN4NM2XV07DFyjFUE8jevlBy941F/iFksjfURjJsf6NY="
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "files": {
+  "data.json": {
+   "sha512": "5f17a6545872569ff972cb0274877c19eacb67902fd59ea08afd137ab2e5461a",
+   "size": 710
+  },
+  "status.json": {
+   "sha512": "88755ea43e72ce235ee9062e84556ef748b98e0aacda2f940b40d4ed36cca70a",
+   "size": 90
+  }
+ },
+ "inner_path": "data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/data.json",
+ "modified": 1478779262.404098,
+ "signs": {
+  "1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF": "G2YYVcUjK1Mzvd23Boa8OXSWZ/V0lRyF/yAI5hdZkTs72bPSUPp1X+eUkvEDXh7+P9RH4ZXZgtKA2vYbrPHQvs8="
+ }
+}

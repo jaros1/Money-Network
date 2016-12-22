@@ -1,0 +1,52 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "cert_auth_type": "web",
+ "cert_sign": "G3gLnSAl8ZLJxnrg8/d2s8xixr5vZ6SyV7b0Lc9B5v4iXCfSG5y/drewVUbGuBBq7S2SNkDYSZzgz3ojC4fsK3A=",
+ "cert_user_id": "16R2WrLv3rRrx@moneynetwork",
+ "files": {
+  "data.json": {
+   "sha512": "25d84983729b4685212bab485783e91a0c447705a5299b1b31299e651a5838ef",
+   "size": 10625
+  },
+  "status.json": {
+   "sha512": "6a6c4ccd49bb80d2ce6bb6f47fa00ab19ca8d233bfd8a16e2923fd2d63fce145",
+   "size": 147
+  }
+ },
+ "files_optional": {
+  "1482229061744-1-chat.json": {
+   "sha512": "abfa8b06d384390cd2a4000ab47dec22ddc86f66604b1c18d8896a28110df29b",
+   "size": 1506
+  },
+  "1482229141715-1-chat.json": {
+   "sha512": "f707827e40c03c648fb9c911470f054680c76a96aabf1ce3c298b17bd5d52400",
+   "size": 15317
+  },
+  "1482334331067-1-chat.json": {
+   "sha512": "05d579159786fdac4b2cf4b448184ce1a8c7469ad910d8c19b9a6a8230717226",
+   "size": 431
+  },
+  "1482337512034-1-chat.json": {
+   "sha512": "5dab549875212690053ece3af4939c2f1440b0b7a0f049953982c7da53c0c278",
+   "size": 15332
+  },
+  "1482338076983-1-chat.json": {
+   "sha512": "7a2aff6c308ec905f85cdb7749309ade2e622b2bc54ee5e281be30616c7f9326",
+   "size": 194516
+  },
+  "1482338179366-1-chat.json": {
+   "sha512": "f0a16d356d526246ed64c7bb38194b068a5dadee14d4dcc5c21609250c3b0643",
+   "size": 200064
+  },
+  "1482408228311-1-chat.json": {
+   "sha512": "a4511375071356eb5cfd895499f07398b582445139945048301fcb4576776257",
+   "size": 472
+  }
+ },
+ "inner_path": "data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/content.json",
+ "modified": 1482408259.783888,
+ "optional": "([0-9]{13}-[0-9]+-chat.json)",
+ "signs": {
+  "16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH": "HFjxZ8f+JNAhTSKT4f++na0FtRvws9ESghZtuifhvw+m7NFwe9VFV07R72/XVl0YJhQCDKgZHRjgyp70PihUqEc="
+ }
+}

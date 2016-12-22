@@ -1,0 +1,13 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "cert_auth_type": "web",
+ "cert_sign": "IPnzkIw8rsi3oaH8Gy1tz1kIQOhnAJeHoAs9hwKBZ/4tatJe3/OKE3PJBQ0AOYBPdZwuwyYmAikIlCyftA41NJk=",
+ "cert_user_id": "1PVeyp3emrSut@nanasi",
+ "files": {},
+ "inner_path": "data/users/1PVeyp3emrSut3ATNHFxvfgLRXzFa95o9k/content.json",
+ "modified": 1482333572.474266,
+ "optional": "([0-9]{13}-[0-9]+-chat.json)",
+ "signs": {
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G+2cHD0ZVE87XPWBggXQVP/Svx6v/r1bSSJz8QqxUp/tjqHpfQpwJWE9HjcT8PfX7kyfDuq9VoKA8A11crC0nPc="
+ }
+}

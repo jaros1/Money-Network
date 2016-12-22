@@ -1,0 +1,14 @@
+{
+	"version": 8,
+	"users": [
+		{
+			"user_seq": 1,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHVw7/iNfDlLTvXAMPkK0vp2QGG+\n5zFKaEYVR6PX5WgDzGgQMb8t08R+fPg6cs47yHnHWTmAjWYP1pmILB8VRI9hBMoP\ns8ULvJWa1575hm/SvM4OP+Dg51rDTwH/Q7bZFzTsHG5ynUNzPG8Zrrt8Bvlsylxr\nAzS5C7sk24kTRn9dAgMBAAE=\n-----END PUBLIC KEY-----",
+			"pubkey2": "Am6iVMerNbEnWuwGg/26fjYsJHNNat1jrG7xlFA/B2NR",
+			"encryption": "2",
+			"avatar": "10.png"
+		}
+	],
+	"search": [],
+	"msg": []
+}

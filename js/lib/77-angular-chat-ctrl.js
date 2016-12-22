@@ -1051,6 +1051,7 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'delete message. message = ' + JSON.stringify(message));
                         // logical delete here. physical delete in ls_save_contacts
                         message.message.deleted_at = new Date().getTime(); // logical delete
+                        message.chat_filter = false ;
                         // remove from UI
                         var index = -1;
                         for (var i = 0; i < self.messages.length; i++) if (self.messages[i]["$$hashKey"] == message["$$hashKey"]) index = i;
@@ -1084,22 +1085,48 @@ angular.module('MoneyNetwork')
             }; // cancel_edit_chat_msg
             self.save_chat_msg = function (message) {
                 var pgm = controller + '.save_chat_msg: ';
-                // angularJS cheat - ng-bind is too slow - using id for get/set textarea value. Maybe also a problem with handleTextAreaHeight?
-                var textarea_id = chatEditTextAreaId(message);
-                var old_value = message.message.message.message;
-                var new_value = document.getElementById(textarea_id).value;
+                // angularJS cheat - ng-bind is too slow - using id for get/set textarea value.
+                var textarea_id, old_value, new_value, old_image, new_image, img_id, new_message ;
+                textarea_id = chatEditTextAreaId(message);
+                old_value = message.message.message.message;
+                new_value = document.getElementById(textarea_id).value;
                 document.getElementById(textarea_id).value = '' ;
                 console.log(pgm + 'old message = ' + JSON.stringify(message.message));
                 console.log(pgm + 'old value = ' + old_value);
                 console.log(pgm + 'new value = ' + new_value);
-                var old_image = message.message.message.original_image ;
+                old_image = message.message.message.original_image ;
                 delete message.message.message.original_image ;
-                var img_id = chatEditImgId(message) ;
-                var new_image = document.getElementById(img_id).src ;
+                img_id = chatEditImgId(message) ;
+                new_image = document.getElementById(img_id).src ;
                 if (new_image.match(/^http/)) new_image = null ;
                 document.getElementById(img_id).src = '' ;
                 delete message.edit_chat_message;
                 if ((!new_value || (old_value == new_value)) && (old_image == new_image)) return;
+                if (message.contact.type == 'public') {
+                    // delete old message
+                    message.message.deleted_at = new Date().getTime() ;
+                    message.chat_filter = false ;
+                    // create new message
+                    // send chat message to contact
+                    new_message = {
+                        msgtype: 'chat msg',
+                        message: new_value
+                    };
+                    if (new_image) new_message.image = new_image ;
+                    MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'new_message = ' + JSON.stringify(new_message));
+                    // validate json
+                    error = MoneyNetworkHelper.validate_json(pgm, new_message, new_message.msgtype, 'Could not send chat message');
+                    if (error) {
+                        ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                        return;
+                    }
+                    // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
+                    // send message
+                    moneyNetworkService.add_msg(null, new_message);
+                    moneyNetworkService.ls_save_contacts(true);
+                    return ;
+                    // update public outbox message
+                }
                 // send changed chat message
                 var changed_message = {
                     msgtype: 'chat msg',
@@ -1123,12 +1150,24 @@ angular.module('MoneyNetwork')
                 // delete old message
                 console.log(pgm + 'todo: keep old message in some kind of edit history?');
                 message.message.deleted_at = new Date().getTime() ;
+                message.chat_filter = false ;
                 // save localStorage and update ZeroNet
                 moneyNetworkService.ls_save_contacts(true) ;
             }; // save_chat_msg
             self.delete_edit_chat_msg = function (message) {
                 // called from edit chat message form. Always outbox message
                 var pgm = controller + '.delete_edit_chat_msg: ';
+                if (message.contact.type == 'public') {
+                    // public unencrypted chat. just delete
+                    delete message.edit_chat_message;
+                    message.message.deleted_at = new Date().getTime(); // logical delete
+                    message.chat_filter = false ;
+                    console.log(pgm + 'deleted public outbox message ' + JSON.stringify(message.message)) ;
+                    // save localStorage and update ZeroNet
+                    moneyNetworkService.ls_save_contacts(true);
+                    return ;
+                }
+                // person or group chat. confirm dialog and send a special empty delete chat message
                 var msg_text = formatChatMessage(message);
                 if (msg_text.length > 40) msg_text = msg_text.substring(0, 20) + "..." + msg_text.substring(msg_text.length - 15);
                 // console.log(pgm + 'msg_text.length = ' + msg_text.length);
@@ -1153,6 +1192,7 @@ angular.module('MoneyNetwork')
                     // delete old message
                     delete message.edit_chat_message;
                     message.message.deleted_at = new Date().getTime(); // logical delete
+                    message.chat_filter = false ;
                     delete message.message.image;
                     // save localStorage and update ZeroNet
                     moneyNetworkService.ls_save_contacts(true);

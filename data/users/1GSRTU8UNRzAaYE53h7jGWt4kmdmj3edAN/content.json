@@ -1,0 +1,12 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "cert_auth_type": "web",
+ "cert_sign": "HFFFOxSt+kXPRs7dKv2gvVAVbkG7pk4wg8bw583GRaDAH5TeZo7u2GXGb+SQH167eK7spByeDEusz+tsZzbxGVI=",
+ "cert_user_id": "1GSRTU8UNRzAa@moneynetwork",
+ "files": {},
+ "inner_path": "data/users/1GSRTU8UNRzAaYE53h7jGWt4kmdmj3edAN/content.json",
+ "modified": 1481043982.519132,
+ "signs": {
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G4ueqJiM14HuWAdwIRDeKj47quXfnQxksiUG9pDoZQQU3tCjXss2RTGPXdJWakErFDTPNTkW6uOE9Lb+VrwDfmI="
+ }
+}

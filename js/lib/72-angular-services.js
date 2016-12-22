@@ -3926,7 +3926,10 @@ angular.module('MoneyNetwork')
                     debug('inbox && unencrypted', pgm + 'old_message_envelope  = ' + JSON.stringify(old_message_envelope));
                 }
                 // empty chat msg update => delete chat message
-                if (!decrypted_message.message) message.deleted_at = message.sent_at ;
+                if (!decrypted_message.message) {
+                    console.log(pgm + 'todo: contact deleted message. must set chat_filter = false. use seq? message = ' + JSON.stringify(message)) ;
+                    message.deleted_at = message.sent_at ;
+                }
             } // end chat msg
 
             if ((decrypted_message.msgtype == 'chat msg') && decrypted_message.image) {

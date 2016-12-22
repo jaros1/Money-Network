@@ -1,0 +1,26 @@
+{
+	"version": 8,
+	"users": [
+		{
+			"user_seq": 1,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCCJ8NHpy6JnKa/0mHWIx+TaTBS\ngsZk+zkynh+NlpZfFzrlageu6mmIh0Hook+Tnmb8ipo0e+ql2Zzv9qPXW/0I+QL/\n5mPubIpZzj0JP06LVIzcog3jnPhY0v0nOdsyyeEpTH1Vyswo4K2CcpC9o9p2Ag2X\nJS0ztBJ4Z/T22RB5wwIDAQAB\n-----END PUBLIC KEY-----",
+			"pubkey2": "A6TZKKynIR4CrXIjSkyUo6NK68Zz8qo92D+DgLareP2x",
+			"encryption": "2",
+			"avatar": "7.png",
+			"guest": true
+		}
+	],
+	"search": [
+		{
+			"user_seq": 1,
+			"tag": "Name",
+			"value": "Guest"
+		},
+		{
+			"user_seq": 1,
+			"tag": "%",
+			"value": "%"
+		}
+	],
+	"msg": []
+}

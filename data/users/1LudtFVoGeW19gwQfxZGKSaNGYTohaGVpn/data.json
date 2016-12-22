@@ -1,0 +1,42 @@
+{
+	"version": 8,
+	"users": [
+		{
+			"user_seq": 1,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6cYSkxIhkzpQRhl89QS6\nchda/QtRe5Un1m4VKWO+PHlGchLQ8kOsRLCgSEUi9XAxkOKZeqXLc6kIWVw88ACF\n8aHNtEoy+ScxKavIvMwNT+xu4/Nq7/EIXiTz6jWZdVHJVCingTjwmYIuQwkZpaOR\ntUYt+wZgfZxD8G0Mj8xjqfembl6jV/ST/29VDfztNX2eTOKrLDUEV/USnrY+vn3U\nG+X4TCc+qQnlKD1iVbMHfBzwaIiEtRswrJqNodV8UP+nO3AfzCHY9x6lOE++ohoM\nOyf6iuu6eNzt/uAuFCTJNzeF08H7w2fjnKX5bn/Twev/qRa64nvSvIe4zlP0yquD\nrwIDAQAB\n-----END PUBLIC KEY-----",
+			"pubkey2": "Aqet+q3YMaNh5rjW0Ny4oaaAwPralMvqwvVdO0d1GmP3",
+			"encryption": "1",
+			"avatar": "6.png"
+		},
+		{
+			"user_seq": 2,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAid0VTDVq/vkofOrURyVL\nyr32wVtbdQV9oYRHiav4WCgRYMVxnYPL8uiKve3yb2x/Nk0d4R8v9H9uwDSlv5Xa\nuw5bn1k/iecvgroU8bISxWJJWYAq8QK6wCVdUFA2cJyN3Ga2+McbzYhw2c80le8t\nH86oY+SrMJQc1odco1YV2jKjO63JR2t50zuLjOvtF7LbdiZe7b1bTbitXx0gz21E\noW7vrR1b+nyg6j9CbtcNu0Z3eiD2oozhBhqeNbM6LSwI1UvuiIoOYhFadlTxyqO9\nKBUHf/N7cKeLmhIJjejF1A5k6UDRjnya/XR/gndk+A/McUS/kGFgymU5MjVuG74z\nqwIDAQAB\n-----END PUBLIC KEY-----",
+			"pubkey2": "Aqet+q3YMaNh5rjW0Ny4oaaAwPralMvqwvVdO0d1GmP3",
+			"encryption": "1",
+			"avatar": "3.png"
+		}
+	],
+	"search": [
+		{
+			"user_seq": 1,
+			"tag": "Name",
+			"value": "1LudtFVoGeW19"
+		},
+		{
+			"user_seq": 1,
+			"tag": "%",
+			"value": "%"
+		},
+		{
+			"user_seq": 2,
+			"tag": "Name",
+			"value": "1LudtFVoGeW19"
+		},
+		{
+			"user_seq": 2,
+			"tag": "%",
+			"value": "%"
+		}
+	],
+	"msg": []
+}

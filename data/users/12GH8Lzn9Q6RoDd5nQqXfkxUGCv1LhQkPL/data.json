@@ -1,0 +1,24 @@
+{
+	"version": 6,
+	"users": [
+		{
+			"user_seq": 1,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBbKl+qusD950dC8lKcJ761\nxu5ONRpagb/n/PkyPtteIEw2jCs+BziicdouRt0HUd2un1t7QiYEGGWfn6axbOq8\nGGkv2lXNbrk9+xuaRBqpz5xU1L4l0sX0uGwqsr3qwR7VYY+PGimQ4wpBu4raJBJX\nAcUyZ9uZe5TkLH9HIxSqffvWmLBthy+J29VZcs//VgAJ9moy4/BR4bJujJjnp+27\nIYIYQn0Spnwi0E1KvKT7u0PpauX2oP/t9izioFY7pNhfFAqol8/5/ZNgcu7lU0Wy\nUtWbwFhlEBLA+EEVYPw0N0B1K9HtaUJMjMRN1YrgA/28jsHVjZfkgij3fj43QfLN\nAgMBAAE=\n-----END PUBLIC KEY-----",
+			"avatar": "2.png",
+			"guest": true
+		}
+	],
+	"search": [
+		{
+			"user_seq": 1,
+			"tag": "Name",
+			"value": "Guest2"
+		},
+		{
+			"user_seq": 1,
+			"tag": "%",
+			"value": "%"
+		}
+	],
+	"msg": []
+}

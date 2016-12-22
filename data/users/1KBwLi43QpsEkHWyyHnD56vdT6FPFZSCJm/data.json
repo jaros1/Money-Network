@@ -1,0 +1,18 @@
+{
+	"version": 6,
+	"users": [
+		{
+			"user_seq": 1,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs9kYo+WTjJJ30EA0Khsm\nzRDyFeVO2+rUQ0+oVFbbRrOUA32S75WeMzAk+eDS+O8tkqHPuK03tg0T6dz2+YWL\nefehAEerVyQhjFT+mo3uFANR6MCf31nP9cXxhaNijJmpO30s5PxUukV0wrJJ2wVy\nFrCOW8DUqhmbknsLsJ8imMZrwUJVL+MFE39eegPzcy5/QUKeEQAPMyS7ajnud9JX\nHBGXbEJzHdGWuEkk+uObBlX+ahrBD97njqv18BEEa8kcGE+R5LMi0FQKTXRppqi0\ntnWqVpF2wfswl5RMd38mywE0XQs6B6r+ZJJ7O7nkm6Ks19ec2jLpNt566N7eQeGu\nQQIDAQAB\n-----END PUBLIC KEY-----",
+			"avatar": "jpg"
+		}
+	],
+	"search": [
+		{
+			"user_seq": 1,
+			"tag": "Name",
+			"value": "CXG2014"
+		}
+	],
+	"msg": []
+}

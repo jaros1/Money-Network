@@ -1,0 +1,25 @@
+{
+	"version": 8,
+	"users": [
+		{
+			"user_seq": 1,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHmiOEAZcdEWu9wQFz3T7b1x+Gcb\npUT5gupVWPmF0yW19m7mlsm3xPTuCQmqqgWTR6BwZfK/H0u+u8ZxMBQ4fuvOlBfT\nTPAXjTzPzJSLcCOLDF8UUOEg/EC7qWTqFO/w2K9XJsKgemOHF3x52lj07H20U+4g\nn6l/rbRLmbvVOp5ZAgMBAAE=\n-----END PUBLIC KEY-----",
+			"pubkey2": "AyZ2LZEOYXE7h7CXIK9e7Ot42k+jcKkuJuKjQV1dlMyn",
+			"encryption": "2",
+			"avatar": "5.png"
+		}
+	],
+	"search": [
+		{
+			"user_seq": 1,
+			"tag": "Name",
+			"value": "jro test y"
+		},
+		{
+			"user_seq": 1,
+			"tag": "%",
+			"value": "%"
+		}
+	],
+	"msg": []
+}

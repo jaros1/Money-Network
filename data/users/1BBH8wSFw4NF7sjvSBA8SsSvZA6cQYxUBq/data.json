@@ -1,0 +1,33 @@
+{
+	"version": 8,
+	"users": [
+		{
+			"user_seq": 1,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBxUfQ3P/hPHMjWi88Ldyet\n4AmViV28bjlj2cZiBUhn3DP+kX138bAfO0TcCHJEmefCKIYzoUcGOTsyTXInC718\nmcM4CbSNfJJBFPnzdAW9Wtb/iNAj/T1qH6xEXMeAJFQZnciXXG+rqgvo/uIvBfnj\n2Ap2Sqly2boyWsFHBu4abXx9wCjaEgQMxK4EAOEN3+vfKgNWu/gUXmqh0U6gibmg\nSDMr0VKdSRpMAOOrAyNdQir8vAC/eiqny66vdj2wPPl3eJmQp6uZu4ou18OiPs7o\nJfDmlhUq6r420P5u8b3fTXC7x80Lt6j+RoKJU9FYawAww6zOT16AgICFNPGoNZ9L\nAgMBAAE=\n-----END PUBLIC KEY-----",
+			"pubkey2": "Ao6oGacEaqbGm5LG4OsjnsHkk+q3P8TmIuacnUMPksoQ",
+			"encryption": "1",
+			"avatar": "7.png",
+			"guest": true
+		},
+		{
+			"user_seq": 2,
+			"pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBwrZfXc/nNu+FT0ZXXlXLP\nSTJN523JQCgt0FcsFJT/8quaRtFcv52t3E/tE4M8iwrYHLKO9iFIvEzLrLMETyHw\nGDaCg60tc6uiVM4IlPSN9pD9q3p3artRryAedfZO1Ao1rElH/cJC0WXQ5iKOLmOl\nrgIzCGoa8y2Gfk0YhaxSlETikJ2ovwhRLgbg8LeqNtQSn5gJ0s1lM4QeHm4Wmwhq\nyM8osrtLRKs6fhXXvy3mp9+vaEq5GX1uikdIpVSiYp4cWnH1pFbESMu+QJgH663z\nEseTnxzFj6vTtvzssUmUpcsyOK1v06+0pZVWKq51Xbwf2BbffHUWTXRiwSPOE9KH\nAgMBAAE=\n-----END PUBLIC KEY-----",
+			"pubkey2": "Agrofq0xdqG/inS8mB6JPitFYCpr+ZzZsE8qqiO7vf0a",
+			"encryption": "1",
+			"avatar": "1.png"
+		}
+	],
+	"search": [
+		{
+			"user_seq": 1,
+			"tag": "Name",
+			"value": "5thdimension"
+		},
+		{
+			"user_seq": 1,
+			"tag": "%",
+			"value": "%"
+		}
+	],
+	"msg": []
+}

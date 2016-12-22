@@ -1,0 +1,12 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "cert_auth_type": "web",
+ "cert_sign": "G4NUvSB3COBciGddhvD/oMj2GVkJyLKcn4DEC5K2FD109y2KeuV+eN7D7zq311XEV6mOV8iBy2YYb1q02L9VN60=",
+ "cert_user_id": "jrotest7@zeroid.bit",
+ "files": {},
+ "inner_path": "data/users/1HmmTkLD8EVxQ2pH4t3DCtC1GbFz7r21RF/content.json",
+ "modified": 1481316192.073396,
+ "signs": {
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G8BITE6WIRzG6T7UurfPIjzIqbVxoQjAv52iXbvMuOn1SzP2xIKJQiasb4WPeWN/rMSVJFfOQlZnYXK6gZ6oC3M="
+ }
+}
