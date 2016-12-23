@@ -494,9 +494,12 @@
                             <table class="speech" ng-hide="m.edit_chat_message">
                                 <tr>
                                     <td>
-                                    <span ng-bind-html="c.setup.alias" class="media-heading"
-                                          ng-click="c.chat_contact(m.contact)"
-                                          alt="Click to continue chat" title="Click to continue chat">Me</span>
+
+                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading" alt="Click to continue chat" title="Click to continue chat">
+                                            <span ng-bind-html="c.setup.alias">Me</span>
+                                            <span ng-class="m.contact|contactGlyphicon" title="{{m.contact|contactGlyphiconTitle}}" alt="{{m.contact|contactGlyphiconTitle}}"/>
+                                        </span>
+
                                     </td>
                                     <td style="text-align: right; vertical-align: top">
                                         <span class="speech-time" alt="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"
@@ -508,7 +511,13 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="2"><span ng-bind-html="m|formatChatMessage"></span></td>
+
+                                    <td colspan="2">
+                                        Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
+                                        <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18" title="Click to chat" alt="Click to chat" ng-click="c.chat_contact(m.contact)">
+                                        <span ng-bind-html="m|formatChatMessage"></span>
+                                    </td>
+
                                 </tr>
                                 <tr ng-show="c.show_image(m)">
                                     <td colspan="2">
@@ -576,13 +585,17 @@
                                  title="Click to chat" ng-click="c.chat_contact(m.contact)">
                         </div>
                         <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
+
+                            <!-- show inbox message -->
                             <table class="speech">
                                 <tr>
                                     <td style="text-align: left">
-                                    <span ng-bind-html="m.contact|contactAlias" class="media-heading"
-                                          alt="Click to chat" title="Click to chat"
-                                          ng-click="c.chat_contact(m.contact)">
-                                    </span>
+
+                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading" alt="Click to chat" title="Click to chat">
+                                            <span ng-bind-html="m|messageAlias"></span>
+                                            <span ng-class="m.contact|contactGlyphicon" title="{{m.contact|contactGlyphiconTitle}}" alt="{{m.contact|contactGlyphiconTitle}}"/>
+                                        </span>
+
                                     </td>
                                     <td style="text-align: right; vertical-align: top">
                                         <span class="speech-time" alt="Message size in browser"
@@ -597,7 +610,13 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td ng-bind-html="m|formatChatMessage" colspan="2"></td>
+
+                                    <td colspan="2">
+                                        Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
+                                        <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18" title="Click to chat" alt="Click to chat" ng-click="c.chat_contact(m.contact)">
+                                        <span ng-bind-html="m|formatChatMessage"></span>
+                                    </td>
+
                                 </tr>
                                 <tr ng-show="c.show_image(m)">
                                     <td colspan="2">
