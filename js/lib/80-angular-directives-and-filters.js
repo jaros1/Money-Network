@@ -302,6 +302,33 @@ angular.module('MoneyNetwork')
         // end formatSearchTitle filter
     }])
 
+
+    .filter('formatChatMessageAlias', ['MoneyNetworkService', function (moneyNetworkService) {
+        // format ingoing or outgoing chat message
+        return function (message) {
+            // find receiver
+            var pgm = 'formatChatMessage: ' ;
+            // console.log(pgm + 'message = ' + JSON.stringify(message));
+            var setup, alias ;
+            setup = moneyNetworkService.get_user_setup() ;
+            if (message.message.folder == 'outbox') {
+                // outbox: send message to contact. alias is receiver. contact or group
+                alias = moneyNetworkService.get_contact_name(message.contact);
+            }
+            else if (message.contact.type == 'group') {
+                // inbox: received a group chat message. alias is group name
+                alias = moneyNetworkService.get_contact_name(message.contact);
+            }
+            else {
+                // inbox: received message from contact. alias is contact
+                alias = setup.alias;
+            }
+            return alias ;
+        } ;
+        // end formatChatMessage filter
+    }])
+
+
     .filter('formatChatMessage', ['MoneyNetworkService', function (moneyNetworkService) {
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
@@ -309,23 +336,23 @@ angular.module('MoneyNetwork')
             // find receiver
             var pgm = 'formatChatMessage: ' ;
             // console.log(pgm + 'message = ' + JSON.stringify(message));
-            var setup, alias, greeting, i, group_contact, unique_id, cert_user_ids ;
-            setup = moneyNetworkService.get_user_setup() ;
-            if (message.message.folder == 'outbox') {
-                // outbox: send message to contact. alias is receiver. contact or group
-                alias = moneyNetworkService.get_contact_name(message.contact);
-                greeting = 'Hello ' + alias;
-            }
-            else if (message.contact.type == 'group') {
-                // inbox: received a group chat message. alias is group name
-                alias = moneyNetworkService.get_contact_name(message.contact);
-                greeting = 'Hi ' + alias ;
-            }
-            else {
-                // inbox: received message from contact. alias is contact
-                alias = setup.alias;
-                greeting = 'Hi ' + alias ;
-            }
+            var alias, i, group_contact, unique_id, cert_user_ids ;
+            //if (message.message.folder == 'outbox') {
+            //    // outbox: send message to contact. alias is receiver. contact or group
+            //    alias = moneyNetworkService.get_contact_name(message.contact);
+            //    greeting = 'Hello ' + alias;
+            //}
+            //else if (message.contact.type == 'group') {
+            //    // inbox: received a group chat message. alias is group name
+            //    alias = moneyNetworkService.get_contact_name(message.contact);
+            //    greeting = 'Hi ' + alias ;
+            //}
+            //else {
+            //    // inbox: received message from contact. alias is contact
+            //    alias = setup.alias;
+            //    greeting = 'Hi ' + alias ;
+            //}
+            //greeting = '' ;
             // check known message types
             var str, msgtype, search ;
             msgtype = message.message.message.msgtype ;
@@ -343,12 +370,11 @@ angular.module('MoneyNetwork')
                         str = str + '"' + search[i].tag + '": "' + search[i].value + '"' ;
                     } // for i
                 }
-                str = greeting + '. ' + str ;
                 // console.log('str = ' + str) ;
                 return str ;
             }
-            if (msgtype == 'contact removed') return greeting + '. I removed you as contact' ;
-            if (msgtype == 'chat msg') return greeting + '. ' + message.message.message.message ;
+            if (msgtype == 'contact removed') return 'I removed you as contact' ;
+            if (msgtype == 'chat msg') return message.message.message.message ;
             if (msgtype == 'verify') {
                 // contact verification request. Different presentation for inbox/outbox and status for verification (pending or verified)
                 if (message.message.folder == 'outbox') {
@@ -359,7 +385,7 @@ angular.module('MoneyNetwork')
                 }
                 else {
                     str =
-                        greeting + '. I want to add you to my list of verified contacts. ' +
+                        'I want to add you to my list of verified contacts. ' +
                         'Please enter the secret verification password that you receive in an other communication channel.' ;
                     if (message.message.password_sha256) str = str + " Status: pending" ;
                     else str = str + " Status: verified" ;
@@ -368,11 +394,11 @@ angular.module('MoneyNetwork')
             }
             if (msgtype == 'verified') {
                 // contact verification response.
-                return greeting + '. That is OK. The verification password is "' + message.message.message.password + '".' ;
+                return 'That is OK. The verification password is "' + message.message.message.password + '".' ;
             }
             if (msgtype == 'received') {
                 // receipt for chat message with image. Used for quick data.json cleanup to free disk space in users directory
-                return greeting + '. Thank you. I have received your photo.' ;
+                return 'Thank you. I have received your photo.' ;
                 if (message.message.folder == 'outbox') {
                     // sent receipt for chat message with to contact
                 }
@@ -391,7 +417,7 @@ angular.module('MoneyNetwork')
                         break ;
                     }
                 } // for i (contacts)
-                str = greeting + '. Started group chat' ;
+                str = 'Started group chat' ;
                 if (!group_contact) {
                     // must be an error or group contact has been deleted ....
                     return str ;
@@ -424,12 +450,12 @@ angular.module('MoneyNetwork')
             }
             if (msgtype == 'lost msg') {
                 // received feedback info request with an unknown local_msg_seq. Must be a message lost in cyberspace
-                return greeting + '. Sorry. Message with local_msg_seq ' + message.message.message.local_msg_seq +
+                return 'Sorry. Message with local_msg_seq ' + message.message.message.local_msg_seq +
                     ' was lost in cyberspace. If possible I will resend the lost message next time we talk' ;
             }
             if (msgtype == 'lost msg2') {
                 // received feedback info request with an unknown local_msg_seq. Must be a message lost in cyberspace
-                str = greeting + '. Sorry. Message with sha256 address ' + message.message.message.message_sha256 +
+                str = 'Sorry. Message with sha256 address ' + message.message.message.message_sha256 +
                     ' could not be decrypted. ' + 'Probably cryptMessage encrypted for your ' ;
                 cert_user_ids = message.message.message.cert_user_ids ;
                 if (!cert_user_ids) return str + ' other ZeroNet certificates' ;
@@ -448,7 +474,7 @@ angular.module('MoneyNetwork')
             str = JSON.stringify(message.message) ;
             str = str.split('":"').join('": "');
             str = str.split('","').join('", "');
-            return greeting + '. ' + str ;
+            return str ;
         } ;
         // end formatChatMessage filter
     }])

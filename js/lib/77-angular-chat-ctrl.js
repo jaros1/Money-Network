@@ -1285,7 +1285,7 @@ angular.module('MoneyNetwork')
 
             self.get_more_messages = function () {
                 var pgm = controller + '.get_more_messages: ' ;
-                console.log(pgm + 'not implemented') ;
+                console.log(pgm + 'endless scroll not yet implemented') ;
             };
 
             // ChatCtrl

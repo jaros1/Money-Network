@@ -965,7 +965,12 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td colspan="2"><span ng-bind-html="m|formatChatMessage"></span></td>
+                                <td colspan="2">
+                                    Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
+                                    <span ng-class="m.contact|contactGlyphicon"
+                                          title="{{m.contact|contactGlyphiconTitle}}" alt="{{m.contact|contactGlyphiconTitle}}"/>
+                                    <span ng-bind-html="m|formatChatMessage"></span>
+                                </td>
                             </tr>
                             <tr ng-show="c.show_image(m)">
                                 <td colspan="2">
@@ -1056,7 +1061,12 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td ng-bind-html="m|formatChatMessage" colspan="2"></td>
+                                <td colspan="2">
+                                    Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
+                                    <span ng-class="m.contact|contactGlyphicon"
+                                          title="{{m.contact|contactGlyphiconTitle}}" alt="{{m.contact|contactGlyphiconTitle}}"/>
+                                    <span ng-bind-html="m|formatChatMessage"></span>
+                                </td>
                             </tr>
                             <tr ng-show="c.show_image(m)">
                                 <td colspan="2">
