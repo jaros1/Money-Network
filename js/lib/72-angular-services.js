@@ -6112,7 +6112,8 @@ angular.module('MoneyNetwork')
             chat_order_by: chat_order_by,
             is_old_contact: is_old_contact,
             is_admin: is_admin,
-            confirm_admin_task: confirm_admin_task
+            confirm_admin_task: confirm_admin_task,
+            get_public_contact: get_public_contact
         };
 
         // end MoneyNetworkService

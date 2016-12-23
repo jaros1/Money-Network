@@ -185,25 +185,46 @@ angular.module('MoneyNetwork')
                 // contact with uploaded avatar
                 return 'data/users/' + contact.auth_address + '/avatar.' + contact.avatar ;
             }
-            // must be contact with a random assigned avatar
-
+            // must be contact with a random assigned avatar or avatarz for public chat
             return 'public/images/avatar' + contact.avatar ;
         } ;
         // end findContactAvatar filter
     }])
 
-    .filter('findMessageAvatar', ['findContactAvatarFilter', 'MoneyNetworkService', function (findContactAvatar, moneyNetworkService) {
-        // find message Avatar. Like findContactAvatar, but used for group chat inbox. Use message.participant to find sender of message
+    .filter('findMessageSenderAvatar', ['findContactAvatarFilter', 'MoneyNetworkService', function (findContactAvatar, moneyNetworkService) {
+        // inbox avatar - big avatar in right side of chat page - message sender Avatar.
+        // like findContactAvatar but use message.participant to find sender avatar for group chat messages
         return function (message) {
             var contact, participant_no, unique_id, participant ;
             contact = message.contact ;
             if (!contact) return '' ;
             if (contact.type != 'group') return findContactAvatar(contact) ;
             if (message.message.folder != 'inbox') return findContactAvatar(contact) ;
+            // group chat. do not return group contact avatar. return avatar for sender of group chat message
             participant_no = message.message.participant ;
             unique_id = contact.participants[participant_no-1] ;
             participant = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
             return findContactAvatar(participant || contact) ; // return group avatar if participant has been deleted
+        } ;
+        // end findContactAvatar filter
+    }])
+
+    .filter('findMessageReceiverAvatar', ['findContactAvatarFilter', 'MoneyNetworkService', function (findContactAvatar, moneyNetworkService) {
+        // inbox avatar - small receiver avatar in right side of chat page - message receiver Avatar.
+        // personal: users avatar, group chat: group contact avatar, public chat: public contact avatar (z logo)
+        var avatar = moneyNetworkService.get_avatar();
+        return function (message) {
+            var contact, participant_no, unique_id, participant ;
+            if (message.message.z_filename) {
+                // public unencrypted chat
+                contact = moneyNetworkService.get_public_contact() ;
+                return findContactAvatar(contact) ;
+            }
+            contact = message.contact ;
+            if (!contact) return '' ; // error
+            if (contact.type == 'group') return findContactAvatar(contact) ; // group chat
+            // private chat
+            return avatar.src ;
         } ;
         // end findContactAvatar filter
     }])
