@@ -248,6 +248,7 @@ angular.module('MoneyNetwork')
 
             self.contact = null;
             self.messages = moneyNetworkService.js_get_messages();
+            self.messages_limit = 5 ;
             // console.log(controller + ': messages = ' + JSON.stringify(self.messages));
 
             // disabled chat. contact without public key. span with explanation about deleting old inactive accounts
@@ -1285,7 +1286,13 @@ angular.module('MoneyNetwork')
 
             self.get_more_messages = function () {
                 var pgm = controller + '.get_more_messages: ' ;
-                console.log(pgm + 'endless scroll not yet implemented') ;
+                var max_no_msg, i ;
+                max_no_msg = 0 ;
+                for (i=0 ; i<self.messages.length ; i++) if (self.messages[i].chat_filter) max_no_msg = max_no_msg + 1 ;
+                self.messages_limit = self.messages_limit + 5 ;
+                if (self.messages_limit > max_no_msg) self.messages_limit = max_no_msg ;
+                console.log(pgm + 'self.messages_limit = ' + self.messages_limit) ;
+
             };
 
             // ChatCtrl

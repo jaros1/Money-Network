@@ -2502,7 +2502,9 @@ angular.module('MoneyNetwork')
         } ;
 
         // add message to 1) contact, 2) js_messages and 3) js_messages_index
-        // load_contacts: true - called from ls_load_contacts - do not add message to contact.messages array (already there)
+        // load_contacts:
+        // - true: called from ls_load_contacts or load_public_chat
+        // - false: do not add message to contact.messages array (already there)
         function add_message(contact, message, load_contacts) {
             var pgm = service + '.add_message: ' ;
             if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
