@@ -3064,9 +3064,9 @@ angular.module('MoneyNetwork')
                             if (!contact.deleted_inbox_messages) contact.deleted_inbox_messages = {};
                             key = contact.type == 'group' ? message.participant + ',' + local_msg_seq : local_msg_seq ;
                             contact.deleted_inbox_messages[key] = message.feedback;
-                            debug('feedback_info', pgm + 'feedback_info: contact ' + contact.auth_address +
-                                ', deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
-                                ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
+                            //debug('feedback_info', pgm + 'feedback_info: contact ' + contact.auth_address +
+                            //    ', deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
+                            //    ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
                         }
                     }
                     else if (message.zeronet_msg_id) {

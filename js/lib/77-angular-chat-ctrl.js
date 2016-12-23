@@ -1283,6 +1283,11 @@ angular.module('MoneyNetwork')
                 MoneyNetworkHelper.load_user_setup() ;
             };
 
+            self.get_more_messages = function () {
+                var pgm = controller + '.get_more_messages: ' ;
+                console.log(pgm + 'not implemented') ;
+            };
+
             // ChatCtrl
         }])
 

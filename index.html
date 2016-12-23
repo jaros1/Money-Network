@@ -689,6 +689,8 @@
 
         <div class="bodyright">
 
+            <div class="scroller-companies" infinite-scroll="c.get_more_messages()" infinite-scroll-container='".bodyright"'>
+
             <p>
                 Filter:
                 <input type="button" value="All" ng-click="c.toggle_filter('all')"
@@ -1066,6 +1068,7 @@
                 </li>
             </ul>
 
+            </div>
 
         </div>
         <!-- end chat2.html -->
@@ -1651,6 +1654,7 @@
 <script type="text/javascript" src="js-external/40-angular.js"></script>
 <script type="text/javascript" src="js-external/41-angular-route.js"></script>
 <script type="text/javascript" src="js-external/42-angular-sanitize.js"></script>
+<script type="text/javascript" src="js-external/43-ng-infinite-scroll.js"></script>
 <script type="text/javascript" src="js-external/50-CryptoJS-license.js"></script>
 <script type="text/javascript" src="js-external/51-CryptoJS-core.js"></script>
 <script type="text/javascript" src="js-external/52-CryptoJS-md5.js"></script>
