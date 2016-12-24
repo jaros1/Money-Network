@@ -708,7 +708,7 @@ angular.module('MoneyNetwork')
             // page is ready. show context info for get public chat messages
             function page_is_ready () {
                 var pgm = controller + '.page_is_ready: ' ;
-                var contact_clone, max_no_msg, i, eop ;
+                var contact_clone, max_no_msg, i, eop, old_limit ;
                 contact_clone = JSON.parse(JSON.stringify(self.contact));
                 if (contact_clone) delete contact_clone.messages;
                 max_no_msg = 0 ;
@@ -717,6 +717,18 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'page is ready. check public chat. first = ' + self.messages_first +
                     ', last = ' + self.messages_last + ', eop = ' + eop + ', chat_sort = ' + self.setup.chat_sort +
                     ', loading_contact = ' + loading_contact + ', contact = ' + JSON.stringify(contact_clone));
+                // is public chat relevant for page
+                if (self.contact && (self.contact.type == 'group')) return ; // group chat - public chat is not relevant
+                if ((self.setup.chat_sort != 'Last message') && !eop) return ; // sort by size - public chat with size 0 always in bottom of page
+                // public chat may be relevant for current chat page
+                moneyNetworkService.get_public_chat(self.messages_first, self.messages_last, eop, self.contact, function (updated) {
+                    // callback
+                    if (updated) {
+                        // new public chat messages added to page. recheck page
+                        self.messages_first = null ;
+                        self.messages_last = null ;
+                    }
+                }) ;
             } // page_is_ready
 
             // keep track of first and last chat message on page.

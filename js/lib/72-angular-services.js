@@ -5303,18 +5303,18 @@ angular.module('MoneyNetwork')
         } // get_files_optional
 
         // load public chat from ZeroNet optional files into JS
-        function load_public_chat () {
-            var pgm = service + '.load_public_chat: ' ;
+        function load_my_public_chat () {
+            var pgm = service + '.load_my_public_chat: ' ;
 
             // 1 - check my public chat outbox messages. get user_seq from data.json file
             get_user_seq(function (user_seq) {
-                var pgm = service + '.load_public_chat get_user_seq callback 1: ' ;
+                var pgm = service + '.load_my_public_chat get_user_seq callback 1: ' ;
                 if (!user_seq) return ; // new user. not found in users array in data.json file
                 debug('public_chat', pgm + 'user_seq = ' + user_seq) ;
 
                 // 2 - check if my_files_optional has been loaded from content.json (also setting my_files_optional)
                 get_files_optional(function (files_optional) {
-                    var pgm = service + '.load_public_chat get_file_optional callback 2: ' ;
+                    var pgm = service + '.load_my_public_chat get_file_optional callback 2: ' ;
                     var user_path, contact, key, key_a, file_path, callback_info ;
                     debug('public_chat', pgm + 'files_optional = ' + JSON.stringify(files_optional)) ;
                     debug('public_chat', pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
@@ -5332,11 +5332,11 @@ angular.module('MoneyNetwork')
                         file_path = user_path + '/' + key ;
                         callback_info.processes++ ;
                         ZeroFrame.cmd("fileGet", {inner_path: file_path, required: false}, function (chat) {
-                            var pgm = service + '.load_public_chat fileGet callback 3: ' ;
+                            var pgm = service + '.load_my_public_chat fileGet callback 3: ' ;
                             var i, message, local_msg_seq, message_with_envelope, refresh_ui ;
                             // refresh angularJS?
                             refresh_ui = function () {
-                                var pgm = service + '.load_public_chat fileGet refresh_ui: ' ;
+                                var pgm = service + '.load_my_public_chat fileGet refresh_ui: ' ;
                                 callback_info.processes-- ;
                                 if (callback_info.processes != 0) return ;
                                 // debug('public_chat', pgm + 'contact = ' + JSON.stringify(contact));
@@ -5382,9 +5382,16 @@ angular.module('MoneyNetwork')
             }) ; // get_user_seq callback 1
 
             // 2 - check public chat messages from other money network users
-            // todo: add lazy loading and endless scroll to chat page
+            // todo: see get_public_chat
 
-        } // load_public_chat
+        } // load_my_public_chat
+
+
+        // check for public chat relevant for current chat page context
+        // return false if no relevant public chat
+        function get_public_chat (first_timestamp, last_timestamp, end_of_page, contact, cb) {
+            cb(false) ;
+        } // get_public_chat
 
 
         // admin only: delete files for inactive users
@@ -5540,7 +5547,7 @@ angular.module('MoneyNetwork')
                 recheck_old_decrypt_errors() ;
                 i_am_online() ;
                 load_user_contents_max_size() ;
-                load_public_chat() ;
+                load_my_public_chat() ;
                 cleanup_inactive_users() ;
             }
             return user_id ;
@@ -6115,7 +6122,8 @@ angular.module('MoneyNetwork')
             is_old_contact: is_old_contact,
             is_admin: is_admin,
             confirm_admin_task: confirm_admin_task,
-            get_public_contact: get_public_contact
+            get_public_contact: get_public_contact,
+            get_public_chat: get_public_chat
         };
 
         // end MoneyNetworkService
