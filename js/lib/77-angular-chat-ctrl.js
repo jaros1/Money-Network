@@ -238,6 +238,7 @@ angular.module('MoneyNetwork')
             // a) contacts stored in localStorage
             self.contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
             // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
+            var loading_contact = $routeParams.unique_id ;
             self.zeronet_search_contacts = function() {
                 moneyNetworkService.z_contact_search(function () {
                     if ($routeParams.unique_id) find_contact();
@@ -248,7 +249,6 @@ angular.module('MoneyNetwork')
 
             self.contact = null;
             self.messages = moneyNetworkService.js_get_messages();
-            self.messages_limit = 5 ;
             // console.log(controller + ': messages = ' + JSON.stringify(self.messages));
 
             // disabled chat. contact without public key. span with explanation about deleting old inactive accounts
@@ -277,10 +277,13 @@ angular.module('MoneyNetwork')
                             }
                             // console.log(pgm + 'self.group_chat = ' + self.group_chat) ;
                             // console.log(pgm + 'self.contact = ' + (self.contact ? true : false)) ;
+                            loading_contact = false ;
+                            clear_chat_filter_cache() ;
                             return
                         }
                     }
                     console.log(pgm + 'contact with unique id ' + unique_id + ' was not found');
+                    loading_contact = false ;
                     // remove invalid deep link from z_url
                     a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
                     z_path = "?path=" + a_path ;
@@ -306,9 +309,12 @@ angular.module('MoneyNetwork')
                         if (!self.contact.messages) self.contact.messages = [];
                         self.group_chat = false ;
                         self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
+                        loading_contact = false ;
+                        clear_chat_filter_cache() ;
                         return ;
                     }
                     console.log(pgm + 'contact with cert_user_id ' + unique_id + ' was not found');
+                    loading_contact = false ;
                     // remove invalid deep link from z_url
                     a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
                     z_path = "?path=" + a_path ;
@@ -693,8 +699,37 @@ angular.module('MoneyNetwork')
                 for (var i=0 ; i<self.messages.length ; i++) {
                     delete self.messages[i].chat_filter ;
                 }
+                self.messages_limit = 5 ;
+                self.messages_first = null ;
+                self.messages_last = null ;
             }
             clear_chat_filter_cache() ;
+
+            // page is ready. show context info for get public chat messages
+            function page_is_ready () {
+                var pgm = controller + '.page_is_ready: ' ;
+                var contact_clone, max_no_msg, i, eop ;
+                contact_clone = JSON.parse(JSON.stringify(self.contact));
+                if (contact_clone) delete contact_clone.messages;
+                max_no_msg = 0 ;
+                for (i=0 ; i<self.messages.length ; i++) if (self.messages[i].chat_filter) max_no_msg = max_no_msg + 1 ;
+                eop = (self.messages_limit >= max_no_msg) ;
+                console.log(pgm + 'page is ready. check public chat. first = ' + self.messages_first +
+                    ', last = ' + self.messages_last + ', eop = ' + eop + ', chat_sort = ' + self.setup.chat_sort +
+                    ', loading_contact = ' + loading_contact + ', contact = ' + JSON.stringify(contact_clone));
+            } // page_is_ready
+
+            // keep track of first and last chat message on page.
+            // must check for public chat messages when finished loading page
+            self.set_first_last = function(first,last,message) {
+                var pgm = controller + '.set_first_last: ' ;
+                if (loading_contact) return ; // checking contact in deep link - page not ready
+                if (self.messages_first && self.messages_last) return ; // no change - page is ready
+                if (first && !self.messages_first) self.messages_first = message.message.sent_at ;
+                if (last && !self.messages_last) self.messages_last = message.message.sent_at ;
+                if (!self.messages_first || !self.messages_last) return; // page not ready. info about first or last row is missing
+                page_is_ready() ;
+            }; // set_first_last
 
             self.chat_filter = function (message, index, messages) {
                 var pgm = controller + '.chat_filter: ';
@@ -860,7 +895,9 @@ angular.module('MoneyNetwork')
             self.chat_sort_title = moneyNetworkService.get_chat_sort_title() ;
             self.chat_sort_changed = function () {
                 var pgm = controller + '.sort_changed: ' ;
-                console.log(pgm + 'chat_sort = ' + self.chat_sort) ;
+                console.log(pgm + 'chat_sort = ' + self.setup.chat_sort) ;
+                self.messages_first = null ;
+                self.messages_last = null ;
                 moneyNetworkService.save_user_setup();
             };
             self.chat_order_by = function (message) {
@@ -1284,16 +1321,32 @@ angular.module('MoneyNetwork')
                 MoneyNetworkHelper.load_user_setup() ;
             };
 
+            // startup with self.messages_limit = 5.
+            // public_chat = false. No nothing after page startup
+            // public_chat = true:
+            // -
+            // -
+            // -
+
             self.get_more_messages = function () {
                 var pgm = controller + '.get_more_messages: ' ;
-                var max_no_msg, i ;
+                var max_no_msg, i, old_messages_limit, new_messages_limit ;
+                old_messages_limit = self.messages_limit ;
                 max_no_msg = 0 ;
                 for (i=0 ; i<self.messages.length ; i++) if (self.messages[i].chat_filter) max_no_msg = max_no_msg + 1 ;
-                self.messages_limit = self.messages_limit + 5 ;
-                if (self.messages_limit > max_no_msg) self.messages_limit = max_no_msg ;
+                if (max_no_msg < 5) max_no_msg = 5 ;
+                new_messages_limit = old_messages_limit + 5 ;
+                if (new_messages_limit > max_no_msg) new_messages_limit = max_no_msg ;
+                if (old_messages_limit == new_messages_limit) {
+                    console.log(pgm + 'no more messages. self.messages_limit = ' + self.messages_limit) ;
+                    return ;
+                }
+                self.messages_limit = new_messages_limit ;
+                self.messages_last = null ;
                 console.log(pgm + 'self.messages_limit = ' + self.messages_limit) ;
+            }; // self.get_more_messages
 
-            };
+
 
             // ChatCtrl
         }])

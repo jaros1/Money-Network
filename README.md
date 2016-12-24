@@ -9,12 +9,12 @@ The primary goal of the Money Network is to make complementary and alternative m
 regular conventional money. One client wallet for it all.
 
 ## Project status
-Spare time project, work in progress, no money in here yet. For now just a social network chat app on a very promising platform (ZeroNet). 
+Spare time project, work in progress, no money in here yet. For now just a chat app on a very promising platform (ZeroNet). 
 
 Implemented:
-- End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags are stored in clear on ZeroNet. 
-- Contact list: Categories: New, Unverified, Verified and Ignored.
-- Chat: One and two panel chat. Encrypted personal and group chat. Unencrypted public chat.
+- End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags and public chat are stored in clear on ZeroNet. 
+- Contact list: Categories: new, guest, unverified, verified and ignored.
+- Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat.
 
 Todo:
 - Chat. More social network like UI. Add comments. Follow and unfollow public chat. Endless scroll

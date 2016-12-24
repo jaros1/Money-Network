@@ -5368,7 +5368,7 @@ angular.module('MoneyNetwork')
                                     sent_at: chat.msg[i].timestamp,
                                     z_filename: key
                                 } ;
-                                message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
+                                message_with_envelope.ls_msg_size = 0 ; // ZeroNet and browser size 0 for all public chat messages
                                 debug('public_chat', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                                 add_message(contact, message_with_envelope) ;
                             } // for i

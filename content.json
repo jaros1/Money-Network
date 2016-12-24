@@ -9,8 +9,8 @@
    "size": 18027
   },
   "README.md": {
-   "sha512": "f2c95198b3f80c5ecb9a0a9646ca255c8c767d425f7c7041a271d038d51acde2",
-   "size": 2591
+   "sha512": "0cd5cec347c61cfc6a8003e059c4518b7aa69f7bfa9a0f72a0020107650ef572",
+   "size": 2600
   },
   "css/all.css": {
    "sha512": "fbe337730da78c0af261fe482dba44920f780df69d4c881b313ccdeb0a94a04c",
@@ -25,8 +25,8 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "76b6e9157062e0e3722ad1ae4e55bff852c90c044df45319eef1c6cbcff21106",
-   "size": 97566
+   "sha512": "bc0c29d0d84c0c425d37886b1b8e8ec49212deee96a87457fb92bd3b1f73cd9f",
+   "size": 97637
   },
   "js-external/10-jquery.js": {
    "sha512": "061f9fa1e47d489b721d76abff0f7039e133294575237f8c64c02d54efdbf75d",
@@ -121,8 +121,8 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "b2d3326c2766aa65435d22d2fe303106e55cc4008de77bf318704ad2d367c06e",
-   "size": 570448
+   "sha512": "851812e5e11da60847e240e1576e55c2a3ad495843aa183b61852cccf68f1381",
+   "size": 573528
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -199,15 +199,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1482512071.089751,
+ "modified": 1482572988.492611,
  "postmessage_nonce_security": true,
  "sign": [
-  87550043779711536984758166711981475136428684680866174029869039300303947947421,
-  55390797211513398976065084949358827080632288173127303415442980618817497016467
+  97056452878943641853843054290602056785809062148452179293385964738969725029312,
+  60763292485779227835918822615735925368864015964743345515961862826969800399538
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HJe+KhgA/pmJ1K9Mpkx1AihK7ygBafIALMdgdbc1Iv8Y0Pc2Tb48r0N0n+k9YrRAC77uuC0ymSCBOuCvd9+XA64="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G5n47yRWmUB7Q2QMkqzeNUG2mbDaoovjt86boRPUgelLs9ONyf5z2ySCvEM72TtpoKMnUCyqcVXbQEmwg8qFBec="
  },
  "signs_required": 1,
  "title": "Money Network",

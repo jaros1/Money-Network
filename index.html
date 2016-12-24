@@ -959,6 +959,7 @@
                 </li>
 
                 <li ng-repeat="m in c.messages|filter:c.chat_filter|orderBy:c.chat_order_by|limitTo: c.messages_limit" class="mar-btm">
+                    <span ng-show="c.set_first_last($first,$last,m)"/>
 
                     <div ng-show="(m.message.folder == 'outbox')" class="media-left">
                         <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Click to continue chat"
