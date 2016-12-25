@@ -5455,7 +5455,7 @@ angular.module('MoneyNetwork')
 
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.get_public_chat dbQuery callback 1: ';
-                var i, res_unique_id, cache_filename, cache_status, j ;
+                var i, res_unique_id, cache_filename, cache_status, j, pending_files, not_downloaded_files, get_no_peers ;
                 if (res.error) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error, 5000]);
                     console.log(pgm + "Search for public chat failed: " + res.error);
@@ -5485,8 +5485,7 @@ angular.module('MoneyNetwork')
                 //    "size": 199
                 //}];
 
-                // remove search results not within page context
-                // this check must be more generic. is_within_chat_page_context(cache_filename)
+                // remove search results no longer within page context
                 for (i=res.length-1 ; i >= 0 ; i--) {
                     cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
                     if (!file_within_chat_page_context(cache_filename)) {
@@ -5496,7 +5495,7 @@ angular.module('MoneyNetwork')
                 }
                 if (res.length == 0) { cb(false) ; return }
 
-                // any ready but not yet loaded public chat messages?
+                // any already downloaded but not yet loaded public chat messages?
                 for (i=0 ; i < res.length ; i++) {
                     cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
                     cache_status = files_optional_cache[cache_filename] ;
@@ -5515,7 +5514,7 @@ angular.module('MoneyNetwork')
                         continue ;
                     }
                     if (cache_status.timestamps && (cache_status.timestamps.length == 0)) {
-                        console.log(pgm + 'all messsages in file has already been loaded') ;
+                        // console.log(pgm + 'all messsages in file has already been loaded') ;
                         continue ;
                     }
                     if (chat_page_context.end_of_page) {
@@ -5531,8 +5530,89 @@ angular.module('MoneyNetwork')
                     } // for j
                 } // for i
 
-                cb(false) ;
+                // any not yet downloaded public chat files?
+                pending_files = [] ;
+                not_downloaded_files = [] ;
+                for (i=0 ; i < res.length ; i++) {
+                    cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename;
+                    cache_status = files_optional_cache[cache_filename];
+                    if (cache_status) {
+                        if (cache_status.is_pending) pending_files.push(res[i]) ;
+                        continue;
+                    }
+                    // console.log(pgm + 'res[' + i + '] = ' + JSON.stringify(res[i]) + ', cache_status = ' + JSON.stringify(cache_status));
+                    not_downloaded_files.push(res[i]) ;
+                } // for i
+                if (not_downloaded_files.length == 0) { cb(false) ; return }
 
+                console.log(pgm + 'done with already downloaded public chat files' +
+                    '. pending_files = ' + JSON.stringify(pending_files) +
+                    ', not_downloaded_res = ' + JSON.stringify(not_downloaded_files)) ;
+                //not_downloaded_res = [{
+                //    "from_timestamp": 1482651112192,
+                //    "filename": "1482651112192-1482651112192-6-chat.json",
+                //    "to_timestamp": 1482651112192,
+                //    "auth_address": "16SNxdSpUYVLdVQWx6azQjoZXsZJHJUzKN",
+                //    "user_seq": 6,
+                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCz7CF9wYuFjZttE+mBFRdO5N3+\nGHJ7/tyW0tsmbvWKtmDfmY3ae+eq9aiwMypkq/lmdO4q+54A2U5P7CsG+SqLB6Zw\nGJYKX2mxOxfN7Pq2I2ScldqBPgG2GE/Rqk8pk4BT+orxYbEYF9fGK0zEhz8kpq3I\nuh397ekhuFPZzpujiwIDAQAB\n-----END PUBLIC KEY-----",
+                //    "size": 134
+                //}];
+
+                // get number of peers serving optional files.
+                // note loop starting with not_downloaded_files[0].
+                // One optionalFileInfo request for each optional file
+                get_no_peers = function (cb) {
+                    var pgm = service + '.get_public_chat get_no_peers: ';
+                    var i, j, max_peers = 0, max_peers_i, cache_filename, cache_status ;
+                    i = -1 ;
+
+                    // find next file to check
+                    for (j=0 ; j<not_downloaded_files.length ; j++) {
+                        if (not_downloaded_files[j].hasOwnProperty('peer')) {
+                            if (not_downloaded_files[j].peer > max_peers) {
+                                max_peers = not_downloaded_files[j].peer ;
+                                max_peers_i = j ;
+                            }
+                        }
+                        else {
+                            i = j ;
+                            break ;
+                        }
+                    } // for j
+
+                    // get peer info for next file. check minimum 10 files. looking for file with many peers for fast download
+                    if ( (i != -1) &&
+                         ((i <= 10) || ((i > 10) && (max_peers < 3)))) {
+                        cache_filename = 'data/users/' + not_downloaded_files[i].auth_address + '/' + not_downloaded_files[i].filename;
+                        ZeroFrame.cmd("optionalFileInfo", [cache_filename], function (file_info) {
+                            var pgm = service + '.get_public_chat optionalFileInfo callback 2 : ';
+                            var cache_status ;
+                            cache_status = files_optional_cache[cache_filename] ;
+                            console.log(pgm + 'cache_filename = ' + cache_filename +
+                                ', cache_status = ' + JSON.stringify(cache_status) +
+                                ', file_info = ' + JSON.stringify(file_info));
+                            if (!file_info) not_downloaded_files[i].peer = 0 ;
+                            else not_downloaded_files[i].peer = file_info.peer ;
+                            // continue with next file
+                            get_no_peers(cb);
+                            return ;
+                        }) ; // optionalFileInfo callback 2
+                        // stop. optionalFileInfo callback will continue loop
+                        return ;
+                    }
+                    // done. found file with peer >= 3 or have downloaded peer info for all files
+                    console.log(pgm + 'max_peers = ' + max_peers + ', max_peers_i = ' + max_peers_i) ;
+                    console.log(pgm + 'not_downloaded_files = ' + JSON.stringify(not_downloaded_files)) ;
+
+                    // download optional file
+                    i = max_peers_i || 0 ;
+                    cache_filename = 'data/users/' + not_downloaded_files[i].auth_address + '/' + not_downloaded_files[i].filename;
+                    cache_status = files_optional_cache[cache_filename] ;
+                    console.log(pgm + 'calling get_and_load_chat_file. cache_filename = ' + cache_filename +
+                                ', cache_status = ' + JSON.stringify(cache_status));
+                    get_and_load_chat_file(cache_filename, cb) ;
+                };
+                get_no_peers(cb) ;
 
             }) ; // dbQuery callback 1
 
@@ -5597,9 +5677,14 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.get_and_load_chat_file fileGet callback 1: ';
                 var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact;
                 cache_status.is_pending = false;
+                if (!chat) {
+                    cache_status.is_downloaded = false;
+                    console.log(pgm + 'download failed from optional file ' + cache_filename) ;
+                    cb(false) ;
+                    return ;
+                }
                 cache_status.is_downloaded = true;
-                if (chat) chat = JSON.parse(chat);
-                else chat = {msg: []};
+                chat = JSON.parse(chat);
                 console.log(pgm + 'chat = ' + JSON.stringify(chat));
                 if (!cache_status.timestamps) {
                     // first read. copy timestamps into cache. keep track of read and not read messages in file
