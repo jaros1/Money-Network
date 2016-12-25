@@ -5302,7 +5302,10 @@ angular.module('MoneyNetwork')
             return null ;
         } // get_files_optional
 
+
+
         // load public chat from ZeroNet optional files into JS
+        // todo: no longer used!
         function load_my_public_chat () {
             var pgm = service + '.load_my_public_chat: ' ;
 
@@ -5387,11 +5390,277 @@ angular.module('MoneyNetwork')
         } // load_my_public_chat
 
 
-        // check for public chat relevant for current chat page context
-        // return false if no relevant public chat
-        function get_public_chat (first_timestamp, last_timestamp, end_of_page, contact, cb) {
-            cb(false) ;
+        // hash with download/load information for optional files
+        // index is inner_path data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
+        // properties:
+        // - is_downloaded: true or false
+        // - is_pending: true or false. true between fileGet and fileGet result/callback
+        // - timestamps: list with timestamps for messages not yet loaded into JS
+        var files_optional_cache = {} ;
+
+        // todo: add a chat page context object.
+        // - info is received and updated in get_public_chat calls from chatCtrl
+        // - getting optional files can take some time and chat page contact may change while waiting for optional files
+        // - do not load received optional files into JS arrays if file is no longer within page context
+        var chat_page_context = {} ;
+
+        // callback from chatCtrl - check for any public chat relevant for current chat page context
+        // return false in callback if no relevant public chat for actual page context
+        // read one relevant optional and and return callback information to chatCtrl
+        function get_public_chat (top_timestamp, bottom_timestamp, end_of_page, contact, cb) {
+            var pgm = service + '.get_public_chat: ' ;
+            var contact_clone, contact_unique_id, my_auth_address, query ;
+            contact_clone = JSON.parse(JSON.stringify(contact));
+            if (contact_clone) delete contact_clone.messages ;
+            console.log(pgm + 'top row timestamp = ' + top_timestamp + ', bottom row timestamp = ' + bottom_timestamp + ', end_of_page = ' + end_of_page +
+                ', chat_sort = ' + user_setup.chat_sort + ', contact = ' + JSON.stringify(contact_clone));
+
+            // update chat page context.
+            // page context may change while executing callbacks / waiting for optional files to be downloaded
+            // finish download/callback but do not load into page if file is no longer within page context
+            chat_page_context.top_timestamp = top_timestamp ;
+            chat_page_context.bottom_timestamp = bottom_timestamp ;
+            chat_page_context.end_of_page = end_of_page ;
+            chat_page_context.contact = contact ;
+            chat_page_context.chat_sort = user_setup.chat_sort ;
+
+            // public chat not relevant for:
+            if (contact && (contact.type == 'group')) { cb(false) ; return } // not relevant for group chat
+            if (user_setup.chat_sort != 'Last message') {
+                // sort by message size. public chat size = 0 always in bottom of page
+                if (!end_of_page) { cb(false) ; return }
+            }
+            my_auth_address = ZeroFrame.site_info.auth_address ;
+
+            // find relevant optional files within actual page context
+            // - already downloaded but not loaded files has 1. priority
+            // - newest optional files has 2. priority. Start with optional files with many peers.
+            query =
+                "select" +
+                "  substr(content_json.directory,7) auth_address," +
+                "  files_optional.filename," +
+                "  cast(substr(files_optional.filename,1,13) as integer) as to_timestamp," +
+                "  cast(substr(files_optional.filename,15,13) as integer) as from_timestamp," +
+                "  cast(substr( substr(files_optional.filename,29),1,instr(substr(files_optional.filename,29),'-')-1) as integer) as user_seq," +
+                "  files_optional.size," +
+                "  users.pubkey " +
+                "from files_optional, json as content_json, json as data_json, users " +
+                "where content_json.json_id = files_optional.json_id " +
+                "and data_json.directory = content_json.directory " +
+                "and data_json.file_name = 'data.json' " +
+                "and users.json_id = data_json.json_id " +
+                "and users.user_seq = cast(substr( substr(files_optional.filename,29),1,instr(substr(files_optional.filename,29),'-')-1) as integer) " +
+                "order by files_optional.filename desc" ;
+            debug('select', pgm + 'query = ' + query) ;
+
+            ZeroFrame.cmd("dbQuery", [query], function (res) {
+                var pgm = service + '.get_public_chat dbQuery callback 1: ';
+                var i, res_unique_id, cache_filename, cache_status, j ;
+                if (res.error) {
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error, 5000]);
+                    console.log(pgm + "Search for public chat failed: " + res.error);
+                    console.log(pgm + 'query = ' + query);
+                    cb(false) ;
+                    return;
+                }
+                if (res.length == 0) {
+                    // no optional chat files were found
+                    cb(false) ;
+                    return;
+                }
+                // console.log(pgm + 'res (1) = ' + JSON.stringify(res)) ;
+                //res = [{
+                //    "from_timestamp": 1482651112192,
+                //    "filename": "1482651112192-1482651112192-6-chat.json",
+                //    "to_timestamp": 1482651112192,
+                //    "auth_address": "16SNxdSpUYVLdVQWx6azQjoZXsZJHJUzKN",
+                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCz7CF9wYuFjZttE+mBFRdO5N3+\nGHJ7/tyW0tsmbvWKtmDfmY3ae+eq9aiwMypkq/lmdO4q+54A2U5P7CsG+SqLB6Zw\nGJYKX2mxOxfN7Pq2I2ScldqBPgG2GE/Rqk8pk4BT+orxYbEYF9fGK0zEhz8kpq3I\nuh397ekhuFPZzpujiwIDAQAB\n-----END PUBLIC KEY-----",
+                //    "size": 134
+                //}, {
+                //    "from_timestamp": 1482495755468,
+                //    "filename": "1482650949292-1482495755468-1-chat.json",
+                //    "to_timestamp": 1482650949292,
+                //    "auth_address": "16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH",
+                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnjiK5wwMLcbZ4N/mrECk\nds0Bv4jQbdSGO1N9Fcrf8tRru5dtQAYRyONXWNQ9qPJssrS2hE47inA9tVAwlHT0\nkRkYFU1gtbR7O3v3AalNGDp2a13DEbOuOsruRlbyFmTQjBysW30ddSC8DX7sAnDc\nEhwWsXH5qSOu0CLfDBuF1x0qeXwyo5oQFesv2hef4Dlbf/ldFDrotZZ/ynsyiXg1\nCdXZlcy9U0t/+MQ61wyrTLr0a3SiFbs7oTL/dO0H2VKobeu8yX1heX2UonKZyZm+\nti3+dVGcTZaikKV69J6E/5+hhyBCczVqz3ba8Ehqtf3f6I11UCpNtI3OUpPt88DL\nhwIDAQAB\n-----END PUBLIC KEY-----",
+                //    "size": 199
+                //}];
+
+                // remove search results not within page context
+                // this check must be more generic. is_within_chat_page_context(cache_filename)
+                for (i=res.length-1 ; i >= 0 ; i--) {
+                    cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                    if (!file_within_chat_page_context(cache_filename)) {
+                        res.splice(i,1) ;
+                        continue ;
+                    }
+                }
+                if (res.length == 0) { cb(false) ; return }
+
+                // any ready but not yet loaded public chat messages?
+                for (i=0 ; i < res.length ; i++) {
+                    cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                    cache_status = files_optional_cache[cache_filename] ;
+                    if ((res[i].auth_address != my_auth_address) && (!cache_status || !cache_status.is_downloaded)) continue ;
+                    // is either
+                    // - my public public chat messages
+                    // - already downloaded public chat messages from other users
+                    if (!cache_status) {
+                        console.log(pgm + 'found not yet loaded public chat file within page context') ;
+                        get_and_load_chat_file(cache_filename, cb) ;
+                        return ;
+                    }
+                    console.log(pgm + 'files_optional_cache[' + cache_filename + '] = ' + JSON.stringify(cache_status)) ;
+                    if (!cache_status.is_downloaded) {
+                        console.log(pgm + 'error. expected status is_downloaded to be true') ;
+                        continue ;
+                    }
+                    if (cache_status.timestamps && (cache_status.timestamps.length == 0)) {
+                        console.log(pgm + 'all messsages in file has already been loaded') ;
+                        continue ;
+                    }
+                    if (chat_page_context.end_of_page) {
+                        console.log(pgm + 'found not completely loaded public chat outbox file within page context') ;
+                        get_and_load_chat_file(cache_filename, cb) ;
+                        return ;
+                    }
+                    // any not yet loaded messages within page context?
+                    for (j=0 ; j<cache_status.timestamps.length ; j++) {
+                        if (cache_status.timestamps[j] < chat_page_context.bottom_timestamp) continue ;
+                        get_and_load_chat_file(cache_filename, cb) ;
+                        return ;
+                    } // for j
+                } // for i
+
+                cb(false) ;
+
+
+            }) ; // dbQuery callback 1
+
         } // get_public_chat
+
+
+        // check if file
+        function file_within_chat_page_context(filename) {
+            // filename = data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
+            var auth_address, user_seq, to_timestamp ;
+
+
+            if (!chat_page_context.end_of_page) {
+                to_timestamp = parseInt(filename.split('/')[3].split('-')[0]) ;
+                if (to_timestamp < chat_page_context.bottom_timestamp) {
+                    // ignore public chat message not within page timestamp
+                    console.log(pgm + 'ignoring old chat file ' + filename) ;
+                    return false ;
+                }
+            }
+            if (chat_page_context.contact) {
+                auth_address = filename.split('/')[2] ;
+                user_seq = parseInt(filename.split('-')[2]) ;
+                if ((auth_address != chat_page_context.contact) || (user_seq != chat_page_context.contact.user_seq)) {
+                    console.log(pgm + 'ignoring chat file from other contacts ' + filename) ;
+                    return false ;
+                }
+            }
+            return true ;
+        } // file_within_chat_page_context
+
+
+        // get and load chat file. called from  get_public_chat
+        function get_and_load_chat_file(cache_filename, cb) {
+            var pgm = service + '.get_and_load_chat_file: ';
+            var cache_status;
+
+            // check cache status for optional file
+            cache_status = files_optional_cache[cache_filename];
+            if (!cache_status) {
+                // data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
+                cache_status = {
+                    is_downloaded: false,
+                    is_pending: false
+                };
+                files_optional_cache[cache_filename] = cache_status;
+            }
+            if (cache_status.is_pending) {
+                console.log(pgm + 'aborting request. fileGet request is already running for ' + cache_filename);
+                cb(false);
+                return;
+            }
+            if (cache_status.is_downloaded && cache_status.timestamps && (cache_status.timestamps.length == 0)) {
+                console.log(pgm + 'aborting request. all messages from ' + cache_filename + ' have already been read');
+                cb(false);
+                return;
+            }
+
+            // read optional file.
+            cache_status.is_pending = true;
+            ZeroFrame.cmd("fileGet", {inner_path: cache_filename, required: true}, function (chat) {
+                var pgm = service + '.get_and_load_chat_file fileGet callback 1: ';
+                var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact;
+                cache_status.is_pending = false;
+                cache_status.is_downloaded = true;
+                if (chat) chat = JSON.parse(chat);
+                else chat = {msg: []};
+                console.log(pgm + 'chat = ' + JSON.stringify(chat));
+                if (!cache_status.timestamps) {
+                    // first read. copy timestamps into cache. keep track of read and not read messages in file
+                    cache_status.timestamps = [];
+                    for (i = 0; i < chat.msg.length; i++) cache_status.timestamps.push(chat.msg[i].timestamp);
+                }
+                if (cache_status.timestamps.length == 0) {
+                    console.log(pgm + 'warning. no unread messages in file');
+                    cb(false);
+                    return;
+                }
+
+                // is file still within page chat context?
+                if (!file_within_chat_page_context(cache_filename)) {
+                    console.log(pgm + 'file ' + cache_filename + ' is no longer within page context');
+                    cb(false);
+                    return;
+                }
+
+                // read any message within current chat page context
+                page_updated = false;
+                for (i = cache_status.timestamps.length - 1; i >= 0; i--) {
+                    timestamp = cache_status.timestamps[i];
+                    if (!chat_page_context.end_of_page && (timestamp < chat_page_context.bottom_timestamp)) continue;
+                    j = -1;
+                    for (k = 0; k < chat.msg.length; k++) if (chat.msg[k].timestamp == timestamp) j = k;
+                    if (j == -1) {
+                        console.log(pgm + 'UPS. Message with timestamp ' + timestamp + ' was not found in chat file');
+                        cache_status.timestamps.splice(i, 1);
+                        continue;
+                    }
+                    // message within page context
+
+                    // find contact.
+                    contact = chat_page_context.contact ? chat_page_context.contact : get_public_contact(true);
+                    message = {
+                        msgtype: 'chat msg',
+                        message: chat.msg[i].message
+                    };
+                    if (chat.msg[i].image) message.image = chat.msg[i].image; // todo: check allowed image types
+                    local_msg_seq = next_local_msg_seq();
+                    message_with_envelope = {
+                        local_msg_seq: local_msg_seq,
+                        folder: 'outbox',
+                        message: message,
+                        sent_at: chat.msg[i].timestamp,
+                        z_filename: cache_filename.split('/')[3]
+                    };
+                    message_with_envelope.ls_msg_size = 0; // ZeroNet and browser size 0 for all public chat messages
+                    debug('public_chat', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope));
+                    add_message(contact, message_with_envelope);
+                    cache_status.timestamps.splice(i,1) ;
+                    page_updated = true;
+
+                } // for i
+
+                cb(page_updated);
+
+            }); // fileGet callback 1
+
+        } // get_and_load_chat_file
 
 
         // admin only: delete files for inactive users
@@ -5547,7 +5816,7 @@ angular.module('MoneyNetwork')
                 recheck_old_decrypt_errors() ;
                 i_am_online() ;
                 load_user_contents_max_size() ;
-                load_my_public_chat() ;
+                // load_my_public_chat() ;
                 cleanup_inactive_users() ;
             }
             return user_id ;
@@ -5576,6 +5845,8 @@ angular.module('MoneyNetwork')
             user_contents_max_size = null ;
             admin_key = null ;
             for (key in user_setup) delete user_setup[key] ;
+            for (key in chat_page_context) delete chat_page_context[key] ;
+            for (key in files_optional_cache) delete files_optional_cache[key] ;
             // redirect
             a_path = '/auth' ;
             z_path = "?path=" + a_path ;
@@ -5946,32 +6217,40 @@ angular.module('MoneyNetwork')
             }
             return chat_sort_title ;
         }
+
+        // chat message order by.
         function chat_order_by (message) {
             var pgm = service + '.chat_order_by: ';
-            var sort = 0 ;
-            var unix_timestamp = false ;
+            var sort1, sort2, short_date, unix_timestamp, debug_msg, padding ;
+            // 2. sort condition - always Last message unix timestamp
+            sort2 = message.message.sent_at ;
+            short_date  = date(sort2*1000, 'short') ;
+            if (short_date == 'Invalid Date') {
+                sort2 = 0 ;
+                short_date  = date(sort2*1000, 'short')
+            }
+            // 1. sort condition - Last message, ZeroNet disk usage or Browser disk usage
+            sort1 = 0 ;
+            unix_timestamp = false ;
             // console.log(pgm + 'chat_sort = ' + self.chat_sort);
             if (user_setup.chat_sort== 'Last message') {
-                sort = -message.message.sent_at ;
+                sort1 = sort2 ;
                 unix_timestamp = true ;
             }
             if (user_setup.chat_sort== 'ZeroNet disk usage') {
-                if (message.message.zeronet_msg_size) sort = -message.message.zeronet_msg_size ;
+                if (message.message.zeronet_msg_size) sort1 = message.message.zeronet_msg_size ;
             }
             if (user_setup.chat_sort== 'Browser disk usage') {
-                if (message.message.ls_msg_size) sort = -message.message.ls_msg_size ;
+                if (message.message.ls_msg_size) sort1 = message.message.ls_msg_size ;
             }
-            var debug_msg = pgm + user_setup.chat_sort + ' = ' + sort ;
-            debug_msg += ' (' + typeof sort + ')' ;
-            if (unix_timestamp) {
-                var short_date  = date(-sort*1000, 'short') ;
-                if (short_date == 'Invalid Date') {
-                    sort = 0 ;
-                    short_date  = date(-sort*1000, 'short')} ;
-                debug_msg += ', unix timestamp = ' + short_date ;
-            }
+            debug_msg = pgm + user_setup.chat_sort + ' = ' + JSON.stringify(sort1) ;
+            debug_msg += ' (' + typeof sort1 + ')' ;
+            if (unix_timestamp) debug_msg += ', unix timestamp = ' + short_date ;
             debug('chat_order_by', debug_msg) ;
-            return sort ;
+            if (unix_timestamp) return sort1 ; // simple unix timestamp sort
+            // sort by 1. size and 2. unix timestamp
+            padding = '              ' ;
+            return (padding + sort1).slice(-13) + (padding + sort2).slice(-13) ;
         } // chat_order_by
 
         // user setup: avatar, alias, contact sort, contact filters, chat sort, spam filters
