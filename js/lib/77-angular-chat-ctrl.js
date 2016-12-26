@@ -725,6 +725,7 @@ angular.module('MoneyNetwork')
                     // callback
                     if (updated) {
                         // new public chat messages added to page. recheck page
+                        $scope.$apply() ;
                         self.messages_first = null ;
                         self.messages_last = null ;
                     }
