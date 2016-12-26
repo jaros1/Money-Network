@@ -229,6 +229,42 @@ angular.module('MoneyNetwork')
         // end findContactAvatar filter
     }])
 
+
+
+
+    //.filter('contactGlyphicon', [function () {
+    //    // return glyphicon class for contact type
+    //    return function (contact) {
+    //        if (!contact || (contact.type == 'public')) return 'glyphicon glyphicon-globe' ;
+    //        else if (contact.type == 'group') return 'glyphicon glyphicon-pushpin';
+    //        else return 'glyphicon glyphicon-user';
+    //    } ;
+    //    // end contactAlias filter
+    //}])
+
+
+
+    .filter('messageGlyphicon', ['contactGlyphiconFilter', function (contactGlyphicon) {
+        // inbox glyphicon - glyphicon class for message type
+        return function (message) {
+            if (message.message.z_filename) return 'glyphicon glyphicon-globe' ;
+            else return contactGlyphicon(message.contact) ;
+        } ;
+        // end findMessageGlyphicon
+    }])
+
+    .filter('messageGlyphiconTitle', ['contactGlyphiconTitleFilter', function (contactGlyphiconTitle) {
+        // inbox glyphicon title - mouse over text for glyphicon class for message type
+        return function (message) {
+            if (message.message.z_filename) return 'Public and unencrypted chat. Everyone can see this!' ;
+            else return contactGlyphiconTitle(message.contact) ;
+        } ;
+        // end findMessageGlyphicon
+    }])
+
+
+
+
     .filter('formatMsgSize', ['MoneyNetworkService', function (moneyNetworkService) {
         // return msg disk usage: format localStorage size [ / ZeroNet size bytes ]
         // note that encryption overhead is not included in localStorage size
@@ -326,6 +362,7 @@ angular.module('MoneyNetwork')
 
     .filter('formatChatMessageAlias', ['MoneyNetworkService', function (moneyNetworkService) {
         // format ingoing or outgoing chat message
+        var public_contact = moneyNetworkService.get_public_contact(true) ;
         return function (message) {
             // find receiver
             var pgm = 'formatChatMessage: ' ;
@@ -339,6 +376,10 @@ angular.module('MoneyNetwork')
             else if (message.contact.type == 'group') {
                 // inbox: received a group chat message. alias is group name
                 alias = moneyNetworkService.get_contact_name(message.contact);
+            }
+            else if (message.message.z_filename) {
+                // inbox: received public chat message. alias is "World
+                alias = moneyNetworkService.get_contact_name(public_contact);
             }
             else {
                 // inbox: received message from contact. alias is contact

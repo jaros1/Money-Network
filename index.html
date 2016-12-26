@@ -482,6 +482,7 @@
                     </li>
 
                     <li ng-repeat="m in c.messages|filter:c.chat_filter|orderBy:c.chat_order_by:true|limitTo: c.messages_limit" class="mar-btm">
+                        <span ng-show="c.set_first_last($first,$last,m)"/>
 
                         <div ng-show="(m.message.folder == 'outbox')" class="media-left">
                             <img ng-src="{{c.avatar.src}}" class="img-circle img-sm"
@@ -593,7 +594,7 @@
 
                                         <span ng-click="c.chat_contact(m.contact)" class="media-heading" alt="Click to chat" title="Click to chat">
                                             <span ng-bind-html="m|messageAlias"></span>
-                                            <span ng-class="m.contact|contactGlyphicon" title="{{m.contact|contactGlyphiconTitle}}" alt="{{m.contact|contactGlyphiconTitle}}"/>
+                                            <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}" alt="{{m|messageGlyphiconTitle}}"/>
                                         </span>
 
                                     </td>
@@ -1073,7 +1074,7 @@
 
                                     <span ng-click="c.chat_contact(m.contact)" class="media-heading" alt="Click to chat" title="Click to chat">
                                         <span ng-bind-html="m|messageAlias"></span>
-                                        <span ng-class="m.contact|contactGlyphicon" title="{{m.contact|contactGlyphiconTitle}}" alt="{{m.contact|contactGlyphiconTitle}}"/>
+                                        <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}" alt="{{m|messageGlyphiconTitle}}"/>
                                     </span>
 
                                 </td>
@@ -1360,6 +1361,12 @@
                     <td>Show public chat messages?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.public_chat"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to see infinite-scroll process">
+                    <td>Show infinite-scroll?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.infinite_scroll"
                                ng-change="u.debug_settings_changed()"></td>
                 </tr>
                 <tr title="Click to show data cleanup process for data.json file. Trying to keep data.json file small for fast communication">
