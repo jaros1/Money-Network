@@ -1487,7 +1487,7 @@ angular.module('MoneyNetwork')
                             if (message.msgtype != 'contact added') receiver_sha256 = contact.inbox_last_sender_sha256 ;
                             if (!receiver_sha256) {
                                 receiver_sha256 = CryptoJS.SHA256(contact.pubkey).toString();
-                                console.log(pgm + 'first contact. using sha256 values of JSEncrypt pubkey as receiver_sha256. pubkey = ' + contact.pubkey + ', receiver_sha256 = ' + receiver_sha256);
+                                debug('outbox && unencrypted', pgm + 'first contact. using sha256 values of JSEncrypt pubkey as receiver_sha256. pubkey = ' + contact.pubkey + ', receiver_sha256 = ' + receiver_sha256);
                             }
                         }
                         // sender_sha256
@@ -2020,7 +2020,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.z_update_5_public_chat: ' ;
             var contact, user_path, now, i, message_with_envelope, file_path, j, z_filename, first_timestamp, last_timestamp,
                 key, key_a, timestamp1, timestamp2, message, new_z_filename, new_file_path, write_file, message_with_envelope2,
-                user_seq ;
+                user_seq, cache_status ;
 
             contact = get_public_contact(false) ;
             user_path = "data/users/" + ZeroFrame.site_info.auth_address;
@@ -2036,19 +2036,30 @@ angular.module('MoneyNetwork')
                     if (message_with_envelope.sent_at && message_with_envelope.z_filename && message_with_envelope.deleted_at) {
 
                         // debug('public_chat', 'delete message ' + JSON.stringify(message_with_envelope)) ;
+                        z_filename = message_with_envelope.z_filename ;
 
                         // remove message from file or delete file from *-chat.json file
-                        if (!my_files_optional[message_with_envelope.z_filename]) {
-                            debug('public_chat', pgm + 'UPS. File ' + message_with_envelope.z_filename + ' was not found in my_files_optional') ;
-                            delete message_with_envelope.z_filename ;
-                            message_with_envelope.cleanup_at = now ;
+                        if (!my_files_optional[z_filename]) {
+                            debug('public_chat', pgm + 'UPS. File ' + z_filename + ' was not found in my_files_optional') ;
+                            // cleanup all public outbox messages with this z_filename
+                            for (j=0 ; j<contact.messages.length ; j++) {
+                                message_with_envelope2 = contact.messages[j] ;
+                                if (message_with_envelope2.z_filename == z_filename) {
+                                    delete message_with_envelope2.z_filename ;
+                                    message_with_envelope2.cleanup_at = now ;
+                                }
+                            }
+                            // also cleanup files_optional_cache
+                            file_path = user_path + '/' + z_filename ;
+                            delete files_optional_cache[file_path] ;
                             continue ;
                         }
 
-                        file_path = user_path + '/' + message_with_envelope.z_filename ;
+                        // read optional file
+                        file_path = user_path + '/' + z_filename ;
                         ZeroFrame.cmd("fileGet", [file_path, false], function (chat) {
                             var pgm = service + '.z_update_5_public_chat fileGet callback 1a: ' ;
-                            var callback, j, json_raw, error, message_with_envelope2, msg_found ;
+                            var callback, j, json_raw, error, message_with_envelope2, msg_found, cache_status, k ;
                             callback = function () {
                                 delete message_with_envelope.z_filename ;
                                 message_with_envelope.cleanup_at = now ;
@@ -2059,7 +2070,20 @@ angular.module('MoneyNetwork')
                                 // file has been deleted since page start
                                 debug('public_chat',
                                     pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
-                                    '. file ' + message_with_envelope.z_filename + ' has already been deleted') ;
+                                    '. file ' + z_filename + ' has already been deleted') ;
+                                // cleanup all public outbox messages with this z_filename
+                                for (j=0 ; j<contact.messages.length ; j++) {
+                                    message_with_envelope2 = contact.messages[j] ;
+                                    if (message_with_envelope2.z_filename == z_filename) {
+                                        delete message_with_envelope2.z_filename ;
+                                        message_with_envelope2.cleanup_at = now ;
+                                    }
+                                }
+                                // cleanup my optional files list
+                                delete my_files_optional[z_filename] ;
+                                // cleanup files_optional_cache
+                                file_path = user_path + '/' + z_filename ;
+                                delete files_optional_cache[file_path] ;
                                 callback() ;
                                 return ;
                             }
@@ -2068,17 +2092,39 @@ angular.module('MoneyNetwork')
                                 // empty chat.json file - delete file
                                 console.log(
                                     pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
-                                    '. file ' + message_with_envelope.z_filename + ' was invalid or empty' +
-                                    '. chat = ' + JSON.stringify(chat));
-                                ZeroFrame.cmd("fileDelete", message_with_envelope.z_filename, function (res) { callback() });
+                                    '. file ' + z_filename + ' was invalid or empty' + '. chat = ' + JSON.stringify(chat));
+                                // cleanup all public outbox messages with this z_filename
+                                for (j=0 ; j<contact.messages.length ; j++) {
+                                    message_with_envelope2 = contact.messages[j] ;
+                                    if (message_with_envelope2.z_filename == z_filename) {
+                                        delete message_with_envelope2.z_filename ;
+                                        message_with_envelope2.cleanup_at = now ;
+                                    }
+                                }
+                                // cleanup my optional files list
+                                delete my_files_optional[z_filename] ;
+                                // cleanup files_optional_cache
+                                delete files_optional_cache[file_path] ;
+                                ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
                                 return ;
                             }
+                            // check timestamps
                             first_timestamp = null ;
                             last_timestamp = null ;
                             msg_found = false ;
+                            cache_status = files_optional_cache[file_path] ;
+                            if (!cache_status) {
+                                debug('public_chat', 'warning. adding missing files_optional_cache for file ' + file_path) ;
+                                // cache_status.timestamps. list of now yet read messages from optional file.
+                                cache_status = { is_downloaded: true, timestamps: []} ;
+                                files_optional_cache[file_path] = cache_status ;
+                                for (j=0 ; j<chat.msg.length ; j++) cache_status.timestamps.push(chat.msg[j].timestamp) ;
+                            }
                             for (j=chat.msg.length-1 ; j>=0 ; j--) {
                                 if (chat.msg[j].timestamp == message_with_envelope.sent_at) {
                                     chat.msg.splice(j,1) ;
+                                    k = cache_status.timestamps.indexOf(message_with_envelope.sent_at) ;
+                                    if (k != -1) cache_status.timestamps.splice(k,1) ;
                                     msg_found = true ;
                                 }
                                 else if (!first_timestamp) {
@@ -2093,22 +2139,23 @@ angular.module('MoneyNetwork')
                             if (!msg_found) {
                                 debug('public_chat',
                                     pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
-                                    '. message was not found in file ' + message_with_envelope.z_filename);
+                                    '. message was not found in file ' + z_filename);
                                 callback() ;
                                 return ;
                             }
                             debug('public_chat',
                                 pgm + 'Ok. message ' + message_with_envelope.local_msg_seq + ' was found in file ' +
-                                message_with_envelope.z_filename);
+                                z_filename);
 
                             if (chat.msg.length == 0) {
-                                debug('public_chat', pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq + ' and file ' + message_with_envelope.z_filename) ;
+                                debug('public_chat', pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq + ' and file ' + z_filename) ;
+                                delete my_files_optional[z_filename] ;
+                                delete files_optional_cache[file_path] ;
                                 ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
                             }
                             else {
                                 new_z_filename = last_timestamp + '-' + first_timestamp + '-' + user_seq + '-chat.json' ;
                                 new_file_path = user_path + '/' + new_z_filename ;
-                                z_filename = message_with_envelope.z_filename ;
                                 if (z_filename == new_z_filename) {
                                     debug('public_chat', pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq +
                                         ' and updating file ' + z_filename);
@@ -2148,6 +2195,8 @@ angular.module('MoneyNetwork')
                                     // changed filename - delete + write
                                     my_files_optional[new_z_filename] = my_files_optional[z_filename] ;
                                     delete my_files_optional[z_filename] ;
+                                    files_optional_cache[new_file_path] = files_optional_cache[file_path] ;
+                                    delete files_optional_cache[file_path] ;
                                     for (j=0 ; j<contact.messages.length ; j++) {
                                         message_with_envelope2 = contact.messages[j] ;
                                         if (message_with_envelope2.z_filename == z_filename) message_with_envelope2.z_filename = new_z_filename ;
@@ -2215,6 +2264,12 @@ angular.module('MoneyNetwork')
                             var new_msg, json_raw ;
                             if (!chat) chat = { version: 8, msg: []} ;
                             else chat = JSON.parse(chat) ;
+                            cache_status = files_optional_cache[file_path] ;
+                            if (!cache_status) {
+                                cache_status = { is_downloaded: true, timestamps: []} ;
+                                files_optional_cache[file_path] = cache_status ;
+                                for (j=0 ; j<chat.msg.length ; j++) cache_status.timestamps.push(chat.msg[j].timestamp);
+                            }
                             // add message to chat file
                             new_msg = {
                                 user_seq: user_seq,
@@ -2261,6 +2316,8 @@ angular.module('MoneyNetwork')
                                 // changed filename - delete + write
                                 my_files_optional[new_z_filename] = my_files_optional[z_filename] ;
                                 delete my_files_optional[z_filename] ;
+                                files_optional_cache[new_file_path] = files_optional_cache[file_path] ;
+                                delete files_optional_cache[file_path] ;
                                 for (j=0 ; j<contact.messages.length ; j++) {
                                     message_with_envelope2 = contact.messages[j] ;
                                     if (message_with_envelope2.z_filename == z_filename) message_with_envelope2.z_filename = new_z_filename ;
@@ -5454,13 +5511,14 @@ angular.module('MoneyNetwork')
                     return;
                 }
 
-                // compare filenames from dbQuery result with filenames in files_optional_cache. any renamed or deleted optional files?
-                // compare step 1 - compare cache_filenames
+                // compare filenames from dbQuery result with filenames in files_optional_cache.
+                // check for deleted chat files or changed intervals for chat files
+                page_updated = false ;
                 compare_files1 = {} ;
                 compare_files2 = {} ;
                 deleted_messages = 0 ;
-                page_updated = false ;
 
+                // compare step 1 - compare cache_filenames (files_optional_cache (read messages) and db query result
                 for (cache_filename in files_optional_cache) { compare_files1[cache_filename] = { in_cache: true } } ;
                 for (i=0 ; i<res.length ; i++) {
                     cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
@@ -5668,7 +5726,13 @@ angular.module('MoneyNetwork')
                     //    }
                     //};
                     debug('public_chat', pgm + 'deleted_messages = ' + deleted_messages) ;
-                    if (deleted_messages > 0) page_updated = true;
+                    if (deleted_messages > 0) {
+                        page_updated = true;
+                        // https://github.com/jaros1/Zeronet-Money-Network/issues/79#issuecomment-269359588
+                        debug('public_chat', pgm + 'issue #79. query = ' + query + ', res = ' + JSON.stringify(res) +
+                            ', compare_files1 = ' + JSON.stringify(compare_files1) +
+                            ', compare_files2 = ' + JSON.stringify(compare_files2));
+                    }
                 }
 
                 if (res.length == 0) {
@@ -5703,66 +5767,69 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i < res.length ; i++) {
                     cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
                     cache_status = files_optional_cache[cache_filename] ;
-                    if ((res[i].auth_address != my_auth_address) && (!cache_status || !cache_status.is_downloaded)) continue ;
-                    // is either
-                    // - my public public chat messages
-                    // - already downloaded public chat messages from other users
-                    if (!cache_status) {
-                        debug('public_chat', 'found not yet loaded public chat file within page context') ;
-                        get_and_load_chat_file(cache_filename, cb2) ;
-                        return ;
-                    }
-                    debug('public_chat', pgm + 'files_optional_cache[' + cache_filename + '] = ' + JSON.stringify(cache_status)) ;
-                    if (!cache_status.is_downloaded) {
-                        console.log(pgm + 'error. expected status is_downloaded to be true') ;
-                        continue ;
-                    }
-                    if (cache_status.timestamps && (cache_status.timestamps.length == 0)) {
-                        // console.log(pgm + 'all messsages in file has already been loaded') ;
-                        continue ;
-                    }
-                    if (chat_page_context.end_of_page) {
-                        debug('public_chat', pgm + 'found not completely loaded public chat outbox file within page context') ;
-                        get_and_load_chat_file(cache_filename, cb2) ;
-                        return ;
-                    }
-                    // any not yet loaded messages within page context?
-                    for (j=0 ; j<cache_status.timestamps.length ; j++) {
-                        if (cache_status.timestamps[j] < chat_page_context.bottom_timestamp) continue ;
-                        get_and_load_chat_file(cache_filename, cb2) ;
-                        return ;
-                    } // for j
-                } // for i
+                    if ((res[i].auth_address == my_auth_address) || (cache_status && cache_status.is_downloaded)) {
+                        // is either
+                        // - my public public chat messages
+                        // - already downloaded public chat messages from other users
+                        if (!cache_status) {
+                            debug('public_chat', pgm + 'found not yet loaded public chat file within page context') ;
+                            get_and_load_chat_file(cache_filename, cb2) ;
+                            return ;
+                        }
+                        debug('public_chat', pgm + 'files_optional_cache[' + cache_filename + '] = ' + JSON.stringify(cache_status)) ;
+                        if (!cache_status.is_downloaded) {
+                            console.log(pgm + 'error. expected status is_downloaded to be true') ;
+                            continue ;
+                        }
+                        if (cache_status.timestamps && (cache_status.timestamps.length == 0)) {
+                            // console.log(pgm + 'all messsages in file has already been loaded') ;
+                            continue ;
+                        }
+                        if (chat_page_context.end_of_page) {
+                            debug('public_chat', pgm + 'found not completely loaded public chat outbox file within page context') ;
+                            get_and_load_chat_file(cache_filename, cb2) ;
+                            return ;
+                        }
+                        // any not yet read messages within page context?
+                        for (j=0 ; j<cache_status.timestamps.length ; j++) {
+                            if (cache_status.timestamps[j] < chat_page_context.bottom_timestamp) continue ;
+                            get_and_load_chat_file(cache_filename, cb2) ;
+                            return ;
+                        } // for j (timestamps)
+                    } // if
+                } // for i (res)
 
-                // any not yet downloaded public chat files?
+                // finished reading already downloaded chat files within actual chat page context
+                // continue with not yet downloaded chat files within actual chat page context
                 pending_files = [] ;
                 not_downloaded_files = [] ;
                 for (i=0 ; i < res.length ; i++) {
                     cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename;
                     cache_status = files_optional_cache[cache_filename];
                     if (cache_status) {
+                        if (cache_status.is_downloaded) continue ;
                         if (cache_status.is_pending) pending_files.push(res[i]) ;
-                        continue;
                     }
-                    // console.log(pgm + 'res[' + i + '] = ' + JSON.stringify(res[i]) + ', cache_status = ' + JSON.stringify(cache_status));
                     not_downloaded_files.push(res[i]) ;
                 } // for i
-                if (not_downloaded_files.length == 0) { cb2(page_updated) ; return }
+                if (not_downloaded_files.length == 0) { cb(page_updated) ; return }
                 debug('public_chat', pgm + 'done with already downloaded public chat files' +
                     '. pending_files = ' + JSON.stringify(pending_files) +
                     ', not_downloaded_res = ' + JSON.stringify(not_downloaded_files)) ;
+                not_downloaded_files.sort(function(a, b){return 0.5 - Math.random()}) ;
 
                 // get number of peers serving optional files.
                 // callback loop starting with not_downloaded_files[0].
                 // check max 10 files. looking for files with many peers
                 get_no_peers = function (cb2) {
                     var pgm = service + '.get_public_chat get_no_peers: ';
-                    var i, j, max_peers = 0, max_peers_i, cache_filename, cache_status ;
+                    var i, j, max_peers = -1, max_peers_i, cache_filename, cache_status ;
                     i = -1 ;
 
-                    // find next file to check
+                    // find next file to check peer
                     for (j=0 ; j<not_downloaded_files.length ; j++) {
                         if (not_downloaded_files[j].hasOwnProperty('peer')) {
+                            // already checked. Find file with must peers
                             if (not_downloaded_files[j].peer > max_peers) {
                                 max_peers = not_downloaded_files[j].peer ;
                                 max_peers_i = j ;
@@ -5774,9 +5841,10 @@ angular.module('MoneyNetwork')
                         }
                     } // for j
 
-                    // get peer info for next file. check minimum 10 files. looking for file with many peers for fast download
+                    // get peer info for next file. check minimum 10 files. looking for file with peer >= 3
                     if ( (i != -1) &&
                          ((i <= 10) || ((i > 10) && (max_peers < 3)))) {
+                        // get number of peers for file i
                         cache_filename = 'data/users/' + not_downloaded_files[i].auth_address + '/' + not_downloaded_files[i].filename;
                         ZeroFrame.cmd("optionalFileInfo", [cache_filename], function (file_info) {
                             var pgm = service + '.get_public_chat optionalFileInfo callback 2 : ';
@@ -5798,8 +5866,8 @@ angular.module('MoneyNetwork')
                     debug('public_chat', pgm + 'max_peers = ' + max_peers + ', max_peers_i = ' + max_peers_i) ;
                     debug('public_chat', pgm + 'not_downloaded_files = ' + JSON.stringify(not_downloaded_files)) ;
 
-                    // download optional file
-                    i = max_peers_i || 0 ;
+                    // download optional file. file with must peers or random file
+                    i = max_peers_i || Math.floor(Math.random() * not_downloaded_files.length) ;
                     cache_filename = 'data/users/' + not_downloaded_files[i].auth_address + '/' + not_downloaded_files[i].filename;
                     cache_status = files_optional_cache[cache_filename] ;
                     debug('public_chat', pgm + 'calling get_and_load_chat_file. cache_filename = ' + cache_filename +
@@ -5811,7 +5879,6 @@ angular.module('MoneyNetwork')
             }) ; // dbQuery callback 1
 
         } // get_public_chat
-
 
         // check if file
         function file_within_chat_page_context(filename) {
@@ -5827,7 +5894,9 @@ angular.module('MoneyNetwork')
                 to_timestamp = parseInt(filename.split('/')[3].split('-')[0]) ;
                 if (to_timestamp < chat_page_context.bottom_timestamp) {
                     // ignore public chat message not within page timestamp
-                    debug('public_chat', pgm + 'ignoring old chat file ' + filename) ;
+                    debug('public_chat', pgm + 'ignoring chat file. filename = ' + filename) ;
+                    debug('public_chat', pgm + 'ignoring chat file. file timestamp ' + date(to_timestamp, 'short') +
+                        ', bottom scroll timestamp = ' + date(chat_page_context.bottom_timestamp, 'short')) ;
                     return false ;
                 }
             }

@@ -217,7 +217,7 @@ angular.module('MoneyNetwork')
             var contact, participant_no, unique_id, participant ;
             if (message.message.z_filename) {
                 // public unencrypted chat
-                contact = moneyNetworkService.get_public_contact() ;
+                contact = moneyNetworkService.get_public_contact(true) ;
                 return findContactAvatar(contact) ;
             }
             contact = message.contact ;

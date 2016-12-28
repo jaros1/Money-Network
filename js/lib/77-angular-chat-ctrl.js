@@ -727,7 +727,7 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<self.messages.length ; i++) if (self.messages[i].chat_filter) max_no_msg = max_no_msg + 1 ;
                 eop = (self.messages_limit >= max_no_msg) ;
                 debug('infinite_scroll',
-                    pgm + 'page is ready. check public chat. first = ' + chat_page_context.top_timestamp +
+                    pgm + 'first = ' + chat_page_context.top_timestamp +
                     ', last = ' + chat_page_context.bottom_timestamp + ', eop = ' + eop + ', chat_sort = ' + self.setup.chat_sort +
                     ', loading_contact = ' + loading_contact + ', contact = ' + JSON.stringify(contact_clone));
                 // is public chat relevant for page
