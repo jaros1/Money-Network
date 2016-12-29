@@ -734,7 +734,7 @@ angular.module('MoneyNetwork')
                 if (self.contact && (self.contact.type == 'group')) return ; // group chat - public chat is not relevant
                 if ((self.setup.chat_sort != 'Last message') && !eop) return ; // sort by size - public chat with size 0 always in bottom of page
                 // public chat may be relevant for current chat page
-                moneyNetworkService.get_public_chat(eop, self.contact, function (updated) {
+                moneyNetworkService.get_public_chat(eop, self.contact, 0, function (updated) {
                     // callback
                     if (updated) {
                         // new public chat messages added to page. recheck page
@@ -1101,7 +1101,9 @@ angular.module('MoneyNetwork')
                     // focus to edit chat message textarea field
                     var focus_textarea = function () {
                         var id = textarea_id + '' ;
-                        document.getElementById(id).focus() ;
+                        var elem = document.getElementById(id) ;
+                        if (elem) document.getElementById(id).focus() ;
+                        else console.log(pgm + 'textarea element with id ' + id + ' was not found in page') ;
                     };
                     $timeout(focus_textarea);
                 }
@@ -1367,7 +1369,7 @@ angular.module('MoneyNetwork')
                     debug('infinite_scroll', pgm + 'no more messages. self.messages_limit = ' + self.messages_limit) ;
                     if ((self.messages_limit == 5) && (self.setup.public_chat)) {
                         // must be a new user. search for optional files with public chat messages
-                        moneyNetworkService.get_public_chat(true, self.contact, function (updated) {
+                        moneyNetworkService.get_public_chat(true, self.contact, 0, function (updated) {
                             // callback
                             if (updated) {
                                 // new public chat messages added to page. recheck page

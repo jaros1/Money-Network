@@ -21,11 +21,13 @@ Todo:
 - Wallet, Money API and interface to external money systems.  
 
 ## Demo
-- http://127.0.0.1:43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
-- https://bit.no.com:43110/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
-- https://zeronet.korso.win/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
-- https://proxy1.zn.kindlyfire.me/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
-- https://onlyzero.net/1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk/ (proxy)
+- http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
+- https://bit.no.com:43110/moneynetwork.bit/ (proxy)
+- https://zeronet.korso.win/moneynetwork.bit/ (proxy)
+- https://proxy1.zn.kindlyfire.me/moneynetwork.bit/ (proxy)
+- https://onlyzero.net/moneynetwork.bit/ (proxy)
+- https://www.zerogate.tk/moneynetwork.bit/ (proxy)
+- https://zeronet.iikb.org/moneynetwork.bit/ (proxy)
 
 This demo should be safe to check out on a ZeroNet proxy server. 
 You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server.
