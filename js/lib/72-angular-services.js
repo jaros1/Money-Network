@@ -217,9 +217,12 @@ angular.module('MoneyNetwork')
                             if (user_setup.debug && user_setup.debug.check_sha256_addresses) check_sha256_addresses('sitePublish', false, false) ;
 
                             // check content.json and add optional file support if missing
+                            // also check for
                             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                                 var pgm = service + '.zeronet_site_publish fileGet callback 4: ';
-                                var json_raw ;
+                                var json_raw, content_updated ;
+
+                                content_updated = false ;
 
                                 // optional files support:
                                 // 1) <to timestamp>-<from timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for first and last chat msg in json file
@@ -227,10 +230,22 @@ angular.module('MoneyNetwork')
                                 if (content.optional == CONTENT_OPTIONAL) {
                                     // optional file support also in place. save to my_files_optional. used in public chat
                                     save_my_files_optional(content.files_optional || {}) ;
-                                    return ;
                                 }
-                                content.optional = CONTENT_OPTIONAL ;
+                                else {
+                                    content.optional = CONTENT_OPTIONAL ;
+                                    content_updated = true ;
+                                }
 
+                                // todo: check logical deleted optional *-chat.json files
+                                // rules.
+                                // - *chat.json files with size 2 = empty json {}
+                                // - should only delete *chat.json files with info_info.peer = 0
+                                // - should only delete "old" *chat.json files
+                                // - max number of logical deleted *chat.json files.
+
+                                if (!content_updated) return ;
+
+                                // update content.json. sign and publish in next publish call
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
                                 ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
                                     var pgm = service + '.zeronet_site_publish fileWrite callback 5: ';
@@ -2013,6 +2028,30 @@ angular.module('MoneyNetwork')
         } // z_update_4_data_json_write
 
 
+        // temporary solution instead of fileDelete
+        // see https://github.com/HelloZeroNet/ZeroNet/issues/726
+        function write_empty_chat_file (file_path, cb) {
+            var empty_json, json_raw ;
+            empty_json = {} ;
+            json_raw = unescape(encodeURIComponent(JSON.stringify(empty_json, null, "\t")));
+            ZeroFrame.cmd("fileWrite", [file_path, btoa(json_raw)], function (res) {
+                var pgm = service + '.write_empty_chat_file fileWrite callback: ' ;
+                var error ;
+                if (res === "ok") {
+                    if (cb) cb() ;
+                    return ;
+                }
+                error = 'failed to write file ' + file_path + ', res = ' + res ;
+                debug('public_chat', pgm + error) ;
+                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                // fallback to delete
+                ZeroFrame.cmd("fileDelete", file_path, function (res) {
+                    if (cb) cb() ;
+                });
+            }) ; // fileWrite callback
+        } // write_empty_chat_file
+
+
         // update zeronet step 5. create, update or delete <to timestamp>-<from timestamp>-<user_seq>-chat.json files with public chat
         // note that public chat is unencrypted and saved in optional json files on ZeroNet
         // public chat messages are not saved in localStorage
@@ -2105,7 +2144,8 @@ angular.module('MoneyNetwork')
                                 delete my_files_optional[z_filename] ;
                                 // cleanup files_optional_cache
                                 delete files_optional_cache[file_path] ;
-                                ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
+                                // ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
+                                write_empty_chat_file(file_path, function () { callback() });
                                 return ;
                             }
                             // check timestamps
@@ -2151,7 +2191,8 @@ angular.module('MoneyNetwork')
                                 debug('public_chat', pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq + ' and file ' + z_filename) ;
                                 delete my_files_optional[z_filename] ;
                                 delete files_optional_cache[file_path] ;
-                                ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
+                                // ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
+                                write_empty_chat_file(file_path, function () { callback() });
                             }
                             else {
                                 new_z_filename = last_timestamp + '-' + first_timestamp + '-' + user_seq + '-chat.json' ;
@@ -2202,14 +2243,15 @@ angular.module('MoneyNetwork')
                                         if (message_with_envelope2.z_filename == z_filename) message_with_envelope2.z_filename = new_z_filename ;
                                     } // for j
                                     // delete + write
-                                    ZeroFrame.cmd("fileDelete", file_path, function (res) { write_file() });
+                                    // ZeroFrame.cmd("fileDelete", file_path, function (res) { write_file() });
+                                    write_empty_chat_file(file_path, function () { write_file() });
                                 }
                             }
 
                         }) ; // fileGet callback 1a
 
                         return ;
-                        // callback to z_update_5_public_chat in fileWrite /fileDelete callback
+                        // callback to z_update_5_public_chat in fileWrite /write_empty_chat_file callback
 
                     } // if "delete"
 
@@ -2323,7 +2365,8 @@ angular.module('MoneyNetwork')
                                     if (message_with_envelope2.z_filename == z_filename) message_with_envelope2.z_filename = new_z_filename ;
                                 } // for j
                                 // delete + write
-                                ZeroFrame.cmd("fileDelete", file_path, function (res) { write_file() });
+                                // ZeroFrame.cmd("fileDelete", file_path, function (res) { write_file() });
+                                write_empty_chat_file(file_path, function () { write_file() });
                             }
 
                         }) ; // fileGet callback 1b
@@ -2340,7 +2383,7 @@ angular.module('MoneyNetwork')
 
             } // if contact
 
-            // 3. optional sign and publish
+            // 4. optional sign and publish
             if (!publish) {
                 ZeroFrame.cmd("wrapperNotification", ["info", "No more updates to publish", 5000]);
                 return ;
@@ -4938,6 +4981,7 @@ angular.module('MoneyNetwork')
                     key_a = key.split('-') ;
                     if (!key.match(optional_regexp)) console.log(pgm + 'invalid files_optional key ' + key) ; // invalid optional file name
                     else if (key_a[0] > '' + now) console.log(pgm + 'invalid files_optional key ' + key) ; // timestamp in the future
+                    else if (files_optional[key].size <= 3) debug('public_chat', pgm + 'ignoring empty logical deleted json file ' + key) ;
                     else if (!user_seq || ('' + user_seq == key_a[2])) my_files_optional[key] = files_optional[key] ; // ok
                 } // for key
                 // console.log(pgm + 'user_seq = ' + user_seq + ', my_files_optional = ' + JSON.stringify(my_files_optional)) ;
@@ -5032,7 +5076,7 @@ angular.module('MoneyNetwork')
         // wait for setSiteInfo events (new files)
         function event_file_done (event, filename) {
             var pgm = service + '.event_file_done: ' ;
-            console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
+            // console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
             if (event != 'file_done') return ;
             if (!user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
             // process user files:
@@ -5474,428 +5518,430 @@ angular.module('MoneyNetwork')
                 // sort by message size. public chat size = 0 always in bottom of page
                 if (!end_of_page) { cb(false) ; return }
             }
+
             my_auth_address = ZeroFrame.site_info.auth_address ;
+            get_user_seq(function (my_user_seq) {
 
-            // find relevant optional files within actual page context
-            // - 1. priority - already downloaded optional files
-            // - 2. priority - continue with not downloaded optional files with many peers.
-            query =
-                "select" +
-                "  substr(content_json.directory,7) auth_address," +
-                "  files_optional.filename," +
-                "  cast(substr(files_optional.filename,1,13) as integer) as to_timestamp," +
-                "  cast(substr(files_optional.filename,15,13) as integer) as from_timestamp," +
-                "  cast(substr( substr(files_optional.filename,29),1,instr(substr(files_optional.filename,29),'-')-1) as integer) as user_seq," +
-                "  files_optional.size," +
-                "  users.pubkey, users.guest " +
-                "from files_optional, json as content_json, json as data_json, users " +
-                "where content_json.json_id = files_optional.json_id " +
-                "and data_json.directory = content_json.directory " +
-                "and data_json.file_name = 'data.json' " +
-                "and users.json_id = data_json.json_id " +
-                "and users.user_seq = cast(substr( substr(files_optional.filename,29),1,instr(substr(files_optional.filename,29),'-')-1) as integer) " ;
-            if (user_setup.block_guests) query += "and users.guest is null " ; // check spam filter: guests
-            query += "order by files_optional.filename desc" ;
-            debug('select', pgm + 'query = ' + query) ;
+                // find relevant optional files within actual page context
+                // - 1. priority - already downloaded optional files
+                // - 2. priority - continue with not downloaded optional files with many peers.
+                // - all json files with size 2 are logical deleted json files
+                query =
+                    "select" +
+                    "  substr(content_json.directory,7) auth_address," +
+                    "  files_optional.filename," +
+                    "  cast(substr(files_optional.filename,1,13) as integer) as to_timestamp," +
+                    "  cast(substr(files_optional.filename,15,13) as integer) as from_timestamp," +
+                    "  cast(substr( substr(files_optional.filename,29),1,instr(substr(files_optional.filename,29),'-')-1) as integer) as user_seq," +
+                    "  files_optional.size," +
+                    "  users.pubkey, users.guest " +
+                    "from files_optional, json as content_json, json as data_json, users " +
+                    "where content_json.json_id = files_optional.json_id " +
+                    "and data_json.directory = content_json.directory " +
+                    "and data_json.file_name = 'data.json' " +
+                    "and users.json_id = data_json.json_id " +
+                    "and users.user_seq = cast(substr( substr(files_optional.filename,29),1,instr(substr(files_optional.filename,29),'-')-1) as integer) " ;
+                if (user_setup.block_guests) query += "and users.guest is null " ; // check spam filter: guests
+                query += "order by files_optional.filename desc" ;
+                debug('select', pgm + 'query = ' + query) ;
 
-            ZeroFrame.cmd("dbQuery", [query], function (res) {
-                var pgm = service + '.get_public_chat dbQuery callback 1: ';
-                var i, cache_filename, cache_status, j, pending_files, not_downloaded_files, get_no_peers, unique_id,
-                    contact, compare_files1, compare_files2, auth_address, filename, interval_obj, user_seq, key,
-                    hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
-                    deleted_messages, message, page_updated, js_messages_row ;
-                if (res.error) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error, 5000]);
-                    console.log(pgm + "Search for public chat failed: " + res.error);
-                    console.log(pgm + 'query = ' + query);
-                    cb(false) ;
-                    return;
-                }
-
-                // compare filenames from dbQuery result with filenames in files_optional_cache.
-                // check for deleted chat files, changed intervals and changed chat files
-                page_updated = false ;
-                compare_files1 = {} ;
-                compare_files2 = {} ;
-                deleted_messages = 0 ;
-
-                // compare step 1 - compare cache_filenames (files_optional_cache (read messages) and db query result
-                for (cache_filename in files_optional_cache) {
-                    cache_status = files_optional_cache[cache_filename] ;
-                    compare_files1[cache_filename] = { in_cache: true, cache_size: cache_status.size } ;
-                }
-                for (i=0 ; i<res.length ; i++) {
-                    cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
-                    if (!compare_files1[cache_filename]) compare_files1[cache_filename] = {} ;
-                    compare_files1[cache_filename].in_query = true ;
-                    compare_files1[cache_filename].query_size = res[i].size ;
-                }
-                debug('public_chat', pgm + 'before removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
-                for (cache_filename in compare_files1) {
-                    if (compare_files1[cache_filename].in_cache && compare_files1[cache_filename].in_query) {
-                        console.log(pgm + 'file ' + cache_filename + ' in cache and in query. must also compare size. changed size = deleted messages') ;
-                        console.log(pgm + 'compare_files1[cache_filename] = ' + JSON.stringify(compare_files1[cache_filename])) ;
-                        if (compare_files1[cache_filename].cache_size == compare_files1[cache_filename].query_size) delete compare_files1[cache_filename] ;
-                        else {
-                            debug('public_chat', 'changed size for file ' + cache_filename + '. must download and recheck file for deleted messages');
-                            files_optional_cache[cache_filename].is_downloaded = false ;
-                            delete files_optional_cache[cache_filename].timestamps ;
-                        }
+                ZeroFrame.cmd("dbQuery", [query], function (res) {
+                    var pgm = service + '.get_public_chat dbQuery callback 1: ';
+                    var i, cache_filename, cache_status, j, pending_files, not_downloaded_files, get_no_peers, unique_id,
+                        contact, compare_files1, compare_files2, auth_address, filename, interval_obj, user_seq, key,
+                        hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
+                        deleted_messages, message, page_updated, js_messages_row ;
+                    if (res.error) {
+                        ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error, 5000]);
+                        console.log(pgm + "Search for public chat failed: " + res.error);
+                        console.log(pgm + 'query = ' + query);
+                        cb(false) ;
+                        return;
                     }
-                }
-                debug('public_chat', pgm + 'after removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
-                // compare_files = {"data/users/1LVdWbEuZyXeWWVcbL7b12zQSWnXWtSod6/1482835334090-1482835334090-1-chat.json": {"in_cache": true}};
-                // compare step 2 - compare data for each auth_address and user_seq (each contact)
-                if (Object.keys(compare_files1).length) {
-                    // step 2a - find old and new time intervals for each auth_address and user_seq
+
+                    // remove json files with size 2 (logical deleted json files)
+                    // 1) logical deleted by owner and is in optional files list with size 2 = {}
+                    // 2) physical deleted by downloader here
+                    // 3) physical deleted by owner in a later publish
+                    for (i=res.length-1 ; i >= 0 ; i--) {
+                        if (res[i].size != 2) continue ;
+                        if ((res[i].auth_address == my_auth_address) && (res[i].user_seq == my_user_seq)) {
+                            // my logical deleted optional json files. 3) physical deleted by owner in a later publish
+                            res.splice(i,1);
+                            continue ;
+                        }
+                        // other users logical deleted json files. 2) physical deleted by downloader here
+                        cache_filename = cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                        res.splice(i,1) ;
+                        if (files_optional_cache[cache_filename] && files_optional_cache[cache_filename].is_deleted) continue ;
+                        if (!files_optional_cache[cache_filename]) files_optional_cache[cache_filename] = {} ;
+                        // physical delete logical deleted json file. maybe already done. ignore any error message
+                        ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function () {}) ;
+                        files_optional_cache[cache_filename].is_deleted = true ;
+                    } // for i
+                    if (res.length == 0) { cb(false) ; return }
+
+                    // compare filenames from dbQuery result with filenames in files_optional_cache.
+                    // check for deleted chat files, changed intervals and changed chat files
+                    page_updated = false ;
+                    compare_files1 = {} ;
+                    compare_files2 = {} ;
+                    deleted_messages = 0 ;
+
+                    // compare step 1 - compare cache_filenames (files_optional_cache (read messages) and db query result
+                    for (cache_filename in files_optional_cache) {
+                        cache_status = files_optional_cache[cache_filename] ;
+                        if (cache_status.is_deleted) continue ;
+                        compare_files1[cache_filename] = { in_cache: true, cache_size: cache_status.size } ;
+                    }
+                    for (i=0 ; i<res.length ; i++) {
+                        //if (res[i].size == 2) continue ; // logical deleted json files
+                        cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                        if (!compare_files1[cache_filename]) compare_files1[cache_filename] = {} ;
+                        compare_files1[cache_filename].in_query = true ;
+                        compare_files1[cache_filename].query_size = res[i].size ;
+                    }
+                    debug('public_chat', pgm + 'before removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
                     for (cache_filename in compare_files1) {
-                        auth_address = cache_filename.split('/')[2] ;
-                        filename = cache_filename.split('/')[3] ;
-                        interval_obj = {
-                            from_timestamp: parseInt(filename.split('-')[1]),
-                            to_timestamp: parseInt(filename.split('-')[0])
-                        } ;
-                        user_seq = filename.split('-')[2] ;
-                        key = auth_address + '-' + user_seq ;
-                        if (!compare_files2[key]) compare_files2[key] = { old_intervals: [], new_intervals: [] } ;
-                        if (compare_files1[cache_filename].in_cache) compare_files2[key].old_intervals.push(interval_obj) ;
-                        else compare_files2[key].new_intervals.push(interval_obj) ;
+                        if (compare_files1[cache_filename].in_cache && compare_files1[cache_filename].in_query) {
+                            console.log(pgm + 'file ' + cache_filename + ' in cache and in query. must also compare size. changed size = deleted messages') ;
+                            console.log(pgm + 'compare_files1[cache_filename] = ' + JSON.stringify(compare_files1[cache_filename])) ;
+                            if (compare_files1[cache_filename].cache_size == compare_files1[cache_filename].query_size) delete compare_files1[cache_filename] ;
+                            else {
+                                debug('public_chat', 'changed size for file ' + cache_filename + '. must download and recheck file for deleted messages');
+                                files_optional_cache[cache_filename].is_downloaded = false ;
+                                delete files_optional_cache[cache_filename].timestamps ;
+                            }
+                        }
                     }
-                    debug('public_chat', pgm + 'compare_files2 (a) = ' + JSON.stringify(compare_files2)) ;
-                    //compare_files2 = {
-                    //    "1LVdWbEuZyXeWWVcbL7b12zQSWnXWtSod6-1": {
-                    //        "old_intervals": [{
-                    //            "from_timestamp": 1482839392212,
-                    //            "to_timestamp": 1482839392212
-                    //        }], 
-                    //        "new_intervals": []
-                    //    }
-                    //};
-                    for (key in compare_files2) {
-                        hash2 = compare_files2[key] ;
-                        // step 2b - check timestamps for each auth_address and user_seq
-                        // is timestamp in old cache files? is timestamp in new optional files?
-                        hash2.timestamps = [] ;
-                        // find all timestamps
-                        for (i=0; i<hash2.old_intervals.length ; i++) {
-                            timestamp = hash2.old_intervals[i].from_timestamp ;
-                            if (hash2.timestamps.indexOf(timestamp) == -1) hash2.timestamps.push(timestamp) ;
-                            timestamp = hash2.old_intervals[i].to_timestamp ;
-                            if (hash2.timestamps.indexOf(timestamp) == -1) hash2.timestamps.push(timestamp) ;
+                    debug('public_chat', pgm + 'after removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
+                    // compare_files = {"data/users/1LVdWbEuZyXeWWVcbL7b12zQSWnXWtSod6/1482835334090-1482835334090-1-chat.json": {"in_cache": true}};
+                    // compare step 2 - compare data for each auth_address and user_seq (each contact)
+                    if (Object.keys(compare_files1).length) {
+                        // step 2a - find old and new time intervals for each auth_address and user_seq
+                        for (cache_filename in compare_files1) {
+                            auth_address = cache_filename.split('/')[2] ;
+                            filename = cache_filename.split('/')[3] ;
+                            interval_obj = {
+                                from_timestamp: parseInt(filename.split('-')[1]),
+                                to_timestamp: parseInt(filename.split('-')[0])
+                            } ;
+                            user_seq = filename.split('-')[2] ;
+                            if ((auth_address == my_auth_address) && (user_seq == '' + my_user_seq)) {
+                                // current user. deletes are handled in z_update_5_public_chat
+                                continue ;
+                            }
+                            key = auth_address + '-' + user_seq ;
+                            if (!compare_files2[key]) compare_files2[key] = { old_intervals: [], new_intervals: [] } ;
+                            if (compare_files1[cache_filename].in_cache) compare_files2[key].old_intervals.push(interval_obj) ;
+                            else compare_files2[key].new_intervals.push(interval_obj) ;
                         }
-                        for (i=0; i<hash2.new_intervals.length ; i++) {
-                            timestamp = hash2.new_intervals[i].from_timestamp ;
-                            if (hash2.timestamps.indexOf(timestamp) == -1) hash2.timestamps.push(timestamp) ;
-                            timestamp = hash2.new_intervals[i].to_timestamp ;
-                            if (hash2.timestamps.indexOf(timestamp) == -1) hash2.timestamps.push(timestamp) ;
-                        }
-                        for (i=hash2.timestamps.length-1 ; i>=0 ; i--) {
-                            timestamp = hash2.timestamps[i] ;
-                            hash2.timestamps.push(timestamp-1); // also check one milisecond before
-                            hash2.timestamps.push(timestamp+1); // also check one milisecond after
-                        }
-                        hash2.timestamps = hash2.timestamps.sort() ;
-                        // check all timestamps
-                        for (i=0 ; i<hash2.timestamps.length ; i++) {
-                            timestamp = hash2.timestamps[i] ;
-                            in_old = false ;
-                            for (j=0; j<hash2.old_intervals.length ; j++) {
-                                if ((timestamp >= hash2.old_intervals[j].from_timestamp) &&
-                                    (timestamp <= hash2.old_intervals[j].to_timestamp)) {
-                                    in_old = true ;
+                        debug('public_chat', pgm + 'compare_files2 (a) = ' + JSON.stringify(compare_files2)) ;
+                        //compare_files2 = {
+                        //    "1LVdWbEuZyXeWWVcbL7b12zQSWnXWtSod6-1": {
+                        //        "old_intervals": [{
+                        //            "from_timestamp": 1482839392212,
+                        //            "to_timestamp": 1482839392212
+                        //        }],
+                        //        "new_intervals": []
+                        //    }
+                        //};
+                        for (key in compare_files2) {
+                            hash2 = compare_files2[key] ;
+                            // step 2b - check timestamps for each auth_address and user_seq
+                            // is timestamp in old cache files? is timestamp in new optional files?
+                            hash2.timestamps = [] ;
+                            // find all timestamps
+                            for (i=0; i<hash2.old_intervals.length ; i++) {
+                                timestamp = hash2.old_intervals[i].from_timestamp ;
+                                if (hash2.timestamps.indexOf(timestamp) == -1) hash2.timestamps.push(timestamp) ;
+                                timestamp = hash2.old_intervals[i].to_timestamp ;
+                                if (hash2.timestamps.indexOf(timestamp) == -1) hash2.timestamps.push(timestamp) ;
+                            }
+                            for (i=0; i<hash2.new_intervals.length ; i++) {
+                                timestamp = hash2.new_intervals[i].from_timestamp ;
+                                if (hash2.timestamps.indexOf(timestamp) == -1) hash2.timestamps.push(timestamp) ;
+                                timestamp = hash2.new_intervals[i].to_timestamp ;
+                                if (hash2.timestamps.indexOf(timestamp) == -1) hash2.timestamps.push(timestamp) ;
+                            }
+                            for (i=hash2.timestamps.length-1 ; i>=0 ; i--) {
+                                timestamp = hash2.timestamps[i] ;
+                                hash2.timestamps.push(timestamp-1); // also check one milisecond before
+                                hash2.timestamps.push(timestamp+1); // also check one milisecond after
+                            }
+                            hash2.timestamps = hash2.timestamps.sort() ;
+                            // check all timestamps
+                            for (i=0 ; i<hash2.timestamps.length ; i++) {
+                                timestamp = hash2.timestamps[i] ;
+                                in_old = false ;
+                                for (j=0; j<hash2.old_intervals.length ; j++) {
+                                    if ((timestamp >= hash2.old_intervals[j].from_timestamp) &&
+                                        (timestamp <= hash2.old_intervals[j].to_timestamp)) {
+                                        in_old = true ;
+                                    }
                                 }
-                            }
-                            in_new = false ;
-                            for (j=0; j<hash2.new_intervals.length ; j++) {
-                                if ((timestamp >= hash2.new_intervals[j].from_timestamp) &&
-                                    (timestamp <= hash2.new_intervals[j].to_timestamp)) {
-                                    in_new = true ;
+                                in_new = false ;
+                                for (j=0; j<hash2.new_intervals.length ; j++) {
+                                    if ((timestamp >= hash2.new_intervals[j].from_timestamp) &&
+                                        (timestamp <= hash2.new_intervals[j].to_timestamp)) {
+                                        in_new = true ;
+                                    }
                                 }
-                            }
-                            hash2.timestamps[i] = {
-                                timestamp: timestamp,
-                                in_old: in_old,
-                                in_new: in_new
-                            }
-                        } // i
-                        // step 2c - find contiguous deleted intervals with "in_old": true,  "in_new": false
-                        hash2.deleted_intervals = [] ;
-                        from_timestamp = null ;
-                        to_timestamp = null ;
-                        for (i=0 ; i<hash2.timestamps.length ; i++) {
-                            timestamp = hash2.timestamps[i].timestamp ;
-                            in_deleted_interval = (hash2.timestamps[i].in_old && !hash2.timestamps[i].in_new) ;
+                                hash2.timestamps[i] = {
+                                    timestamp: timestamp,
+                                    in_old: in_old,
+                                    in_new: in_new
+                                }
+                            } // i
+                            // step 2c - find contiguous deleted intervals with "in_old": true,  "in_new": false
+                            hash2.deleted_intervals = [] ;
+                            from_timestamp = null ;
+                            to_timestamp = null ;
+                            for (i=0 ; i<hash2.timestamps.length ; i++) {
+                                timestamp = hash2.timestamps[i].timestamp ;
+                                in_deleted_interval = (hash2.timestamps[i].in_old && !hash2.timestamps[i].in_new) ;
+                                if (from_timestamp) {
+                                    // already in a deleted interval
+                                    if (in_deleted_interval) continue ; // continued deleted interval
+                                    // end of deleted interval
+                                    to_timestamp = timestamp-1 ;
+                                    hash2.deleted_intervals.push({
+                                        from_timestamp: from_timestamp,
+                                        to_timestamp: to_timestamp
+                                    }) ;
+                                    from_timestamp = null ;
+                                    to_timestamp = null ;
+                                }
+                                else if (in_deleted_interval) {
+                                    // start of a new deleted interval
+                                    from_timestamp = timestamp ;
+                                }
+                            } // for i
                             if (from_timestamp) {
-                                // already in a deleted interval
-                                if (in_deleted_interval) continue ; // continued deleted interval
-                                // end of deleted interval
-                                to_timestamp = timestamp-1 ;
+                                // end open deleted interval
+                                to_timestamp = timestamp ;
                                 hash2.deleted_intervals.push({
                                     from_timestamp: from_timestamp,
                                     to_timestamp: to_timestamp
                                 }) ;
-                                from_timestamp = null ;
-                                to_timestamp = null ;
                             }
-                            else if (in_deleted_interval) {
-                                // start of a new deleted interval
-                                from_timestamp = timestamp ;
-                            }
-                        } // for i
-                        if (from_timestamp) {
-                            // end open deleted interval
-                            to_timestamp = timestamp ;
-                            hash2.deleted_intervals.push({
-                                from_timestamp: from_timestamp,
-                                to_timestamp: to_timestamp
-                            }) ;
-                        }
-                        // step 2d - check for deleted messages
-                        if (hash2.deleted_intervals.length) {
-                            auth_address = key.split('-')[0] ;
-                            user_seq = parseInt(key.split('-')[1]) ;
-                            contact = null ;
-                            for (i=0 ; i<ls_contacts.length ; i++) {
-                                if ((ls_contacts[i].auth_address == auth_address) &&
-                                    (ls_contacts[i].user_seq == user_seq)) {
-                                    contact = ls_contacts[i] ;
-                                    break ;
+                            // step 2d - check for deleted messages
+                            if (hash2.deleted_intervals.length) {
+                                auth_address = key.split('-')[0] ;
+                                user_seq = parseInt(key.split('-')[1]) ;
+                                contact = null ;
+                                for (i=0 ; i<ls_contacts.length ; i++) {
+                                    if ((ls_contacts[i].auth_address == auth_address) &&
+                                        (ls_contacts[i].user_seq == user_seq)) {
+                                        contact = ls_contacts[i] ;
+                                        break ;
+                                    }
+                                }
+                                if (!contact) {
+                                    console.log(pgm + 'warning. detected deleted chat file but cannot find contact with auth_address = ' +
+                                        auth_address + ' and user_seq = ' + user_seq + '. compare_files1 = ' + JSON.stringify(compare_files1)) ;
+                                    continue ;
+                                }
+                                debug('public_chat', pgm + 'check contact for deleted messages. contact = ' + JSON.stringify(contact)) ;
+                                for (i=contact.messages.length-1 ; i >= 0 ; i--) {
+                                    message = contact.messages[i] ;
+                                    if (!message.z_filename) continue ;
+                                    if (message.folder != 'inbox') continue ;
+                                    timestamp = message.sent_at ;
+                                    in_deleted_interval = false ;
+                                    for (j=0 ; j<hash2.deleted_intervals.length ; j++) {
+                                        if ((timestamp >= hash2.deleted_intervals[j].from_timestamp) &&
+                                            (timestamp <= hash2.deleted_intervals[j].to_timestamp)) in_deleted_interval = true ;
+                                    }
+                                    if (in_deleted_interval) {
+                                        debug('public_chat', pgm + 'deleting public chat message ' + JSON.stringify(message)) ;
+                                        js_messages_row = get_message_by_seq(message.seq) ;
+                                        remove_message(js_messages_row) ;
+                                        deleted_messages++ ;
+                                    }
+
                                 }
                             }
-                            if (!contact) {
-                                console.log(pgm + 'warning. detected deleted chat file but cannot find contact with auth_address ' +
-                                    auth_address + ' and user_seq + ' + user_seq + '. compare_files1 = ' + JSON.stringify(compare_files1)) ;
+                        } // for key
+                        debug('public_chat', pgm + 'compare_files2 (b) = ' + JSON.stringify(compare_files2)) ;
+                        debug('public_chat', pgm + 'deleted_messages = ' + deleted_messages) ;
+                        if (deleted_messages > 0) {
+                            page_updated = true;
+                            // https://github.com/jaros1/Zeronet-Money-Network/issues/79#issuecomment-269359588
+                            debug('public_chat', pgm + 'issue #79. query = ' + query + ', res = ' + JSON.stringify(res) +
+                                ', compare_files1 = ' + JSON.stringify(compare_files1) +
+                                ', compare_files2 = ' + JSON.stringify(compare_files2));
+                        }
+                    }
+
+                    if (res.length == 0) {
+                        // no optional chat files were found
+                        cb(page_updated) ;
+                        return;
+                    }
+                    // console.log(pgm + 'res (1) = ' + JSON.stringify(res)) ;
+
+                    // remove search results no longer within page context
+                    for (i=res.length-1 ; i >= 0 ; i--) {
+                        cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                        if (!file_within_chat_page_context(cache_filename)) {
+                            res.splice(i,1) ;
+                            continue ;
+                        }
+                    }
+                    // check spam filter: ignored contacts
+                    if (user_setup.block_ignored) for (i=res.length-1 ; i >= 0 ; i--) {
+                        unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
+                        contact = get_contact_by_unique_id(unique_id) ;
+                        if (contact && (contact.type == 'ignored')) res.splice(i,1) ;
+                    }
+                    if (res.length == 0) { cb(page_updated) ; return }
+
+                    // extend cb. cb must also return true to chatCtrl after deleting chat messages
+                    var cb2 = function (page_updated2) {
+                        cb(page_updated || page_updated2) ;
+                    };
+
+                    // any already downloaded but not yet loaded public chat messages?
+                    for (i=0 ; i < res.length ; i++) {
+                        //if (res[i].size == 2) continue ; // logical deleted json file
+                        cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                        cache_status = files_optional_cache[cache_filename] ;
+                        if ((res[i].auth_address == my_auth_address) || (cache_status && cache_status.is_downloaded)) {
+                            // is either
+                            // - my public public chat messages
+                            // - already downloaded public chat messages from other users
+                            if (!cache_status) {
+                                debug('public_chat', pgm + 'found not yet loaded public chat file within page context') ;
+                                get_and_load_chat_file(cache_filename, res[i].size, failures, cb2) ;
+                                return ;
+                            }
+                            debug('public_chat', pgm + 'files_optional_cache[' + cache_filename + '] = ' + JSON.stringify(cache_status)) ;
+                            //if (!cache_status.is_downloaded) {
+                            //    console.log(pgm + 'error. expected status is_downloaded to be true. cache_filename = ' + cache_filename + ', cache_status = ' + JSON.stringify(cache_status)) ;
+                            //    continue ;
+                            //}
+                            res[i].is_pending = cache_status.is_pending ;
+                            if (res[i].is_pending) {
+                                debug('public_chat', pgm + 'download already requested for ' + cache_filename + ' in an other process') ;
                                 continue ;
                             }
-                            debug('public_chat', pgm + 'check contact for deleted messages. contact = ' + JSON.stringify(contact)) ;
-                            //contact = {
-                            //    "unique_id": "099ed90975b69b4e4404c43aa6eed3235ee116b01cb94cb8e05a9c86c9d245ad",
-                            //    "type": "new",
-                            //    "guest": null,
-                            //    "auth_address": "1LVdWbEuZyXeWWVcbL7b12zQSWnXWtSod6",
-                            //    "cert_user_id": "1LVdWbEuZyXeW@moneynetwork",
-                            //    "avatar": "9.png",
-                            //    "search": [...],
-                            //    "messages": [{
-                            //        "local_msg_seq": 2242,
-                            //        "folder": "inbox",
-                            //        "message": {
-                            //            "msgtype": "chat msg",
-                            //            "message": "jro test - create and delete public chat msg"
-                            //        },
-                            //        "sent_at": 1482855240521,
-                            //        "z_filename": "1482855240521-1482855240521-1-chat.json",
-                            //        "ls_msg_size": 0,
-                            //        "seq": 18
-                            //    }],
-                            //    "outbox_sender_sha256": {},
-                            //    "inbox_zeronet_msg_id": [],
-                            //    "inbox_last_sender_sha256": null,
-                            //    "inbox_last_sender_sha256_at": 0,
-                            //    "$$hashKey": "object:82",
-                            //    "user_seq": 1,
-                            //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCQfknnuAAQSuzBi8us8vum5WVN\nC+RUN+AW6Mvj4N/OosH7QoL0Fwz2PnC6SES/GRgu6QqxJ8C4gP1wQot19kl5iCKh\nPIoIsK21FJ8grJ/VA/vWGVJjpneVhN8jzAr5MNNvT3EvwkPiKvoeTFAU51WB2lwK\nFwgq1ZLbv0CjEl/GFwIDAQAB\n-----END PUBLIC KEY-----",
-                            //    "pubkey2": "AmkPQIwAfUUAdpHaeTq6zPwiXVfCSPVDK8XTbVTKM8Kf",
-                            //    "encryption": "1"
-                            //};
-                            for (i=contact.messages.length-1 ; i >= 0 ; i--) {
-                                message = contact.messages[i] ;
-                                if (!message.z_filename) continue ;
-                                if (message.folder != 'inbox') continue ;
-                                timestamp = message.sent_at ;
-                                in_deleted_interval = false ;
-                                for (j=0 ; j<hash2.deleted_intervals.length ; j++) {
-                                    if ((timestamp >= hash2.deleted_intervals[j].from_timestamp) &&
-                                        (timestamp <= hash2.deleted_intervals[j].to_timestamp)) in_deleted_interval = true ;
-                                }
-                                if (in_deleted_interval) {
-                                    debug('public_chat', pgm + 'deleting public chat message ' + JSON.stringify(message)) ;
-                                    js_messages_row = get_message_by_seq(message.seq) ;
-                                    remove_message(js_messages_row) ;
-                                    deleted_messages++ ;
-                                }
-
+                            if (cache_status.timestamps && (cache_status.timestamps.length == 0)) {
+                                // console.log(pgm + 'all messsages in file has already been loaded') ;
+                                continue ;
                             }
-                        }
-                    } // for key
-                    debug('public_chat', pgm + 'compare_files2 (b) = ' + JSON.stringify(compare_files2)) ;
-                    //compare_files2 = {
-                    //    "1LVdWbEuZyXeWWVcbL7b12zQSWnXWtSod6-1": {
-                    //        "old_intervals": [{
-                    //            "from_timestamp": 1482855240521,
-                    //            "to_timestamp": 1482855240521
-                    //        }],
-                    //        "new_intervals": [],
-                    //        "timestamps": [{
-                    //            "timestamp": 1482855240520,
-                    //            "in_old": false,
-                    //            "in_new": false
-                    //        }, {"timestamp": 1482855240521, "in_old": true, "in_new": false}, {
-                    //            "timestamp": 1482855240522,
-                    //            "in_old": false,
-                    //            "in_new": false
-                    //        }],
-                    //        "deleted_intervals": [{"from_timestamp": 1482855240521, "to_timestamp": 1482855240521}]
-                    //    }
-                    //};
-                    debug('public_chat', pgm + 'deleted_messages = ' + deleted_messages) ;
-                    if (deleted_messages > 0) {
-                        page_updated = true;
-                        // https://github.com/jaros1/Zeronet-Money-Network/issues/79#issuecomment-269359588
-                        debug('public_chat', pgm + 'issue #79. query = ' + query + ', res = ' + JSON.stringify(res) +
-                            ', compare_files1 = ' + JSON.stringify(compare_files1) +
-                            ', compare_files2 = ' + JSON.stringify(compare_files2));
-                    }
-                }
-
-                if (res.length == 0) {
-                    // no optional chat files were found
-                    cb(page_updated) ;
-                    return;
-                }
-                // console.log(pgm + 'res (1) = ' + JSON.stringify(res)) ;
-
-                // remove search results no longer within page context
-                for (i=res.length-1 ; i >= 0 ; i--) {
-                    cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
-                    if (!file_within_chat_page_context(cache_filename)) {
-                        res.splice(i,1) ;
-                        continue ;
-                    }
-                }
-                // check spam filter: ignored contacts
-                if (user_setup.block_ignored) for (i=res.length-1 ; i >= 0 ; i--) {
-                    unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
-                    contact = get_contact_by_unique_id(unique_id) ;
-                    if (contact && (contact.type == 'ignored')) res.splice(i,1) ;
-                }
-                if (res.length == 0) { cb(page_updated) ; return }
-
-                // extend cb. cb must also return true to chatCtrl after deleting chat messages
-                var cb2 = function (page_updated2) {
-                    cb(page_updated || page_updated2) ;
-                };
-
-                // any already downloaded but not yet loaded public chat messages?
-                for (i=0 ; i < res.length ; i++) {
-                    cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
-                    cache_status = files_optional_cache[cache_filename] ;
-                    if ((res[i].auth_address == my_auth_address) || (cache_status && cache_status.is_downloaded)) {
-                        // is either
-                        // - my public public chat messages
-                        // - already downloaded public chat messages from other users
-                        if (!cache_status) {
-                            debug('public_chat', pgm + 'found not yet loaded public chat file within page context') ;
-                            get_and_load_chat_file(cache_filename, failures, cb2) ;
-                            return ;
-                        }
-                        debug('public_chat', pgm + 'files_optional_cache[' + cache_filename + '] = ' + JSON.stringify(cache_status)) ;
-                        if (!cache_status.is_downloaded) {
-                            console.log(pgm + 'error. expected status is_downloaded to be true') ;
-                            continue ;
-                        }
-                        if (cache_status.timestamps && (cache_status.timestamps.length == 0)) {
-                            // console.log(pgm + 'all messsages in file has already been loaded') ;
-                            continue ;
-                        }
-                        if (chat_page_context.end_of_page) {
-                            debug('public_chat', pgm + 'found not completely loaded public chat outbox file within page context') ;
-                            get_and_load_chat_file(cache_filename, failures, cb2) ;
-                            return ;
-                        }
-                        // any not yet read messages within page context?
-                        for (j=0 ; j<cache_status.timestamps.length ; j++) {
-                            if (cache_status.timestamps[j] < chat_page_context.bottom_timestamp) continue ;
-                            get_and_load_chat_file(cache_filename, failures, cb2) ;
-                            return ;
-                        } // for j (timestamps)
-                    } // if
-                } // for i (res)
-
-                // finished reading already downloaded chat files within actual chat page context
-                // continue with not yet downloaded chat files within actual chat page context
-                pending_files = [] ;
-                not_downloaded_files = [] ;
-                for (i=0 ; i < res.length ; i++) {
-                    cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename;
-                    cache_status = files_optional_cache[cache_filename];
-                    if (cache_status) {
-                        if (cache_status.is_downloaded) continue ;
-                        if (cache_status.is_pending) pending_files.push(res[i]) ;
-                        else res[i].download_failed_at = cache_status.download_failed_at || 0 ;
-                    }
-                    not_downloaded_files.push(res[i]) ;
-                } // for i
-                if (not_downloaded_files.length == 0) { cb(page_updated) ; return }
-
-                // random sort but keep any files with download failed in bottom of file list
-                not_downloaded_files.sort(function(a, b){
-                    if (a.download_failed_at != b.download_failed_at) return b.download_failed_at - a.download_failed_at ;
-                    else return 0.5 - Math.random()
-                }) ;
-                debug('public_chat', pgm + 'done with already downloaded public chat files' +
-                    '. pending_files = ' + JSON.stringify(pending_files) +
-                    ', not_downloaded_res = ' + JSON.stringify(not_downloaded_files)) ;
-
-                // get number of peers serving optional files.
-                // callback loop starting with not_downloaded_files[0].
-                // check max 10 files. looking for files with many peers
-                get_no_peers = function (cb2) {
-                    var pgm = service + '.get_public_chat get_no_peers: ';
-                    var i, j, max_peers = -1, max_peers_i, cache_filename, cache_status ;
-                    i = -1 ;
-
-                    // find next file to check peer
-                    for (j=0 ; j<not_downloaded_files.length ; j++) {
-                        if (not_downloaded_files[j].hasOwnProperty('peer')) {
-                            // already checked. Find file with must peers
-                            if (not_downloaded_files[j].peer > max_peers) {
-                                max_peers = not_downloaded_files[j].peer ;
-                                max_peers_i = j ;
+                            if (chat_page_context.end_of_page) {
+                                debug('public_chat', pgm + 'found not completely loaded public chat outbox file within page context') ;
+                                get_and_load_chat_file(cache_filename, res[i].size, failures, cb2) ;
+                                return ;
                             }
-                        }
-                        else {
-                            i = j ;
-                            break ;
-                        }
-                    } // for j
+                            // any not yet read messages within page context?
+                            for (j=0 ; j<cache_status.timestamps.length ; j++) {
+                                if (cache_status.timestamps[j] < chat_page_context.bottom_timestamp) continue ;
+                                get_and_load_chat_file(cache_filename, res[i].size, failures, cb2) ;
+                                return ;
+                            } // for j (timestamps)
+                        } // if
+                    } // for i (res)
 
-                    // get peer info for next file. check minimum 10 files. looking for file with peer >= 3
-                    if ( (i != -1) &&
-                         ((i <= 10) || ((i > 10) && (max_peers < 3)))) {
-                        // get number of peers for file i
+                    // remove any already pending download requests
+                    for (i=res.length-1 ; i >= 0 ; i--) if (res[i].is_pending) res.splice(i,1) ;
+                    if (res.length == 0) { cb(page_updated) ; return }
+
+                    // finished reading already downloaded chat files within actual chat page context
+                    // continue with not yet downloaded chat files within actual chat page context
+                    pending_files = [] ;
+                    not_downloaded_files = [] ;
+                    for (i=0 ; i < res.length ; i++) {
+                        cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename;
+                        cache_status = files_optional_cache[cache_filename];
+                        if (cache_status) {
+                            if (cache_status.is_downloaded) continue ;
+                            if (cache_status.is_pending) pending_files.push(res[i]) ;
+                            else res[i].download_failed_at = cache_status.download_failed_at || 0 ;
+                        }
+                        not_downloaded_files.push(res[i]) ;
+                    } // for i
+                    if (not_downloaded_files.length == 0) { cb(page_updated) ; return }
+
+                    // random sort but keep any files with download failed in bottom of file list
+                    not_downloaded_files.sort(function(a, b){
+                        if (a.download_failed_at != b.download_failed_at) return b.download_failed_at - a.download_failed_at ;
+                        else return 0.5 - Math.random()
+                    }) ;
+                    debug('public_chat', pgm + 'done with already downloaded public chat files' +
+                        '. pending_files = ' + JSON.stringify(pending_files) +
+                        ', not_downloaded_res = ' + JSON.stringify(not_downloaded_files)) ;
+
+                    // get number of peers serving optional files.
+                    // callback loop starting with not_downloaded_files[0].
+                    // check max 10 files. looking for files with many peers
+                    get_no_peers = function (cb2) {
+                        var pgm = service + '.get_public_chat get_no_peers: ';
+                        var i, j, max_peers = -1, max_peers_i, cache_filename, cache_status ;
+                        i = -1 ;
+
+                        // find next file to check peer
+                        for (j=0 ; j<not_downloaded_files.length ; j++) {
+                            if (not_downloaded_files[j].hasOwnProperty('peer')) {
+                                // already checked. Find file with must peers
+                                if (not_downloaded_files[j].peer > max_peers) {
+                                    max_peers = not_downloaded_files[j].peer ;
+                                    max_peers_i = j ;
+                                }
+                            }
+                            else {
+                                i = j ;
+                                break ;
+                            }
+                        } // for j
+
+                        // get peer info for next file. check minimum 10 files. looking for file with peer >= 3
+                        if ( (i != -1) &&
+                            ((i <= 10) || ((i > 10) && (max_peers < 3)))) {
+                            // get number of peers for file i
+                            cache_filename = 'data/users/' + not_downloaded_files[i].auth_address + '/' + not_downloaded_files[i].filename;
+                            ZeroFrame.cmd("optionalFileInfo", [cache_filename], function (file_info) {
+                                var pgm = service + '.get_public_chat optionalFileInfo callback 2 : ';
+                                var cache_status ;
+                                cache_status = files_optional_cache[cache_filename] ;
+                                debug('public_chat', pgm + 'cache_filename = ' + cache_filename +
+                                    ', cache_status = ' + JSON.stringify(cache_status) +
+                                    ', file_info = ' + JSON.stringify(file_info));
+                                if (!file_info) {
+                                    not_downloaded_files[i].peer = 0 ;
+                                }
+                                else {
+                                    not_downloaded_files[i].peer = file_info.peer ;
+                                }
+                                // continue with next file
+                                get_no_peers(cb2);
+                                return ;
+                            }) ; // optionalFileInfo callback 2
+                            // stop. optionalFileInfo callback will continue loop
+                            return ;
+                        }
+                        // done. found file with peer >= 3 or have downloaded peer info for all files
+                        debug('public_chat', pgm + 'max_peers = ' + max_peers + ', max_peers_i = ' + max_peers_i) ;
+                        debug('public_chat', pgm + 'not_downloaded_files = ' + JSON.stringify(not_downloaded_files)) ;
+                        if (not_downloaded_files.length == 0) { cb2(false) ; return }
+
+                        // download optional file. file with must peers or random file
+                        i = max_peers_i || Math.floor(Math.random() * not_downloaded_files.length) ;
+                        debug('public_chat', pgm + 'selected not_downloaded_files[' + i + '] = ' + JSON.stringify(not_downloaded_files[i])) ;
                         cache_filename = 'data/users/' + not_downloaded_files[i].auth_address + '/' + not_downloaded_files[i].filename;
-                        ZeroFrame.cmd("optionalFileInfo", [cache_filename], function (file_info) {
-                            var pgm = service + '.get_public_chat optionalFileInfo callback 2 : ';
-                            var cache_status ;
-                            cache_status = files_optional_cache[cache_filename] ;
-                            debug('public_chat', pgm + 'cache_filename = ' + cache_filename +
-                                ', cache_status = ' + JSON.stringify(cache_status) +
-                                ', file_info = ' + JSON.stringify(file_info));
-                            if (!file_info) not_downloaded_files[i].peer = 0 ;
-                            else not_downloaded_files[i].peer = file_info.peer ;
-                            // continue with next file
-                            get_no_peers(cb2);
-                            return ;
-                        }) ; // optionalFileInfo callback 2
-                        // stop. optionalFileInfo callback will continue loop
-                        return ;
-                    }
-                    // done. found file with peer >= 3 or have downloaded peer info for all files
-                    debug('public_chat', pgm + 'max_peers = ' + max_peers + ', max_peers_i = ' + max_peers_i) ;
-                    debug('public_chat', pgm + 'not_downloaded_files = ' + JSON.stringify(not_downloaded_files)) ;
 
-                    // download optional file. file with must peers or random file
-                    i = max_peers_i || Math.floor(Math.random() * not_downloaded_files.length) ;
-                    debug('public_chat', pgm + 'selected not_downloaded_files[' + i + '] = ' + JSON.stringify(not_downloaded_files[i])) ;
-                    cache_filename = 'data/users/' + not_downloaded_files[i].auth_address + '/' + not_downloaded_files[i].filename;
+                        debug('public_chat', pgm + 'get and load chat file ' + cache_filename);
+                        get_and_load_chat_file(cache_filename, res[i].size, failures, cb2) ;
+                    };
+                    get_no_peers(cb2) ;
 
-                    debug('public_chat', pgm + 'get and load chat file ' + cache_filename);
-                    get_and_load_chat_file(cache_filename, failures, cb2) ;
-                };
-                get_no_peers(cb2) ;
+                }) ; // dbQuery callback 1
 
-            }) ; // dbQuery callback 1
+
+
+            }) ; // get_user_seq callback
+
 
         } // get_public_chat
 
@@ -5936,8 +5982,9 @@ angular.module('MoneyNetwork')
 
 
         // get and load chat file. called from  get_public_chat
-        function get_and_load_chat_file(cache_filename, failures, cb) {
+        function get_and_load_chat_file(cache_filename, expected_size, failures, cb) {
             var pgm = service + '.get_and_load_chat_file: ';
+            var my_auth_address ;
             if (!user_setup.public_chat) {
                 console.log(pgm + 'error. ignoring get_and_load_chat_file call for ' + cache_filename + '. public chat is disabled');
                 cb(false) ;
@@ -5945,7 +5992,8 @@ angular.module('MoneyNetwork')
             }
 
             // get user_seq. used later when setting folder (inbox/outbox) for public chat messages
-            get_user_seq(function (user_seq) {
+            my_auth_address = ZeroFrame.site_info.auth_address ;
+            get_user_seq(function (my_user_seq) {
                 var pgm = service + '.get_and_load_chat_file get_user_seq callback 1: ';
                 var cache_status;
 
@@ -5996,13 +6044,36 @@ angular.module('MoneyNetwork')
                         }
                         return ;
                     }
+                    file_auth_address = cache_filename.split('/')[2] ;
+                    file_user_seq = parseInt(cache_filename.split('-')[2]) ;
+                    if (expected_size != chat.length) {
+                        debug('public_chat', 'changed size for ' + cache_filename + ' . expected size ' + expected_size + ', found size ' + chat.length) ;
+                        if ((file_auth_address == my_auth_address) && (file_user_seq = '' + my_user_seq)) {
+                            // size in content.json is invalid. publish!
+                            debug('public_chat', pgm + 'size in content.json is invalid. publish')
+                            zeronet_site_publish() ;
+                        }
+                        else {
+                            // file must be out of date. trigger a new download
+                            ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function () {}) ;
+                        }
+                        // chat page must call get_publish_chat again even if no messages were read
+                        cb(true) ;
+                        return ;
+                    }
                     cache_status.is_downloaded = true;
                     cache_status.size = chat.length ;
+                    debug('public_chat', pgm + 'cache_status = ' + JSON.stringify(cache_status)) ;
                     // read chat msg and copy timestamps to cache_status object
                     chat = JSON.parse(chat);
                     if (!cache_status.timestamps) {
                         // first read. copy message timestamps into cache_status object
                         cache_status.timestamps = [];
+                        if (!chat.msg) {
+                            // empty chat file - logical deleted chat file
+                            debug('public_chat', pgm + 'empty chat file. call optionalFileDelete?');
+                            chat.msg = [] ;
+                        }
                         for (i = 0; i < chat.msg.length; i++) cache_status.timestamps.push(chat.msg[i].timestamp);
                     }
                     if (cache_status.timestamps.length == 0) {
@@ -6022,11 +6093,9 @@ angular.module('MoneyNetwork')
                         return;
                     }
                     // find contact
-                    file_auth_address = cache_filename.split('/')[2] ;
-                    file_user_seq = parseInt(cache_filename.split('-')[2]) ;
                     z_filename = cache_filename.split('/')[3] ;
                     debug('public_chat', pgm + 'file_auth_address = ' + file_auth_address + ', file_user_seq = ' + file_user_seq);
-                    if ((file_auth_address == ZeroFrame.site_info.auth_address) && (file_user_seq == user_seq)) {
+                    if ((file_auth_address == ZeroFrame.site_info.auth_address) && (file_user_seq == my_user_seq)) {
                         // loading current user public outbox chat messages
                         folder = 'outbox' ;
                         contact = get_public_contact(true);
@@ -6757,9 +6826,9 @@ angular.module('MoneyNetwork')
             if (!user_setup.contact_sort) user_setup.contact_sort = contact_sort_options[0] ;
             if (user_setup.contact_sort == 'Last updated') user_setup.contact_sort = 'Last online' ;
             if (!user_setup.chat_sort) user_setup.chat_sort = chat_sort_options[0] ;
-            if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = !guest ;
+            if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = false ; // !guest ; todo:
             if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
-            if (!user_setup.hasOwnProperty('public_chat')) user_setup.public_chat = guest ;
+            if (!user_setup.hasOwnProperty('public_chat')) user_setup.public_chat = true; // guest ; todo:
             if (!user_setup.hasOwnProperty('two_panel_chat')) user_setup.two_panel_chat = true ;
             if (!user_setup.alias) user_setup.alias = 'Me';
             if (!user_setup.encryption) user_setup.encryption = keysize == 256 ? '2' : '1' ;
