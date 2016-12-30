@@ -633,7 +633,8 @@ angular.module('MoneyNetwork')
                 var user_path = "data/users/" + self.contact.auth_address;
                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                     var pgm = controller + '.delete_user fileGet callback: ' ;
-                    var error, files, file_names, total_size, file_name, text, files_optional ;
+                    var error, files, file_names, total_size, file_name, file_texts, text, files_optional,
+                        file_names_lng1, file_names_lng2 ;
                     if (!content) {
                         error = 'system error. content.json file was not found for auth_address ' + self.contact.auth_address ;
                         console.log(pgm + error) ;
@@ -643,17 +644,23 @@ angular.module('MoneyNetwork')
                     content = JSON.parse(content) ;
                     files = content.files ;
                     file_names = [] ;
+                    file_texts = [] ;
                     total_size = 0 ;
                     for (file_name in files) {
                         file_names.push(file_name) ;
+                        file_texts.push(file_name) ;
                         total_size += files[file_name].size ;
                     }
+                    file_names_lng1 = file_names.length ;
                     files_optional = content.files_optional ;
                     if (files_optional) {
                         for (file_name in files_optional) {
                             file_names.push(file_name) ;
                             total_size += files_optional[file_name].size ;
                         }
+                        file_names_lng2 = file_names.length ;
+                        if (file_names_lng2 - file_names_lng1 == 1) file_texts.push('1 optional file.') ;
+                        else if (file_names_lng2 - file_names_lng1 > 1) file_texts.push((file_names_lng2 - file_names_lng1) + ' optional files.') ;
                     }
                     if (file_names.length == 0) {
                         ZeroFrame.cmd("wrapperNotification", ["info", "User has already been deleted. No files were found", 5000]);
@@ -663,14 +670,14 @@ angular.module('MoneyNetwork')
                     // admin dialog
                     text = "Delete user with auth_address " + self.contact.auth_address + "?<br>" ;
                     text += "This function should only be used for test accounts!<br>" ;
-                    if (file_names.size == 1) text += file_names[0] + ' file.' ;
-                    else for (var i=0 ; i<file_names.length ; i++) {
+                    if (file_texts.size == 1) text += file_texts[0] + ' file.' ;
+                    else for (var i=0 ; i<file_texts.length ; i++) {
                         if (i==0) text += '' ;
-                        else if (i==file_names.length-1) text += ' and ' ;
+                        else if (i==file_texts.length-1) text += ' and ' ;
                         else text += ', ' ;
-                        text += file_names[i] ;
+                        text += file_texts[i] ;
                     }
-                    text += ' files. Total ' + total_size + ' bytes' ;
+                    text += ' Total ' + total_size + ' bytes' ;
                     moneyNetworkService.confirm_admin_task(text, function (private_key) {
                         if (!private_key) return ;
 

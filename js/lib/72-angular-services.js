@@ -5471,18 +5471,28 @@ angular.module('MoneyNetwork')
         } // get_files_optional
 
 
-        // hash with download/load information for optional files
+        // hash with download status for optional chat json files
         // index is inner_path data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
         // properties:
-        // - is_downloaded: true or false
+        // - is_downloaded: true or false. true after OK fileGet request with expected size
         // - is_pending: true or false. true between fileGet and fileGet result/callback
+        // - is_deleted: received logical deleted json file that has also physical deleted
         // - timestamps: list with timestamps for messages not yet loaded into JS
+        // - size: physical size from last fileGet request. Must match size from files_optional in content.json files
+        // - download_failed_at: timestamp for failed (timeout) download.
         var files_optional_cache = {} ;
 
-        // todo: add a chat page context object.
-        // - info is received and updated in get_public_chat calls from chatCtrl
-        // - getting optional files can take some time and chat page contact may change while waiting for optional files
-        // - do not load received optional files into JS arrays if file is no longer within page context
+
+        // chat page context object. information from chat page (chatCtrl) used when downloading optional files
+        // is updated after changes in chat page. Note that chat page context can change doing download process
+        // a json file is relevant for actual chat page context when file download is started
+        // but may not be relevant any longer when finished downloading file
+        // download will continue as long as there are any optional files relevant for actual chat page context
+        // properties:
+        // - max_no_messages. max number of messages in page. 5, 10, 15 etc. infinite scroll
+        // - first_top_timestamp: unix timestamp for top row in chat page
+        // - last_bottom_timestamp: unix timestamp for bottom row in chat page
+        // -
         var chat_page_context = {} ;
         function get_chat_page_context() {
             return chat_page_context ;
