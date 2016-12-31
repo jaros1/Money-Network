@@ -242,7 +242,7 @@ angular.module('MoneyNetwork')
             self.zeronet_search_contacts = function() {
                 moneyNetworkService.z_contact_search(function () {
                     if ($routeParams.unique_id) find_contact();
-                    $scope.$apply()
+                    $scope.$apply();
                 }, null) ;
             };
             self.zeronet_search_contacts() ;
@@ -710,59 +710,27 @@ angular.module('MoneyNetwork')
 
             // chat page context object shared with moneyNetworkService
             // information used when fetching optional files with public chat relevant for actual page
-            var chat_page_context = moneyNetworkService.get_chat_page_context() ;
+            self.chat_page_context = moneyNetworkService.get_chat_page_context() ;
 
             // filter and order by used in ng-repeat messages filter
             function clear_chat_filter_cache () {
                 for (var i=0 ; i<self.messages.length ; i++) {
                     delete self.messages[i].chat_filter ;
                 }
-                self.messages_limit = 5 ;
-                chat_page_context.top_timestamp = null ;
-                chat_page_context.bottom_timestamp = null ;
+                self.chat_page_context.infinite_scroll_limit = 5 ;
+                moneyNetworkService.reset_first_and_last_chat() ;
+                $timeout(moneyNetworkService.check_public_chat, 100) ;
             }
             clear_chat_filter_cache() ;
 
-            // page is ready. show context info for get public chat messages
-            function page_is_ready () {
-                var pgm = controller + '.page_is_ready: ' ;
-                if (!self.setup.public_chat) return ; // public chat disabled
-                var contact_clone, max_no_msg, i, eop, old_limit ;
-                contact_clone = JSON.parse(JSON.stringify(self.contact));
-                if (contact_clone) delete contact_clone.messages;
-                max_no_msg = 0 ;
-                for (i=0 ; i<self.messages.length ; i++) if (self.messages[i].chat_filter) max_no_msg = max_no_msg + 1 ;
-                eop = (self.messages_limit >= max_no_msg) ;
-                debug('infinite_scroll',
-                    pgm + 'first = ' + chat_page_context.top_timestamp +
-                    ', last = ' + chat_page_context.bottom_timestamp + ', eop = ' + eop + ', chat_sort = ' + self.setup.chat_sort +
-                    ', loading_contact = ' + loading_contact + ', contact = ' + JSON.stringify(contact_clone));
-                // is public chat relevant for page
-                if (self.contact && (self.contact.type == 'group')) return ; // group chat - public chat is not relevant
-                if ((self.setup.chat_sort != 'Last message') && !eop) return ; // sort by size - public chat with size 0 always in bottom of page
-                // public chat may be relevant for current chat page
-                moneyNetworkService.get_public_chat(eop, self.contact, 0, function (updated) {
-                    // callback
-                    if (updated) {
-                        // new public chat messages added to page. recheck page
-                        $scope.$apply() ;
-                        chat_page_context.top_timestamp = null ;
-                        chat_page_context.bottom_timestamp = null ;
-                    }
-                }) ;
-            } // page_is_ready
-
-            // keep track of first and last chat message on page.
-            // must check for public chat messages when finished loading page
-            self.set_first_last = function(first,last,message) {
-                var pgm = controller + '.set_first_last: ' ;
-                if (loading_contact) return ; // checking contact in deep link - page not ready
-                if (chat_page_context.top_timestamp && chat_page_context.bottom_timestamp) return ; // no change - page is ready
-                if (first && !chat_page_context.top_timestamp) chat_page_context.top_timestamp = message.message.sent_at ;
-                if (last && !chat_page_context.bottom_timestamp) chat_page_context.bottom_timestamp = message.message.sent_at ;
-                if (!chat_page_context.top_timestamp || !chat_page_context.bottom_timestamp) return; // page not ready. info about first or last row is missing
-                page_is_ready() ;
-            }; // set_first_last
+            // keep track of first and last chat message in chat page
+            // must check for public chat messages within actual chat page context when finished loading page
+            self.set_first_and_last_chat = function(first,last,message) {
+                var pgm = controller + '.set_first_and_last_chat: ' ;
+                if (loading_contact) return ; // startup - checking contact in deep link - page not ready
+                // send chat page context info to service. service will start public chat download if needed
+                moneyNetworkService.set_first_and_last_chat(first, last, message, self.contact) ;
+            }; // set_first_and_last_chat
 
             self.chat_filter = function (message, index, messages) {
                 var pgm = controller + '.chat_filter: ';
@@ -929,8 +897,7 @@ angular.module('MoneyNetwork')
             self.chat_sort_changed = function () {
                 var pgm = controller + '.sort_changed: ' ;
                 console.log(pgm + 'chat_sort = ' + self.setup.chat_sort) ;
-                chat_page_context.top_timestamp = null ;
-                chat_page_context.bottom_timestamp = null ;
+                moneyNetworkService.reset_first_and_last_chat();
                 moneyNetworkService.save_user_setup();
             };
             self.chat_order_by = function (message) {
@@ -1350,13 +1317,16 @@ angular.module('MoneyNetwork')
                 self.new_chat_src = '' ;
             } ;
 
+            // add/remove public chat
             self.debug_settings_changed = function () {
                 moneyNetworkService.save_user_setup() ;
                 MoneyNetworkHelper.load_user_setup() ;
-                page_is_ready() ;
+                moneyNetworkService.reset_first_and_last_chat();
+                $timeout(moneyNetworkService.check_public_chat, 100) ;
             };
 
-            // startup with self.messages_limit = 5.
+            // infinite scroll
+            // startup with infinite_scroll_limit = 5.
             // public_chat = false. No nothing after page startup
             // public_chat = true:
             // -
@@ -1365,33 +1335,9 @@ angular.module('MoneyNetwork')
 
             self.get_more_messages = function () {
                 var pgm = controller + '.get_more_messages: ' ;
-                var max_no_msg, i, old_messages_limit, new_messages_limit ;
-                old_messages_limit = self.messages_limit ;
-                max_no_msg = 0 ;
-                for (i=0 ; i<self.messages.length ; i++) if (self.messages[i].chat_filter) max_no_msg = max_no_msg + 1 ;
-                if (max_no_msg < 5) max_no_msg = 5 ;
-                new_messages_limit = old_messages_limit + 5 ;
-                if (new_messages_limit > max_no_msg) new_messages_limit = max_no_msg ;
-                if (old_messages_limit == new_messages_limit) {
-                    debug('infinite_scroll', pgm + 'no more messages. self.messages_limit = ' + self.messages_limit) ;
-                    if ((self.messages_limit == 5) && (self.setup.public_chat)) {
-                        // must be a new user. search for optional files with public chat messages
-                        moneyNetworkService.get_public_chat(true, self.contact, 0, function (updated) {
-                            // callback
-                            if (updated) {
-                                // new public chat messages added to page. recheck page
-                                $scope.$apply() ;
-                                chat_page_context.top_timestamp = null ;
-                                chat_page_context.bottom_timestamp = null ;
-                            }
-                        }) ;
-
-                    }
-                    return ;
-                }
-                self.messages_limit = new_messages_limit ;
-                chat_page_context.bottom_timestamp = null ;
-                debug('infinite_scroll', pgm + 'self.messages_limit = ' + self.messages_limit) ;
+                self.chat_page_context.infinite_scroll_limit = self.chat_page_context.infinite_scroll_limit + 5;
+                debug('infinite_scroll', pgm + 'self.chat_page_context.infinite_scroll_limit = ' + self.chat_page_context.infinite_scroll_limit) ;
+                moneyNetworkService.reset_first_and_last_chat() ;
             }; // self.get_more_messages
 
 
