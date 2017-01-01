@@ -624,15 +624,15 @@ angular.module('MoneyNetwork')
             };
 
             // admin functions. should only be used for deleting test user accounts
-            self.show_delete_user = moneyNetworkService.is_admin() ;
-            self.delete_user = function () {
-                var pgm = controller + '.delete_user: ' ;
+            self.show_delete_user1 = moneyNetworkService.is_admin() ;
+            self.delete_user1 = function () {
+                var pgm = controller + '.delete_user1: ' ;
                 if (!self.contact || (self.contact.type == 'group')) return ;
 
                 // any files to delete?
                 var user_path = "data/users/" + self.contact.auth_address;
                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
-                    var pgm = controller + '.delete_user fileGet callback: ' ;
+                    var pgm = controller + '.delete_user1 fileGet callback: ' ;
                     var error, files, file_names, total_size, file_name, file_texts, text, files_optional,
                         file_names_lng1, file_names_lng2 ;
                     if (!content) {
@@ -690,7 +690,7 @@ angular.module('MoneyNetwork')
                         // sign and publish
                         var file_name = user_path + '/content.json';
                         ZeroFrame.cmd("sitePublish", {privatekey: private_key, inner_path: file_name}, function (res) {
-                            var pgm = controller + '.delete_user callback: ', error;
+                            var pgm = controller + '.delete_user1 callback: ', error;
                             if (res != "ok") {
                                 error = "Failed to publish " + file_name + " : " + res.error;
                                 console.log(pgm + error);
@@ -706,11 +706,32 @@ angular.module('MoneyNetwork')
 
                 }) ; // fileGet
 
-            }; // delete user
+            }; // delete_user1
 
             // chat page context object shared with moneyNetworkService
             // information used when fetching optional files with public chat relevant for actual page
             self.chat_page_context = moneyNetworkService.get_chat_page_context() ;
+
+            // check public chat after startup and after updates in chat page.
+            // called in a $timeout as timestamps for first and last row in chat page are used as filter for public chat messages
+            var startup_public_chat_check = true ;
+            function check_public_chat () {
+                var no_msg, i, end_of_page ;
+                if (!self.setup.public_chat) return ;
+                if (startup_public_chat_check && (self.setup.chat_sort != 'Last message')) {
+                    // warning. public chat selected and sort is NOT Last message. Any public chat messages will be in bottom of page
+                    no_msg = 0 ;
+                    for (i=0 ; i<self.messages.length ; i++) if (self.messages[i].chat_filter) no_msg = no_msg + 1 ;
+                    end_of_page = (self.chat_page_context.infinite_scroll_limit >= no_msg) ;
+                    if (!end_of_page) {
+                        ZeroFrame.cmd("wrapperNotification",
+                            ["info", "Public chat is enabled and messages are sorted by " + self.setup.chat_sort +
+                            "<br>Scroll down to see public chat", 10000]);
+                    }
+                }
+                startup_public_chat_check = false ;
+                moneyNetworkService.check_public_chat() ;
+            }
 
             // filter and order by used in ng-repeat messages filter
             function clear_chat_filter_cache () {
@@ -719,7 +740,7 @@ angular.module('MoneyNetwork')
                 }
                 self.chat_page_context.infinite_scroll_limit = 5 ;
                 moneyNetworkService.reset_first_and_last_chat() ;
-                $timeout(moneyNetworkService.check_public_chat, 100) ;
+                $timeout(check_public_chat, 100) ;
             }
             clear_chat_filter_cache() ;
 
@@ -1322,7 +1343,7 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.save_user_setup() ;
                 MoneyNetworkHelper.load_user_setup() ;
                 moneyNetworkService.reset_first_and_last_chat();
-                $timeout(moneyNetworkService.check_public_chat, 100) ;
+                $timeout(check_public_chat, 100) ;
             };
 
             // infinite scroll

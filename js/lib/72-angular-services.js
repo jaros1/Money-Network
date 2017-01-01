@@ -4998,7 +4998,7 @@ angular.module('MoneyNetwork')
             if (user_setup.avatar && (['jpg','png'].indexOf(user_setup.avatar) == -1)) {
                 // public avatar found in user setup
                 avatar.src = 'public/images/avatar' + user_setup.avatar ;
-                console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
+                // console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
             }
             // check ZeroFrame status
             var retry_load_avatar = function () {
@@ -5019,7 +5019,7 @@ angular.module('MoneyNetwork')
             if (user_setup.avatar && (['jpg','png'].indexOf(user_setup.avatar) != -1)) {
                 // uploaded avatar found in user setup
                 avatar.src = 'data/users/' + ZeroFrame.site_info.auth_address + '/avatar.' + user_setup.avatar ;
-                console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
+                // console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
             }
 
             // 1) get content.json - check if user already has uploaded an avatar
@@ -5029,47 +5029,21 @@ angular.module('MoneyNetwork')
                 var ls_avatar, public_avatars, index ;
                 if (content) content = JSON.parse(content);
                 else content = { files: {} } ;
-                console.log(pgm + 'content = ' + JSON.stringify(content));
-                //content = {
-                //    "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
-                //    "cert_auth_type": "web",
-                //    "cert_sign": "IOD/OIxKD0+63JQh/Wc8RtFO6bYF+nMK+AIEXshE3o6oTMu9C4mSe6QlRSblmoEjA7NL6NOv3xEpkFN0LR0Ryk8=",
-                //    "cert_user_id": "1Nr2PRg2MwNX3@nanasi",
-                //    "files": {
-                //        "data.json": {
-                //            "sha512": "2b35863ad5aa829c2a6d6d1e631ff969ae3c63057650cf5675fdf5bbeb8898bb",
-                //            "size": 1921
-                //        },
-                //        "status.json": {
-                //            "sha512": "0136bea2d6ecc9b3cf4152d89098759bddfc45920c5df388ad1e24294dceea62",
-                //            "size": 204
-                //        }
-                //    },
-                //    "files_optional": {
-                //        "1483202121120-1483202121120-2-chat.json": {
-                //            "sha512": "f0dfcf809f7f4120db4dcfaba376ebe55715de018f0116dc73342b43ecfe7357",
-                //            "size": 148
-                //        }
-                //    },
-                //    "inner_path": "data/users/1Nr2PRg2MwNX3NKbvQYuiT6CWiC4NzgBAz/content.json",
-                //    "modified": 1483203227.522819,
-                //    "optional": "([0-9]{13}-[0-9]{13}-[0-9]+-chat.json)",
-                //    "signs": {"1Nr2PRg2MwNX3NKbvQYuiT6CWiC4NzgBAz": "HAz4Q/C6W20j9QYo9BCNJfBtDpoO+hyTnqRiF2MWWoDMyF4FngiCTaB8hnSYGmTxIsTgH5gtJU4jWvQvDSKLNPg="}
-                //};
+                // console.log(pgm + 'content = ' + JSON.stringify(content));
 
                 // remember actual list of actual files. Used in public chat
                 if (content.optional == CONTENT_OPTIONAL) save_my_files_optional(content.files_optional || {}) ;
 
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 if (content.files["avatar.jpg"]) {
-                    console.log(pgm + 'found avatar.jpg') ;
+                    // console.log(pgm + 'found avatar.jpg') ;
                     avatar.src = user_path + '/avatar.jpg';
                     avatar.loaded = true ;
                     $rootScope.$apply() ;
                     return ;
                 }
                 if (content.files["avatar.png"]) {
-                    console.log(pgm + 'found avatar.png') ;
+                    // console.log(pgm + 'found avatar.png') ;
                     avatar.src = user_path + '/avatar.png';
                     avatar.loaded = true ;
                     $rootScope.$apply() ;
@@ -5078,7 +5052,7 @@ angular.module('MoneyNetwork')
                 // 2) no user avatar found - use previous selection in localStorage
                 ls_avatar = user_setup.avatar ;
                 if (ls_avatar && (['jpg','png'].indexOf(ls_avatar) == -1)) {
-                    console.log(pgm + 'found from user_setup. ls_avatar = ' + JSON.stringify(ls_avatar)) ;
+                    // console.log(pgm + 'found from user_setup. ls_avatar = ' + JSON.stringify(ls_avatar)) ;
                     avatar.src = "public/images/avatar" + ls_avatar;
                     avatar.loaded = true ;
                     $rootScope.$apply() ;
@@ -5609,14 +5583,14 @@ angular.module('MoneyNetwork')
             // start public chat download?
             if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return ; // group chat
             if ((user_setup.chat_sort != 'Last message') && !chat_page_context.end_of_page) return ; // sort by size and not end of page. public chat with size 0 at end of page
-            if (chat_page_context.no_processes >= 1) {
+            if (chat_page_context.no_processes >= 2) {
                 // do not start more that 2 download processes
-                console.log(pgm + 'stop. already ' + chat_page_context.no_processes + ' downloads running') ;
+                debug('public_chat', pgm + 'stop. already ' + chat_page_context.no_processes + ' downloads running') ;
                 return ;
             }
             if (chat_page_context.failures >= 3) {
                 // something is wrong. maybe offline?
-                console.log(pgm + 'stop. already ' + chat_page_context.failures + ' for actual chat page context') ;
+                debug('public_chat', pgm + 'stop. already ' + chat_page_context.failures + ' for actual chat page context') ;
                 return ;
             }
 
@@ -5742,11 +5716,11 @@ angular.module('MoneyNetwork')
                     debug('public_chat', pgm + 'before removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
                     for (cache_filename in compare_files1) {
                         if (compare_files1[cache_filename].in_cache && compare_files1[cache_filename].in_query) {
-                            console.log(pgm + 'file ' + cache_filename + ' in cache and in query. must also compare size. changed size = deleted messages') ;
-                            console.log(pgm + 'compare_files1[cache_filename] = ' + JSON.stringify(compare_files1[cache_filename])) ;
+                            debug('public_chat', pgm + 'file ' + cache_filename + ' in cache and in query. must also compare size. changed size = deleted messages') ;
+                            debug('public_chat', pgm + 'compare_files1[cache_filename] = ' + JSON.stringify(compare_files1[cache_filename])) ;
                             if (compare_files1[cache_filename].cache_size == compare_files1[cache_filename].query_size) delete compare_files1[cache_filename] ;
                             else {
-                                debug('public_chat', 'changed size for file ' + cache_filename + '. must download and recheck file for deleted messages');
+                                debug('public_chat', 'public_chat', 'changed size for file ' + cache_filename + '. must download and recheck file for deleted messages');
                                 files_optional_cache[cache_filename].is_downloaded = false ;
                                 delete files_optional_cache[cache_filename].timestamps ;
                             }
@@ -5876,7 +5850,7 @@ angular.module('MoneyNetwork')
                                     }
                                 }
                                 if (!contact) {
-                                    console.log(pgm + 'warning. detected deleted chat file but cannot find contact with auth_address = ' +
+                                    console.log(pgm + 'error. deleted chat file but cannot find contact with auth_address = ' +
                                         auth_address + ' and user_seq = ' + user_seq + '. compare_files1 = ' + JSON.stringify(compare_files1)) ;
                                     continue ;
                                 }
@@ -5968,6 +5942,10 @@ angular.module('MoneyNetwork')
                                 return ;
                             }
                             // any not yet read messages within page context?
+                            if (!cache_status.timestamps) {
+                                console.log(pgm + 'UPS. cache_status.timestamps is null. res[' + i + '] = ' + JSON.stringify(res[i]) +
+                                    ', cache_status = ' + JSON.stringify(cache_status));
+                            }
                             for (j=0 ; j<cache_status.timestamps.length ; j++) {
                                 if (cache_status.timestamps[j] < chat_page_context.last_bottom_timestamp) continue ;
                                 get_and_load_chat_file(cache_filename, res[i].size, cb2) ;
@@ -6136,7 +6114,7 @@ angular.module('MoneyNetwork')
                     files_optional_cache[cache_filename] = cache_status;
                 }
                 if (cache_status.is_pending) {
-                    console.log(pgm + 'aborting request. fileGet request is already running for ' + cache_filename);
+                    debug('public_chat', pgm + 'aborting request. fileGet request is already running for ' + cache_filename);
                     return cb();
                 }
                 if (cache_status.is_downloaded && cache_status.timestamps && (cache_status.timestamps.length == 0)) {
@@ -6146,7 +6124,7 @@ angular.module('MoneyNetwork')
 
                 // read optional file. can take some time depending of number of peers
                 cache_status.is_pending = true;
-                console.log('public_chat', pgm + 'start download ' + cache_filename) ;
+                debug('public_chat', pgm + 'start download ' + cache_filename) ;
                 ZeroFrame.cmd("fileGet", {inner_path: cache_filename, required: true}, function (chat) {
                     var pgm = service + '.get_and_load_chat_file fileGet callback 2: ';
                     var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
@@ -6227,11 +6205,11 @@ angular.module('MoneyNetwork')
                             }
                         }
                         if (!contact) {
-                            console.log(pgm + 'contact with auth_address ' + file_auth_address + ' and user_seq ' + file_user_seq + ' was not found. ' +
+                            debug('public_chat', pgm + 'contact with auth_address ' + file_auth_address + ' and user_seq ' + file_user_seq + ' was not found. ' +
                                 'cannot read messages in ' + cache_filename) ;
                             // contact with auth_address 16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH and user_seq 1 was not found.
                             // cannot read messages in data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482768400248-1482768400248-1-chat.json
-                            console.log(pgm + 'create unknown contact and retry reading public chat file') ;
+                            debug('public_chat', pgm + 'create unknown contact and retry reading chat file ' + cache_filename) ;
                             // run contact search for this auth_address only
                             z_contact_search (function () { cb() }, file_auth_address) ;
                             return  ;
@@ -6246,7 +6224,7 @@ angular.module('MoneyNetwork')
                         j = -1;
                         for (k = 0; k < chat.msg.length; k++) if (chat.msg[k].timestamp == timestamp) j = k;
                         if (j == -1) {
-                            console.log(pgm + 'UPS. Message with timestamp ' + timestamp + ' was not found in chat file ' + cache_filename);
+                            console.log(pgm + 'Error. Message with timestamp ' + timestamp + ' was not found in chat file ' + cache_filename);
                             cache_status.timestamps.splice(i, 1);
                             continue;
                         }
@@ -6482,6 +6460,7 @@ angular.module('MoneyNetwork')
             }
             return user_id ;
         } // client_login
+        function get_user_id () { return user_id } ;
 
         function client_logout() {
             // notification
@@ -6927,14 +6906,14 @@ angular.module('MoneyNetwork')
             guest = (guest_id == '' + user_id) ;
             if (guest) user_setup.guest = guest ;
             if (!user_setup.contact_filters) user_setup.contact_filters = {
-                all: 'red',
+                all: 'green',
                 new: 'green',
                 unverified: 'green',
                 verified: 'green',
-                ignore: 'red'
+                ignore: 'green'
             } ;
             if (!user_setup.contact_filters.hasOwnProperty('guest')) {
-                user_setup.contact_filters.guest = guest ? 'green' : 'red' ;
+                user_setup.contact_filters.guest = 'green' ;
             }
             if (!user_setup.contact_sort) user_setup.contact_sort = contact_sort_options[0] ;
             if (user_setup.contact_sort == 'Last updated') user_setup.contact_sort = 'Last online' ;
@@ -7068,7 +7047,9 @@ angular.module('MoneyNetwork')
             get_public_chat: get_public_chat,
             get_chat_page_context: get_chat_page_context,
             set_first_and_last_chat: set_first_and_last_chat,
-            reset_first_and_last_chat: reset_first_and_last_chat
+            reset_first_and_last_chat: reset_first_and_last_chat,
+            get_user_seq: get_user_seq,
+            get_user_id: get_user_id
         };
 
         // end MoneyNetworkService

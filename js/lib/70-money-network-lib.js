@@ -72,7 +72,13 @@ var MoneyNetworkHelper = (function () {
             var pgm = module + '.ls_save wrapperSetLocalStorage callback: ';
             // console.log(pgm + 'OK');
         }) ;
-    } // ls_save
+    } // key
+
+    // delete all localStorage data
+    function ls_clear() {
+        for (var key in local_storage) delete local_storage[key] ;
+        ls_save()
+    } // ls_clear
 
     // initialize array with public avatars from public/images/avatar
     var public_avatars = [] ;
@@ -1072,6 +1078,7 @@ var MoneyNetworkHelper = (function () {
         removeItem: removeItem,
         ls_bind: ls_bind,
         ls_save: ls_save,
+        ls_clear: ls_clear,
         getUserId: getUserId,
         client_login: client_login,
         client_logout: client_logout,

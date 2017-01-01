@@ -354,8 +354,8 @@
                                                ng-click="c.contact_verify(x)"/>
                                         <input ng-show="c.show_contact_delete()" type="button" value="Delete"
                                                ng-click="c.contact_delete()"/>
-                                        <input ng-show="c.show_delete_user" type="button" value="Admin"
-                                               ng-click="c.delete_user()"/>
+                                        <input ng-show="c.show_delete_user1" type="button" value="Admin"
+                                               ng-click="c.delete_user1()"/>
                                     </td>
                                 </tr>
                                 <tr>
@@ -842,8 +842,8 @@
                                            ng-click="c.contact_verify()"/>
                                     <input ng-show="c.show_contact_delete()" type="button" value="Delete"
                                            ng-click="c.contact_delete()"/>
-                                    <input ng-show="c.show_delete_user" type="button" value="Admin"
-                                           ng-click="c.delete_user()"/>
+                                    <input ng-show="c.show_delete_user1" type="button" value="Admin"
+                                           ng-click="c.delete_user1()"/>
                                 </td>
                             </tr>
                             <tr>
@@ -1333,6 +1333,18 @@
             </table>
             <br>
 
+            <table title="Some usefull admin tasks:">
+                <tbody>
+                <tr><td colspan="3">Admin section:</td></tr>
+                <tr title="Close account and delete data from ZeroNet and localStorage. Delete this account will delete data for this account only. Delete all accounts will remove all data from ZeroNet and all data from localStorage.">
+                    <td>Delete account:</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><a href="" ng-click="u.delete_user2(false)">delete this account</a> / <a href="" ng-click="u.delete_user2(true)">delete all accounts</a></td>
+                </tr>
+                </tbody>
+            </table>
+            <br>
+
             <table title="Use this section to enable/disable debug information in browser console (F12)">
                 <tbody>
                 <tr>
@@ -1471,6 +1483,8 @@
                 </tr>
                 </tbody>
             </table>
+
+            <span ng-show="u.setup.debug.enabled">
             <br>
 
             <table title="Use this section to enable/disable special test cases">
@@ -1491,6 +1505,8 @@
                 </tr>
                 </tbody>
             </table>
+
+            </span>
             <br>
 
 
