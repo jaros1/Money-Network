@@ -20,7 +20,6 @@ if (!Array.prototype.indexOf) {
     };
 }
 
-
 // helper functions
 var MoneyNetworkHelper = (function () {
 
@@ -79,6 +78,65 @@ var MoneyNetworkHelper = (function () {
         for (var key in local_storage) delete local_storage[key] ;
         ls_save()
     } // ls_clear
+
+
+    // localStorage export/import. Used in Account page / userCtrl
+    // https://developer.mozilla.org/en-US/docs/Web/API/WindowBase64/btoa#Unicode_strings
+    // ucs-2 string to base64 encoded ascii
+    function utoa(str) {
+        return window.btoa(unescape(encodeURIComponent(str)));
+    }
+    // base64 encoded ascii to ucs-2 string
+    function atou(str) {
+        return decodeURIComponent(escape(window.atob(str)));
+    }
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/WindowBase64/Base64_encoding_and_decoding#Solution_1_%E2%80%93_escaping_the_string_before_encoding_it
+    //function b64EncodeUnicode(str) {
+    //    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+    //        return String.fromCharCode('0x' + p1);
+    //    }));
+    //}
+    //function b64DecodeUnicode(str) {
+    //    return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+    //        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    //    }).join(''));
+    //}
+
+    var ls_export_import_test ;
+    function ls_export (filename) {
+        var pgm = module + '.ls_export: ' ;
+        var ls_str, ls_str64, blob ;
+        ls_str = JSON.stringify(local_storage);
+        ls_export_import_test = ls_str ;
+        // console.log(pgm + 'ls_str = ' + ls_str) ;
+        ls_str64 = utoa(ls_str) ;
+        blob = new Blob([ls_str64], {type: "text/plain;charset=utf-8"});
+        // console.log(pgm + 'filename = ' + filename) ;
+        saveAs(blob, filename);
+    } // ls_export
+    function ls_import (file, cb) {
+        var pgm = module + '.ls_import: ' ;
+        var reader, ls_str64, ls_str, ls, key ;
+        reader = new FileReader();
+        reader.onload = function () {
+            ls_str64 = reader.result;
+            ls_str = atou(ls_str64) ;
+            // console.log(pgm + 'ls_str = ' + ls_str) ;
+            if (ls_export_import_test) {
+                if (ls_str == ls_export_import_test) console.log(pgm + 'Test OK. import == export') ;
+                else console.log(pgm + 'Test failed. import != export') ;
+            }
+            ls = JSON.parse (ls_str);
+            // import ok. overwrite existing localStorage
+            for (key in local_storage) delete local_storage[key] ;
+            for (key in ls) local_storage[key] = ls[key] ;
+            ls_save() ;
+            // callback. for example client_logout
+            if (cb) cb() ;
+        }; // onload
+        reader.readAsText(file);
+    } // ls_import
 
     // initialize array with public avatars from public/images/avatar
     var public_avatars = [] ;
@@ -1079,6 +1137,8 @@ var MoneyNetworkHelper = (function () {
         ls_bind: ls_bind,
         ls_save: ls_save,
         ls_clear: ls_clear,
+        ls_export: ls_export,
+        ls_import: ls_import,
         getUserId: getUserId,
         client_login: client_login,
         client_logout: client_logout,

@@ -1,6 +1,8 @@
 angular.module('MoneyNetwork')
     
-    .controller('UserCtrl', ['$scope', '$rootScope', '$timeout', 'MoneyNetworkService', '$location', function($scope, $rootScope, $timeout, moneyNetworkService, $location) {
+    .controller('UserCtrl', ['$scope', '$rootScope', '$timeout', 'MoneyNetworkService', '$location', 'dateFilter',
+                     function($scope, $rootScope, $timeout, moneyNetworkService, $location, date)
+    {
         var self = this;
         var controller = 'UserCtrl';
         if (!MoneyNetworkHelper.getItem('userid')) return ; // not logged in - skip initialization of controller
@@ -271,7 +273,7 @@ angular.module('MoneyNetwork')
             console.log(pgm + 'no_local_accounts = ' + no_local_accounts + ', cert_user_ids = ' + cert_user_ids.join(', '));
 
             // delete account text. multiple ZeroNet accounts and/or multiple local accounts warnings
-            text = 'Delete ZeroNet data for ' + current_cert_user_id + ' and local data' ;
+            text = 'Delete all ZeroNet data for ' + current_cert_user_id + '<br>and all local browser data' ;
             if ((no_local_accounts > 1) && !all_accounts) text += '  for this account' ;
             text += '?' ;
             if (cert_user_ids.length) text +=
@@ -284,31 +286,20 @@ angular.module('MoneyNetwork')
                 if (!all_accounts) text += ' not' ;
                 text += ' be deleted' ;
             }
-            text += '<br>Delete account and data?' ;
+            text += '<br>No way back! Are you sure?' ;
 
-            ZeroFrame.cmd("wrapperConfirm", [text, "OK"], function (confirm) {
+            ZeroFrame.cmd("wrapperConfirm", [text, "Delete"], function (confirm) {
                 var pgm = controller + '.delete_user2 wrapperConfirm callback 1: ' ;
                 var user_path ;
                 if (!confirm) return ;
                 user_path = "data/users/" + ZeroFrame.site_info.auth_address;
                 var my_auth_address = ZeroFrame.site_info.auth_address ;
 
-                // delete confirmed. delete user process:
-                // 1) delete all downloaded optional files from other users
-                // 2) overwrite all uploaded optional files with empty jsons
-                // 3) delete user files from zeroNet (data.json, status.json, avatar.jpg, avatar.png)
-                // 4) delete data from localStorage
-                // 5) delete user from sessionStorage
+
 
                 // create callbacks for cleanup operation
 
-
-
-                // update/delete status.json helpers
-
-
-
-                var logout_and_redirect = function () {
+                var step_6_logout_and_redirect = function () {
                     var text, a_path, z_path;
                     // done. log out, notification and redirect
                     moneyNetworkService.client_logout();
@@ -318,7 +309,7 @@ angular.module('MoneyNetwork')
                     if (no_local_accounts > 1) text += '<br>There is ' + no_local_accounts + ' other local accounts in this browser';
                     if (cert_user_ids.length == 1) text += '<br>Data on ZeroNet account ' + cert_user_ids[0] + ' has not been deleted';
                     if (cert_user_ids.length > 1) text += '<br>Data on ZeroNet accounts ' + cert_user_ids.join(', ') + ' has not been deleted';
-                    ZeroFrame.cmd("wrapperNotification", ['info', text]);
+                    ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
                     // redirect
                     a_path = '/auth';
                     z_path = "?path=" + a_path;
@@ -329,11 +320,11 @@ angular.module('MoneyNetwork')
 
                 }; // logout_and_redirect
 
-                var cleanup_localstorage = function () {
+                var step_5_cleanup_localstorage = function () {
                     var pgm = controller + '.delete_user2 cleanup_localstorage callback: ' ;
                     // delete all localStorage data for this user.
                     if ((no_local_accounts == 1) || all_accounts) {
-                        // only/last local account - simple localStorage overwrite
+                        // only/last local account - simple JS + localStorage overwrite
                         MoneyNetworkHelper.ls_clear();
                     }
                     else {
@@ -357,65 +348,69 @@ angular.module('MoneyNetwork')
                     }
                 }; // cleanup_localstorage
 
-                var publish = function () {
+
+                // step 4 - publish
+
+                var step_4_publish = function () {
                     ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
-                        var pgm = controller + '.delete_user2 sitePublish callback: ' ;
+                        var pgm = controller + '.delete_user2.step_4_publish sitePublish: ' ;
                         console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                        cleanup_localstorage() ;
-                        logout_and_redirect();
-                    })
-                }; // publish
+                        step_5_cleanup_localstorage() ;
+                        step_6_logout_and_redirect();
+                    }) // sitePublish
+                }; // step_4_publish
 
 
-                var delete_status_json = function () {
+                // step 3 - cleanup status.json
+                var step_3_delete_status_json = function () {
                     ZeroFrame.cmd("fileDelete", user_path + '/' + 'status.json', function (res) {
-                        var pgm = controller + '.delete_user2 fileDelete status.json callback: ' ;
+                        var pgm = controller + '.delete_user2.step_3_delete_status_json: ' ;
                         console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                        publish();
+                        step_4_publish();
                     }) ;
-                };
-                var update_status_json = function (my_user_seq) {
+                }; // step_3_delete_status_json
+                var step_3_update_status_json = function (my_user_seq) {
                     ZeroFrame.cmd("fileGet", [user_path + '/' + 'status.json', false], function (status) {
-                        var pgm = controller + '.delete_user2 fileGet status.json callback : ' ;
+                        var pgm = controller + '.delete_user2.step_3_update_status_json fileGet: ' ;
                         var i, json_raw ;
-                        if (!status) { publish() ; return }
+                        if (!status) { step_4_publish() ; return }
                         status = JSON.parse(status) ;
                         if (!status.status) status.status = [] ;
                         for (i=status.status.length-1 ; i >= 0 ; i--) if (status.status[i].user_seq == my_user_seq) status.status.splice(i,1);
                         if (status.status.length == 0) {
                             // no more data. simple data
-                            delete_status_json() ;
+                            step_3_delete_status_json() ;
                             return ;
                         }
                         json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
                         ZeroFrame.cmd("fileWrite", [user_path + '/' + 'status.json', btoa(json_raw)], function (res) {
-                            var pgm = controller + '.delete_user2 fileWrite status.json callback : ' ;
+                            var pgm = controller + '.delete_user2.step_3_update_status_json fileWrite: ' ;
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                            publish() ;
-                        }) ;
-                    }) ; // fileGet callback
+                            step_4_publish() ;
+                        }) ; // fileWrite
+                    }) ; // fileGet
 
-                }; // update_delete_status_json
+                }; // step_3_update_delete_status_json
+                var step_3_update_or_delete_status_json = function (my_user_seq) {
+                    if (all_accounts) step_3_delete_status_json() ;
+                    else step_3_update_status_json(my_user_seq) ;
+                }; // step_3_update_or_delete_status_json
 
-                var update_or_delete_status_json = function (my_user_seq) {
-                    if (all_accounts) delete_status_json() ;
-                    else update_status_json(my_user_seq) ;
-                }; // update_or_delete_status_json
 
-                var delete_data_json = function (user_seq) {
+                // step 2 - cleanup data.json
+
+                var step_2_delete_data_json = function (user_seq) {
                     ZeroFrame.cmd("fileDelete", user_path + '/' + 'data.json', function (res) {
-                        var pgm = controller + '.delete_user2 fileDelete data.json callback: ' ;
+                        var pgm = controller + '.delete_user2.step_2_delete_data_json: ' ;
                         console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                        update_or_delete_status_json(user_seq);
+                        step_3_update_or_delete_status_json(user_seq);
                     }) ;
                 };
-
-                // update/delete data.json helpers
-                var update_data_json = function (my_user_seq) {
+                var step_2_update_data_json = function (my_user_seq) {
                     ZeroFrame.cmd("fileGet", [user_path + '/' + 'data.json', false], function (data) {
-                        var pgm = controller + '.delete_user2 fileGet data.json callback: ' ;
+                        var pgm = controller + '.delete_user2.step_2_update_data_json fileGet: ' ;
                         var i, json_raw ;
-                        if (!data) { update_or_delete_status_json(user_seq) ; return }
+                        if (!data) { step_3_update_or_delete_status_json(user_seq) ; return }
                         data = JSON.parse(data) ;
                         if (!data.users) data.users = [] ;
                         for (i=data.users.length-1 ; i >= 0 ; i--) if (data.users[i].user_seq == my_user_seq) data.users.splice(i,1);
@@ -425,30 +420,32 @@ angular.module('MoneyNetwork')
                         for (i=data.msg.length-1 ; i >= 0 ; i--) if (data.msg[i].user_seq == my_user_seq) data.msg.splice(i,1);
                         if ((data.users.length == 0) && (data.search.length == 0) && (data.msg.length == 0)) {
                             // no more data. simple data
-                            delete_data_json(my_user_seq) ;
+                            step_2_delete_data_json(my_user_seq) ;
                             return ;
                         }
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                         ZeroFrame.cmd("fileWrite", [user_path + '/' + 'data.json', btoa(json_raw)], function (res) {
-                            var pgm = controller + '.delete_user2 fileWrite data.json callback: ' ;
+                            var pgm = controller + '.delete_user2.step_2_update_data_json fileWrite: ' ;
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                            update_or_delete_status_json(my_user_seq) ;
-                        }) ;
-                    }) ; // fileGet callback
+                            step_3_update_or_delete_status_json(my_user_seq) ;
+                        }) ; // fileWrite
+                    }) ; // fileGet
 
-                }; // update_delete_data_json
+                }; // step_2_update_delete_data_json
+                var step_2_update_or_delete_data_json = function (my_user_seq) {
+                    if (all_accounts) step_2_delete_data_json(my_user_seq) ;
+                    else step_2_update_data_json(my_user_seq) ;
 
-                var update_or_delete_data_json = function (my_user_seq) {
-                    if (all_accounts) delete_data_json(my_user_seq) ;
-                    else update_data_json(my_user_seq) ;
+                }; // update_or_delete_data_json_2
 
-                }; // update_or_delete_data_json
+
+                // step 1 - cleanup optional files
 
                 // 1) delete all downloaded optional files from other users
                 // 2) overwrite all uploaded optional files with empty jsons
-                var cleanup_optional_files = function (my_user_seq) {
+                var step_1_cleanup_optional_files = function (my_user_seq) {
                     ZeroFrame.cmd("optionalFileList", { limit: 99999}, function (list) {
-                        var pgm = controller + '.delete_user2 optionalFileList callback 3: ';
+                        var pgm = controller + '.delete_user2.step_1_cleanup_optional_files: ';
                         var i, file_auth_address, file_user_seq, inner_path, empty_json, empty_json_raw, user_path,
                             a_path, z_path;
                         // console.log(pgm + 'list = ' + JSON.stringify(list)) ;
@@ -474,22 +471,71 @@ angular.module('MoneyNetwork')
                             }
                         } // for i
 
-                        update_or_delete_data_json(my_user_seq) ;
+                        step_2_update_or_delete_data_json(my_user_seq) ;
                     }) ;
-                } ; // cleanup_optional_files
+                } ; // step_1_cleanup_optional_files
 
+
+                // delete account process:
+                // 1) delete all downloaded optional files from other users
+                // 2) overwrite all uploaded optional files with empty jsons
+                // 3) delete user files from zeroNet (data.json, status.json, avatar.jpg, avatar.png)
+                // 4) delete data from localStorage
+                // 5) delete user from sessionStorage
+                // 6) log out, notification and redirect
                 // run all callbacks for cleanup operation
                 if (all_accounts) {
                     ZeroFrame.cmd("fileDelete", user_path + '/' + 'avatar.jpg', function () {}) ;
                     ZeroFrame.cmd("fileDelete", user_path + '/' + 'avatar.png', function () {}) ;
                 }
                 moneyNetworkService.get_user_seq(function (my_user_seq) {
-                    cleanup_optional_files(my_user_seq);
+                    step_1_cleanup_optional_files(my_user_seq);
                 }) ;
+
 
             }) ; // wrapperConfirm callback 1
 
         }; // delete_user2
+
+
+        self.export_ls = function() {
+            var pgm = controller + '.export_ls: ' ;
+            var filename, now ;
+            now = new Date().getTime() ;
+            filename = 'moneynetwork-ls-' + date(now, 'yyyyMMdd-HHmmss') + '.txt' ;
+            MoneyNetworkHelper.ls_export(filename) ;
+        };
+        self.import_ls = function(event) {
+            var pgm = controller + '.import_ls: ' ;
+            var files, file, import_result ;
+            // console.log(pgm + 'event = ' + JSON.stringify(event));
+            files = event.target.files;
+            file = files[0] ;
+            MoneyNetworkHelper.ls_import(file, function() {
+                var text ;
+                // localStorage data changed.
+                moneyNetworkService.client_logout();
+                //
+                text = 'LocalStorage data has been imported from file. Please log in';
+                ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
+                // redirect
+                a_path = '/auth';
+                z_path = "?path=" + a_path;
+                $location.path(a_path);
+                $location.replace();
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
+                $scope.$apply();
+            });
+        };
+        self.export_z = function() {
+            var pgm = controller + '.export_z: ' ;
+            console.log(pgm + 'click') ;
+        };
+        self.import_z = function() {
+            var pgm = controller + '.import_z: ' ;
+            console.log(pgm + 'click') ;
+        };
+
 
         // end UserCtrl
     }])

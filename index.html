@@ -1336,7 +1336,39 @@
             <table title="Some usefull admin tasks:">
                 <tbody>
                 <tr><td colspan="3">Admin section:</td></tr>
-                <tr title="Close account and delete data from ZeroNet and localStorage. Delete this account will delete data for this account only. Delete all accounts will remove all data from ZeroNet and all data from localStorage.">
+                <tr title="All data except public chat is saved locally in browser (localStorage). You can use this section to export and import your local data. Used as backup or when moving from one browser/device to an other browser/device">
+                    <td>localStorage:</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td>
+                        <table>
+                            <tbody>
+                            <tr>
+                                <td><a href="" ng-click="u.export_ls()">export</a></td>
+                                <td>&nbsp;&nbsp;/&nbsp;&nbsp;</td>
+                                <td>import:&nbsp;&nbsp;</td>
+                                <td><input id="import_ls" type="file" accept=".txt" custom-on-change="u.import_ls"/></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr title="Some few data is stored in a user dictionary on Zeronet. You can use this section to export and import your ZeroNet data. Used as backup or when moving from one browser/device to an other browser/device">
+                    <td>ZeroNet:</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td>
+                        <table>
+                            <tbody>
+                            <tr>
+                                <td><a href="" ng-click="u.exportz()">export</a></td>
+                                <td>&nbsp;&nbsp;/&nbsp;&nbsp;</td>
+                                <td>import:&nbsp;&nbsp;</td>
+                                <td><input id="import_z" type="file" accept=".txt" custom-on-change="u.import_z"/></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr title="Close account and delete data from ZeroNet and localStorage. Delete this account will delete data for this account only. Delete all accounts will remove all data from ZeroNet and all data from localStorage. No way back. You maybe want to make a localStorage export before doing this ...">
                     <td>Delete account:</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><a href="" ng-click="u.delete_user2(false)">delete this account</a> / <a href="" ng-click="u.delete_user2(true)">delete all accounts</a></td>
@@ -1754,6 +1786,8 @@
 <script type="text/javascript" src="js-external/60-jsencrypt.js"></script>
 <script type="text/javascript" src="js-external/61-lz-string.js"></script>
 <script type="text/javascript" src="js-external/62-tv4.js"></script>
+<script type="text/javascript" src="js-external/63-Blob.js"></script>
+<script type="text/javascript" src="js-external/64-FileSaver.js"></script>
 <!-- the money network app - dynamic part - many changes -->
 <script type="text/javascript" src="js/all.js"></script>
 <!-- end - some more static js files -->
