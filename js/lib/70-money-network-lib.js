@@ -62,6 +62,10 @@ var MoneyNetworkHelper = (function () {
         local_storage_functions.length = 0 ;
     }) ;
 
+    function ls_get () {
+        return local_storage ;
+    }
+
     // write JS copy of local storage back to ZeroFrame API
     function ls_save() {
         var pgm = module + '.ls_save: ' ;
@@ -91,23 +95,16 @@ var MoneyNetworkHelper = (function () {
         return decodeURIComponent(escape(window.atob(str)));
     }
 
-    // https://developer.mozilla.org/en-US/docs/Web/API/WindowBase64/Base64_encoding_and_decoding#Solution_1_%E2%80%93_escaping_the_string_before_encoding_it
-    //function b64EncodeUnicode(str) {
-    //    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
-    //        return String.fromCharCode('0x' + p1);
-    //    }));
-    //}
-    //function b64DecodeUnicode(str) {
-    //    return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
-    //        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    //    }).join(''));
-    //}
-
     var ls_export_import_test ;
     function ls_export (filename) {
         var pgm = module + '.ls_export: ' ;
-        var ls_str, ls_str64, blob ;
-        ls_str = JSON.stringify(local_storage);
+        var ls, ls_str, ls_str64, blob ;
+        // localStorage only export
+        ls = {
+            timestamp: new Date().getTime(),
+            local_storage: local_storage
+        } ;
+        ls_str = JSON.stringify(ls);
         ls_export_import_test = ls_str ;
         // console.log(pgm + 'ls_str = ' + ls_str) ;
         ls_str64 = utoa(ls_str) ;
@@ -117,7 +114,7 @@ var MoneyNetworkHelper = (function () {
     } // ls_export
     function ls_import (file, cb) {
         var pgm = module + '.ls_import: ' ;
-        var reader, ls_str64, ls_str, ls, key ;
+        var reader, ls_str64, ls_str, ls, key, error ;
         reader = new FileReader();
         reader.onload = function () {
             ls_str64 = reader.result;
@@ -127,15 +124,29 @@ var MoneyNetworkHelper = (function () {
                 if (ls_str == ls_export_import_test) console.log(pgm + 'Test OK. import == export') ;
                 else console.log(pgm + 'Test failed. import != export') ;
             }
-            ls = JSON.parse (ls_str);
+            ls = JSON.parse (ls_str).local_storage ;
+            if (!ls) {
+                error = 'no localStorage data was found in file' ;
+                console.log(pgm + error) ;
+                if (cb) cb(error) ;
+                return ;
+            }
             // import ok. overwrite existing localStorage
             for (key in local_storage) delete local_storage[key] ;
             for (key in ls) local_storage[key] = ls[key] ;
             ls_save() ;
             // callback. for example client_logout
-            if (cb) cb() ;
+            if (cb) cb(null) ;
         }; // onload
-        reader.readAsText(file);
+        try {
+            reader.readAsText(file);
+        }
+        catch (err) {
+            error = 'import failed: ' + err.message ;
+            console.log(pgm + error) ;
+            if (cb) cb(error) ;
+            return ;
+        }
     } // ls_import
 
     // initialize array with public avatars from public/images/avatar
@@ -1134,9 +1145,11 @@ var MoneyNetworkHelper = (function () {
         getItemSize: getItemSize,
         setItem: setItem,
         removeItem: removeItem,
+        ls_get: ls_get,
         ls_bind: ls_bind,
         ls_save: ls_save,
         ls_clear: ls_clear,
+        utoa: utoa, atou: atou,
         ls_export: ls_export,
         ls_import: ls_import,
         getUserId: getUserId,

@@ -498,25 +498,175 @@ angular.module('MoneyNetwork')
         }; // delete_user2
 
 
-        self.export_ls = function() {
-            var pgm = controller + '.export_ls: ' ;
-            var filename, now ;
+        // export/import options
+        self.export_ls = true ; // localStorage data always included in export
+        self.export_z = true ; // export user files? data.json and status.json
+        self.export_chat = false ; // export uploaded optional files?
+        self.export_encrypt = false ; // create a password protected export file?
+        self.export_import_test = null ; // testcase: import file = export file
+
+        // export to txt file
+        self.export = function() {
+            var pgm = controller + '.export: ' ;
+            var filename, now, data, user_path, step_1_get_password, step_2_read_content_json, step_3_read_zeronet_file,
+                step_4_get_ls, step_5_encrypt_data, step_6_export;
             now = new Date().getTime() ;
-            filename = 'moneynetwork-ls-' + date(now, 'yyyyMMdd-HHmmss') + '.txt' ;
-            MoneyNetworkHelper.ls_export(filename) ;
-        };
-        self.import_ls = function(event) {
+            filename = 'moneynetwork-' + date(now, 'yyyyMMdd-HHmmss') + '.txt' ;
+            data = {
+                timestamp: now,
+                options: {
+                    ls: true,
+                    z: self.export_z,
+                    chat: self.export_chat,
+                    encrypt: self.export_encrypt
+                }
+            };
+
+            // ready for export. callback sequence:
+            // 1 - enter password if user has selected a password protected export file
+            // 2 - read content.json - get list of files and files_optional
+            // 3 - loop for each file and add to data
+            // 4-6 - add localStorage, encrypt and export
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+
+            // callbacks:
+            step_6_export = function () {
+                var data_str, data_str64, blob, msg ;
+                data_str = JSON.stringify(data) ;
+                self.export_import_test = data_str ;
+                // console.log(pgm + 'ls_str = ' + ls_str) ;
+                data_str64 = MoneyNetworkHelper.utoa(data_str) ;
+                blob = new Blob([data_str64], {type: "text/plain;charset=utf-8"});
+                // console.log(pgm + 'filename = ' + filename) ;
+                saveAs(blob, filename);
+                msg = 'Money Network data:' ;
+                msg += '<br>- localStorage (local browser data)' ;
+                if (self.export_z) msg += '<br>- ZeroNet user files data.json and status.json' ;
+                if (self.export_chat) msg += '<br>- ZeroNet optional files (public chat)' ;
+                msg += '<br>exported to ' ;
+                if (self.export_encrypt) msg += 'encrypted ' ;
+                msg += ' file ' + filename ;
+                if (self.export_encrypt) msg += '<br>Please remember file password. Required for import' ;
+                ZeroFrame.cmd("wrapperNotification", ['done', msg]);
+            }; // step_6_export
+
+            step_5_encrypt_data = function () {
+                var options, timestamp, password, data_str, enc_data_str, key ;
+                if (!data.options.encrypt) return step_6_export() ;
+                password = data.password ;
+                delete data.password ;
+                data_str = JSON.stringify(data) ;
+                enc_data_str = MoneyNetworkHelper.encrypt(data_str, password);
+                for (key in data) delete data[key] ;
+                data.enc_data = enc_data_str ;
+                step_6_export() ;
+            }; // step_5_encrypt_data
+
+            step_4_get_ls = function() {
+                data.ls = MoneyNetworkHelper.ls_get() ;
+                step_5_encrypt_data() ;
+            }; // step_4_get_ls
+
+            step_3_read_zeronet_file = function () {
+                var pgm = controller + '.export.3_read_zeronet_file: ' ;
+                var filename, key ;
+
+                // find next file to download
+                for (key in data.z_files) {
+                    if (data.z_files[key] == false) {
+                        filename = key ;
+                        break ;
+                    }
+                }
+                if (!filename) return step_4_get_ls() ; // done with zeronet files. continue with localStorage
+
+                ZeroFrame.cmd("fileGet", [user_path + '/' + filename, false], function (content) {
+                    var error ;
+                    if (!content) {
+                        error = 'Cannot export zeronet data. file ' + filename + ' was not found' ;
+                        console.log(pgm + error) ;
+                        ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                        return ;
+                    }
+                    data.z_files[filename] = JSON.parse(content) ;
+                    step_3_read_zeronet_file() ;
+                }) ; // fileGet
+
+            }; // step_3_read_zeronet_file
+
+            step_2_read_content_json = function () {
+                ZeroFrame.cmd("fileGet", [user_path + '/' + 'content.json', false], function (content) {
+                    var pgm = controller + '.export.step_2_read_content_json: ' ;
+                    var error, filename ;
+                    if (!content) {
+                        error = 'Cannot export zeronet data. content.json file was not found' ;
+                        console.log(pgm + error) ;
+                        ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                        return ;
+                    }
+                    content = JSON.parse(content) ;
+                    data.z_files = {} ;
+                    if (data.options.z) {
+                        // export user files (data.json and status.json)
+                        for (filename in content.files) {
+                            if (filename.match(/\.json$/)) data.z_files[filename] = false ;
+                        }
+                    }
+                    if (data.options.chat) {
+                        // export user optional files (chat files)
+                        for (filename in content.files_optional) {
+                            if (content.files_optional[filename].size <= 2) continue ;
+                            data.z_files[filename] = false ;
+                        }
+                    }
+                    console.log(pgm + 'data.z_files = ' + JSON.stringify(data.z_files)) ;
+                    step_3_read_zeronet_file() ;
+                }) ; // fileGet
+            }; // step_2_read_content_json
+
+            step_1_get_password = function () {
+                var next_step = (data.options.z || data.options.chat) ? step_2_read_content_json : step_4_get_ls ;
+                if (!data.options.encrypt) return next_step();
+                ZeroFrame.cmd("wrapperPrompt", ["Creating a password protected export file<br>Enter password"], function (password) {
+                    if (!password) {
+                        ZeroFrame.cmd("wrapperNotification", ['info', 'Export cancelled. No password', 5000]);
+                        return;
+                    }
+                    data.password = password ;
+                    next_step() ;
+                }); // wrapperPrompt
+            }; // step_1_get_password
+
+            // start export callback sequence
+            step_1_get_password();
+
+        }; // export
+
+
+        // import from txt file
+        self.import = function(event) {
             var pgm = controller + '.import_ls: ' ;
-            var files, file, import_result ;
+            var files, file, step_1_read_file, step_2_decrypt_data, step_3_confirm_import, step_4_write_z_file,
+                step_5_publish, step_6_ls_write, step_7_notification_and_redirect, user_path ;
             // console.log(pgm + 'event = ' + JSON.stringify(event));
             files = event.target.files;
             file = files[0] ;
-            MoneyNetworkHelper.ls_import(file, function() {
-                var text ;
-                // localStorage data changed.
-                moneyNetworkService.client_logout();
-                //
-                text = 'LocalStorage data has been imported from file. Please log in';
+
+            // ready for import. callback sequence:
+            // 1 - FileReader. read file, parse json and check json structure
+            // 2 - decrypt data if encrypted
+            // 3 - confirm import
+            // 4 - write ZeroNet files
+            // 5 - publish
+            // 6 - overwrite localStorage
+            // 7 - notification, log out and redirect
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+
+            // callbacks:
+
+            step_7_notification_and_redirect = function () {
+                var text, a_path, z_path ;
+                text = 'MoneyNetwork data has been imported from file. Please log in';
                 ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
                 // redirect
                 a_path = '/auth';
@@ -525,17 +675,187 @@ angular.module('MoneyNetwork')
                 $location.replace();
                 ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
                 $scope.$apply();
-            });
-        };
-        self.export_z = function() {
-            var pgm = controller + '.export_z: ' ;
-            console.log(pgm + 'click') ;
-        };
-        self.import_z = function() {
-            var pgm = controller + '.import_z: ' ;
-            console.log(pgm + 'click') ;
-        };
+            };
 
+            step_6_ls_write = function (data) {
+                var pgm = controller + '.import.step_6_ls_write: ' ;
+                var ls, key ;
+                moneyNetworkService.client_logout() ;
+                ls = MoneyNetworkHelper.ls_get() ;
+                for (key in ls) delete ls[key] ;
+                for (key in data.ls) ls[key] = data.ls[key] ;
+                MoneyNetworkHelper.ls_save() ;
+                step_7_notification_and_redirect() ;
+            }; // step_6_ls_write
+
+
+            step_5_publish = function (data) {
+                var pgm = controller + '.import.step_5_publish: ' ;
+                ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
+                    if (res == "ok") return step_6_ls_write(data) ;
+
+                    error = 'Import error. Publish failed. error = ' + res ;
+                    console.log(pgm + error)
+
+                    ZeroFrame.cmd("wrapperConfirm", [error + '<br>Continue?', "Yes"], function (confirm) {
+                        if (!confirm) return ;
+                        step_6_ls_write(data) ;
+                    }) ;
+
+                });
+            };
+
+            step_4_write_z_file = function (data) {
+                var pgm = controller + '.import.step_4_write_z_file: ' ;
+                var key, filename, json_raw ;
+                for (key in data.z_files) {
+                    filename = key ;
+                    break ;
+                }
+                if (!filename) return step_5_publish(data) ;
+
+                json_raw = unescape(encodeURIComponent(JSON.stringify(data.z_files[filename], null, "\t")));
+                delete data.z_files[filename] ;
+                ZeroFrame.cmd("fileWrite", [user_path + '/' + filename, btoa(json_raw)], function (res) {
+                    // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                    var error ;
+                    if (res == "ok") {
+                        console.log(pgm + 'uploaded ZeroNet file ' + filename) ;
+                        return step_4_write_z_file(data)
+                    }
+                    //
+                    error = 'Import error. Failed to write ' + filename + '. error = ' + res ;
+                    console.log(pgm + error)
+
+                    ZeroFrame.cmd("wrapperConfirm", [error + '<br>Continue?', "Yes"], function (confirm) {
+                        if (!confirm) return ;
+                        step_4_write_z_file(data) ;
+                    }) ;
+
+
+                }); // fileWrite
+
+
+
+            };
+
+            step_3_confirm_import = function (data) {
+                var pgm = controller + '.import.step_3_confirm_import: ' ;
+                var msg, filename, no_z_files, no_chat_files ;
+                no_z_files = 0 ;
+                no_chat_files = 0 ;
+                if (data.z_files) {
+                    for (filename in data.z_files) {
+                        if (filename.match(/-chat\.json$/)) no_chat_files++ ;
+                        else no_z_files++ ;
+                    }
+                }
+                else data.z_files = {} ;
+                msg = 'Money Network export file looks OK:' ;
+                msg += '<br>- localStorage data from ' + date(data.timestamp, 'short') ;
+                if (data.options.z) msg += '<br>- ZeroNet user files data.json and status.json (' + no_z_files + ' files)' ;
+                if (data.options.chat) msg += '<br>- ZeroNet optional files (public chat) (' + no_chat_files + ' files)' ;
+                msg += '<br>Import will overwrite all your Money Network data!' ;
+                msg += '<br>Continue? No way back!' ;
+
+                ZeroFrame.cmd("wrapperConfirm", [msg, "Import"], function (confirm) {
+                    if (!confirm) return ;
+                    step_4_write_z_file(data) ;
+                }) ;
+
+            }; // step_3_confirm_import
+
+            function is_data_ok (data) {
+                var error ;
+                if (!data.timestamp) error = 'Timestamp was not found in file' ;
+                else if (!data.options) error = 'Export options were not found in file' ;
+                else if (!data.options.hasOwnProperty('ls')) error = 'Export options.ls was not found' ;
+                else if (!data.options.hasOwnProperty('z')) error = 'Export options.z was not found' ;
+                else if (!data.options.hasOwnProperty('chat')) error = 'Export options.chat was not found' ;
+                else if (!data.options.hasOwnProperty('encrypt')) error = 'Export options.encrypt was not found' ;
+                else {
+                    if (!data.ls) error = 'ls (localStorage) was not found' ;
+                    else if ((data.options.z || data.options.chat) && !data.z_files) error = 'z_files (ZeroNet files) were not found';
+                }
+                if (error) {
+                    error = 'Import failed. ' + error ;
+                    console.log(pgm + error) ;
+                    ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                    return false ;
+                }
+                else return true ;
+            } // is_data_ok
+
+            step_2_decrypt_data = function (data) {
+                var pgm = controller + '.import.step_2_decrypt_data: ' ;
+                var enc_data_str, data_str, data2, error ;
+
+                // request password
+                ZeroFrame.cmd("wrapperPrompt", ["Import a password protected file<br>Enter password"], function (password) {
+                    if (!password) {
+                        ZeroFrame.cmd("wrapperNotification", ['info', 'Import cancelled. No password', 5000]);
+                        return;
+                    }
+                    enc_data_str = data.enc_data ;
+                    data_str = MoneyNetworkHelper.decrypt(enc_data_str, password) ;
+                    data2 = JSON.parse(data_str) ;
+                    if (!is_data_ok(data2)) return ;
+                    step_3_confirm_import(data2) ;
+                }); // wrapperPrompt
+
+            }; // step_2_decrypt_data
+
+
+            step_1_read_file = function (file) {
+                var pgm = controller + '.import.step_1_read_file: ' ;
+                var reader, data_str64, data_str, data, error ;
+                reader = new FileReader();
+                reader.onload = function () {
+                    data_str64 = reader.result;
+                    data_str = MoneyNetworkHelper.atou(data_str64) ;
+                    // console.log(pgm + 'ls_str = ' + ls_str) ;
+                    if (self.export_import_test) {
+                        if (data_str == self.export_import_test) console.log(pgm + 'Test OK. import == export') ;
+                        else console.log(pgm + 'Test failed. import != export') ;
+                    }
+                    data = JSON.parse (data_str) ;
+                    // check json structure
+                    if (data.enc_data) return step_2_decrypt_data(data) ; // encrypted. json check in next step
+                    else if (is_data_ok(data)) step_3_confirm_import(data) ;
+
+                }; // onload
+                try {
+                    reader.readAsText(file);
+                }
+                catch (err) {
+                    error = 'import failed: ' + err.message ;
+                    console.log(pgm + error) ;
+                    ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                    return ;
+                }
+
+            }; // step_1_read_file
+
+            step_1_read_file(file) ;
+
+
+            //MoneyNetworkHelper.ls_import(file, function() {
+            //    var text ;
+            //    // localStorage data changed.
+            //    moneyNetworkService.client_logout();
+            //    //
+            //    text = 'LocalStorage data has been imported from file. Please log in';
+            //    ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
+            //    // redirect
+            //    a_path = '/auth';
+            //    z_path = "?path=" + a_path;
+            //    $location.path(a_path);
+            //    $location.replace();
+            //    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
+            //    $scope.$apply();
+            //});
+
+        }; // import
 
         // end UserCtrl
     }])

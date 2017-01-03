@@ -1336,42 +1336,52 @@
             <table title="Some usefull admin tasks:">
                 <tbody>
                 <tr><td colspan="3">Admin section:</td></tr>
-                <tr title="All data except public chat is saved locally in browser (localStorage). You can use this section to export and import your local data. Used as backup or when moving from one browser/device to an other browser/device">
-                    <td>localStorage:</td>
-                    <td>&nbsp;&nbsp;</td>
-                    <td>
-                        <table>
-                            <tbody>
-                            <tr>
-                                <td><a href="" ng-click="u.export_ls()">export</a></td>
-                                <td>&nbsp;&nbsp;/&nbsp;&nbsp;</td>
-                                <td>import:&nbsp;&nbsp;</td>
-                                <td><input id="import_ls" type="file" accept=".txt" custom-on-change="u.import_ls"/></td>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </td>
-                </tr>
-                <tr title="Some few data is stored in a user dictionary on Zeronet. You can use this section to export and import your ZeroNet data. Used as backup or when moving from one browser/device to an other browser/device">
-                    <td>ZeroNet:</td>
-                    <td>&nbsp;&nbsp;</td>
-                    <td>
-                        <table>
-                            <tbody>
-                            <tr>
-                                <td><a href="" ng-click="u.exportz()">export</a></td>
-                                <td>&nbsp;&nbsp;/&nbsp;&nbsp;</td>
-                                <td>import:&nbsp;&nbsp;</td>
-                                <td><input id="import_z" type="file" accept=".txt" custom-on-change="u.import_z"/></td>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </td>
-                </tr>
                 <tr title="Close account and delete data from ZeroNet and localStorage. Delete this account will delete data for this account only. Delete all accounts will remove all data from ZeroNet and all data from localStorage. No way back. You maybe want to make a localStorage export before doing this ...">
                     <td>Delete account:</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><a href="" ng-click="u.delete_user2(false)">delete this account</a> / <a href="" ng-click="u.delete_user2(true)">delete all accounts</a></td>
+                </tr>
+                </tbody>
+                <tbody title="Full localStorage and ZeroNet export/import. Used as backup or when moving from one browser/device to an other browser/device. localStorage data is always included in export. Recommend that ZeroNet user files (data.json and status.json) also is included. Recommend that uploaded optional files (public chat messages) are not included. You also have the option to encrypt export txt file. localStorage and data.json files are already encrypted. Optional files (public chat) are not">
+                <tr>
+                    <td>Export/import data</td>
+                    <td></td>
+                    <td>
+                        <table>
+                            <tbody>
+                            <tr>
+                                <td><a href="" ng-click="u.export()">export</a></td>
+                                <td>&nbsp;&nbsp;/&nbsp;&nbsp;</td>
+                                <td>import:&nbsp;&nbsp;</td>
+                                <td><input id="import" type="file" accept=".txt" custom-on-change="u.import"/></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right">Export options:</td>
+                    <td></td>
+                    <td rowspan="2">
+                        <table>
+                            <tbody>
+                            <tr>
+                                <td title="localStorage data is already included in export/import">localStorage <input type="checkbox" ng-model="u.export_ls" disabled></td>
+                                <td>&nbsp;&nbsp;</td>
+                                <td title="ZeroNet user files. data.json and status.json. Used in encrypted communication with other ZeroNet users. Recommend that the two files are included in export. data.json contains data that should be in sync with data in localStorage. uploaded avatar is not included in export">ZeroNet user files <input type="checkbox" ng-model="u.export_z"></td>
+                            </tr>
+                            <tr>
+                                <td title="Check to included optional files (your public chat messages) in export">ZeroNet optional files <input type="checkbox" ng-model="u.export_chat"></td>
+                                <td></td>
+                                <td title="Check to create a password protected export file. Data in localStorage and data.json file are already encrypted. Data in optional files are not">Encrypt export file <input type="checkbox" ng-model="u.export_encrypt"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
                 </tr>
                 </tbody>
             </table>
