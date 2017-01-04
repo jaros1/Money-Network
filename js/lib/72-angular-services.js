@@ -122,7 +122,7 @@ angular.module('MoneyNetwork')
             if (!json.version) {
                 var old_json = JSON.parse(JSON.stringify(json));
                 for (var key in json) delete json[key] ;
-                json.version = 5 ;
+                json.version = 8 ;
                 json.status = [] ;
                 for (key in old_json) {
                     json.status.push({
@@ -164,7 +164,7 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.zeronet_site_publish fileGet callback 1: ';
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
                     var i, index, timestamp, json_raw ;
-                    if (!status) status = { version: 5, status: []};
+                    if (!status) status = { version: 8, status: []};
                     else {
                         status = JSON.parse(status);
                         z_migrate_status(status) ;
@@ -177,7 +177,7 @@ angular.module('MoneyNetwork')
                             if (status.status[i].user_seq == user_seq) index = i ;
                         }
                         if (index == -1) status.status.push({ user_seq: user_seq, timestamp: timestamp});
-                        else status.status[index].timestamp = timestamp;
+                        else if (!user_setup.not_online) status.status[index].timestamp = timestamp;
                         // console.log(pgm + 'updated timestamp. status = ' + JSON.stringify(status)) ;
                     }
                     json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
@@ -6542,8 +6542,10 @@ angular.module('MoneyNetwork')
         // will allow users to communicate with active contacts and ignoring old and inactive contacts
         // small file(s) for quick distribution in ZeroNet
         function i_am_online () {
-            var pgm = service + '.i_am_online: ';
-            var info = '. Skipping status.json update';
+            var pgm, info, user_path;
+            if (user_setup.not_online) pgm = service + '.i_am_not_online: ';
+            else pgm = service + '.i_am_online: ';
+            info = '. Skipping status.json update';
             // check Zeronet status
             if (!user_id) {
                 console.log(pgm + 'No client login' + info);
@@ -6557,7 +6559,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'No ZeroNet login' + info);
                 return;
             }
-            var user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
 
             // some information nice to have when debugging
             console.log(
@@ -6565,10 +6567,11 @@ angular.module('MoneyNetwork')
                 ', my auth address is ' + ZeroFrame.site_info.auth_address +
                 ' and my unique id ' + get_my_unique_id()) ;
 
-            var pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data) {
                 var pgm = service + '.i_am_online fileGet 1 callback: ';
-                var user_seq, user_seqs, i, pubkey2 ;
+                var my_user_seq, data_user_seqs, i, pubkey, pubkey2 ;
+                pubkey = MoneyNetworkHelper.getItem('pubkey') ;
+                pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
                 // console.log(pgm + 'data = ' + JSON.stringify(data));
                 if (!data) {
                     if (is_user_info_empty()) console.log(pgm + 'New empty user account. No data.json file' + info) ;
@@ -6586,17 +6589,16 @@ angular.module('MoneyNetwork')
                     z_update_1_data_json(pgm) ;
                     return ;
                 }
-                user_seq = null ;
-                user_seqs = [] ;
+                my_user_seq = null ;
+                data_user_seqs = [] ;
                 for (i=0 ; i<data.users.length ; i++) {
-                    user_seqs.push(data.users[i].user_seq) ;
+                    data_user_seqs.push(data.users[i].user_seq) ;
                     if (data.users[i].pubkey == pubkey) {
-                        user_seq = data.users[i].user_seq ;
+                        my_user_seq = data.users[i].user_seq ;
                         // just a check. is pubkey2 in data.json = pubkey2 in localStorage. user can have changed ZeroNet cert
                         // pubkey2 in localStorage is updated after login. See MoneyNetworkHelper.client_login
                         // pubkey2 in data.json is updated in z_update_1_data_json
                         // see above: Changed ZeroNet certificate. Creating data.json file
-                        pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
                         if (pubkey2 != data.users[i].pubkey2) {
                             console.log(pgm + 'warning. user must have switched ZeroNet certificate. ' +
                                 'pubkey2 from localStorage is ' + pubkey2 +
@@ -6605,7 +6607,7 @@ angular.module('MoneyNetwork')
                     }
                 }
                 // console.log(pgm + 'user_seq = ' + user_seq) ;
-                if (!user_seq) {
+                if (!my_user_seq) {
                     console.log(pgm + 'User was not found in data.json. Updating data.json file') ;
                     z_update_1_data_json(pgm) ;
                     return ;
@@ -6614,6 +6616,7 @@ angular.module('MoneyNetwork')
                 // delete any old users in status.json and publish
                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/status.json', required: false}, function (status) {
                     var pgm = service + '.i_am_online fileGet 2 callback: ';
+                    var my_user_seq_found, status_updated ;
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
                     if (!status) status = { version: 5, status: [] } ;
                     else {
@@ -6621,8 +6624,18 @@ angular.module('MoneyNetwork')
                         z_migrate_status(status);
                     }
                     // remove deleted users from status.json
+                    my_user_seq_found = false ;
+                    status_updated = false ;
                     for (i=status.status.length-1 ; i >= 0 ; i--) {
-                        if (user_seqs.indexOf(status.status[i].user_seq) == -1) status.status.splice(i,1);
+                        if (status.status[i].user_seq == my_user_seq) my_user_seq_found = true ;
+                        else if (data_user_seqs.indexOf(status.status[i].user_seq) == -1) {
+                            status.status.splice(i,1);
+                            status_updated = true ;
+                        }
+                    }
+                    if ((user_setup.not_online) && my_user_seq_found && !status_updated) {
+                        // Account setup - user has selected not to update online timestamp
+                        return ;
                     }
                     // console.log(pgm + 'status = ' + JSON.stringify(status)) ;
                     var json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));

@@ -1343,31 +1343,62 @@
                    target="_blank" rel="noopener noreferrer">CryptMessage</a>  256 bits key
             </p>
 
-            <table title="Use this section to enable/disable messages from guests, contacts on ignore list and public chat">
-                <tbody>
-                <tr>
-                    <td colspan="3">Spam filters:</td>
-                </tr>
-                <tr>
-                    <td>Block messages from Guests?</td>
-                    <td>&nbsp;&nbsp;</td>
-                    <td><input type="checkbox" ng-model="u.setup.block_guests" ng-change="u.spam_settings_changed()">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Block messages from Ignored list?</td>
-                    <td></td>
-                    <td><input type="checkbox" ng-model="u.setup.block_ignored" ng-change="u.spam_settings_changed()">
-                    </td>
-                </tr>
-                <tr title="Public chat is unencrypted and messages are shared with everyone">
-                    <td>Enable public chat?</td>
-                    <td></td>
-                    <td><input type="checkbox" ng-model="u.setup.public_chat" ng-change="u.spam_settings_changed()">
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+            <div style="width: 100%;">
+
+                <span style="padding-left: 10px; padding-bottom: 20px;">
+                    <table style="display: inline" title="Use this section to enable/disable messages from guests, contacts on ignore list and public chat">
+                    <tbody>
+                    <tr>
+                        <td colspan="3">Spam filters:</td>
+                    </tr>
+                    <tr>
+                        <td>Block messages from Guests?</td>
+                        <td>&nbsp;&nbsp;</td>
+                        <td><input type="checkbox" ng-model="u.setup.block_guests" ng-change="u.spam_settings_changed()">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Block messages from Ignored list?</td>
+                        <td></td>
+                        <td><input type="checkbox" ng-model="u.setup.block_ignored" ng-change="u.spam_settings_changed()">
+                        </td>
+                    </tr>
+                    <tr title="Public chat is unencrypted and messages are shared with everyone">
+                        <td>Enable public chat?</td>
+                        <td></td>
+                        <td><input type="checkbox" ng-model="u.setup.public_chat" ng-change="u.spam_settings_changed()">
+                        </td>
+                    </tr>
+                    </tbody>
+                    </table>
+                </span>
+
+                <span style="padding-left: 10px; padding-bottom: 20px;">
+                    <table style="display: inline" title="Other account settings">
+                        <tbody>
+                        <tr>
+                            <td colspan="3">Other settings:</td>
+                        </tr>
+                        <tr title="Check to hide when you are online. 'Online' timestamp in user interface (Network and Chat) is not updated. Timestamp in content.json file is still updated">
+                            <td>Show as offline</td>
+                            <td>&nbsp;&nbsp;</td>
+                            <td><input type="checkbox" ng-model="u.setup.not_online" ng-change="u.spam_settings_changed()"></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr title="">
+                            <td></td>
+                            <td></td>
+                            <td><input type="checkbox" ng-model="u.setup.todo2" ng-change="u.spam_settings_changed()"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </span>
+
+            </div>
             <br>
 
             <table title="Some usefull admin tasks:">
