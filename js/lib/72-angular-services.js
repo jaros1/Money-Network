@@ -2097,7 +2097,7 @@ angular.module('MoneyNetwork')
                         file_path = user_path + '/' + z_filename ;
                         ZeroFrame.cmd("fileGet", [file_path, false], function (chat) {
                             var pgm = service + '.z_update_5_public_chat fileGet callback 1a: ' ;
-                            var callback, j, json_raw, error, message_with_envelope2, msg_found, cache_status, k ;
+                            var callback, j, json_raw, error, message_with_envelope2, msg_found, cache_status, k, chat_lng, issue_84 ;
                             callback = function () {
                                 delete message_with_envelope.z_filename ;
                                 message_with_envelope.cleanup_at = now ;
@@ -2125,6 +2125,7 @@ angular.module('MoneyNetwork')
                                 callback() ;
                                 return ;
                             }
+                            chat_lng = chat.length ;
                             chat = JSON.parse(chat) ;
                             if (!chat.msg || !chat.msg.length) {
                                 // empty chat.json file - delete file
@@ -2156,8 +2157,13 @@ angular.module('MoneyNetwork')
                                 debug('public_chat', 'warning. adding missing files_optional_cache for file ' + file_path) ;
                                 // cache_status.timestamps. list of now yet read messages from optional file.
                                 cache_status = { is_downloaded: true, timestamps: []} ;
+                                if (chat_lng) cache_status.size = chat_lng ;
                                 files_optional_cache[file_path] = cache_status ;
                                 for (j=0 ; j<chat.msg.length ; j++) cache_status.timestamps.push(chat.msg[j].timestamp) ;
+                                // JS error after first public post #84
+                                issue_84 = true ;
+                                debug('public_chat', pgm + 'issue #84. created cache_status object. file_path = ' + file_path +
+                                    ', chat_lng ' + chat_lng + ', cache_status = ' + JSON.stringify(cache_status));
                             }
                             for (j=chat.msg.length-1 ; j>=0 ; j--) {
                                 if (chat.msg[j].timestamp == message_with_envelope.sent_at) {
@@ -2207,6 +2213,7 @@ angular.module('MoneyNetwork')
                                 }
                                 write_file = function () {
                                     json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
+                                    if (issue_84) debug('public_chat', 'json_raw.length = ' + json_raw.length + ', JSON.stringify(chat).length = ' + JSON.stringify(chat).length) ;
                                     ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
                                         var pgm = service + '.z_update_5_public_chat fileWrite callback 2a: ';
                                         // debug('public_chat', pgm + 'res = ' + JSON.stringify(res)) ;
@@ -2302,16 +2309,22 @@ angular.module('MoneyNetwork')
                         // ready. read old chat file
                         ZeroFrame.cmd("fileGet", [file_path, false], function (chat) {
                             var pgm = service + '.z_update_5_public_chat fileGet callback 1b: ';
-                            var new_msg, json_raw ;
+                            var chat_lng, new_msg, json_raw, issue_84 ;
                             if (!chat) chat = { version: 8, msg: []} ;
-                            else chat = JSON.parse(chat) ;
+                            else {
+                                chat_lng = chat.length ;
+                                chat = JSON.parse(chat) ;
+                            }
                             cache_status = files_optional_cache[file_path] ;
                             if (!cache_status) {
                                 cache_status = { is_downloaded: true, timestamps: []} ;
+                                if (chat_lng) cache_status.size = chat_lng ;
                                 files_optional_cache[file_path] = cache_status ;
                                 for (j=0 ; j<chat.msg.length ; j++) cache_status.timestamps.push(chat.msg[j].timestamp);
                                 // JS error after first public post #84
-                                debug('public_chat', pgm + 'issue #84. created cache_status object. file_path = ' + file_path + ', cache_status = ' + JSON.stringify(cache_status));
+                                issue_84 = true ;
+                                debug('public_chat', pgm + 'issue #84. created cache_status object. file_path = ' + file_path +
+                                    ', chat_lng ' + chat_lng + ', cache_status = ' + JSON.stringify(cache_status));
                             }
                             // add message to chat file
                             new_msg = {
@@ -2326,6 +2339,7 @@ angular.module('MoneyNetwork')
                             write_file = function () {
                                 // write chat file
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
+                                if (issue_84) debug('public_chat', 'json_raw.length = ' + json_raw.length + ', JSON.stringify(chat).length = ' + JSON.stringify(chat).length) ;
                                 ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
                                     var pgm = service + '.z_update_5_public_chat fileWrite callback 2b: ';
                                     var error ;

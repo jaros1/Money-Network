@@ -500,7 +500,7 @@ angular.module('MoneyNetwork')
 
         // export/import options
         self.export_ls = true ; // localStorage data always included in export
-        self.export_z = true ; // export user files? data.json and status.json
+        self.export_z = true ; // export user files? data.json, status.json and any uploaded avatar
         self.export_chat = false ; // export uploaded optional files?
         self.export_encrypt = false ; // create a password protected export file?
         self.export_import_test = null ; // testcase: import file = export file
@@ -509,7 +509,7 @@ angular.module('MoneyNetwork')
         self.export = function() {
             var pgm = controller + '.export: ' ;
             var filename, now, data, user_path, step_1_get_password, step_2_read_content_json, step_3_read_zeronet_file,
-                step_4_get_ls, step_5_encrypt_data, step_6_export;
+                step_3_image_to_base64, step_4_get_ls, step_5_encrypt_data, step_6_export;
             now = new Date().getTime() ;
             filename = 'moneynetwork-' + date(now, 'yyyyMMdd-HHmmss') + '.txt' ;
             data = {
@@ -567,9 +567,30 @@ angular.module('MoneyNetwork')
                 step_5_encrypt_data() ;
             }; // step_4_get_ls
 
+            // http://stackoverflow.com/questions/6150289/how-to-convert-image-into-base64-string-using-javascript
+            step_3_image_to_base64 = function (src, outputFormat, callback) {
+                var img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = function() {
+                    var canvas = document.createElement('CANVAS');
+                    var ctx = canvas.getContext('2d');
+                    var dataURL;
+                    canvas.height = this.height;
+                    canvas.width = this.width;
+                    ctx.drawImage(this, 0, 0);
+                    dataURL = canvas.toDataURL(outputFormat);
+                    callback(dataURL);
+                };
+                img.src = src;
+                if (img.complete || img.complete === undefined) {
+                    img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+                    img.src = src;
+                }
+            };
+
             step_3_read_zeronet_file = function () {
                 var pgm = controller + '.export.3_read_zeronet_file: ' ;
-                var filename, key ;
+                var filename, key, image_format ;
 
                 // find next file to download
                 for (key in data.z_files) {
@@ -580,17 +601,29 @@ angular.module('MoneyNetwork')
                 }
                 if (!filename) return step_4_get_ls() ; // done with zeronet files. continue with localStorage
 
-                ZeroFrame.cmd("fileGet", [user_path + '/' + filename, false], function (content) {
-                    var error ;
-                    if (!content) {
-                        error = 'Cannot export zeronet data. file ' + filename + ' was not found' ;
-                        console.log(pgm + error) ;
-                        ZeroFrame.cmd("wrapperNotification", ['error', error]);
-                        return ;
-                    }
-                    data.z_files[filename] = JSON.parse(content) ;
-                    step_3_read_zeronet_file() ;
-                }) ; // fileGet
+                if (['avatar.jpg', 'avatar.png'].indexOf(filename) != -1) {
+                    // image file. fileGet cannot be used.
+                    image_format = filename == 'avatar.jpg' ? 'image/jpg' : 'image/png' ;
+                    step_3_image_to_base64(user_path + '/' + filename, image_format, function(content) {
+                        data.z_files[filename] = content ;
+                        console.log(pgm + 'filename = ' + filename + ', content = ' + content) ;
+                        step_3_read_zeronet_file() ;
+                    })
+                }
+                else {
+                    // json file. normal fileGet
+                    ZeroFrame.cmd("fileGet", [user_path + '/' + filename, false], function (content) {
+                        var error ;
+                        if (!content) {
+                            error = 'Cannot export zeronet data. file ' + filename + ' was not found' ;
+                            console.log(pgm + error) ;
+                            ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                            return ;
+                        }
+                        data.z_files[filename] = JSON.parse(content) ;
+                        step_3_read_zeronet_file() ;
+                    }) ; // fileGet
+                }
 
             }; // step_3_read_zeronet_file
 
@@ -607,9 +640,9 @@ angular.module('MoneyNetwork')
                     content = JSON.parse(content) ;
                     data.z_files = {} ;
                     if (data.options.z) {
-                        // export user files (data.json and status.json)
+                        // export user files (data.json. status.json and optional avatar image)
                         for (filename in content.files) {
-                            if (filename.match(/\.json$/)) data.z_files[filename] = false ;
+                            data.z_files[filename] = false ;
                         }
                     }
                     if (data.options.chat) {
@@ -707,16 +740,26 @@ angular.module('MoneyNetwork')
 
             step_4_write_z_file = function (data) {
                 var pgm = controller + '.import.step_4_write_z_file: ' ;
-                var key, filename, json_raw ;
+                var key, filename, json_raw, image_base64uri, post_data ;
                 for (key in data.z_files) {
                     filename = key ;
                     break ;
                 }
                 if (!filename) return step_5_publish(data) ;
 
-                json_raw = unescape(encodeURIComponent(JSON.stringify(data.z_files[filename], null, "\t")));
+                if (['avatar.jpg','avatar.png'].indexOf(filename) != -1) {
+                    // image (avatar)
+                    image_base64uri = data.z_files[filename] ;
+                    post_data = image_base64uri != null ? image_base64uri.replace(/.*?,/, "") : void 0;
+                }
+                else {
+                    // json (data.json or status.json)
+                    json_raw = unescape(encodeURIComponent(JSON.stringify(data.z_files[filename], null, "\t")));
+                    post_data = btoa(json_raw) ;
+                }
                 delete data.z_files[filename] ;
-                ZeroFrame.cmd("fileWrite", [user_path + '/' + filename, btoa(json_raw)], function (res) {
+
+                ZeroFrame.cmd("fileWrite", [user_path + '/' + filename, post_data], function (res) {
                     // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     var error ;
                     if (res == "ok") {
