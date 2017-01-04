@@ -1218,18 +1218,24 @@ angular.module('MoneyNetwork')
             self.delete_edit_chat_msg = function (message) {
                 // called from edit chat message form. Always outbox message
                 var pgm = controller + '.delete_edit_chat_msg: ';
+                var msg_text = formatChatMessage(message);
+                if (!message.message.sent_at || !msg_text) {
+                    console.log(pgm + 'error cleanup. deleting message without a sent_at timestamp / message. message.message = ' + JSON.stringify(message.message)) ;
+                    moneyNetworkService.remove_message(message) ;
+                    moneyNetworkService.ls_save_contacts(false);
+                    return ;
+                }
                 if ((message.contact.type == 'public') || (message.message.z_filename)) {
                     // public unencrypted chat. just delete
                     delete message.edit_chat_message;
                     message.message.deleted_at = new Date().getTime(); // logical delete
                     message.chat_filter = false ;
-                    console.log(pgm + 'deleted public outbox message ' + JSON.stringify(message.message)) ;
+                    debug('public_chat', pgm + 'deleted public outbox message ' + JSON.stringify(message.message)) ;
                     // save localStorage and update ZeroNet
                     moneyNetworkService.ls_save_contacts(true);
                     return ;
                 }
                 // person or group chat. confirm dialog and send a special empty delete chat message
-                var msg_text = formatChatMessage(message);
                 if (msg_text.length > 40) msg_text = msg_text.substring(0, 20) + "..." + msg_text.substring(msg_text.length - 15);
                 // console.log(pgm + 'msg_text.length = ' + msg_text.length);
                 ZeroFrame.cmd("wrapperConfirm", ['Delete "' + msg_text + '" message?', "Delete"], function (confirmed) {

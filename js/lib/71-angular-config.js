@@ -61,7 +61,7 @@ angular.module('MoneyNetwork')
             .when('/money', {
                 templateUrl: 'money.html',
                 controller: 'MoneyCtrl as m',
-                resolve: {check_auth: check_auth_resolve}
+                resolve: {check_auth: set_z_path} // todo: enable log in authorization
             })
             .when('/network', {
                 templateUrl: 'network.html',
@@ -87,6 +87,11 @@ angular.module('MoneyNetwork')
                 templateUrl: 'chat2.html',
                 controller: 'ChatCtrl as c',
                 resolve: {check_auth: check_auth_resolve}
+            })
+            .when('/wallet', {
+                templateUrl: 'wallet.html',
+                controller: 'WalletCtrl as w',
+                resolve: {check_auth: set_z_path} // todo: enable authorization
             })
             .when('/user', {
                 templateUrl: 'user.html',

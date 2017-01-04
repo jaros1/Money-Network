@@ -4499,8 +4499,8 @@ angular.module('MoneyNetwork')
                 "  (select status.timestamp" +
                 "   from json as status_json, status as status" +
                 "   where status_json.directory = data_json.directory" +
-                "   status_json.file_name = 'status.json'" +
-                "   status.json_id = status_json.json_id" +
+                "   and status_json.file_name = 'status.json'" +
+                "   and status.json_id = status_json.json_id" +
                 "   and status.user_seq = users.user_seq) as timestamp " +
                 "from users, json as data_json, json as content_json, keyvalue as keyvalue " +
                 "where data_json.json_id = users.json_id " +
@@ -5010,7 +5010,7 @@ angular.module('MoneyNetwork')
             if (avatar.loaded) return ; // already loaded
 
             // set previous avatar from setup before checking zeronet
-            console.log(pgm + 'user_setup.avatar = ' + user_setup.avatar) ;
+            // console.log(pgm + 'user_setup.avatar = ' + user_setup.avatar) ;
             if (user_setup.avatar && (['jpg','png'].indexOf(user_setup.avatar) == -1)) {
                 // public avatar found in user setup
                 avatar.src = 'public/images/avatar' + user_setup.avatar ;
@@ -7042,8 +7042,9 @@ angular.module('MoneyNetwork')
             ls_save_contacts: ls_save_contacts,
             js_get_messages: js_get_messages,
             get_ls_msg_factor: get_ls_msg_factor,
-            add_msg: add_msg,
             add_message: add_message,
+            remove_message: remove_message,
+            add_msg: add_msg,
             remove_msg: remove_msg,
             load_avatar: load_avatar,
             get_avatar: get_avatar,

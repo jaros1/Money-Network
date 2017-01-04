@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--suppress HtmlUnknownAttribute, HtmlUnknownAttribute, HtmlUnknownAttribute, HtmlUnknownAttribute, HtmlUnknownAttribute, HtmlUnknownAttribute -->
 <html ng-app="MoneyNetwork">
 <head>
     <title ng-bind="n.texts.appname">Money Network loading</title>
@@ -107,7 +108,20 @@
 
         <div class="bodyfull">
 
-            money.html - page to manage complementare and alternative money
+            <p>
+                money.html - page to manage the traditional, complementare and alternative money systems that you
+                want to use in here.
+            </p>
+
+            Summary:
+            <ul style="list-style-type:disc">
+                <li>todo: browse money definitions</li>
+                <li>todo: tag cloud with popular money systems</li>
+                <li>todo: create/remove money definitions</li>
+                <li>todo: add/remove access to external money systems</li>
+                <li>todo:</li>
+                <li>todo:</li>
+            </ul>
 
         </div>
 
@@ -1143,6 +1157,29 @@
         <!-- end chat2.html -->
     </script>
 
+    <script type="text/ng-template" id="wallet.html">
+
+        <div class="bodyfull">
+
+            <p>
+                wallet.html - page to manage wallet with traditional, complementare and alternative money
+            </p>
+
+            Summary:
+            <ul style="list-style-type:disc">
+                <li>todo: money overview - sum for each money system</li>
+                <li>todo: account overview - list accounts and totals</li>
+                <li>todo: money/account details - list transactions</li>
+                <li>todo: transaction details - sender, receiver, dates, signed documents etc</li>
+                <li>todo: pay/transfer/request - maybe also in chat page</li>
+                <li>todo:</li>
+                <li>todo:</li>
+            </ul>
+
+        </div>
+
+        <!-- end wallet.html -->
+    </script>
 
     <script type="text/ng-template" id="user.html">
 
@@ -1170,7 +1207,7 @@
             <p ng-hide="u.show_welcome_msg()">
                 It is not required but you should add some info to identify you as user in
                 the Money Network.
-                It could be name, email, phone number, foto, company name, url, GPS location or whatever.
+                It could be name, email, phone number, photo, company name, url, GPS location or whatever.
                 Real or fake values.
                 Wildcards can be used in Tag and Value. "%" = many characters. "_" = one character.
                 User info are stored locally in your browser / on your device and are validated by
@@ -1360,28 +1397,63 @@
                     </td>
                 </tr>
                 <tr>
-                    <td style="text-align: right">Export options:</td>
+                    <td style="text-align: center; vertical-align: top">
+                        <input type="checkbox" ng-model="u.export_show_options"> Export options
+                        <span ng-show="u.export_show_options">:<br>include</span>
+                    </td>
                     <td></td>
-                    <td rowspan="2">
-                        <table>
+                    <td>
+                        <table ng-show="u.export_show_options">
                             <tbody>
-                            <tr>
-                                <td title="localStorage data is already included in export/import">localStorage <input type="checkbox" ng-model="u.export_ls" disabled></td>
+                            <tr title="localStorage data is already included in export/import.">
+                                <td><input type="checkbox" ng-model="u.export_ls" disabled></td>
+                                <td>localStorage</td>
                                 <td>&nbsp;&nbsp;</td>
-                                <td title="ZeroNet user files. data.json and status.json. Used in encrypted communication with other ZeroNet users. Recommend that the two files are included in export. data.json contains data that should be in sync with data in localStorage. uploaded avatar is not included in export">ZeroNet user files <input type="checkbox" ng-model="u.export_z"></td>
+                                <td ng-bind="u.export_info.ls"></td>
                             </tr>
-                            <tr>
-                                <td title="Check to included optional files (your public chat messages) in export">ZeroNet optional files <input type="checkbox" ng-model="u.export_chat"></td>
+                            <tr title="ZeroNet user files. data.json, status.json and uploaded avatar icon. Used in encrypted communication with other ZeroNet users. Recommend that the two files are included in export. data.json contains data that should be in sync with data in localStorage. uploaded avatar is not included in export">
+                                <td><input type="checkbox" ng-model="u.export_z"></td>
+                                <td>ZeroNet user files</td>
                                 <td></td>
-                                <td title="Check to create a password protected export file. Data in localStorage and data.json file are already encrypted. Data in optional files are not">Encrypt export file <input type="checkbox" ng-model="u.export_encrypt"></td>
+                                <td ng-bind="u.export_info.z"></td>
+                            </tr>
+                            <tr title="Check to included optional files (your public chat messages) in export">
+                                <td><input type="checkbox" ng-model="u.export_chat"></td>
+                                <td>ZeroNet optional files</td>
+                                <td></td>
+                                <td ng-bind="u.export_info.chat"></td>
+                            </tr>
+                            <tr title="Check to create a password protected export file. Data in localStorage and data.json file are already encrypted. Data in optional files are not">
+                                <td style="vertical-align: top"><input type="checkbox" ng-model="u.export_encrypt"></td>
+                                <td style="vertical-align: top">Encrypt export file</td></td>
+                                <td></td>
+                                <td>
+                                    <table ng-show="u.export_encrypt">
+                                        <tbody>
+                                        <tr>
+                                            <td>Password</td>
+                                            <td>:</td>
+                                            <td>
+                                                <input type="password" ng-model="u.export_password" required
+                                                       placeholder="Enter password" style="width: 120px">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Confirm</td>
+                                            <td>:</td>
+                                            <td>
+                                                <input type="password" ng-model="u.export_confirm_password" required
+                                                       placeholder="Repeat password" style="width: 120px">
+                                            </td>
+                                        </tr>
+                                        </tbody>
+
+                                    </table>
+                                </td>
                             </tr>
                             </tbody>
                         </table>
                     </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
                 </tr>
                 </tbody>
             </table>
@@ -1551,15 +1623,7 @@
             </span>
             <br>
 
-
-            <p>
-                <b>todo:</b> add a delete user data button. Delete user data from data.json. Data user data from
-                localStorage. Log
-                out.
-            </p>
-
         </div>
-
 
         <!-- end user.html -->
     </script>
@@ -1726,7 +1790,7 @@
                                 <li><a href="#/money">Money</a></li>
                                 <li><a href="#/network">Network</a></li>
                                 <li><a ng-href="{{n.chat_link()}}">Chat</a></li>
-                                <li><a href="">todo</a></li>
+                                <li><a href="#/wallet">Wallet</a></li>
                                 <li><a href="#/user">Account</a></li>
                                 <li ng-hide="n.is_logged_in()"><a href="#/auth">Log in</a></li>
                                 <li ng-show="n.is_logged_in()"><a href="" ng-click="n.logout()">Log out</a></li>
@@ -1750,7 +1814,7 @@
                     <tr>
                         <td>
                             <ul class="nav">
-                                <li><a href="">todo</a></li>
+                                <li><a href="#/wallet">Wallet</a></li>
                                 <li><a href="#/user">Account</a></li>
                                 <li ng-hide="n.is_logged_in()"><a href="#/auth">Log in</a></li>
                                 <li ng-show="n.is_logged_in()"><a href="#/logout">Log out</a></li>

@@ -497,19 +497,68 @@ angular.module('MoneyNetwork')
 
         }; // delete_user2
 
-
         // export/import options
         self.export_ls = true ; // localStorage data always included in export
         self.export_z = true ; // export user files? data.json, status.json and any uploaded avatar
         self.export_chat = false ; // export uploaded optional files?
         self.export_encrypt = false ; // create a password protected export file?
+        self.export_password = null ;
+        self.export_confirm_password = null ;
         self.export_import_test = null ; // testcase: import file = export file
+        self.export_info = {} ; // object with export informations
+
+        // get export info. show in export options section
+        (function() {
+            var ls_size, passwords, i, no_users, user_path ;
+            // localStorage info
+            ls_size = JSON.stringify(MoneyNetworkHelper.ls_get()).length ;
+            passwords = JSON.parse(MoneyNetworkHelper.getItem('passwords')) ;
+            no_users = 0 ;
+            for (i=0 ; i<passwords.length ; i++) if (passwords[i]) no_users++ ;
+            self.export_info.ls = no_users + ' account' + (no_users > 1 ? 's' : '') + ', ' + ls_size + ' bytes' ;
+            // zeroNet info
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            ZeroFrame.cmd("fileGet", [user_path + '/content.json', false], function (content) {
+                var filename, z_files, z_bytes, chat_files, chat_bytes ;
+                if (!content) return ;
+                content = JSON.parse(content) ;
+                z_files = 0 ; z_bytes = 0 ;
+                // user files (data.json, status.json and avatar)
+                if (content.files) for (filename in content.files) {
+                    z_files++ ;
+                    z_bytes += content.files[filename].size ;
+                }
+                // optional files / public chat
+                chat_files = 0 ; chat_bytes = 0 ;
+                self.export_info.z = z_files + ' file' + (z_files > 1 ? 's' : '') + ', ' + z_bytes + ' bytes' ;
+                if (content.files_optional) for (filename in content.files_optional) {
+                    if (content.files_optional[filename].sizer <= 2) continue ;
+                    chat_files++ ;
+                    chat_bytes += content.files_optional[filename].size ;
+                }
+                self.export_info.chat = chat_files + ' file' + (chat_files > 1 ? 's' : '') + ', ' + chat_bytes + ' bytes' ;
+                // console.log(controller + ': self.export_info = ' + JSON.stringify(self.export_info)) ;
+            }) ;
+        })() ;
 
         // export to txt file
         self.export = function() {
             var pgm = controller + '.export: ' ;
             var filename, now, data, user_path, step_1_get_password, step_2_read_content_json, step_3_read_zeronet_file,
                 step_3_image_to_base64, step_4_get_ls, step_5_encrypt_data, step_6_export;
+
+            // check encrypt password
+            if (self.export_encrypt) {
+                if (!self.export_password) {
+                    ZeroFrame.cmd("wrapperNotification", ['error', 'export file password is missing', 5000]);
+                    return ;
+                }
+                if (!self.export_confirm_password || (self.export_password != self.export_confirm_password)) {
+                    ZeroFrame.cmd("wrapperNotification", ['error', 'export file password is not confirmed', 5000]);
+                    return ;
+                }
+            }
+
             now = new Date().getTime() ;
             filename = 'moneynetwork-' + date(now, 'yyyyMMdd-HHmmss') + '.txt' ;
             data = {
@@ -541,12 +590,12 @@ angular.module('MoneyNetwork')
                 saveAs(blob, filename);
                 msg = 'Money Network data:' ;
                 msg += '<br>- localStorage (local browser data)' ;
-                if (self.export_z) msg += '<br>- ZeroNet user files data.json and status.json' ;
+                if (self.export_z) msg += '<br>- ZeroNet user files data.json, status.json and avatar' ;
                 if (self.export_chat) msg += '<br>- ZeroNet optional files (public chat)' ;
                 msg += '<br>exported to ' ;
                 if (self.export_encrypt) msg += 'encrypted ' ;
                 msg += ' file ' + filename ;
-                if (self.export_encrypt) msg += '<br>Please remember file password. Required for import' ;
+                if (self.export_encrypt) msg += '<br>Please remember export file password. Required for import' ;
                 ZeroFrame.cmd("wrapperNotification", ['done', msg]);
             }; // step_6_export
 
@@ -606,7 +655,7 @@ angular.module('MoneyNetwork')
                     image_format = filename == 'avatar.jpg' ? 'image/jpg' : 'image/png' ;
                     step_3_image_to_base64(user_path + '/' + filename, image_format, function(content) {
                         data.z_files[filename] = content ;
-                        console.log(pgm + 'filename = ' + filename + ', content = ' + content) ;
+                        // console.log(pgm + 'filename = ' + filename + ', content = ' + content) ;
                         step_3_read_zeronet_file() ;
                     })
                 }
@@ -624,7 +673,6 @@ angular.module('MoneyNetwork')
                         step_3_read_zeronet_file() ;
                     }) ; // fileGet
                 }
-
             }; // step_3_read_zeronet_file
 
             step_2_read_content_json = function () {
@@ -652,22 +700,19 @@ angular.module('MoneyNetwork')
                             data.z_files[filename] = false ;
                         }
                     }
-                    console.log(pgm + 'data.z_files = ' + JSON.stringify(data.z_files)) ;
+                    // console.log(pgm + 'data.z_files = ' + JSON.stringify(data.z_files)) ;
                     step_3_read_zeronet_file() ;
                 }) ; // fileGet
             }; // step_2_read_content_json
 
             step_1_get_password = function () {
-                var next_step = (data.options.z || data.options.chat) ? step_2_read_content_json : step_4_get_ls ;
-                if (!data.options.encrypt) return next_step();
-                ZeroFrame.cmd("wrapperPrompt", ["Creating a password protected export file<br>Enter password"], function (password) {
-                    if (!password) {
-                        ZeroFrame.cmd("wrapperNotification", ['info', 'Export cancelled. No password', 5000]);
-                        return;
-                    }
-                    data.password = password ;
-                    next_step() ;
-                }); // wrapperPrompt
+                if (data.options.encrypt) {
+                    data.password = self.export_password ;
+                    self.export_password = null ;
+                    self.export_confirm_password = null ;
+                }
+                if (data.options.z || data.options.chat) step_2_read_content_json() ;
+                else step_4_get_ls() ;
             }; // step_1_get_password
 
             // start export callback sequence
@@ -775,12 +820,9 @@ angular.module('MoneyNetwork')
                         step_4_write_z_file(data) ;
                     }) ;
 
-
                 }); // fileWrite
 
-
-
-            };
+            }; // step_4_write_z_file
 
             step_3_confirm_import = function (data) {
                 var pgm = controller + '.import.step_3_confirm_import: ' ;
@@ -796,7 +838,7 @@ angular.module('MoneyNetwork')
                 else data.z_files = {} ;
                 msg = 'Money Network export file looks OK:' ;
                 msg += '<br>- localStorage data from ' + date(data.timestamp, 'short') ;
-                if (data.options.z) msg += '<br>- ZeroNet user files data.json and status.json (' + no_z_files + ' files)' ;
+                if (data.options.z) msg += '<br>- ZeroNet user files data.json, status.json and avatar (' + no_z_files + ' files)' ;
                 if (data.options.chat) msg += '<br>- ZeroNet optional files (public chat) (' + no_chat_files + ' files)' ;
                 msg += '<br>Import will overwrite all your Money Network data!' ;
                 msg += '<br>Continue? No way back!' ;
