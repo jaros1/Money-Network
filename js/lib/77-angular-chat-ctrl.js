@@ -98,7 +98,7 @@ angular.module('MoneyNetwork')
                 if (!create) return group_unique_id ;
                 // create pseudo chat group contact without password. password will be added later when sending first chat message in this group
                 var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                var index = Math.floor(Math.random() * public_avatars.length);
+                var index = Math.floor(MoneyNetworkHelper.random() * public_avatars.length);
                 var avatar = public_avatars[index] ;
                 contact = {
                     unique_id: group_unique_id,
