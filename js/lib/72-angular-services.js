@@ -170,17 +170,28 @@ angular.module('MoneyNetwork')
                         status = JSON.parse(status);
                         z_migrate_status(status) ;
                     }
+
+                    //console.log(pgm + '1: user_seq = ' + user_seq + ', status = ' + JSON.stringify(status) +
+                    //    ', z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs));
                     if (user_seq) {
-                        // called from z_update_1_data_json or i_am_online
+                        // remove deleted users (removed in z_update_1_data_json)
+                        if (z_cache.user_seqs && (z_cache.user_seqs.indexOf(user_seq) != -1)) {
+                            for (i=status.status.length-1 ; i >= 0 ; i--) {
+                                if (z_cache.user_seqs.indexOf(status.status[i].user_seq) == -1) status.status.splice(i,1) ;
+                            }
+                        }
                         index = -1 ;
                         timestamp = new Date().getTime();
                         for (i=0 ; i<status.status.length ; i++) {
                             if (status.status[i].user_seq == user_seq) index = i ;
                         }
-                        if (index == -1) status.status.push({ user_seq: user_seq, timestamp: timestamp});
+                        if (index == -1) status.status.push({ user_seq: user_seq, timestamp: timestamp}); // add new user
                         else if (!user_setup.not_online) status.status[index].timestamp = timestamp;
                         // console.log(pgm + 'updated timestamp. status = ' + JSON.stringify(status)) ;
                     }
+                    //console.log(pgm + '2: user_seq = ' + user_seq + ', status = ' + JSON.stringify(status) +
+                    //    ', z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs));
+
                     json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
                     ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
                         var pgm = service + '.zeronet_site_publish fileWrite callback 2: ';
@@ -220,7 +231,7 @@ angular.module('MoneyNetwork')
                             // also check for
                             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                                 var pgm = service + '.zeronet_site_publish fileGet callback 4: ';
-                                var json_raw, content_updated ;
+                                var json_raw, content_updated, filename, file_user_seq ;
 
                                 content_updated = false ;
 
@@ -236,12 +247,27 @@ angular.module('MoneyNetwork')
                                     content_updated = true ;
                                 }
 
-                                // todo: check logical deleted optional *-chat.json files
+                                // todo 1: check logical deleted optional *-chat.json files
                                 // rules.
                                 // - *chat.json files with size 2 = empty json {}
                                 // - should only delete *chat.json files with info_info.peer = 0
                                 // - should only delete "old" *chat.json files
                                 // - max number of logical deleted *chat.json files.
+
+                                // check z_cache.user_seqs. optional files from deleted users must be removed ;
+                                if (content.files_optional && z_cache.user_seqs) {
+                                    // console.log(pgm + 'z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs)) ;
+                                    // z_cache.user_seqs = [2]
+                                    for (filename in content.files_optional) {
+                                        if (content.files_optional[filename].size <= 2) continue ;
+                                        // console.log(pgm + 'filename = ' + filename + ', size = ' + content.files_optional[filename].size) ;
+                                        // filename = 1483633906108-1483633906108-1-chat.json, size = 147
+                                        file_user_seq = parseInt(filename.split('-')[2]) ;
+                                        if (z_cache.user_seqs.indexOf(file_user_seq) != -1) continue ;
+                                        // console.log(pgm + 'todo: delete ' + filename) ;
+                                        write_empty_chat_file(user_path + '/' + filename);
+                                    }
+                                }
 
                                 if (!content_updated) return ;
 
@@ -1268,8 +1294,9 @@ angular.module('MoneyNetwork')
                         guest = (guest_id == '' + user_id) ;
                         if (guest) {
                             new_user_row.guest = true;
+                            old_guest_user_index = -1 ;
                             for (i=0 ; i<data.users.length ; i++) if (data.users[i].guest) old_guest_user_index = i ;
-                            if (old_guest_user_index) {
+                            if (old_guest_user_index != -1) {
                                 old_guest_user_seq = data.users[old_guest_user_index].user_seq ;
                                 data.users.splice(old_guest_user_index,1);
                             }
@@ -1277,8 +1304,11 @@ angular.module('MoneyNetwork')
                         data.users.push(new_user_row) ;
                         // console.log(pgm + 'added user to data.users. data = ' + JSON.stringify(data)) ;
                     }
-                    // save user_seq in cache
+                    // save user_seq and user_seqs in cache
                     z_cache.user_seq = user_seq ;
+                    if (!z_cache.user_seqs) z_cache.user_seqs = [] ;
+                    z_cache.user_seqs.splice(0,z_cache.user_seqs.length) ;
+                    for (i=0 ; i<data.users.length ; i++) z_cache.user_seqs.push(data.users[i].user_seq) ;
 
                     // remove old search words from search array
                     var user_no_search_words = {} ;
@@ -5406,6 +5436,7 @@ angular.module('MoneyNetwork')
 
         // cache some important informations from zeronet files
         // - user_seq: from users array in data.json file. using "pubkey" as index to users array
+        // - user_seqs: from users array in data.json file.
         // - files_optional: from content.json file. loaded at startup and updated after every sign and publish
         //   todo: add option to enable/disable files_optional cache. must be disabled if multiple users are using same zeronet cert at the same time
         var z_cache = {} ;

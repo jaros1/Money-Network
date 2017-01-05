@@ -649,6 +649,7 @@ var MoneyNetworkHelper = (function () {
     // return a random number between 0 and 1 (not included).
     // As Math.random but using Web Crypto API.
     // https://developer.mozilla.org/en-US/docs/Web/API/RandomSource/getRandomValues
+    // todo: some helper JS libs are using Math.random: for example bitcoinjs and jsencrypt ...
     var random = Math.random ;
     (function () {
         if (!window.crypto) return ;
