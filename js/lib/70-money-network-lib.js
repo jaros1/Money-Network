@@ -749,6 +749,29 @@ var MoneyNetworkHelper = (function () {
         for (var key in user_setup) delete user_setup[key] ;
     } // client_logout
 
+    function change_password (old_password, new_password) {
+        var password, userid, passwords, key, old_password_sha256, new_password_sha256, i  ;
+        userid = parseInt(getItem('userid')) ;
+        passwords = JSON.parse(getItem('passwords')) ;
+        password = getItem('password') ;
+        key = getItem('key') ;
+        old_password_sha256 = sha256(old_password) ;
+        new_password_sha256 = sha256(new_password) ;
+        if (!userid) return 'Not logged in' ;
+        if (password != old_password) return 'Invalid old password' ;
+        if (passwords[userid-1] != old_password_sha256) return 'Invalid old password' ;
+        for (i=0 ; i<passwords.length ; i++) {
+            if (passwords[i] == new_password_sha256) return 'Invalid new password' ;
+        }
+        // ready to change password
+        passwords[userid-1] = new_password_sha256 ;
+        setItem('password', new_password) ;
+        setItem('key', key) ;
+        setItem('passwords', JSON.stringify(passwords)) ;
+        ls_save() ;
+        return null ;
+    } // change_password
+
     // delete any existing guest account before creating a new guest account
     function delete_guest_account () {
         var pgm = module + '.delete_guest_account: ' ;
@@ -1155,6 +1178,7 @@ var MoneyNetworkHelper = (function () {
         getUserId: getUserId,
         client_login: client_login,
         client_logout: client_logout,
+        change_password: change_password,
         delete_guest_account: delete_guest_account,
         generate_random_password: generate_random_password,
         encrypt: encrypt,

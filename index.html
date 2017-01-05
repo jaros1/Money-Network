@@ -1486,6 +1486,57 @@
                         </table>
                     </td>
                 </tr>
+                <tr><td colspan="3">&nbsp;</td></tr>
+                <tr title="Click link to change password. Enter old and new password. Minimum password length 10 characters">
+                    <td style="vertical-align: top">Password:</td>
+                    <td></td>
+                    <td>
+                        <span ng-hide="u.change_password.show">
+                            <a href="" ng-click="u.show_passwords_fields(true)">change password</a>
+                        </span>
+                        <span ng-show="u.change_password.show">
+                            <form name="change_password" ng-submit="u.change_password.submit()">
+                            <table>
+                                <tbody>
+                                <tr>
+                                    <td>Old password</td>
+                                    <td>:</td>
+                                    <td>
+                                        <input type="password" ng-model="u.change_password.old_password" required
+                                               ng-minlength="10" placeholder="Enter password" style="width: 120px">
+                                    </td>
+                                    <td rowspan="3">
+                                        <input type="submit" value="Change" ng-disabled="change_password.$invalid">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>New password</td>
+                                    <td>:</td>
+                                    <td>
+                                        <input type="password" ng-model="u.change_password.new_password" required
+                                               ng-minlength="10" placeholder="Enter new password" style="width: 120px">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Confirm password</td>
+                                    <td>:</td>
+                                    <td>
+                                        <input type="password" ng-model="u.change_password.confirm_new_password" required
+                                               ng-minlength="10" placeholder="Repeat new password" style="width: 120px">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3">Enter old and new password. Min 10 characters.</td>
+                                    <td style="text-align: right">
+                                        <a href="" ng-click="u.show_passwords_fields(false)">hide</a>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            </form>
+                        </span>
+                    </td>
+                </tr>
                 </tbody>
             </table>
             <br>

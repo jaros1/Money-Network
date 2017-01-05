@@ -391,12 +391,14 @@ angular.module('MoneyNetwork')
     }])
 
 
-    .filter('formatChatMessage', ['MoneyNetworkService', function (moneyNetworkService) {
+    .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', function (moneyNetworkService, formatChatMessageAlias) {
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
         return function (message) {
-            // find receiver
             var pgm = 'formatChatMessage: ' ;
+            // check cache. maybe already saved as a formatted string
+            if (message.formatted_message) return message.formatted_message ;
+
             // console.log(pgm + 'message = ' + JSON.stringify(message));
             var alias, i, group_contact, unique_id, cert_user_ids ;
             //if (message.message.folder == 'outbox') {
@@ -433,6 +435,7 @@ angular.module('MoneyNetwork')
                     } // for i
                 }
                 // console.log('str = ' + str) ;
+                message.message.formatted_message = str ;
                 return str ;
             }
             if (msgtype == 'contact removed') return 'I removed you as contact' ;
@@ -441,18 +444,23 @@ angular.module('MoneyNetwork')
                 // contact verification request. Different presentation for inbox/outbox and status for verification (pending or verified)
                 if (message.message.folder == 'outbox') {
                     // sent verification request to contact
-                    return 'Sent verification message to ' + alias + '. Secret verification password is "' +
+                    alias = formatChatMessageAlias(message) ;
+                    str = 'Sent verification message. Secret verification password is "' +
                         message.message.password + '". You must send secret password to ' + alias +
                         ' in an other secure communication channel (mail, social network etc). Status: waiting for verification.';
                 }
                 else {
-                    str =
-                        'I want to add you to my list of verified contacts. ' +
-                        'Please enter the secret verification password that you receive in an other communication channel.' ;
-                    if (message.message.password_sha256) str = str + " Status: pending" ;
-                    else str = str + " Status: verified" ;
-                    return str ;
+                    str = 'I want to add you to my list of verified contacts.';
+                    if (message.message.message.password_sha256) {
+                        str += '. Request pending. Please click on verify icon in this message and enter ' +
+                            'the secret verification password that you receive in an other communication channel.' ;
+                    }
+                    else {
+                        str += '. Done. You have already send verification password to contact. You should be on list of verified contacts now'
+                    }
                 }
+                message.message.formatted_message = str ;
+                return str ;
             }
             if (msgtype == 'verified') {
                 // contact verification response.
@@ -508,6 +516,7 @@ angular.module('MoneyNetwork')
                     if (!participant) str += 'unknown contact' ;
                     else str += moneyNetworkService.get_contact_name(participant);
                 }
+                message.message.formatted_message = str ;
                 return str ;
             }
             if (msgtype == 'lost msg') {
@@ -529,6 +538,7 @@ angular.module('MoneyNetwork')
                 }
                 str += ' certificate' ;
                 if (cert_user_ids.length > 1) str += 's' ;
+                message.message.formatted_message = str ;
                 return str ;
             }
 

@@ -942,6 +942,39 @@ angular.module('MoneyNetwork')
 
         }; // import
 
+        self.change_password = { show: false};
+        self.show_passwords_fields = function (show) {
+            self.change_password.show = show ;
+        };
+        self.change_password.submit = function () {
+            var pgm = controller + '.change_password.submit: ' ;
+            var error ;
+            //console.log(pgm + 'old password = ' + self.change_password.old_password +
+            //    ', new password = ' + self.change_password.new_password +
+            //    ', confirm new password = ' + self.change_password.confirm_new_password) ;
+            if (self.change_password.new_password != self.change_password.confirm_new_password) {
+                error = 'Password not changed. New password and confirm password does not match' ;
+                ZeroFrame.cmd("wrapperNotification", ['error', error, 10000]);
+                return ;
+            }
+            if (self.change_password.old_password == self.change_password.new_password) {
+                error = 'Password not changed. Old password and new password are identical' ;
+                ZeroFrame.cmd("wrapperNotification", ['error', error, 10000]);
+                return ;
+            }
+            error = MoneyNetworkHelper.change_password(self.change_password.old_password, self.change_password.new_password) ;
+            if (error) {
+                error = 'Password not changed. ' + error ;
+                ZeroFrame.cmd("wrapperNotification", ['error', error, 10000]);
+                return ;
+            }
+            ZeroFrame.cmd("wrapperNotification", ['done', 'Password was changed. Please remember your new password', 10000]);
+            delete self.change_password.old_password ;
+            delete self.change_password.new_password ;
+            delete self.change_password.confirm_new_password ;
+            self.show_passwords_fields(false) ;
+        };
+
         // end UserCtrl
     }])
 

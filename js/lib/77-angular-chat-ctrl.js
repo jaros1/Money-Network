@@ -737,6 +737,7 @@ angular.module('MoneyNetwork')
             function clear_chat_filter_cache () {
                 for (var i=0 ; i<self.messages.length ; i++) {
                     delete self.messages[i].chat_filter ;
+                    delete self.messages[i].formatted_message ;
                 }
                 self.chat_page_context.infinite_scroll_limit = 5 ;
                 moneyNetworkService.reset_first_and_last_chat() ;
