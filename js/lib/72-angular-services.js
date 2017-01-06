@@ -3300,15 +3300,20 @@ angular.module('MoneyNetwork')
             var local_storage_contacts_clone = JSON.parse(JSON.stringify(ls_contacts));
             for (i=local_storage_contacts_clone.length-1 ; i >= 0 ; i--) {
                 contact = local_storage_contacts_clone[i] ;
-                if ((['new', 'guest'].indexOf(contact.type) != -1) && (!contact.messages || (contact.messages.length == 0))) {
-                    local_storage_contacts_clone.splice(i,1) ;
-                    continue ;
-                }
+                if (!contact.messages) contact.messages = [] ;
+                // remove public chat. stored in optional files on Zeronet
                 if (contact.type == 'public') {
                     // public unencrypted chat is not stored in localStorage. Only in optional files on ZeroNet
                     local_storage_contacts_clone.splice(i,1) ;
                     continue ;
                 }
+                for (j=contact.messages.length-1 ; j >=0 ; j--) if (contact.messages[j].z_filename) contact.messages.splice(j,1) ;
+                // remove empty contacts
+                if ((['new', 'guest'].indexOf(contact.type) != -1) && (contact.messages.length == 0)) {
+                    local_storage_contacts_clone.splice(i,1) ;
+                    continue ;
+                }
+                // remove other internal information
                 delete contact['$$hashKey'] ;
                 delete contact.new_alias ;
                 delete contact.user_seq ; // available on ZeroNet
@@ -3320,7 +3325,7 @@ angular.module('MoneyNetwork')
                     delete contact.search[j].edit_alias ;
                     delete contact.search[j].row ;
                 }
-                if (contact.messages) for (j=contact.messages.length-1 ; j >= 0 ; j--) {
+                for (j=contact.messages.length-1 ; j >= 0 ; j--) {
                     if (contact.messages[j].z_filename) {
                         // public unencrypted chat is not stored in localStorage. Only in optional files on ZeroNet
                         contact.messages.splice(j,1) ;
