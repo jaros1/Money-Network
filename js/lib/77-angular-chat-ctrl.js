@@ -1114,11 +1114,11 @@ angular.module('MoneyNetwork')
                         // logical delete here. physical delete in ls_save_contacts
                         message.message.deleted_at = new Date().getTime(); // logical delete
                         message.chat_filter = false ;
-                        // remove from UI
-                        var index = -1;
-                        for (var i = 0; i < self.messages.length; i++) if (self.messages[i]["$$hashKey"] == message["$$hashKey"]) index = i;
-                        // console.log(pgm + 'index = ' + index + ', message = ' + JSON.stringify(message));
-                        if (index != -1) self.messages.splice(index, 1);
+                        //// remove from UI
+                        //var index = -1;
+                        //for (var i = 0; i < self.messages.length; i++) if (self.messages[i]["$$hashKey"] == message["$$hashKey"]) index = i;
+                        //// console.log(pgm + 'index = ' + index + ', message = ' + JSON.stringify(message));
+                        //if (index != -1) self.messages.splice(index, 1);
                         $scope.$apply();
                         // update localStorage and optional zeronet
                         var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;
