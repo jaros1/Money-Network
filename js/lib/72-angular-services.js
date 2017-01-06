@@ -150,7 +150,7 @@ angular.module('MoneyNetwork')
 
         // public chat optional file format: <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json
         // timestamps are timestamp for first and last message in file
-        var CONTENT_OPTIONAL = '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json)' ;
+        var CONTENT_OPTIONAL = '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json)' ;
 
         // user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
         var zeronet_site_publish_interval = 0 ;
@@ -237,6 +237,7 @@ angular.module('MoneyNetwork')
 
                                 // optional files support:
                                 // 1) <to timestamp>-<from timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for first and last chat msg in json file
+                                // 2) <timestamp>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
                                 content = JSON.parse(content) ;
                                 if (content.optional == CONTENT_OPTIONAL) {
                                     // optional file support also in place. save to my_files_optional. used in public chat
@@ -260,6 +261,7 @@ angular.module('MoneyNetwork')
                                     // z_cache.user_seqs = [2]
                                     for (filename in content.files_optional) {
                                         if (content.files_optional[filename].size <= 2) continue ;
+                                        if (filename.match(/image/)) continue ; // todo: cleanup in z_update_1_data_json
                                         // console.log(pgm + 'filename = ' + filename + ', size = ' + content.files_optional[filename].size) ;
                                         // filename = 1483633906108-1483633906108-1-chat.json, size = 147
                                         file_user_seq = parseInt(filename.split('-')[2]) ;
@@ -1205,7 +1207,7 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.z_update_1_data_json dbQuery callback 1: ';
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
-                var data_json_max_size, i ;
+                var data_json_max_size, i, user_path, data_json_path ;
                 // calculate data.json max size - reserve 1700 (2200 * 0.75) bytes for avatar - reserve 100 bytes for status
                 data_json_max_size = user_contents_max_size - 1800;
                 for (i=0 ; i<res.length ; i++) {
@@ -1213,8 +1215,8 @@ angular.module('MoneyNetwork')
                     data_json_max_size = data_json_max_size - res[i].size ;
                 }
                 // console.log(pgm + 'data_json_max_size = ' + data_json_max_size) ;
-
-                var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
+                user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
+                data_json_path = user_path + "/data.json";
                 if (zeronet_file_locked[data_json_path] && (lock_pgm != 'force')) {
                     var error =
                         "Warning. File " + data_json_path + ' is being updated by an other process. ' +
@@ -1366,7 +1368,7 @@ angular.module('MoneyNetwork')
                     } // for i (data.msg)
 
                     // remove deleted outbox messages from data.json
-                    var encrypt, key, message_with_envelope, message, message_deleted, error ;
+                    var encrypt, key, message_with_envelope, message, message_deleted, error, image_path ;
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         contact = ls_contacts[i] ;
                         if (contact.type == 'public') continue ;
@@ -1403,19 +1405,16 @@ angular.module('MoneyNetwork')
                                     delete contact.messages[j].zeronet_msg_id ;
                                     delete contact.messages[j].zeronet_msg_size ;
                                 }
-                                // keeping track of sender_sha256 addresses in deleted outbox messages and psysical delete is done in ls_save_contacts
-                                // delete message but keep sender_sha256 in deleted message. Could get an ingoing message later to this address
-                                // console.log(pgm + 'contact before message delete: ' + JSON.stringify(contact));
-                                //sender_sha256 = contact.messages[j].sender_sha256;
-                                //if (sender_sha256) {
-                                //    if (!contact.outbox_sender_sha256) contact.outbox_sender_sha256 = {};
-                                //    if (!contact.outbox_sender_sha256.hasOwnProperty(sender_sha256)) {
-                                //        contact.outbox_sender_sha256[contact.messages[j].sender_sha256] = {send_at: contact.messages[j].sent_at}
-                                //    }
-                                //}
-                                // no reason for physical delete here. Should only be in ls_save_contacts
-                                // contact.messages.splice(j,1);
-                                // console.log(pgm + 'contact after message delete: ' + JSON.stringify(contact));
+                                if (message_deleted && (message_with_envelope.message.image == true)) {
+                                    // deleted a message from data.msg with an image <timestamp>-image.json file
+                                    // overwrite with empty json as a delete marked optional file.
+                                    image_path =  user_path + '/' + message_with_envelope.sent_at + '-image.json';
+                                    ZeroFrame.cmd("fileGet", {inner_path: image_path, required: false}, function (image) {
+                                        if (!image) return ;
+                                        if (image.length <= 2) return ;
+                                        write_empty_chat_file(image_path) ;
+                                    }) ;
+                                }
                                 local_storage_updated = true ;
                                 continue
                             } // if
@@ -1477,7 +1476,10 @@ angular.module('MoneyNetwork')
             var pgm = service + '.z_update_2a_data_json_encrypt: ' ;
 
             var i, contact, encrypt, j, message_with_envelope, message, local_msg_seq, sent_at, key, password,
-                receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend ;
+                receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend,
+                user_path, image_path, image_json, json_raw ;
+
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
 
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
@@ -1523,11 +1525,11 @@ angular.module('MoneyNetwork')
                             local_msg_seq = next_local_msg_seq() ;
                             message_with_envelope.local_msg_seq = local_msg_seq;
                             js_messages_row = js_messages_index.seq[message_with_envelope.seq] ;
-                            console.log(pgm + 'adding missing js_messages_index.local_msg_seq index. ' +
-                                'message_with_envelope.seq = ' + message_with_envelope.seq +
-                                ', js_messages_row = ' + JSON.stringify(js_messages_row) +
-                                ', js_messages_index.local_msg_seq[' + local_msg_seq + '] = ' + js_messages_index.local_msg_seq[local_msg_seq] +
-                                ' (should be null');
+                            //console.log(pgm + 'test - adding missing js_messages_index.local_msg_seq index. ' +
+                            //    'message_with_envelope.seq = ' + message_with_envelope.seq +
+                            //    ', js_messages_row = ' + JSON.stringify(js_messages_row) +
+                            //    ', js_messages_index.local_msg_seq[' + local_msg_seq + '] = ' + js_messages_index.local_msg_seq[local_msg_seq] +
+                            //    ' (should be null)');
                             js_messages_index.local_msg_seq[local_msg_seq] = js_messages_row ;
                             sent_at = new Date().getTime() ;
                             resend = false ;
@@ -1578,13 +1580,12 @@ angular.module('MoneyNetwork')
                                 local_msg_seq + ', message = ' + JSON.stringify(message));
                         }
 
-                        // don't send unchanged images. move to envelope before send and back to message after send
+                        // move any image to envelope before send and back to message after send
                         delete message_with_envelope.image ;
-                        if (message.replace_unchanged_image_with_x) {
+                        if (message.image) {
                             // x = 'unchanged image'
-                            delete message.replace_unchanged_image_with_x ;
                             message_with_envelope.image = message.image ;
-                            message.image = 'x' ;
+                            message.image = true ;
                         }
                         //console.log(pgm + 'debug - some messages are not delivered');
                         //console.log(pgm + 'sending ' + message.msgtype + ' to ' + receiver_sha256) ;
@@ -1634,6 +1635,20 @@ angular.module('MoneyNetwork')
                             return ;
 
                         }
+
+                        // message with image? save image in an optional file.encrypted with same password as message in data.json
+                        if (message_with_envelope.image) {
+                            image_path = user_path + '/' + sent_at + '-image.json';
+                            image_json = {
+                                image: MoneyNetworkHelper.encrypt(message_with_envelope.image, password)
+                            };
+                            json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
+                            ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
+                                var pgm = service + '.z_update_2a_data_json_encrypt fileWrite callback: ';
+                                debug('outbox', pgm + 'res = ' + JSON.stringify(res));
+                            }); // fileWrite
+                        }
+
                         // same post encryption cleanup as in z_update_data_cryptmessage
                         encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(message), password);
                         if (message_with_envelope.image) {
@@ -3773,6 +3788,32 @@ angular.module('MoneyNetwork')
         } // next_local_msg_seq
 
 
+        // received an incoming message with image=true
+        // download optional file and insert image in message
+        function download_json_image_file(auth_address, message_with_envelope, password) {
+            var pgm = service + '.download_json_image_file: ' ;
+            var image_path ;
+            console.log(pgm + 'auth_address = ' + auth_address) ;
+            console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+            console.log(pgm + 'password = ' + password) ;
+            // temporary null image while downloading
+            message_with_envelope.message.image = null ;
+            image_path = "data/users/" + auth_address + '/' + message_with_envelope.sent_at + '-image.json' ;
+            ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
+                var pgm = service + '.download_json_image_file fileGet callback: ' ;
+                if (!image) {
+                    console.log(pgm + 'Error. image download timeout for ' + image_path) ;
+                    return ;
+                }
+                image = JSON.parse(image) ;
+                message_with_envelope.message.image = MoneyNetworkHelper.decrypt(image.image, password);
+                ls_save_contacts(false) ;
+                console.log(pgm + 'Ok. image ' + image_path + ' downloaded') ;
+                $rootScope.$apply() ;
+            }) ; // fileGet
+        } // download_json_image_file
+
+
         // array with messages with unknown unique id for contact.
         // must create contact and process message once more
         var new_unknown_contacts = [] ;
@@ -3809,8 +3850,9 @@ angular.module('MoneyNetwork')
                 }
 
                 // group chat using symmetric key encryption
+                password = group_chat_contact.password ;
                 try {
-                    decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, group_chat_contact.password)
+                    decrypted_message_str = MoneyNetworkHelper.decrypt(res.message, password)
                 }
                 catch (err) {
                     console.log(pgm + 'Ignoring message with invalid encryption. error = ' + err.message) ;
@@ -4163,6 +4205,10 @@ angular.module('MoneyNetwork')
                 if (decrypted_message.image == 'x') {
                     // x = edit chat message with unchanged image
                     decrypted_message.image = old_message_envelope.message.image ;
+                }
+                else if (decrypted_message.image == true) {
+                    // true: image in an optional image json file <timestamp>-image.json
+                    download_json_image_file(res.auth_address, message, password) ;
                 }
                 else {
                     // received a chat message with an image. Send receipt so that other user can delete msg from data.json and free disk space

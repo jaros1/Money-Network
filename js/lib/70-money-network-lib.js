@@ -893,7 +893,7 @@ var MoneyNetworkHelper = (function () {
             "local_msg_seq": { "type": 'integer'},
             "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "old_local_msg_seq": { "type": 'integer' },
-            "image": { "type": 'string'},
+            "image": { "type": [ 'string', 'boolean'] },
             "feedback": {
                 "type": 'object',
                 "description": 'Feedback info. Has message been received? Normal chat, type integer, with local_msg_seq. Group chat, type string, with participant, local_msg_seq',
