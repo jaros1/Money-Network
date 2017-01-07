@@ -1170,6 +1170,7 @@ angular.module('MoneyNetwork')
 
         // keep track of data.json fileGet/fileWrite operations. fileWrite must finish before next fileGet
         var zeronet_file_locked = {} ;
+        var pending_force_update = false ;
 
         // update zeronet step 1. update "data.json" file. update users, search and msg (delete only) arrays 
         function z_update_1_data_json (lock_pgm) {
@@ -1222,8 +1223,16 @@ angular.module('MoneyNetwork')
                         "Warning. File " + data_json_path + ' is being updated by an other process. ' +
                         'Process with lock is ' + zeronet_file_locked[data_json_path] + '. Process requesting lock is ' + lock_pgm ;
                     console.log(pgm + error) ;
+                    if (pending_force_update) {
+                        console.log(pgm + 'Force data.json update already pending') ;
+                        return ;
+                    }
                     console.log(pgm + 'Force data.json update in 30 seconds') ;
-                    $timeout(function () { z_update_1_data_json('force') }, 30000);
+                    pending_force_update = true ;
+                    $timeout(function () {
+                        pending_force_update = false ;
+                        z_update_1_data_json('force')
+                    }, 30000);
                     return ;
                 }
                 zeronet_file_locked[data_json_path] = lock_pgm ;
@@ -1395,7 +1404,7 @@ angular.module('MoneyNetwork')
                                 // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
                                 if (!message_deleted) {
                                     if (!is_admin() || !admin_key) { // ignore delete errors for admin task!
-                                        error = "Could not delete message from Zeronet. Maybe posted in ZeroNet from an other ZeroNet id" ;
+                                        error = "Could not delete message from Zeronet. Maybe posted on ZeroNet from an other ZeroNet id" ;
                                         console.log(pgm + 'error = ' + error) ;
                                         console.log(pgm + 'user_seq = ' + user_seq) ;
                                         console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
@@ -1405,7 +1414,7 @@ angular.module('MoneyNetwork')
                                     delete contact.messages[j].zeronet_msg_id ;
                                     delete contact.messages[j].zeronet_msg_size ;
                                 }
-                                if (message_deleted && (message_with_envelope.message.image == true)) {
+                                if (message_deleted && (message_with_envelope.message.image)) {
                                     // deleted a message from data.msg with an image <timestamp>-image.json file
                                     // overwrite with empty json as a delete marked optional file.
                                     image_path =  user_path + '/' + message_with_envelope.sent_at + '-image.json';
@@ -1477,7 +1486,7 @@ angular.module('MoneyNetwork')
 
             var i, contact, encrypt, j, message_with_envelope, message, local_msg_seq, sent_at, key, password,
                 receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend,
-                user_path, image_path, image_json, json_raw ;
+                user_path, image_path, image_json, json_raw, upload_image_json ;
 
             user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
 
@@ -1580,12 +1589,21 @@ angular.module('MoneyNetwork')
                                 local_msg_seq + ', message = ' + JSON.stringify(message));
                         }
 
-                        // move any image to envelope before send and back to message after send
+
+                        // move image to envelope before send and back to message after send
                         delete message_with_envelope.image ;
-                        if (message.image) {
-                            // x = 'unchanged image'
+                        upload_image_json = false ;
+                        if (message.replace_unchanged_image_with_x) {
+                            // sending x = unchanged image
+                            delete message.replace_unchanged_image_with_x ;
+                            message_with_envelope.image = message.image ;
+                            message.image = 'x' ;
+                        }
+                        else if (message.image) {
+                            // sending image as optional file
                             message_with_envelope.image = message.image ;
                             message.image = true ;
+                            upload_image_json = true ;
                         }
                         //console.log(pgm + 'debug - some messages are not delivered');
                         //console.log(pgm + 'sending ' + message.msgtype + ' to ' + receiver_sha256) ;
@@ -1636,19 +1654,6 @@ angular.module('MoneyNetwork')
 
                         }
 
-                        // message with image? save image in an optional file.encrypted with same password as message in data.json
-                        if (message_with_envelope.image) {
-                            image_path = user_path + '/' + sent_at + '-image.json';
-                            image_json = {
-                                image: MoneyNetworkHelper.encrypt(message_with_envelope.image, password)
-                            };
-                            json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
-                            ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
-                                var pgm = service + '.z_update_2a_data_json_encrypt fileWrite callback: ';
-                                debug('outbox', pgm + 'res = ' + JSON.stringify(res));
-                            }); // fileWrite
-                        }
-
                         // same post encryption cleanup as in z_update_data_cryptmessage
                         encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(message), password);
                         if (message_with_envelope.image) {
@@ -1683,6 +1688,28 @@ angular.module('MoneyNetwork')
                             message_with_envelope.deleted_at = new Date().getTime() ;
                         }
 
+                        // message with image? save image in an optional file.encrypted with same password as message in data.json
+                        // console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                        if (upload_image_json) {
+                            image_path = user_path + '/' + sent_at + '-image.json';
+                            image_json = {
+                                image: MoneyNetworkHelper.encrypt(message.image, password)
+                            };
+                            json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
+                            console.log(pgm + 'image==true: uploading image file ' + image_path) ;
+                            ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
+                                var pgm = service + '.z_update_2a_data_json_encrypt fileWrite callback: ';
+                                debug('outbox', pgm + 'res = ' + JSON.stringify(res));
+                                console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
+
+                                z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str)
+
+                            }); // fileWrite
+
+                            return ; // stop- writeFile callback will continue process
+                        }
+
+                        // message without image. just continue loop
                         local_storage_updated = true ;
                         continue ;
                     } // if
@@ -1799,13 +1826,16 @@ angular.module('MoneyNetwork')
         // data.json file must be as small as possible for fast communication
         // also checking max user directory size
         // returns true if OK. returns false if data.json er too big for write and publish
+        var DATA_FILE_SIZE = 20000 ;
         function z_update_3_data_json_cleanup (local_storage_updated, data_json_max_size, data) {
 
             var pgm = service + '.z_update_3_data_json_cleanup: ' ;
 
             var i, j, k, json_raw, data_clone, data_json_other_users_size, now, one_hour_ago, msg_user_seqs, data_removed,
                 count, contact, contact_last_online, outbox_message, no_feedback_expected, no_feedback_received,
-                available, error, user_seq ;
+                available, error, user_seq, user_path, image_path ;
+
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
 
             // calculate number of bytes used by other users in data.json file
             user_seq = z_cache.user_seq ;
@@ -1833,16 +1863,14 @@ angular.module('MoneyNetwork')
             // check file size. Try to keep data.json file size small for fast communication and small site
             // always keep messages for last hour.
             // data.json size must also be <data_json_max_size
-            // todo: issue #42 - data.json size - minor problem - should be a 10Kb limit for current user. not all users in data.json file
             now = new Date().getTime() ;
             one_hour_ago = now - 1000*60*60 ;
             count = 0 ;
             while (true) {
                 json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
-                if (json_raw.length < 10000 + data_json_other_users_size) break ; // OK - small file
+                if (json_raw.length < DATA_FILE_SIZE + data_json_other_users_size) break ; // OK - small file
 
-                debug('data_cleanup', pgm + 'data.json is big. size ' + json_raw.length + '. limit ' + (10000 + data_json_other_users_size) + ' removing old data ...') ;
-                // todo: looping forever with message - MoneyNetworkService.z_update_1_data_json fileGet callback: data.json is big. size 14762. removing old data ...
+                debug('data_cleanup', pgm + 'data.json is big. size ' + json_raw.length + '. limit ' + (DATA_FILE_SIZE + data_json_other_users_size) + ' removing old data ...') ;
                 count = count + 1 ;
                 if (count > 1000) {
                     console.log(pgm + 'Ups. System error. Something is wrong here. looping forever!') ;
@@ -1909,6 +1937,23 @@ angular.module('MoneyNetwork')
                             //    // logical delete. will be physical deleted in next ls_save_contacts
                             //    inbox_message.deleted_at = new Date().getTime() ;
                             //}
+
+                            // check image. maybe image was sent in an optional -image.json file
+                            if (outbox_message.message.image) {
+                                // deleted a message from data.msg with an image <timestamp>-image.json file
+                                // overwrite with empty json as a delete marked optional file.
+                                debug('data_cleanup', pgm + 'checking for -image.jso file. todo: test edit chat message with an image') ;
+                                image_path =  user_path + '/' + outbox_message.sent_at + '-image.json';
+                                ZeroFrame.cmd("fileGet", {inner_path: image_path, required: false}, function (image) {
+                                    if (!image) {
+                                        debug('data_cleanup', pgm + 'optional image json file ' + image_path + ' was not found') ;
+                                        return ;
+                                    }
+                                    if (image.length <= 2) return ;
+                                    write_empty_chat_file(image_path) ;
+                                }) ;
+                            }
+
                             break ;
                         } // for k (data.msg)
                         if (data_removed) {
@@ -2349,7 +2394,7 @@ angular.module('MoneyNetwork')
 
                             // check size
                             debug('public_chat', pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
-                            if (z_filename && (my_files_optional[z_filename]['size'] > 10000)) {
+                            if (z_filename && (my_files_optional[z_filename]['size'] > DATA_FILE_SIZE)) {
                                 z_filename = null ;
                                 first_timestamp = null ;
                             }
@@ -2458,7 +2503,7 @@ angular.module('MoneyNetwork')
 
                 } // for i (contact.messages)
 
-                // todo: merge check. merge smaller *chat.json files. for sample 2 5000 bytes file to one 10000 bytes file?
+                // todo: merge check. merge smaller *chat.json files. for sample 2 5000 bytes file to one CLEANUP_LIMIT bytes file?
 
             } // if contact
 
@@ -2986,7 +3031,7 @@ angular.module('MoneyNetwork')
 
                 // insert copy of messages into chat friendly array
                 for (j=0 ; j<new_contact.messages.length ; j++) {
-                    if (new_contact.messages[j].message.image && new_contact.messages[j].message.image.match(/^http/)) {
+                    if (new_contact.messages[j].message.image && new_contact.messages[j].message.image.toString().match(/^http/)) {
                         // fix error. there should not be urls in image.
                         console.log(pgm + 'new_contact.messages[' + j + '] = ' + JSON.stringify(new_contact.messages[j]));
                         delete new_contact.messages[j].message.image ;
@@ -3346,6 +3391,10 @@ angular.module('MoneyNetwork')
                         contact.messages.splice(j,1) ;
                         continue ;
                     }
+                    // remove image errors
+                    if (contact.messages[j].message.image &&
+                        ((contact.messages[j].message.image == true) ||
+                         (contact.messages[j].message.image == 'x'))) delete contact.messages[j].message.image ;
                     delete contact.messages[j]['$$hashKey'] ;
                     delete contact.messages[j].edit_chat_message ;
                     delete contact.messages[j].message.original_image ;
@@ -3790,27 +3839,72 @@ angular.module('MoneyNetwork')
 
         // received an incoming message with image=true
         // download optional file and insert image in message
-        function download_json_image_file(auth_address, message_with_envelope, password) {
+        function download_json_image_file(auth_address, message_with_envelope, password, cb) {
             var pgm = service + '.download_json_image_file: ' ;
-            var image_path ;
-            console.log(pgm + 'auth_address = ' + auth_address) ;
-            console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
-            console.log(pgm + 'password = ' + password) ;
-            // temporary null image while downloading
-            message_with_envelope.message.image = null ;
+            var query, image_path ;
+            // console.log(pgm + 'auth_address = ' + auth_address) ;
+            // console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+            // console.log(pgm + 'password = ' + password) ;
+
+            // is image attachment ready for download? should not be a problem ...
             image_path = "data/users/" + auth_address + '/' + message_with_envelope.sent_at + '-image.json' ;
-            ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
-                var pgm = service + '.download_json_image_file fileGet callback: ' ;
-                if (!image) {
-                    console.log(pgm + 'Error. image download timeout for ' + image_path) ;
+            query =
+                "select files_optional.size " +
+                "from files_optional, json " +
+                "where json.json_id = files_optional.json_id " +
+                "and json.directory = 'users/" + auth_address + "' " +
+                "and files_optional.filename = '" + message_with_envelope.sent_at + '-image.json' + "'" ;
+            debug('select', pgm + 'query = ' + query) ;
+
+            ZeroFrame.cmd("dbQuery", [query], function (res) {
+                var pgm = service + '.download_json_image_file dbQuery callback 1: ' ;
+                var now ;
+                if (res.error) {
+                    console.log(pgm + "image download check failed: " + res.error) ;
+                    console.log(pgm + 'query = ' + query) ;
+                    if (cb) cb(false) ;
+                    return;
+                }
+                if (res.length == 0) {
+                    now = new Date().getTime() ;
+                    console.log(pgm + 'optional image file ' + image_path + ' was not found in optional files. ' +
+                        'sent_at = ' + message_with_envelope.sent_at + ', now = ' + now +
+                        ', dif = ' + (now-message_with_envelope.sent_at)) ;
+                    if (cb) cb(false) ;
                     return ;
                 }
-                image = JSON.parse(image) ;
-                message_with_envelope.message.image = MoneyNetworkHelper.decrypt(image.image, password);
-                ls_save_contacts(false) ;
-                console.log(pgm + 'Ok. image ' + image_path + ' downloaded') ;
-                $rootScope.$apply() ;
-            }) ; // fileGet
+                if (res[0].size <= 2) {
+                    console.log(pgm + 'optional image file ' + image_path + ' has been deleted') ;
+                    if (cb) cb(false) ;
+                    return ;
+                }
+
+                // ready for image download
+                // temporary null image while downloading
+                message_with_envelope.message.image = null ;
+                image_path = "data/users/" + auth_address + '/' + message_with_envelope.sent_at + '-image.json' ;
+                debug('inbox', pgm + 'downloading image ' + image_path) ;
+                ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
+                    var pgm = service + '.download_json_image_file fileGet callback 2: ' ;
+                    if (!image) {
+                        console.log(pgm + 'Error. image download timeout for ' + image_path) ;
+                        if (cb) cb(false) ;
+                        return ;
+                    }
+                    debug('inbox', pgm + 'downloaded image ' + image_path) ;
+                    // save in lS and delete downloaded optional file
+                    image = JSON.parse(image) ;
+                    message_with_envelope.message.image = MoneyNetworkHelper.decrypt(image.image, password);
+                    ls_save_contacts(false) ;
+                    ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
+                    // done. update UI + callbacks
+                    // console.log(pgm + 'Ok. image ' + image_path + ' downloaded') ;
+                    $rootScope.$apply() ;
+                    if (cb) cb(true) ;
+                }) ; // fileGet callback 2
+
+            }) ; // dbQuery callback 1
+
         } // download_json_image_file
 
 
@@ -4190,6 +4284,8 @@ angular.module('MoneyNetwork')
                 else {
                     old_message_envelope = contact_or_group.messages[index];
                     old_message_envelope.deleted_at = message.sent_at ;
+                    js_messages_row = get_message_by_seq(old_message_envelope.seq) ;
+                    js_messages_row.chat_filter = false ;
                     debug('inbox && unencrypted', pgm + 'received OK update to an old chat msg') ;
                     debug('inbox && unencrypted', pgm + 'new decrypted_message = ' + JSON.stringify(decrypted_message));
                     debug('inbox && unencrypted', pgm + 'old_message_envelope  = ' + JSON.stringify(old_message_envelope));
@@ -4203,14 +4299,34 @@ angular.module('MoneyNetwork')
 
             if ((decrypted_message.msgtype == 'chat msg') && decrypted_message.image) {
                 if (decrypted_message.image == 'x') {
-                    // x = edit chat message with unchanged image
+                    // x = edit chat message with unchanged image. just copy image from old to new message
                     decrypted_message.image = old_message_envelope.message.image ;
                 }
                 else if (decrypted_message.image == true) {
-                    // true: image in an optional image json file <timestamp>-image.json
-                    download_json_image_file(res.auth_address, message, password) ;
+                    // new image attachment method
+                    // true: message image is in an optional image json file <timestamp>-image.json
+                    download_json_image_file(res.auth_address, message, password, function (ok) {
+                        var pgm = service + '.download_json_image_file callback: ';
+                        // received a chat message with an image.
+                        // Send receipt so that other user can delete msg from data.json and free disk space
+                        // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
+                        var receipt = { msgtype: 'received', remote_msg_seq: decrypted_message.local_msg_seq };
+                        // validate json
+                        var error = MoneyNetworkHelper.validate_json(pgm, receipt, receipt.msgtype, 'Cannot send receipt for chat message');
+                        if (error) console(pgm + error) ;
+                        else {
+                            // this callback can be called multiple times after log in or when receiving a data.json file
+                            // multiple images in process_incoming_message => multiple calls to z_update_1_data_json
+                            // process lock in z_update_1_data_json will output a warning in log
+                            // first receipt in first z_update_1_data_json call
+                            // other receipts in next z_update_1_data_json call in 30 seconds
+                            add_msg(contact, receipt) ;
+                            z_update_1_data_json(pgm);
+                        }
+                    }) ;
                 }
                 else {
+                    // old image attachment method
                     // received a chat message with an image. Send receipt so that other user can delete msg from data.json and free disk space
                     // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
                     var receipt = { msgtype: 'received', remote_msg_seq: decrypted_message.local_msg_seq };
@@ -5140,7 +5256,7 @@ angular.module('MoneyNetwork')
                     key_a = key.split('-') ;
                     if (!key.match(optional_regexp)) console.log(pgm + 'invalid files_optional key ' + key) ; // invalid optional file name
                     else if (key_a[0] > '' + now) console.log(pgm + 'invalid files_optional key ' + key) ; // timestamp in the future
-                    else if (files_optional[key].size <= 3) debug('public_chat', pgm + 'ignoring empty logical deleted json file ' + key) ;
+                    else if (files_optional[key].size <= 2) null ; // debug('public_chat', pgm + 'ignoring empty logical deleted json file ' + key) ;
                     else if (!user_seq || ('' + user_seq == key_a[2])) my_files_optional[key] = files_optional[key] ; // ok
                 } // for key
                 // console.log(pgm + 'user_seq = ' + user_seq + ', my_files_optional = ' + JSON.stringify(my_files_optional)) ;
@@ -5874,21 +5990,20 @@ angular.module('MoneyNetwork')
                         compare_files1[cache_filename].in_query = true ;
                         compare_files1[cache_filename].query_size = res[i].size ;
                     }
-                    debug('public_chat', pgm + 'before removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
+                    // debug('public_chat', pgm + 'before removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
                     for (cache_filename in compare_files1) {
                         if (compare_files1[cache_filename].in_cache && compare_files1[cache_filename].in_query) {
-                            debug('public_chat', pgm + 'file ' + cache_filename + ' in cache and in query. must also compare size. changed size = deleted messages') ;
-                            debug('public_chat', pgm + 'compare_files1[cache_filename] = ' + JSON.stringify(compare_files1[cache_filename])) ;
+                            // debug('public_chat', pgm + 'file ' + cache_filename + ' in cache and in query. must also compare size. changed size = deleted messages') ;
+                            // debug('public_chat', pgm + 'compare_files1[cache_filename] = ' + JSON.stringify(compare_files1[cache_filename])) ;
                             if (compare_files1[cache_filename].cache_size == compare_files1[cache_filename].query_size) delete compare_files1[cache_filename] ;
                             else {
-                                debug('public_chat', 'issue #84 ?') ;
-                                debug('public_chat', 'changed size for file ' + cache_filename + '. must download and recheck file for deleted messages');
+                                debug('public_chat', 'issue #84. changed size for file ' + cache_filename + '. must download and recheck file for deleted messages');
                                 files_optional_cache[cache_filename].is_downloaded = false ;
                                 delete files_optional_cache[cache_filename].timestamps ;
                             }
                         }
                     }
-                    debug('public_chat', pgm + 'after removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
+                    // debug('public_chat', pgm + 'after removing identical filenames. compare_files1 = ' + JSON.stringify(compare_files1)) ;
                     // compare_files = {"data/users/1LVdWbEuZyXeWWVcbL7b12zQSWnXWtSod6/1482835334090-1482835334090-1-chat.json": {"in_cache": true}};
                     // compare step 2 - compare data for each auth_address and user_seq (each contact)
                     if (Object.keys(compare_files1).length) {
@@ -5910,7 +6025,7 @@ angular.module('MoneyNetwork')
                             if (compare_files1[cache_filename].in_cache) compare_files2[key].old_intervals.push(interval_obj) ;
                             else compare_files2[key].new_intervals.push(interval_obj) ;
                         }
-                        debug('public_chat', pgm + 'compare_files2 (a) = ' + JSON.stringify(compare_files2)) ;
+                        // debug('public_chat', pgm + 'compare_files2 (a) = ' + JSON.stringify(compare_files2)) ;
                         //compare_files2 = {
                         //    "1LVdWbEuZyXeWWVcbL7b12zQSWnXWtSod6-1": {
                         //        "old_intervals": [{
@@ -6037,9 +6152,8 @@ angular.module('MoneyNetwork')
                                 }
                             }
                         } // for key
-                        debug('public_chat', pgm + 'compare_files2 (b) = ' + JSON.stringify(compare_files2)) ;
-                        debug('public_chat', pgm + 'deleted_messages = ' + deleted_messages) ;
                         if (deleted_messages > 0) {
+                            debug('public_chat', pgm + 'deleted_messages = ' + deleted_messages) ;
                             cb_status = 'updated';
                             // https://github.com/jaros1/Zeronet-Money-Network/issues/79#issuecomment-269359588
                             debug('public_chat', pgm + 'issue #79. query = ' + query + ', res = ' + JSON.stringify(res) +
@@ -6236,7 +6350,7 @@ angular.module('MoneyNetwork')
                 auth_address = filename.split('/')[2] ;
                 user_seq = parseInt(filename.split('-')[2]) ;
                 if ((auth_address != chat_page_context.contact) || (user_seq != chat_page_context.contact.user_seq)) {
-                    debug('public_chat', pgm + 'ignoring chat file from other contacts ' + filename) ;
+                    // debug('public_chat', pgm + 'ignoring chat file from other contacts ' + filename) ;
                     return false ;
                 }
             }
@@ -6250,9 +6364,9 @@ angular.module('MoneyNetwork')
                 to_timestamp = parseInt(filename.split('/')[3].split('-')[0]) ;
                 if (to_timestamp < chat_page_context.last_bottom_timestamp) {
                     // ignore public chat message not within page timestamp
-                    debug('public_chat', pgm + 'ignoring chat file. filename = ' + filename) ;
-                    debug('public_chat', pgm + 'ignoring chat file. file timestamp ' + date(to_timestamp, 'yyyy-MM-dd HH:mm:ss Z') +
-                        ', bottom scroll timestamp = ' + date(chat_page_context.last_bottom_timestamp, 'yyyy-MM-dd HH:mm:ss Z')) ;
+                    //debug('public_chat', pgm + 'ignoring chat file. filename = ' + filename) ;
+                    //debug('public_chat', pgm + 'ignoring chat file. file timestamp ' + date(to_timestamp, 'yyyy-MM-dd HH:mm:ss Z') +
+                    //    ', bottom scroll timestamp = ' + date(chat_page_context.last_bottom_timestamp, 'yyyy-MM-dd HH:mm:ss Z')) ;
                     // ignoring chat file. filename = data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482768400248-1482768400248-1-chat.json
                     // ignoring chat file. file timestamp 12/26/16 5:06 PM, bottom scroll timestamp = 12/27/16 4:40 AM
                     // ignoring chat file. filename = data/users/16jTxNvrzXDyg2Sn7av6p58ar4Q13HHSqT/1482808014905-1482808014905-1-chat.json
@@ -6313,7 +6427,7 @@ angular.module('MoneyNetwork')
                         cache_status.is_downloaded = false;
                         cache_status.download_failed_at = new Date().getTime() ;
                         chat_page_context.failures++ ;
-                        console.log(pgm + 'download failed for ' + cache_filename + ', failures = ' + failures) ;
+                        console.log(pgm + 'download failed for ' + cache_filename + ', failures = ' + chat_page_context.failures) ;
                         return cb() ;
                     }
                     file_auth_address = cache_filename.split('/')[2] ;

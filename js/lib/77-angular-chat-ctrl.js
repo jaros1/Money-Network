@@ -766,10 +766,15 @@ angular.module('MoneyNetwork')
                     match = false ;
                     reason = 1.1 ;
                 }
+                else if ((message.message.msgtype == 'chat msg') && !message.message.message.message) {
+                    // empty chat message = receive delete chat message
+                    match = false ;
+                    reason = 1.2 ;
+                }
                 else if (message.message.message.msgtype == 'received') {
                     // hide image receipts
                     match = false ;
-                    reason = 1.2 ;
+                    reason = 1.3 ;
                 }
                 else if (!self.contact && !self.group_chat) {
                     // no context - show chat for all contacts. Use green/red filter in top of page
@@ -1242,6 +1247,7 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("wrapperConfirm", ['Delete "' + msg_text + '" message?', "Delete"], function (confirmed) {
                     if (!confirmed) return;
                     // console.log(pgm + 'deleting message ' + JSON.stringify(message));
+                    delete message.message.message.original_image ;
                     // outbox: send delete chat message. note empty chat message
                     var delete_message = {
                         msgtype: 'chat msg',
@@ -1282,11 +1288,11 @@ angular.module('MoneyNetwork')
                         ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
                         return;
                     }
-                    var max_image_size = moneyNetworkService.get_max_image_size() ;
-                    if (image_base64uri.length * 0.75 > max_image_size) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Image is too big. Max allowed size is about " + max_image_size + " bytes.", 5000]);
-                        return;
-                    }
+                    //var max_image_size = moneyNetworkService.get_max_image_size() ;
+                    //if (image_base64uri.length * 0.75 > max_image_size) {
+                    //    ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Image is too big. Max allowed size is about " + max_image_size + " bytes.", 5000]);
+                    //    return;
+                    //}
 
                     self.new_chat_src = image_base64uri ;
                     $scope.$apply() ;
@@ -1314,11 +1320,11 @@ angular.module('MoneyNetwork')
                         ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
                         return;
                     }
-                    var max_image_size = moneyNetworkService.get_max_image_size() ;
-                    if (image_base64uri.length * 0.75 > max_image_size) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Image is too big. Max allowed size is about " + max_image_size + " bytes.", 5000]);
-                        return;
-                    }
+                    //var max_image_size = moneyNetworkService.get_max_image_size() ;
+                    //if (image_base64uri.length * 0.75 > max_image_size) {
+                    //    ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Image is too big. Max allowed size is about " + max_image_size + " bytes.", 5000]);
+                    //    return;
+                    //}
 
                     if (['file-input', 'file-input2'].indexOf(input_file_id) != -1) {
                         // image upload in new chat message form
