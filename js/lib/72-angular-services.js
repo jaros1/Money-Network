@@ -1760,18 +1760,19 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.z_update_2b_data_json_encrypt eciesEncrypt callback 2: ';
 
                     // encrypt step 3 - aes encrypt message
-                    ZeroFrame.cmd("aesEncrypt", [JSON.stringify(message_with_envelope.message), password], function (res) {
+                    ZeroFrame.cmd("aesEncrypt", [JSON.stringify(message_with_envelope.message), password], function (msg_res) {
                         var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 3: ';
-                        var iv, encrypted_message_str, message ;
+                        var iv, encrypted_message_str, message, upload_image_json ;
 
-                        iv = res[1] ;
-                        encrypted_message_str = res[2];
+                        iv = msg_res[1] ;
+                        encrypted_message_str = msg_res[2];
                         debug('outbox && encrypted', pgm + 'iv = ' + iv + ', encrypted_message_str = ' + encrypted_message_str);
 
                         // same post encryption cleanup as in z_update_data_encrypt_message
                         message = message_with_envelope.message ;
                         if (message_with_envelope.image) {
                             // restore image
+                            if (message.image == true) upload_image_json = true ; // must encrypt and upload image as an optional json file
                             message.image = message_with_envelope.image ;
                             delete message_with_envelope.image ;
                         }
@@ -1810,10 +1811,45 @@ angular.module('MoneyNetwork')
                             message_with_envelope.deleted_at = new Date().getTime() ;
                         }
 
-                        // continue with other messages to encrypt - callback to z_update_data_encrypt_message
+                        if (upload_image_json) {
+                            // message with image. must encrypt and upload image as an optional json file
+                            // cryptMessage encrypt image using same key/password as for message
+                            // encrypt step 4 - aes encrypt image
+                            ZeroFrame.cmd("aesEncrypt", [message.image, password], function (image_res) {
+                                var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 4: ';
+                                var iv, encrypted_image_str, user_path, image_path, image_json, json_raw ;
+
+                                iv = image_res[1] ;
+                                encrypted_image_str = image_res[2];
+                                debug('outbox && encrypted', pgm + 'iv = ' + iv + ', encrypted_image_str = ' + encrypted_image_str);
+
+                                user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
+                                image_path = user_path + '/' + message_with_envelope.sent_at + '-image.json';
+                                image_json = {
+                                    image: iv + ',' + encrypted_image_str
+                                };
+                                json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
+                                console.log(pgm + 'image==true: uploading image file ' + image_path) ;
+                                ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
+                                    var pgm = service + '.z_update_2b_data_json_encrypt fileWrite callback 5: ';
+                                    debug('outbox', pgm + 'res = ' + JSON.stringify(res));
+                                    console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
+
+                                    // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
+                                    z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
+
+                                }); // fileWrite callback 5
+
+                            }) ; // aesEncrypt callback 4
+
+                            // stop. fileWrite callback 5 will continue callback sequence
+                            return ;
+                        }
+
+                        // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
                         z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
-                    }); // callback 3
+                    }); // aesEncrypt callback 3
 
                 }); // callback 2
 
@@ -4606,17 +4642,67 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
-                    var decrypted_message ;
+                    var decrypted_message, contact, image_path ;
                     // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
 
+                    decrypted_message = JSON.parse(decrypted_message_str) ;
                     if (sent_at) {
                         // process_incoming_message was called from recheck_old_decrypt_errors
                         // user has log out, changed ZeroNet cert, logged in again and no longer decrypt error
                         // adding message_sha256 and sent_at to message so that lost msg2 cleanup in process_incoming_message will work
-                        decrypted_message = JSON.parse(decrypted_message_str) ;
                         decrypted_message.sent_at = sent_at ;
                         decrypted_message.message_sha256 = res.message_sha256 ;
                         decrypted_message_str = JSON.stringify(decrypted_message) ;
+                    }
+
+                    // any optional image json file to download and decrypt?
+                    if (decrypted_message.image == true) {
+
+                        contact = get_contact_by_unique_id(unique_id) ;
+                        image_path = "data/users/" + contact.auth_address + '/' + res.timestamp + '-image.json' ;
+                        debug('inbox', pgm + 'downloading image ' + image_path) ;
+                        ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
+                            var pgm = service + '.process_incoming_cryptmessage fileGet callback 3: ' ;
+                            var image_array, iv, encrypted ;
+                            if (!image) {
+                                console.log(pgm + 'Error. image download timeout for ' + image_path + '. removed image from message');
+                                // remove image from message
+                                delete decrypted_message.image ;
+                                decrypted_message_str = JSON.stringify(decrypted_message) ;
+                                // done. save decrypted message and return to process_incoming_message
+                                res.decrypted_message_str = decrypted_message_str ;
+                                cb() ;
+                                return ;
+                            }
+
+                            // delete downloaded image
+                            ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
+                            // decrypt image
+                            debug('inbox', pgm + 'downloaded image ' + image_path);
+                            image = JSON.parse(image) ;
+                            image_array = image.image.split(',') ;
+                            iv = image_array[0] ;
+                            encrypted = image_array[1] ;
+
+                            // ready for aesDecrypt image
+                            ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_image_str) {
+                                var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ';
+
+                                // insert decrypted image
+                                decrypted_message.image = decrypted_image_str ;
+                                decrypted_message_str = JSON.stringify(decrypted_message) ;
+
+                                // done. save decrypted message and image and return to process_incoming_message
+                                res.decrypted_message_str = decrypted_message_str ;
+                                cb() ;
+                                return ;
+
+                            }) ; // aesDecrypt callback 4
+
+                        }) ; // fileGet callback 3
+
+                        // stop. aesDecrypt callback 4 will continue callback sequence
+                        return ;
                     }
 
                     // done. save decrypted message and return to process_incoming_message
@@ -4624,9 +4710,9 @@ angular.module('MoneyNetwork')
                     cb() ;
                     return ;
 
-                });  // callback 2
+                });  // aesDecrypt callback 2
 
-            }); // callback 1
+            }); // eciesDecrypt callback 1
 
         } // process_crypt_message
 
