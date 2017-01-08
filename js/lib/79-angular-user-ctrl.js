@@ -216,11 +216,40 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd('wrapperNotification', ['info', 'created new outbox msg ' + local_msg_seq + '. Not sent, not on ZeroNet, no feedback info and marked as cleanup', 5000]);
         } // testcase_message_lost_in_cyberspace
 
+        function testcase_image_file_done () {
+            var pgm = controller + '.testcase_image_file_done: ' ;
+            // find inbox messages with image_download_failed object
+            var contacts, i, contact, j, message, filename, no_tests ;
+            contacts = moneyNetworkService.get_contacts() ;
+            no_tests = 0 ;
+            for (i=0 ; i<contacts.length ; i++) {
+                contact = contacts[i] ;
+                if (!contact.messages) continue ;
+                for (j=contact.messages.length-1 ; j >= 0 ; j--) {
+                    message = contact.messages[j] ;
+                    if (message.folder != 'inbox') continue ;
+                    if (!message.image_download_failed) continue ;
+                    // create file done event for this failed image download
+                    filename = "data/users/" + contact.auth_address + "/" + message.sent_at + '-image.json' ;
+                    moneyNetworkService.event_file_done('file_done', filename) ;
+                    no_tests++ ;
+                } // for j (messages)
+            } // for i (contacts)
+            console.log(pgm + 'found ' + no_tests + ' messages with image_download_failed objects' );
+
+        } // testcase_image_file_done
+
         self.debug_settings_changed = function () {
             // create test data
+            // create a lost message
             var old_force_lost_message = self.setup_copy.test && self.setup_copy.test.force_lost_message ;
             var new_force_lost_message = self.setup.test && self.setup.test.force_lost_message ;
             if (!old_force_lost_message && new_force_lost_message) testcase_message_lost_in_cyberspace() ;
+            // simulate a file_done event after a image download timeout error
+            var old_image_file_done = self.setup_copy.test && self.setup_copy.test.image_file_done ;
+            var new_image_file_done = self.setup.test && self.setup.test.image_file_done ;
+            if (!old_image_file_done && new_image_file_done) testcase_image_file_done() ;
+
             if (self.setup.encryption != self.setup_copy.encryption) {
                 ZeroFrame.cmd('wrapperNotification', ['info', 'Preferred encryption was changed.<br>Save user information or send a new message to publish change to peers', 5000]);
             }

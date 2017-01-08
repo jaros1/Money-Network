@@ -3875,6 +3875,7 @@ angular.module('MoneyNetwork')
 
         // received an incoming message with image=true
         // download optional file and insert image in message
+        // symmetric encrypted image. private chat with JSEncrypt and group chat.
         function download_json_image_file(auth_address, message_with_envelope, password, cb) {
             var pgm = service + '.download_json_image_file: ' ;
             var query, image_path ;
@@ -3922,7 +3923,7 @@ angular.module('MoneyNetwork')
                 debug('inbox', pgm + 'downloading image ' + image_path) ;
                 ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
                     var pgm = service + '.download_json_image_file fileGet callback 2: ' ;
-                    if (!image) {
+                    if (!image || (user_setup.test && user_setup.test.image_timeout)) {
                         console.log(pgm + 'Error. image download timeout for ' + image_path) ;
                         if (cb) cb(false) ;
                         return ;
@@ -3963,8 +3964,9 @@ angular.module('MoneyNetwork')
         //   cleanup old "lost msg2" message (decrypt error) after processing message
         function process_incoming_message (res, unique_id, sent_at) {
             var pgm = service + '.process_incoming_message: ' ;
-            var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256, error ;
-            var local_msg_seq, message, contact_or_group, found_lost_msg, found_lost_msg2, js_messages_row, placeholders ;
+            var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256,
+                error, local_msg_seq, message, contact_or_group, found_lost_msg, found_lost_msg2, js_messages_row,
+                placeholders, image_download_failed ;
 
             debug('lost_message', pgm + 'sent_at = ' + sent_at) ;
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
@@ -4081,6 +4083,14 @@ angular.module('MoneyNetwork')
                 };
             }
             else {
+                // before json validate
+                if (res.decrypted_message_str) {
+                    // cryptMessage encrypted message. image = true maybe replaced with a image_download_failed object
+                    if (typeof decrypted_message.image == 'object') {
+                        image_download_failed = decrypted_message.image ;
+                        decrypted_message.image = false ;
+                    }
+                }
                 // validate json based on decrypted_message.msgtype
                 error = MoneyNetworkHelper.validate_json (pgm, decrypted_message, decrypted_message.msgtype, 'Ignoring invalid message') ;
                 if (error) {
@@ -4159,8 +4169,12 @@ angular.module('MoneyNetwork')
                 sender_sha256: sender_sha256,
                 sent_at: decrypted_message.sent_at || res.timestamp,
                 receiver_sha256: res.receiver_sha256,
-                received_at: new Date().getTime()} ;
+                received_at: new Date().getTime(),
+                image_download_failed: image_download_failed
+            } ;
             if (!sender_sha256) delete message.sender_sha256 ;
+            if (!image_download_failed) delete message.image_download_failed ;
+
             // check receiver_sha256. sha256(pubkey) or a previous sender_sha256 address sent to contact
             var my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             var my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
@@ -4343,6 +4357,16 @@ angular.module('MoneyNetwork')
                     // true: message image is in an optional image json file <timestamp>-image.json
                     download_json_image_file(res.auth_address, message, password, function (ok) {
                         var pgm = service + '.download_json_image_file callback: ';
+                        if (!ok) {
+                            // image download failed. remember failed image download. image may arrive later and be processed in a file_done event
+                            decrypted_message.image = false ;
+                            message.image_download_failed = {
+                                download_failure_at: new Date().getTime(),
+                                encryption: 1, // symmetric encrypt
+                                password: password
+                            };
+                        }
+
                         // received a chat message with an image.
                         // Send receipt so that other user can delete msg from data.json and free disk space
                         // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
@@ -4642,7 +4666,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
-                    var decrypted_message, contact, image_path ;
+                    var decrypted_message, contact, image_path, query ;
                     // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
 
                     decrypted_message = JSON.parse(decrypted_message_str) ;
@@ -4660,14 +4684,43 @@ angular.module('MoneyNetwork')
 
                         contact = get_contact_by_unique_id(unique_id) ;
                         image_path = "data/users/" + contact.auth_address + '/' + res.timestamp + '-image.json' ;
-                        debug('inbox', pgm + 'downloading image ' + image_path) ;
-                        ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
-                            var pgm = service + '.process_incoming_cryptmessage fileGet callback 3: ' ;
-                            var image_array, iv, encrypted ;
-                            if (!image) {
-                                console.log(pgm + 'Error. image download timeout for ' + image_path + '. removed image from message');
-                                // remove image from message
-                                delete decrypted_message.image ;
+
+                        // check if image attactment exist. could have been cleanup or deleted by user
+                        query =
+                            "select files_optional.size " +
+                            "from files_optional, json " +
+                            "where json.json_id = files_optional.json_id " +
+                            "and json.directory = 'users/" + contact.auth_address + "' " +
+                            "and files_optional.filename = '" + res.timestamp + '-image.json' + "'" ;
+                        debug('select', pgm + 'query = ' + query) ;
+
+                        ZeroFrame.cmd("dbQuery", [query], function (query_res) {
+                            var pgm = service + '.process_incoming_cryptmessage dbQuery callback 3: ' ;
+                            var found_auth_addresses = [], i, unique_id, new_contact, public_avatars, index, j, last_updated;
+                            // console.log(pgm + 'res = ' + JSON.stringify(res));
+                            if (query_res.error) {
+                                console.log(pgm + "image download check failed: " + query_res.error) ;
+                                console.log(pgm + 'query = ' + query) ;
+                                // replace image with a image_download_failed object. the image can arrive later and be processes in a file_done event
+                                decrypted_message.image = {
+                                    download_failure_at: new Date().getTime(),
+                                    encryption: 2,
+                                    password: password
+                                } ;
+                                decrypted_message_str = JSON.stringify(decrypted_message) ;
+                                // done. save decrypted message and return to process_incoming_message
+                                res.decrypted_message_str = decrypted_message_str ;
+                                cb() ;
+                                return ;
+                            }
+                            if (query_res.length == 0) {
+                                console.log(pgm + 'optional image file ' + image_path + ' was not found in optional files.') ;
+                                // replace image with a image_download_failed object. the image can arrive later and be processes in a file_done event
+                                decrypted_message.image = {
+                                    download_failure_at: new Date().getTime(),
+                                    encryption: 2,
+                                    password: password
+                                } ;
                                 decrypted_message_str = JSON.stringify(decrypted_message) ;
                                 // done. save decrypted message and return to process_incoming_message
                                 res.decrypted_message_str = decrypted_message_str ;
@@ -4675,35 +4728,57 @@ angular.module('MoneyNetwork')
                                 return ;
                             }
 
-                            // delete downloaded image
-                            ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
-                            // decrypt image
-                            debug('inbox', pgm + 'downloaded image ' + image_path);
-                            image = JSON.parse(image) ;
-                            image_array = image.image.split(',') ;
-                            iv = image_array[0] ;
-                            encrypted = image_array[1] ;
+                            // OK. optional image json file exist. continue with download
+                            debug('inbox', pgm + 'downloading image ' + image_path) ;
+                            ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
+                                var pgm = service + '.process_incoming_cryptmessage fileGet callback 4: ' ;
+                                var image_array, iv, encrypted ;
+                                if (!image || (user_setup.test && user_setup.test.image_timeout)) {
+                                    console.log(pgm + 'Error. image download timeout for ' + image_path + '. removed image from message');
+                                    // replace image with a image_download_failed object. the image can arrive later and be processes in a file_done event
+                                    decrypted_message.image = {
+                                        download_failure_at: new Date().getTime(),
+                                        encryption: 2,
+                                        password: password
+                                    } ;
+                                    decrypted_message_str = JSON.stringify(decrypted_message) ;
+                                    // done. save decrypted message and return to process_incoming_message
+                                    res.decrypted_message_str = decrypted_message_str ;
+                                    cb() ;
+                                    return ;
+                                }
 
-                            // ready for aesDecrypt image
-                            ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_image_str) {
-                                var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ';
+                                // delete downloaded image
+                                ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
+                                // decrypt image
+                                debug('inbox', pgm + 'downloaded image ' + image_path);
+                                image = JSON.parse(image) ;
+                                image_array = image.image.split(',') ;
+                                iv = image_array[0] ;
+                                encrypted = image_array[1] ;
 
-                                // insert decrypted image
-                                decrypted_message.image = decrypted_image_str ;
-                                decrypted_message_str = JSON.stringify(decrypted_message) ;
+                                // ready for aesDecrypt image
+                                ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_image_str) {
+                                    var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 5: ';
 
-                                // done. save decrypted message and image and return to process_incoming_message
-                                res.decrypted_message_str = decrypted_message_str ;
-                                cb() ;
-                                return ;
+                                    // insert decrypted image
+                                    decrypted_message.image = decrypted_image_str ;
+                                    decrypted_message_str = JSON.stringify(decrypted_message) ;
 
-                            }) ; // aesDecrypt callback 4
+                                    // done. save decrypted message and image and return to process_incoming_message
+                                    res.decrypted_message_str = decrypted_message_str ;
+                                    cb() ;
+                                    return ;
 
-                        }) ; // fileGet callback 3
+                                }) ; // aesDecrypt callback 5
 
-                        // stop. aesDecrypt callback 4 will continue callback sequence
+                            }) ; // fileGet callback 4
+
+                        }) ; // dbQuery callback 3
+
+                        // stop. aesDecrypt callback 5 will continue callback sequence
                         return ;
-                    }
+                    } // if decrypted_message.image == true
 
                     // done. save decrypted message and return to process_incoming_message
                     res.decrypted_message_str = decrypted_message_str ;
@@ -5452,9 +5527,9 @@ angular.module('MoneyNetwork')
 
             // read json file (content.json, data.json or status.json)
             ZeroFrame.cmd("fileGet", [filename, false], function (res) {
-                var pgm = service + '.event_file_done fileGet callback: ';
-                var i, contact, auth_address, contacts_updated, index, my_pubkey_sha256,
-                    using_my_pubkey, cleanup_inbox_messages_lng1, cleanup_inbox_messages_lng2, cleanup_inbox_messages_lng3 ;
+                var pgm = service + '.event_file_done fileGet callback 1: ';
+                var i, contact, auth_address, contacts_updated, index, my_pubkey_sha256, using_my_pubkey,
+                    cleanup_inbox_messages_lng1, cleanup_inbox_messages_lng2, cleanup_inbox_messages_lng3, timestamp ;
                 if (!res) res = {} ;
                 else res = JSON.parse(res) ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
@@ -5736,9 +5811,116 @@ angular.module('MoneyNetwork')
                 }
 
                 if (filename.match(new RegExp(CONTENT_OPTIONAL))) {
-                    // Ok. received file done event when receiving optional chat file.
-                    // get_and_load_chat_file fileGet callback is already processing this file. No need to do anything
-                    debug('public_chat', pgm + 'received chat file ' + filename) ;
+                    // Ok. received file done event when receiving optional json file.
+                    // get_and_load_chat_file fileGet callback is normally already processing this file (no need to do anything)
+                    // exception: failed image downloades (timeout).
+                    debug('public_chat', pgm + 'received optional json file ' + filename) ;
+
+                    // -image.json file. could be a previous failed image download. check image_download_failed object
+                    if (!filename.match(/-image\.json$/)) return ;
+
+                    (function() {
+                        var timestamp, message_with_envelope, i, contact, found, message_with_envelope, now, dif,
+                            image_download_failed, password, image_array, iv, encrypted;
+
+                        console.log(pgm + 'received a downloaded image json file. check for any old message with an image_download_failed object') ;
+                        // filename = data/users/1PCnWyxKEiFW1u6awWoficZJSyQbxh3BAA/1483887305307-image.json
+                        console.log(pgm + 'auth_address = ' + auth_address) ;
+                        // auth_address = 1PCnWyxKEiFW1u6awWoficZJSyQbxh3BAA
+                        timestamp = parseInt(filename.split('/')[3].split('-')[0]) ;
+                        console.log(pgm + 'timestamp = ' + timestamp) ;
+                        // timestamp = 1483887305307
+
+                        // lookup inbox message with same timestamp
+                        found = false ;
+                        for (i=0 ; i<ls_contacts.length ; i++) {
+                            contact = ls_contacts[i] ;
+                            if (contact.auth_address != auth_address) continue ;
+                            if (!contact.messages || !contact.messages.length) continue ;
+                            for (j=0 ; j<contact.messages.length ; j++) {
+                                message_with_envelope = contact.messages[j] ;
+                                if (message_with_envelope.folder != 'inbox') continue ;
+                                if (message_with_envelope.sent_at != timestamp) continue ;
+                                found = true ;
+                                break ;
+                            } // for j (messages)
+                            if (found) break ;
+                        } // for i (contacts)
+
+                        if (!found) {
+                            // OK. message was not found. should be processing now
+                            console.log(pgm + 'OK. message was not found. message and image download should be processing right now.') ;
+                            return ;
+                        }
+                        else if (message_with_envelope.message.image) {
+                            console.log(pgm + 'Ups. message already exist with image. typeof image = ' + typeof message_with_envelope.message.image) ;
+                            return ;
+                        }
+                        else if (!(image_download_failed=message_with_envelope.image_download_failed)) {
+                            console.log(pgm + 'message was found but without any image_download_failed object. message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                            return ;
+                        }
+
+                        now = new Date().getTime() ;
+                        dif = now - timestamp ;
+                        console.log(pgm + 'found message without image. message_with_envelope = ' + JSON.stringify(message_with_envelope));
+                        console.log(pgm + 'file timestamp = ' + timestamp + ', now = ' + now + ', dif = ' + dif) ;
+                        console.log(pgm + 'image_download_failed = ' + JSON.stringify(image_download_failed));
+                        // image_download_failed = {"download_failure_at":1483887330956,"encryption":2,"password":"biuNabOLJT3uBz7Csn95UBlbrsNkWQa+LlXhvBtvGJQ="}
+
+                        if ([1,2].indexOf(image_download_failed.encryption) == -1) {
+                            console.log(pgm + 'error. message was found but with invalid image_download_failed.encryption value') ;
+                            delete message_with_envelope.image_download_failed ;
+                            ls_save_contacts(false) ;
+                            return ;
+                        }
+                        if (!(password=image_download_failed.password)) {
+                            console.log(pgm + 'error. message was found but without a image_download_failed.password') ;
+                            delete message_with_envelope.image_download_failed ;
+                            ls_save_contacts(false) ;
+                            return ;
+                        }
+
+                        // read, decrypt and add image to message
+                        if (image_download_failed.encryption == 1) {
+                            // simple symmetric encryption
+                            download_json_image_file(auth_address, message_with_envelope, password, function (ok) {
+                                delete message_with_envelope.image_download_failed ;
+                                if (!ok) console.log(pgm + 'image download failed') ;
+                            }) ;
+                            // stop. download_json_image_file will do the rest
+                            return ;
+                        }
+                        if (image_download_failed.encryption == 2) {
+                            // cryptMessage aesDecrypt decrypt.
+                            // image file has already been read (res)
+                            // key/password already known from message decrypt (image_download_failed object)
+                            delete message_with_envelope.image_download_failed;
+                            // delete downloaded image
+                            ZeroFrame.cmd("fileDelete", filename, function () {});
+                            // decrypt image
+                            image_array = res.image.split(',');
+                            iv = image_array[0];
+                            encrypted = image_array[1];
+
+                            // ready for aesDecrypt image
+                            ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_image_str) {
+                                var pgm = service + '.event_file_done aesDecrypt callback 2: ';
+                                // insert decrypted image
+                                message_with_envelope.message.image = decrypted_image_str;
+                                // done.
+                                $rootScope.$apply();
+                                return;
+
+                            }); // aesDecrypt callback 2
+
+                            // stop. fileGet and aesDecrypt will do the rest
+                            return;
+
+                        } // if
+
+                    })() ;
+
                     return ;
                 }
 
@@ -7432,7 +7614,8 @@ angular.module('MoneyNetwork')
             set_first_and_last_chat: set_first_and_last_chat,
             reset_first_and_last_chat: reset_first_and_last_chat,
             get_user_seq: get_user_seq,
-            get_user_id: get_user_id
+            get_user_id: get_user_id,
+            event_file_done: event_file_done
         };
 
         // end MoneyNetworkService

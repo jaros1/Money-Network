@@ -1699,6 +1699,18 @@
                     <td><input type="checkbox" ng-model="u.setup.test.force_lost_message"
                                ng-change="u.debug_settings_changed()"></td>
                 </tr>
+                <tr title="Testcase. Fail image download. Simulate timeout when downloading an -image.json file">
+                    <td>Simulate timeout for image download</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.test.image_timeout"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Testcase. Fail image download. Simulate file_done event after -image.json file download timeout">
+                    <td>Simulate file_done even for image download</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.test.image_file_done"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
                 </tbody>
             </table>
 
