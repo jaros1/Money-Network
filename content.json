@@ -25,8 +25,8 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "04da6a54345ea48515a521ded6207324a32fd3bfaa16802eda06372cb09d0418",
-   "size": 113151
+   "sha512": "c83a38281cf38a03fbad8a19f71f844afc96364a39c97e9de251e7563f1f4677",
+   "size": 113146
   },
   "js-external/10-jquery.js": {
    "sha512": "061f9fa1e47d489b721d76abff0f7039e133294575237f8c64c02d54efdbf75d",
@@ -129,8 +129,8 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "b41c60969da8f5f6e6dd113d7bc73b5069baa5496ff2499ff5961f1d89853c68",
-   "size": 721535
+   "sha512": "e0de9c1f7b2b3dd92b3101f92e1a77f415c4901040a3363c80356f24bb457690",
+   "size": 729765
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -195,6 +195,14 @@
   "public/images/avatarz.png": {
    "sha512": "5b8147b42da6c0b6b466510bd010d898fbcf7e3a88f1a74804b0c761cfa936e2",
    "size": 1622
+  },
+  "public/images/image_failed.gif": {
+   "sha512": "022717cc29c64cf27e5fdbb1340a3e6c0183497b74450581e31d25b26e795de1",
+   "size": 910
+  },
+  "public/images/image_loading.gif": {
+   "sha512": "c80a27ebf9b6110d3020376867f4462904dcebfeecdb6da0514e90192e4d3fcf",
+   "size": 11755
   }
  },
  "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*)",
@@ -207,15 +215,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1483946060,
+ "modified": 1483979968,
  "postmessage_nonce_security": true,
  "sign": [
-  22615202744821145857380594453558658042496336229200322840081791355055535312355,
-  113318683316908277105778043386798674209510511515188331751944167481341627411842
+  53685921418080855763287222104499148127828881990768293181610342211959111956213,
+  115247903175604460686800682328485092927447922111357705702202721840732083239561
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G9E4DDp/xWhi8bf1TYgjx2LJiHaShUYp0+SxGBDIcPcoKVHzdmjjfEWT+HqC0m2fPA5z82MyG99bQH5mAbHQHZQ="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "Gxysuy4OfAPgkPZRohT8MvO21P5EQX0mdAB4u8fUnr5rGhMCCK94NBrIbsQ2oV5I/z9liCFJWXdC2dqpc6/NPhI="
  },
  "signs_required": 1,
  "title": "Money Network",

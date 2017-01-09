@@ -1185,8 +1185,11 @@ angular.module('MoneyNetwork')
         var zeronet_file_locked = {} ;
         var pending_force_update = false ;
 
-        // update zeronet step 1. update "data.json" file. update users, search and msg (delete only) arrays 
-        function z_update_1_data_json (lock_pgm) {
+        // update zeronet step 1. update "data.json" file. update users, search and msg (delete only) arrays
+        // params:
+        // - lock_pgm - pgm from calling process. write warning if multiple z_update_1_data_json running calls
+        // - publish - optional param. true: force publish when finish even if there is no changes to data.json
+        function z_update_1_data_json (lock_pgm, publish) {
             var pgm = service + '.z_update_1_data_json: ' ;
             var query ;
             // console.log(pgm + 'start') ;
@@ -1264,7 +1267,7 @@ angular.module('MoneyNetwork')
 
                     if (data_str) {
                         data = JSON.parse(data_str);
-                        data_str = JSON.stringify(data) ;
+                        data_str = JSON.stringify(data) ; // remove format from data_str. for compare before fileWrite
                         zeronet_migrate_data(data) ;
                     }
                     else {
@@ -1361,7 +1364,7 @@ angular.module('MoneyNetwork')
                     var j, k, contact, group_chat ;
                     for (i=data.msg.length-1 ; i>=0 ; i--) {
                         // fix problem with false/0 keys in msg array / messages table (cannot be decrypted). See also "insert new message" below
-                        // null keys are allowed in group chat
+                        // "null" keys are allowed in group chat
                         if (!data.msg[i].key) {
                             // cleanup zeronet_msg_id references in localStorage
                             group_chat = false ;
@@ -1424,28 +1427,29 @@ angular.module('MoneyNetwork')
                                         // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
                                         ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
                                     }
-                                    delete contact.messages[j].zeronet_msg_id ;
-                                    delete contact.messages[j].zeronet_msg_size ;
                                 }
-                                if (message_deleted && (message_with_envelope.message.image)) {
-                                    // deleted a message from data.msg with an image <timestamp>-image.json file
+                                if (message_with_envelope.message.image && (message_with_envelope.message.image != true)) {
+                                    // deleted a message from data.msg with an image <timestamp>-image.json file attachment
                                     // overwrite with empty json as a delete marked optional file.
                                     image_path =  user_path + '/' + message_with_envelope.sent_at + '-image.json';
                                     ZeroFrame.cmd("fileGet", {inner_path: image_path, required: false}, function (image) {
                                         if (!image) return ;
                                         if (image.length <= 2) return ;
                                         write_empty_chat_file(image_path) ;
+                                        // force publish to update files_optional information
+                                        publish = true ;
                                     }) ;
                                 }
+                                delete contact.messages[j].zeronet_msg_id ;
+                                delete contact.messages[j].zeronet_msg_size ;
                                 local_storage_updated = true ;
                                 continue
                             } // if
 
-                            // lost message. resending outbox messages that still is in data.json file
-                            // can be messages sent to a sha256 address that contact was not listening to
-                            // can be messages where contact did get a decrypt error (encrypted to an other ZeroNet certificate)
+                            // lost message. note sent_at timestamp inside message. resending outbox messages that still is in data.json file.
+                            // can be messages sent to a sha256 address that contact was not listening to (this problem should have been fixed now)
+                            // can be messages where contact did get a cryptMessage decrypt error (encrypted to an other ZeroNet certificate)
                             if (contact.messages[j].zeronet_msg_id && contact.messages[j].message.sent_at) {
-
                                 message_deleted = false ;
                                 // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
                                 for (k=data.msg.length-1 ; k>=0 ; k--) {
@@ -1474,6 +1478,7 @@ angular.module('MoneyNetwork')
                                 delete contact.messages[j].sent_at ;
                                 delete contact.messages[j].cleanup_at ;
                                 delete contact.messages[j].feedback ;
+                                local_storage_updated = true ;
                             }
 
                         } // for j (contact.messages)
@@ -1482,7 +1487,7 @@ angular.module('MoneyNetwork')
                     // insert and encrypt new outgoing messages into data.json
                     // using callback technique (not required for JSEncrypt but used in cryptMessage plugin)
                     // will call data cleanup, write and publish when finished encrypting messages
-                    z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
+                    z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str, publish) ;
 
                 }); // fileGet callback 2
 
@@ -1493,7 +1498,7 @@ angular.module('MoneyNetwork')
 
         // update zeronet step 2a. update "data.json" file. encrypt and insert new outbox messages in msg arrays
         // step 2a will call step 2b for all cryptMessage encrypted outbox messages 
-        function z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) {
+        function z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str, publish) {
 
             var pgm = service + '.z_update_2a_data_json_encrypt: ' ;
 
@@ -1659,8 +1664,8 @@ angular.module('MoneyNetwork')
                             // 3 callbacks. 1) generate password, 2) encrypt password=key and 3) encrypt message,
                             if (resend) debug('lost_message', pgm + 'resend. calling z_update_data_cryptmessage for old message with local_msg_seq ' + local_msg_seq) ;
                             z_update_2b_data_json_encrypt (
-                                true, data_json_max_size, data, data_str, contact.pubkey2,
-                                message_with_envelope, receiver_sha256, sent_at
+                                true, data_json_max_size, data, data_str, publish,
+                                contact.pubkey2, message_with_envelope, receiver_sha256, sent_at
                             ) ;
                             // stop. z_update_data_cryptmessage will callback to this function when done with this message
                             return ;
@@ -1715,7 +1720,7 @@ angular.module('MoneyNetwork')
                                 debug('outbox', pgm + 'res = ' + JSON.stringify(res));
                                 console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
 
-                                z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str)
+                                z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str, publish)
 
                             }); // fileWrite
 
@@ -1747,7 +1752,7 @@ angular.module('MoneyNetwork')
             // update data.json step 3. cleanup. try to keep data.json file small. check max user dictionary size
             if (z_update_3_data_json_cleanup (local_storage_updated, data_json_max_size, data)) {
                 // Cleanup OK - write data.json file and continue with any public outbox messages
-                z_update_4_data_json_write (data, data_str) ;
+                z_update_4_data_json_write (data, data_str, publish) ;
             }
             else {
                 // cannot write and publish. data.json file is too big. error notification already in UI
@@ -1760,7 +1765,7 @@ angular.module('MoneyNetwork')
         // step 2b encrypt a cryptMessage encrypted outbox message
         // step 2b will call step 2a when done  
         // Zeronet cryptMessage plugin - three callbacks and "return" to z_update_data_encrypt_message when done
-        function z_update_2b_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str,
+        function z_update_2b_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str, publish,
                                                 pubkey2, message_with_envelope, receiver_sha256, sent_at)
         {
             var pgm = service + '.z_update_2b_data_json_encrypt: ' ;
@@ -1849,7 +1854,7 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
 
                                     // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
-                                    z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
+                                    z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str, publish) ;
 
                                 }); // fileWrite callback 5
 
@@ -1860,7 +1865,7 @@ angular.module('MoneyNetwork')
                         }
 
                         // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
-                        z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
+                        z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str, publish) ;
 
                     }); // aesEncrypt callback 3
 
@@ -2147,14 +2152,14 @@ angular.module('MoneyNetwork')
 
         // update zeronet step 4. write "data.json" file.
         // last step in data.json update - write and publish
-        function z_update_4_data_json_write (data, data_str) {
+        function z_update_4_data_json_write (data, data_str, publish) {
             var pgm = service + '.z_update_4_data_json_write: ' ;
             // any changes to data.json file?
             var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
             if (data_str == JSON.stringify(data)) {
                 // debug('public_chat', pgm + 'no updates to data.json. continue with public chat messages and publish') ;
                 delete zeronet_file_locked[data_json_path] ;
-                z_update_5_public_chat (false) ;
+                z_update_5_public_chat (publish || false) ;
                 return ;
             }
             // write data.json and publish
@@ -3960,7 +3965,6 @@ angular.module('MoneyNetwork')
 
                 // ready for image download
                 // temporary null image while downloading
-                message_with_envelope.message.image = null ;
                 image_path = "data/users/" + auth_address + '/' + message_with_envelope.sent_at + '-image.json' ;
                 debug('inbox', pgm + 'downloading image ' + image_path) ;
                 ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
@@ -3975,7 +3979,8 @@ angular.module('MoneyNetwork')
                     image = JSON.parse(image) ;
                     message_with_envelope.message.image = MoneyNetworkHelper.decrypt(image.image, password);
                     ls_save_contacts(false) ;
-                    ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
+                    // ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
+                    ZeroFrame.cmd("optionalFileDelete", {inner_path: image_path}, function () {});
                     // done. update UI + callbacks
                     // console.log(pgm + 'Ok. image ' + image_path + ' downloaded') ;
                     $rootScope.$apply() ;
@@ -4468,13 +4473,10 @@ angular.module('MoneyNetwork')
                 var remote_msg_seq = decrypted_message.remote_msg_seq ;
                 // debug('inbox && unencrypted', pgm + 'check if image chat was a group chat image message. remote_msg_seq = ' + remote_msg_seq);
                 var message2 = get_message_by_local_msg_seq(remote_msg_seq);
-                //for (i = 0; i < js_messages.length; i++) if (js_messages[i].message.local_msg_seq == remote_msg_seq) {
-                //    message2 = js_messages[i];
-                //    // debug('chat_filter', pgm + 'remote_msg_seq = ' + remote_msg_seq + ', message2.message = ' + JSON.stringify(message2.message));
-                //    break;
-                //}
-                // debug('inbox && unencrypted', pgm + 'message2 = ' + JSON.stringify(message2));
-                if (message2 && (message2.contact.type == 'group')) {
+                if (!message2) {
+                    debug('inbox && unencrypted', pgm + 'error. could not find any message local_msg_seq = ' + remote_msg_seq) ;
+                }
+                else if (message2.contact.type == 'group') {
                     debug('inbox && unencrypted', pgm + 'image receipt was from a group chat message');
                     var image_receipts = message2.message.image_receipts ;
                     // debug('inbox && unencrypted', pgm + 'image_receipts = ' + JSON.stringify(image_receipts));
@@ -4507,7 +4509,6 @@ angular.module('MoneyNetwork')
                     // ready for data.json cleanup
                     new_incoming_receipts++ ;
                 }
-
             }
 
             if (decrypted_message.msgtype == 'verified') {
@@ -4611,7 +4612,7 @@ angular.module('MoneyNetwork')
                     // remove chat messages with images from ZeroNet
                     contacts_updated = false ;
                     new_incoming_receipts = 0 ;
-                    z_update_1_data_json(pgm) ;
+                    z_update_1_data_json(pgm, true) ; // true = publish
                     $rootScope.$apply() ;
                 }
                 else if (contacts_updated) {
@@ -4815,7 +4816,8 @@ angular.module('MoneyNetwork')
                                 }
 
                                 // delete downloaded image
-                                ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
+                                // ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
+                                ZeroFrame.cmd("optionalFileDelete", {inner_path: image_path}, function () {});
                                 // decrypt image
                                 debug('inbox', pgm + 'downloaded image ' + image_path);
                                 image = JSON.parse(image) ;
@@ -5314,7 +5316,7 @@ angular.module('MoneyNetwork')
                     // remove chat messages with images from ZeroNet
                     contacts_updated = false ;
                     new_incoming_receipts = 0 ;
-                    z_update_1_data_json(pgm) ;
+                    z_update_1_data_json(pgm, true) ; // true = publish
                     $rootScope.$apply() ;
                 }
                 else if (contacts_updated) ls_save_contacts(false) ;
@@ -5386,7 +5388,7 @@ angular.module('MoneyNetwork')
             else if (new_incoming_receipts > 0) {
                 // remove chat messages with images from ZeroNet
                 new_incoming_receipts = 0 ;
-                z_update_1_data_json(pgm) ;
+                z_update_1_data_json(pgm, true) ; // true = publish
                 $rootScope.$apply() ;
             }
             else if (contacts_updated) {
@@ -5906,7 +5908,7 @@ angular.module('MoneyNetwork')
                         // remove chat messages with images from ZeroNet
                         contacts_updated = false ;
                         new_incoming_receipts = 0 ;
-                        z_update_1_data_json(pgm) ;
+                        z_update_1_data_json(pgm, true) ; // true = publish
                         $rootScope.$apply() ;
                     }
                     else if (contacts_updated) {
@@ -6034,7 +6036,10 @@ angular.module('MoneyNetwork')
 
                         var send_image_receipt = function () {
                             var pgm = service + '.event_file_done.send_image_receipt: ';
-                            // received a chat message with an image.
+                            // received a chat message with an image. Cleanup
+                            ZeroFrame.cmd("optionalFileDelete", {inner_path: filename}, function () {});
+                            delete message_with_envelope.image_download_failed;
+                            $rootScope.$apply();
                             // Send receipt so that other user can delete msg from data.json and free disk space
                             // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
                             var receipt = { msgtype: 'received', remote_msg_seq: message_with_envelope.message.local_msg_seq };
@@ -6055,18 +6060,14 @@ angular.module('MoneyNetwork')
                         };
 
                         // ready. image file has already been read (res). password already known (image_download_failed object)
+                        // delete downloaded image
                         if (image_download_failed.encryption == 1) {
                             // simple symmetric encryption.
                             message_with_envelope.message.image = MoneyNetworkHelper.decrypt(res.image, password);
-                            $rootScope.$apply();
                             send_image_receipt() ;
                         }
                         if (image_download_failed.encryption == 2) {
                             // cryptMessage aesDecrypt decrypt.
-                            delete message_with_envelope.image_download_failed;
-                            // delete downloaded image
-                            ZeroFrame.cmd("fileDelete", filename, function () {});
-                            // decrypt image
                             image_array = res.image.split(',');
                             iv = image_array[0];
                             encrypted = image_array[1];
@@ -6076,7 +6077,6 @@ angular.module('MoneyNetwork')
                                 var pgm = service + '.event_file_done aesDecrypt callback 2: ';
                                 // insert decrypted image
                                 message_with_envelope.message.image = decrypted_image_str;
-                                $rootScope.$apply();
                                 send_image_receipt() ;
                             }); // aesDecrypt callback 2
 

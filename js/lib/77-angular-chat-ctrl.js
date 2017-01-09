@@ -585,10 +585,20 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.show_image: ' ;
                 var show ;
                 if (message.message.message.msgtype != 'chat msg') show=false ;
-                else if (message.message.message.image) show=true ;
+                else if (message.message.message.hasOwnProperty('image')) show=true ; // image (base64), true or false
                 else show=false ;
                 // console.log(pgm + 'messsage = ' + JSON.stringify(message.message.message).substr(0,100) + ', show = ' + show);
                 return show ;
+            };
+            self.get_image_src = function (message) {
+                var pgm = controller + '.show_image: ' ;
+                var src ;
+                if (!self.show_image(message)) return null ;
+                if (typeof message.message.message.image == 'string') src = message.message.message.image ;
+                else if (message.message.message.image) src = 'public/images/image_loading.gif' ;
+                else src = 'public/images/image_failed.gif' ;
+                // console.log(pgm + 'messsage = ' + JSON.stringify(message.message.message).substr(0,100) + ', show = ' + show);
+                return src ;
             };
             self.enter_password = function (message) {
                 ZeroFrame.cmd("wrapperPrompt", ["Enter verification password:", "text"], function (password) {

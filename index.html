@@ -1142,7 +1142,7 @@
                                 </tr>
                                 <tr ng-show="c.show_image(m)">
                                     <td colspan="2">
-                                        <img ng-src="{{m.message.message.image}}">
+                                        <img ng-src="{{c.get_image_src(m)}}">
                                     </td>
                                 </tr>
                             </table>
