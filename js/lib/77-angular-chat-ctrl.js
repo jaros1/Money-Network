@@ -549,6 +549,7 @@ angular.module('MoneyNetwork')
                 } // for i
                 if (no_msg > 0) return true ;
                 if (!self.contact.pubkey) return true ;
+                if (self.contact.outbox_sender_sha256) return true ;
                 return false ;
             };
             self.contact_delete = function () {
