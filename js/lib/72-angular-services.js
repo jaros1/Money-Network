@@ -4908,6 +4908,7 @@ angular.module('MoneyNetwork')
                                             data = decrypted_str ;
                                             loop(end_of_loop_cb) ;
                                         }) ; // aesDecrypt callback 5
+                                        return ;
                                     }
                                     end_of_loop_cb("unknown image decrypt/decompress action " + action) ;
                                 } ;
@@ -6199,6 +6200,7 @@ angular.module('MoneyNetwork')
                                         data = decrypted_str ;
                                         loop(end_of_loop_cb) ;
                                     }) ; // aesDecrypt callback 5
+                                    return ;
                                 }
                                 end_of_loop_cb("unknown image decrypt/decompress action " + action) ;
                             } ;
