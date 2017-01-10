@@ -1710,11 +1710,9 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                         if (upload_image_json) {
                             image_path = user_path + '/' + sent_at + '-image.json';
-                            // todo: compress before encrypt or encrypt before compress?
-                            image_e1 = MoneyNetworkHelper.encrypt(message.image, password) ; // image_e1.length   = 720024
-                            // image_c1 = MoneyNetworkHelper.compress1(message.image) ;
-                            // image_c1e1 = MoneyNetworkHelper.encrypt(image_c1, password) ; // image_c1e1.length = 971072 (very bad)
-                            image_e1c1 = MoneyNetworkHelper.compress1(image_e1) ; // best    // image_e1c1.length = 347591 (best)
+                            // image encrypt and compress
+                            image_e1 = MoneyNetworkHelper.encrypt(message.image, password) ;
+                            image_e1c1 = MoneyNetworkHelper.compress1(image_e1) ;
                             console.log(pgm + 'image_e1.length = ' + image_e1.length) ;
                             console.log(pgm + 'image_e1c1.length = ' + image_e1c1.length) ;
                             // console.log(pgm + 'image_c1e1.length = ' + image_c1e1.length) ;
@@ -1851,12 +1849,28 @@ angular.module('MoneyNetwork')
                                 iv = image_res[1] ;
                                 encrypted_image_str = image_res[2];
                                 debug('outbox && encrypted', pgm + 'iv = ' + iv + ', encrypted_image_str = ' + encrypted_image_str);
-
                                 user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
                                 image_path = user_path + '/' + message_with_envelope.sent_at + '-image.json';
-                                image_json = {
-                                    image: iv + ',' + encrypted_image_str
-                                };
+                                // optional compress encrypted image
+                                if (user_setup.test && user_setup.test.image_compress_disabled) {
+                                    // encrypt only
+                                    image_json = {
+                                        image: iv + ',' + encrypted_image_str,
+                                        storage: { image: 'e2'}
+                                    };
+                                    console.log(pgm + 'image.length    = ' + message.image.length) ;
+                                    console.log(pgm + 'image.e2.length = ' + (iv + ',' + encrypted_image_str).length) ;
+                                }
+                                else {
+                                    // encrypt and compress
+                                    image_json = {
+                                        image: MoneyNetworkHelper.compress1(iv + ',' + encrypted_image_str),
+                                        storage: { image: 'e2,c1'}
+                                    };
+                                    console.log(pgm + 'image.length      = ' + message.image.length) ;
+                                    console.log(pgm + 'image.e2.length   = ' + (iv + ',' + encrypted_image_str).length) ;
+                                    console.log(pgm + 'image.e2c1.length = ' + image_json.image.length) ;
+                                }
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
                                 console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                                 ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
@@ -4758,7 +4772,7 @@ angular.module('MoneyNetwork')
                 } // if !password
 
                 // decrypt step 2 - password OK - decrypt message
-                // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
+                console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
                     var decrypted_message, contact, image_path, query ;
@@ -4827,7 +4841,7 @@ angular.module('MoneyNetwork')
                             debug('inbox', pgm + 'downloading image ' + image_path) ;
                             ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
                                 var pgm = service + '.process_incoming_cryptmessage fileGet callback 4: ' ;
-                                var image_array, iv, encrypted ;
+                                var image_array, iv, encrypted, actions, data, loop ;
                                 if (!image || (user_setup.test && user_setup.test.image_timeout)) {
                                     console.log(pgm + 'Error. image download timeout for ' + image_path + '. removed image from message');
                                     // replace image with a image_download_failed object. the image can arrive later and be processes in a file_done event
@@ -4849,24 +4863,68 @@ angular.module('MoneyNetwork')
                                 // decrypt image
                                 debug('inbox', pgm + 'downloaded image ' + image_path);
                                 image = JSON.parse(image) ;
-                                image_array = image.image.split(',') ;
-                                iv = image_array[0] ;
-                                encrypted = image_array[1] ;
 
-                                // ready for aesDecrypt image
-                                ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_image_str) {
-                                    var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 5: ';
+                                // DRY: almost identical code in event_file_done
 
-                                    // insert decrypted image
-                                    decrypted_message.image = decrypted_image_str ;
+                                if (!image.storage) image.storage = {} ;
+                                if (!image.storage.image) image.storage.image = 'e2' ;
+                                actions = image.storage.image.split(',') ;
+                                data = image.image ;
+                                // "loop". one callback for each action in actions
+                                loop = function (end_of_loop_cb) {
+                                    var pgm = service + '.process_incoming_cryptmessage fileGet.loop: ' ;
+                                    var action, image_array, iv, encrypted ;
+                                    if (!actions.length) {
+                                        // done without decrypt/decompress without any errors
+                                        debug('inbox', 'done') ;
+                                        end_of_loop_cb() ;
+                                        return ;
+                                    }
+                                    action = actions.pop() ;
+                                    debug('inbox', pgm + 'action = ' + action) ;
+                                    if (action == 'c1') {
+                                        // decompress
+                                        try {
+                                            data = MoneyNetworkHelper.decompress1(data) ;
+                                        }
+                                        catch (e) {
+                                            end_of_loop_cb('action ' + action + ': ' + e.message);
+                                            return ;
+                                        }
+                                        debug('inbox', pgm + 'decompress ok') ;
+                                        loop(end_of_loop_cb) ;
+                                        return ;
+                                    }
+                                    if (action == 'e2') {
+                                        // aesDecrypt. note: no error handling for aesDecrypt. Error only in UI (notification)
+                                        image_array = data.split(',') ;
+                                        iv = image_array[0] ;
+                                        encrypted = image_array[1] ;
+                                        // ready for aesDecrypt
+                                        debug('inbox', pgm + 'calling aesDecrypt') ;
+                                        ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_str) {
+                                            var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 5: ';
+                                            debug('inbox', pgm + 'aesDecrypt ok') ;
+                                            data = decrypted_str ;
+                                            loop(end_of_loop_cb) ;
+                                        }) ; // aesDecrypt callback 5
+                                    }
+                                    end_of_loop_cb("unknown image decrypt/decompress action " + action) ;
+                                } ;
+                                loop(function (error) {
+                                    var pgm = service + '.process_incoming_cryptmessage loop callback 5: ';
+                                    if (error) {
+                                        console.log(pgm + 'error. decrypt/decompress failed for ' + image_path + '. error = ' + error) ;
+                                        decrypted_message.image = false ;
+                                    }
+                                    else decrypted_message.image = data ;
                                     decrypted_message_str = JSON.stringify(decrypted_message) ;
 
                                     // done. save decrypted message and image and return to process_incoming_message
                                     res.decrypted_message_str = decrypted_message_str ;
                                     cb() ;
-                                    return ;
 
-                                }) ; // aesDecrypt callback 5
+                                }) ; // loop callback 5
 
                             }) ; // fileGet callback 4
 
@@ -6002,7 +6060,7 @@ angular.module('MoneyNetwork')
 
                     (function() {
                         var timestamp, message_with_envelope, i, contact, found, message_with_envelope, now, dif,
-                            image_download_failed, password, image_array, iv, encrypted;
+                            image_download_failed, password, image, actions, data, loop;
 
                         console.log(pgm + 'received a downloaded image json file. check for any old message with an image_download_failed object') ;
                         // filename = data/users/1PCnWyxKEiFW1u6awWoficZJSyQbxh3BAA/1483887305307-image.json
@@ -6062,12 +6120,13 @@ angular.module('MoneyNetwork')
                             return ;
                         }
 
-                        var send_image_receipt = function () {
+                        var send_image_receipt = function (send_receipt) {
                             var pgm = service + '.event_file_done.send_image_receipt: ';
                             // received a chat message with an image. Cleanup
                             ZeroFrame.cmd("optionalFileDelete", {inner_path: filename}, function () {});
                             delete message_with_envelope.image_download_failed;
                             $rootScope.$apply();
+                            if (!send_receipt) return ;
                             // Send receipt so that other user can delete msg from data.json and free disk space
                             // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
                             var receipt = { msgtype: 'received', remote_msg_seq: message_with_envelope.message.local_msg_seq };
@@ -6092,32 +6151,81 @@ angular.module('MoneyNetwork')
                         if (image_download_failed.encryption == 1) {
                             // simple symmetric encryption.
                             message_with_envelope.message.image = MoneyNetworkHelper.decrypt(res.image, password);
-                            send_image_receipt() ;
+                            send_image_receipt(true) ;
                         }
                         if (image_download_failed.encryption == 2) {
-                            // cryptMessage aesDecrypt decrypt.
-                            image_array = res.image.split(',');
-                            iv = image_array[0];
-                            encrypted = image_array[1];
 
-                            // ready for aesDecrypt image
-                            ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_image_str) {
-                                var pgm = service + '.event_file_done aesDecrypt callback 2: ';
-                                // insert decrypted image
-                                message_with_envelope.message.image = decrypted_image_str;
-                                send_image_receipt() ;
-                            }); // aesDecrypt callback 2
+                            // DRY: almost identical code in same code as in process_incoming_cryptmessage fileGet callback 4
+                            image = res ;
+                            if (!image.storage) image.storage = {} ;
+                            if (!image.storage.image) image.storage.image = 'e2' ;
+                            actions = image.storage.image.split(',') ;
+                            data = image.image ;
+                            // "loop". one callback for each action in actions
+                            loop = function (end_of_loop_cb) {
+                                var pgm = service + '.event_file_done.loop: ' ;
+                                var action, image_array, iv, encrypted ;
+                                if (!actions.length) {
+                                    // done without decrypt/decompress without any errors
+                                    debug('inbox', 'done') ;
+                                    end_of_loop_cb() ;
+                                    return ;
+                                }
+                                action = actions.pop() ;
+                                debug('inbox', pgm + 'action = ' + action) ;
+                                if (action == 'c1') {
+                                    // decompress
+                                    try {
+                                        data = MoneyNetworkHelper.decompress1(data) ;
+                                    }
+                                    catch (e) {
+                                        end_of_loop_cb('action ' + action + ': ' + e.message);
+                                        return ;
+                                    }
+                                    debug('inbox', pgm + 'decompress ok') ;
+                                    loop(end_of_loop_cb) ;
+                                    return ;
+                                }
+                                if (action == 'e2') {
+                                    // aesDecrypt. note: no error handling for aesDecrypt. Error only in UI (notification)
+                                    image_array = data.split(',') ;
+                                    iv = image_array[0] ;
+                                    encrypted = image_array[1] ;
+                                    // ready for aesDecrypt
+                                    debug('inbox', pgm + 'calling aesDecrypt') ;
+                                    ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_str) {
+                                        var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 5: ';
+                                        debug('inbox', pgm + 'aesDecrypt ok') ;
+                                        data = decrypted_str ;
+                                        loop(end_of_loop_cb) ;
+                                    }) ; // aesDecrypt callback 5
+                                }
+                                end_of_loop_cb("unknown image decrypt/decompress action " + action) ;
+                            } ;
+                            loop(function (error) {
+                                var pgm = service + '.event_file_done.loop callback 1: ';
+                                if (error) {
+                                    console.log(pgm + 'error. decrypt/decompress failed for ' + image_path + '. error = ' + error) ;
+                                    message_with_envelope.message.image = false ;
+                                    send_image_receipt(false) ;
+                                }
+                                else {
+                                    message_with_envelope.message.image = data ;
+                                    send_image_receipt(true) ;
+                                }
 
-                        } // if
+                            }) ; // loop callback 2
 
-                    })() ;
+                        } // if cryptMessage encryption
+
+                    })() ; // function closure
 
                     return ;
-                }
+                } // if optional file
 
                 console.log(pgm + 'unknown json file ' + filename);
 
-            }); // end fileGet
+            }); // end fileGet callback 1
 
         } // end event_file_done
         ZeroFrame.bind_event(event_file_done);
