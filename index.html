@@ -654,7 +654,7 @@
                                     </tr>
                                     <tr ng-show="c.show_image(m)">
                                         <td colspan="2">
-                                            <img ng-src="{{m.message.message.image}}">
+                                            <img ng-src="{{c.get_image_src(m)}}">
                                         </td>
                                     </tr>
                                 </table>
@@ -1709,6 +1709,12 @@
                     <td>Simulate file_done even for image download</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.test.image_file_done"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Testcase. Do not compress images. Normally images are LZString compressed for smaller files and faster file sharing">
+                    <td>Do not compress images</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.test.image_compress_disabled"
                                ng-change="u.debug_settings_changed()"></td>
                 </tr>
                 </tbody>

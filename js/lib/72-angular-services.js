@@ -1504,7 +1504,7 @@ angular.module('MoneyNetwork')
 
             var i, contact, encrypt, j, message_with_envelope, message, local_msg_seq, sent_at, key, password,
                 receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend,
-                user_path, image_path, image_json, json_raw, upload_image_json ;
+                user_path, image_path, image_e1, image_e1c1, image_json, json_raw, upload_image_json ;
 
             user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
 
@@ -1710,9 +1710,20 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                         if (upload_image_json) {
                             image_path = user_path + '/' + sent_at + '-image.json';
-                            image_json = {
-                                image: MoneyNetworkHelper.encrypt(message.image, password)
-                            };
+                            // todo: compress before encrypt or encrypt before compress?
+                            image_e1 = MoneyNetworkHelper.encrypt(message.image, password) ; // image_e1.length   = 720024
+                            // image_c1 = MoneyNetworkHelper.compress1(message.image) ;
+                            // image_c1e1 = MoneyNetworkHelper.encrypt(image_c1, password) ; // image_c1e1.length = 971072 (very bad)
+                            image_e1c1 = MoneyNetworkHelper.compress1(image_e1) ; // best    // image_e1c1.length = 347591 (best)
+                            console.log(pgm + 'image_e1.length = ' + image_e1.length) ;
+                            console.log(pgm + 'image_e1c1.length = ' + image_e1c1.length) ;
+                            // console.log(pgm + 'image_c1e1.length = ' + image_c1e1.length) ;
+                            if (user_setup.test && user_setup.test.image_compress_disabled) {
+                                image_json = { image: image_e1, storage: { image: 'e1'} };
+                            }
+                            else {
+                                image_json = { image: image_e1c1, storage: { image: 'e1,c1'} };
+                            }
                             json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
                             console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                             ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
@@ -3969,15 +3980,32 @@ angular.module('MoneyNetwork')
                 debug('inbox', pgm + 'downloading image ' + image_path) ;
                 ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
                     var pgm = service + '.download_json_image_file fileGet callback 2: ' ;
+                    var data, actions, action ;
                     if (!image || (user_setup.test && user_setup.test.image_timeout)) {
                         console.log(pgm + 'Error. image download timeout for ' + image_path) ;
                         if (cb) cb(false) ;
                         return ;
                     }
                     debug('inbox', pgm + 'downloaded image ' + image_path) ;
-                    // save in lS and delete downloaded optional file
+                    // decrypt/decompress, save in lS and delete downloaded optional file
                     image = JSON.parse(image) ;
-                    message_with_envelope.message.image = MoneyNetworkHelper.decrypt(image.image, password);
+                    if (!image.storage) image.storage = {} ;
+                    if (!image.storage.image) image.storage.image = 'e1' ; // e1 = JSEcrypted and not compressed
+                    data = image.image ;
+                    actions = image.storage.image.split(',');
+                    try {
+                        while (actions.length) {
+                            action = actions.pop() ;
+                            if (action == 'c1') data = MoneyNetworkHelper.decompress1(data) ;
+                            else if (action == 'e1') data = MoneyNetworkHelper.decrypt(data, password);
+                            else throw "Unsupported decrypt/decompress action " + action ;
+                        }
+                        message_with_envelope.message.image = data ;
+                    }
+                    catch (e) {
+                        console.log(pgm + 'error. image ' + image_path + ' decrypt failed. error = ' + e.message) ;
+                        message_with_envelope.message.image = false ;
+                    }
                     ls_save_contacts(false) ;
                     // ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
                     ZeroFrame.cmd("optionalFileDelete", {inner_path: image_path}, function () {});
