@@ -1274,6 +1274,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                     // send message
                     moneyNetworkService.add_msg(message.contact, delete_message);
+                    self.messages[self.messages.length-1].chat_filter = false ;
                     // delete old message
                     delete message.edit_chat_message;
                     message.message.deleted_at = new Date().getTime(); // logical delete

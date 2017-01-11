@@ -2520,7 +2520,17 @@ angular.module('MoneyNetwork')
                                 timestamp: now,
                                 message: message.message
                             } ;
-                            if (message.image) new_msg.image = message.image ;
+                            if (message.image) {
+                                if (user_setup.test && user_setup.test.image_compress_disabled) {
+                                    // uncompressed unencrypted image
+                                    new_msg.image = message.image ;
+                                }
+                                else {
+                                    // compressed unencrypted image
+                                    new_msg.storage = { image: 'c1'} ;
+                                    new_msg.image = MoneyNetworkHelper.compress1(message.image) ;
+                                }
+                            }
                             chat.msg.push(new_msg) ;
                             debug('public_chat', pgm + 'added new message to ' + z_filename + '. new_msg = ' + JSON.stringify(new_msg)) ;
 
@@ -4001,6 +4011,9 @@ angular.module('MoneyNetwork')
                         return ;
                     }
                     debug('inbox', pgm + 'downloaded image ' + image_path) ;
+
+                    // DRY: almost identical code in event_file_done
+
                     // decrypt/decompress, save in lS and delete downloaded optional file
                     image = JSON.parse(image) ;
                     if (!image.storage) image.storage = {} ;
@@ -6061,7 +6074,7 @@ angular.module('MoneyNetwork')
 
                     (function() {
                         var timestamp, message_with_envelope, i, contact, found, message_with_envelope, now, dif,
-                            image_download_failed, password, image, actions, data, loop;
+                            image_download_failed, password, image, actions, action, data, loop;
 
                         console.log(pgm + 'received a downloaded image json file. check for any old message with an image_download_failed object') ;
                         // filename = data/users/1PCnWyxKEiFW1u6awWoficZJSyQbxh3BAA/1483887305307-image.json
@@ -6151,10 +6164,30 @@ angular.module('MoneyNetwork')
                         // delete downloaded image
                         if (image_download_failed.encryption == 1) {
                             // simple symmetric encryption.
-                            message_with_envelope.message.image = MoneyNetworkHelper.decrypt(res.image, password);
-                            send_image_receipt(true) ;
+
+                            // DRY: almost identical code in download_json_image_file fileGet callback 2
+                            image = res ;
+                            if (!image.storage) image.storage = {} ;
+                            if (!image.storage.image) image.storage.image = 'e1' ; // e1 = JSEcrypted and not compressed
+                            data = image.image ;
+                            actions = image.storage.image.split(',');
+                            try {
+                                while (actions.length) {
+                                    action = actions.pop() ;
+                                    if (action == 'c1') data = MoneyNetworkHelper.decompress1(data) ;
+                                    else if (action == 'e1') data = MoneyNetworkHelper.decrypt(data, password);
+                                    else throw "Unsupported decrypt/decompress action " + action ;
+                                }
+                                message_with_envelope.message.image = data ;
+                            }
+                            catch (e) {
+                                console.log(pgm + 'error. image ' + image_path + ' decrypt failed. error = ' + e.message) ;
+                                message_with_envelope.message.image = false ;
+                            }
+                            send_image_receipt(message_with_envelope.message.image) ;
                         }
                         if (image_download_failed.encryption == 2) {
+                            // cryptMessage
 
                             // DRY: almost identical code in same code as in process_incoming_cryptmessage fileGet callback 4
                             image = res ;
@@ -6566,7 +6599,10 @@ angular.module('MoneyNetwork')
                             // debug('public_chat', pgm + 'compare_files1[cache_filename] = ' + JSON.stringify(compare_files1[cache_filename])) ;
                             if (compare_files1[cache_filename].cache_size == compare_files1[cache_filename].query_size) delete compare_files1[cache_filename] ;
                             else {
-                                debug('public_chat', 'issue #84. changed size for file ' + cache_filename + '. must download and recheck file for deleted messages');
+                                debug('public_chat', pgm + 'issue #84. changed size for file ' + cache_filename +
+                                    '. cache_size = ' + compare_files1[cache_filename].cache_size +
+                                    ', query_size = ' + compare_files1[cache_filename].query_size +
+                                    '. must download and recheck file for deleted messages');
                                 files_optional_cache[cache_filename].is_downloaded = false ;
                                 delete files_optional_cache[cache_filename].timestamps ;
                             }
@@ -6947,6 +6983,11 @@ angular.module('MoneyNetwork')
         } // file_within_chat_page_context
 
 
+        function byteCount(s) {
+            return encodeURI(s).split(/%..|./).length - 1;
+        }
+
+
         // get and load chat file. called from  get_public_chat
         function get_and_load_chat_file(cache_filename, expected_size, cb) {
             var pgm = service + '.get_and_load_chat_file: ';
@@ -6988,7 +7029,8 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.get_and_load_chat_file fileGet callback 2: ';
                     var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
                         file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
-                        new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status ;
+                        new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
+                        image, chat2, found_image, byteAmount, chat_bytes, chat_length ;
                     // update cache_status
                     cache_status.is_pending = false;
                     debug('public_chat', pgm + 'downloaded ' + cache_filename + ', chat = ' + chat);
@@ -7001,22 +7043,41 @@ angular.module('MoneyNetwork')
                     }
                     file_auth_address = cache_filename.split('/')[2] ;
                     file_user_seq = parseInt(cache_filename.split('-')[2]) ;
-                    if (expected_size != chat.length) {
-                        debug('public_chat', 'changed size for ' + cache_filename + ' . expected size ' + expected_size + ', found size ' + chat.length) ;
+
+
+
+                    // check json size. todo: not working for compressed images!
+                    chat_length = chat.length ;
+                    chat_bytes = unescape(encodeURIComponent(chat)).length ;
+                    if (chat_length != chat_bytes) {
+                        // image in chat file. Maybe compressed with UTF-16 characters. Print out different length alternatives for debugging
+                        console.log(pgm + 'special characters in file ' + cache_filename + '. problem with length and utf-16 characters') ;
+                        byteAmount = unescape(encodeURIComponent(chat)).length ;
+                        console.log(pgm + '0: expected_size = ' + expected_size) ;
+                        console.log(pgm + '1: chat.length   = ' + chat.length);
+                        console.log(pgm + '2: byteAmount    = ' + chat_bytes + ' - select currently');
+                        console.log(pgm + '3: byteCount     = ' + byteCount(chat)) ;
+                        chat_length = chat_bytes ;
+                    }
+
+                    if (expected_size != chat_length) {
+                        debug('public_chat', 'changed size for ' + cache_filename + ' . expected size ' + expected_size + ', found size ' + chat_length);
                         if ((file_auth_address == my_auth_address) && (file_user_seq = '' + my_user_seq)) {
                             // size in content.json is invalid. publish!
                             debug('public_chat', pgm + 'size in content.json is invalid. publish')
-                            zeronet_site_publish() ;
+                            zeronet_site_publish();
                         }
                         else {
                             // file must be out of date. trigger a new download
-                            ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function () {}) ;
+                            ZeroFrame.cmd("optionalFileDelete", {inner_path: cache_filename}, function () {
+                            });
                         }
                         // chat page must call get_publish_chat again even if no messages were read
-                        return cb() ;
+                        return cb();
                     }
+                    cache_status.size = chat_length;
+
                     cache_status.is_downloaded = true;
-                    cache_status.size = chat.length ;
                     debug('public_chat', pgm + 'cache_status = ' + JSON.stringify(cache_status)) ;
                     // read chat msg and copy timestamps to cache_status object
                     chat = JSON.parse(chat);
@@ -7132,9 +7193,18 @@ angular.module('MoneyNetwork')
                             msgtype: 'chat msg',
                             message: chat.msg[i].message
                         };
+                        image = null ;
                         if (chat.msg[i].image) {
+                            if (chat.msg[i].storage && chat.msg[i].storage.image) {
+                                // only c1 = compress1 is supported
+                                if (chat.msg[i].storage.image == 'c1') image = MoneyNetworkHelper.decompress1(chat.msg[i].image);
+                                else console.log(pgm + 'unknown storage option ' + chat.msg[i].storage.image + ' for image in file ' + cache_filename);
+                            }
+                            else image = chat.msg[i].image;
+                        }
+                        if (image) {
                             // check allowed image types
-                            if (get_image_ext_from_base64uri(chat.msg[i].image)) message.image = chat.msg[i].image;
+                            if (get_image_ext_from_base64uri(image)) message.image = image;
                             else debug('public_chat', pgm + 'ignoring image with unknown extension in file ' + cache_filename) ;
                         }
                         local_msg_seq = next_local_msg_seq();
