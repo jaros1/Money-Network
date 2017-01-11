@@ -151,10 +151,18 @@ angular.module('MoneyNetwork')
 
     .filter('contactGlyphiconTitle', [function () {
         // return glyphicon class for contact type
-        return function (contact) {
+        var pubkey_lng_to_bits = {"271": 1024, "450": 2048, "799": 4096, "1490": 8192} ;
+        return function (contact, message_encryption) {
+            var bit_lng ;
             if (!contact || (contact.type == 'public')) return 'Public and unencrypted chat. Everyone can see this!' ;
-            else if (contact.type == 'group') return 'Encrypted group chat';
-            else return 'Encrypted personal chat';
+            else if (contact.type == 'group') return 'Encrypted group chat (200 character password)';
+            else if ((message_encryption || contact.encryption) == 2) return 'Encrypted personal chat using cryptMessage (bitCoin) and 256 bit key' ;
+            else {
+                if (!contact.pubkey) return null ;
+                bit_lng = pubkey_lng_to_bits[contact.pubkey.length];
+                if (bit_lng) return 'Encrypted personal chat using JSEncrypt and ' + bit_lng + ' key' ;
+                else return 'Encrypted personal chat using JSEncrypt' ;
+            }
         } ;
         // end contactAlias filter
     }])
@@ -255,15 +263,19 @@ angular.module('MoneyNetwork')
 
     .filter('messageGlyphiconTitle', ['contactGlyphiconTitleFilter', function (contactGlyphiconTitle) {
         // inbox glyphicon title - mouse over text for glyphicon class for message type
+        var my_jsencrypt_key = MoneyNetworkHelper.getItem('pubkey') ;
+        var pubkey_lng_to_bits = {"271": 1024, "450": 2048, "799": 4096, "1490": 8192} ;
+        var bits = pubkey_lng_to_bits[my_jsencrypt_key.length] ;
+        var my_enc_text1 =  'Encrypted personal chat using JSEncrypt' ;
+        if (bits) my_enc_text1 += ' and ' + bits + ' key' ;
         return function (message) {
             if (message.message.z_filename) return 'Public and unencrypted chat. Everyone can see this!' ;
-            else return contactGlyphiconTitle(message.contact) ;
+            else if (message.message.folder == 'outbox') return contactGlyphiconTitle(message.contact, message.message.encryption) ;
+            else if (message.message.encryption == 2) return 'Encrypted personal chat using cryptMessage (bitCoin) and 256 bit key' ;
+            else return my_enc_text1 ;
         } ;
         // end findMessageGlyphicon
     }])
-
-
-
 
     .filter('formatMsgSize', ['MoneyNetworkService', function (moneyNetworkService) {
         // return msg disk usage: format localStorage size [ / ZeroNet size bytes ]

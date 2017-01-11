@@ -4094,6 +4094,7 @@ angular.module('MoneyNetwork')
             }
             else if (res.message.indexOf(',') == -1) {
                 // key and no iv in message - JSEncrypt encryption
+                res.encryption = 1 ;
 
                 my_prvkey = MoneyNetworkHelper.getItem('prvkey');
                 encrypt = new JSEncrypt();
@@ -4109,6 +4110,8 @@ angular.module('MoneyNetwork')
             }
             else {
                 // key and iv in message - cryptMessage plugin encryption
+                res.encryption = 2
+                ;
                 if (!res.hasOwnProperty('decrypted_message_str')) {
                     // decrypt and callback to this function. two cryptMessage callbacks and return to this function when done
                     process_incoming_cryptmessage(res, unique_id, sent_at) ;
@@ -4266,15 +4269,17 @@ angular.module('MoneyNetwork')
                 local_msg_seq: local_msg_seq,
                 folder: 'inbox',
                 message: decrypted_message,
-                zeronet_msg_id: res.message_sha256,
-                sender_sha256: sender_sha256,
+                zeronet_msg_id: res.message_sha256,                  // message id on ZeroNet (messages table = msg array in data.json)
+                sender_sha256: sender_sha256,                        // random sha256 value - secret reply to address
                 sent_at: decrypted_message.sent_at || res.timestamp,
-                receiver_sha256: res.receiver_sha256,
+                receiver_sha256: res.receiver_sha256,                // random sha256 value - message received from this address
                 received_at: new Date().getTime(),
-                image_download_failed: image_download_failed
+                image_download_failed: image_download_failed,        // special image download failed object
+                encryption: res.encryption                           // 1: JSEncrypted, 2: cryptMessage
             } ;
             if (!sender_sha256) delete message.sender_sha256 ;
             if (!image_download_failed) delete message.image_download_failed ;
+            if (!res.encryption) delete message.encryption ;
 
             // check receiver_sha256. sha256(pubkey) or a previous sender_sha256 address sent to contact
             var my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;

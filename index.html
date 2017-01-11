@@ -521,7 +521,7 @@
                                               title="Click to continue chat">
                                             <span ng-bind-html="c.setup.alias">Me</span>
                                             <span ng-class="m.contact|contactGlyphicon"
-                                                  title="{{m.contact|contactGlyphiconTitle}}"></span>
+                                                  title="{{m|messageGlyphiconTitle}}"></span>
                                         </span>
 
                                         </td>
@@ -620,14 +620,12 @@
                                 <table class="speech">
                                     <tr>
                                         <td style="text-align: left">
-
                                         <span ng-click="c.chat_contact(m.contact)" class="media-heading"
                                               title="Click to chat">
                                             <span ng-bind-html="m|messageAlias"></span>
                                             <span ng-class="m|messageGlyphicon"
                                                   title="{{m|messageGlyphiconTitle}}"></span>
                                         </span>
-
                                         </td>
                                         <td style="text-align: right; vertical-align: top">
                                         <span class="speech-time"
@@ -1013,7 +1011,7 @@
                                           alt="Click to continue chat" title="Click to continue chat">
                                         <span ng-bind-html="c.setup.alias">Me</span>
                                         <span ng-class="m.contact|contactGlyphicon"
-                                              title="{{m.contact|contactGlyphiconTitle}}"></span>
+                                              title="{{m|messageGlyphiconTitle}}"></span>
                                     </span>
 
                                     </td>
@@ -1113,12 +1111,10 @@
                             <table class="speech">
                                 <tr>
                                     <td style="text-align: left">
-
                                     <span ng-click="c.chat_contact(m.contact)" class="media-heading" title="Click to chat">
                                         <span ng-bind-html="m|messageAlias"></span>
                                         <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}"></span>
                                     </span>
-
                                     </td>
                                     <td style="text-align: right; vertical-align: top">
                                     <span class="speech-time" title="Message size in browser"> {{m.message|formatMsgSize}}</span>
@@ -1130,7 +1126,6 @@
                                     </td>
                                 </tr>
                                 <tr>
-
                                     <td colspan="2">
                                         Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
                                         <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
@@ -1138,7 +1133,6 @@
                                              ng-click="c.chat_contact(m.contact)">
                                         <span ng-bind-html="m|formatChatMessage"></span>
                                     </td>
-
                                 </tr>
                                 <tr ng-show="c.show_image(m)">
                                     <td colspan="2">
