@@ -146,7 +146,7 @@ angular.module('MoneyNetwork')
             else if (contact.type == 'group') return 'glyphicon glyphicon-pushpin';
             else return 'glyphicon glyphicon-user';
         } ;
-        // end contactAlias filter
+        // end contactGlyphicon filter
     }])
 
     .filter('contactGlyphiconTitle', [function () {
@@ -164,9 +164,18 @@ angular.module('MoneyNetwork')
                 else return 'Encrypted personal chat using JSEncrypt' ;
             }
         } ;
-        // end contactAlias filter
+        // end contactGlyphiconTitle filter
     }])
 
+    .filter('contactPlaceholderText', [function () {
+        // return placeholder text for contact type. a warning when using public chat.
+        return function (contact) {
+            var bit_lng ;
+            if (!contact || (contact.type == 'public')) return 'PUBLIC CHAT. Image drag&drop support in E10+, Chrome and Firefox' ;
+            else return 'Private chat. Image drag&drop support in E10+, Chrome and Firefox' ;
+        } ;
+        // end contactPlaceholderText filter
+    }])
 
     .filter('messageAlias', ['MoneyNetworkService', 'contactAliasFilter', function (moneyNetworkService, contactAlias) {
         // return part of cert_user_id before @ - as contactAlias - used for group chat inbox

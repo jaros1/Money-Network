@@ -453,8 +453,7 @@
                                             <tr>
                                                 <td colspan="2" style="width: 99%">
                                         <textarea class="autosize postfield new_chat_msg" id="new_chat_msg"
-                                                  placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox"
-                                                  rows="1" required
+                                                  placeholder="{{c.contact|contactPlaceholderText}}" rows="1" required
                                                   ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
                                         </textarea>
                                         <span ng-show="c.chat_hint_pubkey()">
@@ -568,8 +567,7 @@
                                         <tr>
                                             <td colspan="2" style="width: 99%">
                                         <textarea class="autosize postfield new_chat_msg" id="{{m|chatEditTextAreaId}}"
-                                                  placeholder="Write something..." rows="1" required
-                                                  ng-keyup="c.handleTextAreaHeight($event)">
+                                                  rows="1" required ng-keyup="c.handleTextAreaHeight($event)">
                                         </textarea>
                                             </td>
                                         </tr>
@@ -942,8 +940,7 @@
                                         <tr>
                                             <td colspan="2" style="width: 99%">
                                         <textarea class="autosize postfield new_chat_msg" id="new_chat_msg"
-                                                  placeholder="Write something. Image drag&drop support in E10+, Chrome and Firefox"
-                                                  rows="1" required
+                                                  placeholder="{{c.contact|contactPlaceholderText}}" rows="1" required
                                                   ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
                                         </textarea>
                                         <span ng-show="c.chat_hint_pubkey()">
@@ -1059,8 +1056,7 @@
                                     <tr>
                                         <td colspan="2" style="width: 99%">
                                         <textarea class="autosize postfield new_chat_msg" id="{{m|chatEditTextAreaId}}"
-                                                  placeholder="Write something..." rows="1" required
-                                                  ng-keyup="c.handleTextAreaHeight($event)">
+                                                  rows="1" required ng-keyup="c.handleTextAreaHeight($event)">
                                         </textarea>
                                         </td>
                                     </tr>

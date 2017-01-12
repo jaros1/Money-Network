@@ -14,7 +14,6 @@ body {
 
 .bodyfull {
     width: inherit;
-    height: calc(100% - 70px);
     position: fixed;
     overflow-y: scroll;
 }
@@ -102,7 +101,6 @@ form {
 
     .bodyfull {
         top: 90px;
-        height: calc(100% - 110px);
     }
 }
 
@@ -118,7 +116,6 @@ form {
 
     .bodyfull {
         top: 90px;
-        height: calc(100% - 110px);
     }
 
 }
@@ -135,7 +132,6 @@ form {
 
     .bodyfull {
         top: 90px;
-        height: calc(100% - 110px);
     }
 
 }
@@ -198,7 +194,7 @@ form {
         height: calc(100% - 110px);
     }
 }
-@media screen and (min-width: 1016px) {
+@media screen and (min-width: 600px) {
     .bodyfull {
         height: calc(100% - 70px);
     }
@@ -409,7 +405,7 @@ form {
         height: calc(100% - 110px);
     }
 }
-@media screen and (min-width: 1016px) {
+@media screen and (min-width: 600px) {
     .bodyleft {
         height: calc(100% - 70px);
     }

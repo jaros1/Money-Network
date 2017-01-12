@@ -5,13 +5,6 @@ angular.module('MoneyNetwork')
         var controller = 'WalletCtrl';
         console.log(controller + ' loaded');
 
-        // JSEncrypt test
-        (function () {
-            var contacts = moneyNetworkService.get_contacts() ;
-
-        })() ;
-
-
         // end WalletCtrl
     }])
 
