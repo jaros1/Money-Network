@@ -7947,6 +7947,7 @@ angular.module('MoneyNetwork')
             get_contact_by_password_sha256: get_contact_by_password_sha256,
             get_contact_by_cert_user_id: get_contact_by_cert_user_id,
             get_contact_name: get_contact_name,
+            get_last_online: get_last_online,
             add_contact: add_contact,
             update_contact_add_password: update_contact_add_password,
             z_contact_search: z_contact_search,
