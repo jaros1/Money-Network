@@ -20,6 +20,7 @@ if (!Array.prototype.indexOf) {
     };
 }
 
+
 // helper functions
 var MoneyNetworkHelper = (function () {
 
@@ -574,37 +575,17 @@ var MoneyNetworkHelper = (function () {
         return sha256;
     } // sha256
 
-    // return a random number between 0 and 1 (not included).
-    // As Math.random but using Web Crypto API.
-    // https://developer.mozilla.org/en-US/docs/Web/API/RandomSource/getRandomValues
-    // todo: some helper JS libs are using Math.random: for example bitcoinjs and jsencrypt ...
-    var random = Math.random ;
-    (function () {
-        if (!window.crypto) return ;
-        if (!window.crypto.getRandomValues) return ;
-        random = function () {
-            var array, str, reverse_str, i ;
-            array = new Uint32Array(2);
-            window.crypto.getRandomValues(array);
-            str = '' + array[0] + array[1] ;
-            for (i = str.length - 1, reverse_str = '0.'; i >= 0; reverse_str += str[i--]) { } ;
-            return parseFloat(reverse_str) ;
-        }
-    })() ;
-    // console.log(module + 'random = ' + random) ;
-
     // generate password - used as key for local storage encryption and used in client to client communication (symmetric encryption)
     function generate_random_password(length) {
         var character_set = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789![]{}#%&/()=?+-:;_-.@$|£';
         var password = [], index, char;
         for (var i = 0; i < length; i++) {
-            index = Math.floor(random() * character_set.length);
+            index = Math.floor(Math.random() * character_set.length);
             char = character_set.substr(index, 1);
             password.push(char);
         }
         return password.join('');
     } // generate_random_password
-
 
     // post login. add/update pubkey2 (used in ZeroNet CryptMessage plugin)
     function get_cryptmessage_pubkey2 () {
@@ -668,7 +649,7 @@ var MoneyNetworkHelper = (function () {
             // console.log(pgm + 'new pubkey = ' + pubkey);
             // console.log(pgm + 'new prvkey = ' + prvkey);
             // key for symmetric encryption in localStorage - 80-120 characters (avoid using human text in encryption)
-            var key_lng = Math.round(random() * 40) + 80;
+            var key_lng = Math.round(Math.random() * 40) + 80;
             var key = MoneyNetworkHelper.generate_random_password(key_lng);
             // save login in sessionStorage
             // note that password is saved in clear text in sessionStorage
@@ -1101,7 +1082,7 @@ var MoneyNetworkHelper = (function () {
         "Kasey Denesik", "Tanya Corwin", "Lora Hahn", "Erna Gerhold"
     ];
     function get_fake_name() {
-        var index = Math.floor(random() * fake_user_names.length);
+        var index = Math.floor(Math.random() * fake_user_names.length);
         return  fake_user_names[index] ;
     }
 
@@ -1136,8 +1117,7 @@ var MoneyNetworkHelper = (function () {
         load_user_setup: load_user_setup,
         debug: debug,
         stringify: stringify,
-        get_fake_name: get_fake_name,
-        random: random
+        get_fake_name: get_fake_name
     };
 })();
 // MoneyNetworkHelper end

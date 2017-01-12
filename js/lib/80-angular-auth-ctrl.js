@@ -54,7 +54,7 @@ angular.module('MoneyNetwork')
             // callback. warning if user has selected a long key
             var login_or_register_cb = function () {
                 var pgm = controller + '.login_or_register_cb: ' ;
-                var register, redirect, setup, a_path, z_path, z_title ;
+                var register, redirect, setup, a_path, z_path, z_title, verb ;
                 if (create_guest_account) {
                     self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
                     MoneyNetworkHelper.delete_guest_account() ;
@@ -120,7 +120,8 @@ angular.module('MoneyNetwork')
 
             // warning before login user has selected a long key for a new account
             if ((self.register != 'N') && (self.keysize >= '4096')) {
-                ZeroFrame.cmd("wrapperConfirm", ["Generating a " + self.keysize + " bits key will take some time.<br>Continue?", "OK"], function (confirm) {
+                verb = self.keysize == '4096' ? 'some' : 'long' ;
+                ZeroFrame.cmd("wrapperConfirm", ["Generating a " + self.keysize + " bits key will take " + verb + " time.<br>Continue?", "OK"], function (confirm) {
                     if (confirm) login_or_register_cb() ;
                 })
             }

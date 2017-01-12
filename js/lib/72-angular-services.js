@@ -10,7 +10,6 @@ angular.module('MoneyNetwork')
         function stringify (json) {
             return MoneyNetworkHelper.stringify(json) ;
         }
-        var random = MoneyNetworkHelper.random ;
 
         // startup tag cloud. Tags should be created by users and shared between contacts.
         // Used in typeahead autocomplete functionality http://angular-ui.github.io/bootstrap/#/typeahead
@@ -3375,7 +3374,7 @@ angular.module('MoneyNetwork')
                             contact.avatar = '1.png' ;
                         }
                         else {
-                            index = Math.floor(random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                            index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                             contact.avatar = public_avatars[index] ;
                         }
                     } // for i (contacts)
@@ -3907,7 +3906,7 @@ angular.module('MoneyNetwork')
                                 new_contact.avatar = '1.png' ;
                             }
                             else {
-                                var index = Math.floor(random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                                var index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                                 new_contact.avatar = public_avatars[index] ;
                             }
                         }
@@ -4615,7 +4614,7 @@ angular.module('MoneyNetwork')
                 if (!group_chat_contact) {
                     // create pseudo chat group contact
                     var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                    index = Math.floor(random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                    index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                     var avatar = public_avatars[index] ;
                     group_chat_contact = {
                         unique_id: group_chat_unique_id,
@@ -5140,7 +5139,7 @@ angular.module('MoneyNetwork')
                             new_contact.avatar = '1.png' ;
                         }
                         else {
-                            index = Math.floor(random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                            index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                             new_contact.avatar = public_avatars[index] ;
                         }
                     }
@@ -5756,7 +5755,7 @@ angular.module('MoneyNetwork')
                 // 3) assign random avatar from public/images/avatar
                 // console.log(pgm + 'assigned random avatar') ;
                 public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                index = Math.floor(random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                 avatar.src = "public/images/avatar" + public_avatars[index] ;
                 avatar.loaded = true ;
                 $rootScope.$apply() ;
@@ -5819,7 +5818,7 @@ angular.module('MoneyNetwork')
                             if (['jpg', 'png'].indexOf(contact.avatar) != -1) {
                                 // previosly uploaded avatar has been deleted. Assign random avatar to contact.
                                 public_avatars = MoneyNetworkHelper.get_public_avatars();
-                                index = Math.floor(random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                                index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
                                 avatar_short_path = public_avatars[index];
                                 contact.avatar = avatar_short_path;
                             }
@@ -6877,7 +6876,7 @@ angular.module('MoneyNetwork')
                     // random sort but keep any files with download failed in bottom of file list
                     res.sort(function(a, b){
                         if (a.download_failed_at != b.download_failed_at) return b.download_failed_at - a.download_failed_at ;
-                        else return 0.5 - random()
+                        else return 0.5 - Math.random()
                     }) ;
                     debug('public_chat', pgm + 'done with already downloaded public chat files' + '. res = ' + JSON.stringify(res)) ;
 
@@ -6935,7 +6934,7 @@ angular.module('MoneyNetwork')
                         if (res.length == 0) { cb2('done') ; return }
 
                         // download optional file. file with must peers or random file
-                        i = max_peers_i || Math.floor(random() * res.length) ;
+                        i = max_peers_i || Math.floor(Math.random() * res.length) ;
                         debug('public_chat', pgm + 'selected res[' + i + '] = ' + JSON.stringify(res[i])) ;
                         cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename;
 
