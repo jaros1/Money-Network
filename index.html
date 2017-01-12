@@ -527,7 +527,7 @@
                                         <td style="text-align: right; vertical-align: top">
                                         <span class="speech-time"
                                               title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
-                                        <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
+                                        <span class="speech-time" title="{{m|messageOutSentTitle}}"> <i
                                                 class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
                                             <a class="icon icon-edit" href=""
                                                ng-show="(m.message.message.msgtype == 'chat msg')"
@@ -1015,7 +1015,7 @@
                                     <td style="text-align: right; vertical-align: top">
                                     <span class="speech-time"
                                           title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
-                                    <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
+                                    <span class="speech-time" title="{{m|messageOutSentTitle}}"> <i
                                             class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
                                         <a class="icon icon-edit" href=""
                                            ng-show="(m.message.message.msgtype == 'chat msg')"

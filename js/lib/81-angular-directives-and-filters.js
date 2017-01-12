@@ -358,6 +358,36 @@ angular.module('MoneyNetwork')
         // end shortChatTime filter
     }])
 
+    .filter('messageOutSentTitle', ['dateFilter', function (date) {
+        // outbox: sent_at mouseover text. short sent_at timestamp + any feedback info
+        // m.message.sent_at|date:'short'
+        return function (message) {
+            var text, no_receivers, no_feedback ;
+            text = 'Sent ' + date(message.message.sent_at, 'short') ;
+            if (message.message.z_filename) return text ; // public chat
+            if (!message.message.feedback) {
+                // unknown if message has been received or not
+                text += ', no feedback info' ;
+                return text ;
+            }
+            if (typeof message.message.feedback == 'number') {
+                // private chat - contact has received message
+                text += ', feedback ' + date(message.message.feedback, 'short') ;
+                return text ;
+            }
+            if (typeof message.message.feedback == 'object') {
+                // group chat - hash with feedback info for members in group chat
+                no_receivers = message.contact.participants.length-1 ;
+                no_feedback = Object.keys(message.message.feedback).length ;
+                text += ', feedback from ' +
+                    (no_feedback == no_receivers ? 'all' : no_feedback + ' out of ' + no_receivers) +
+                    ' participants in group chat' ;
+            }
+            return text ;
+        } ;
+        // end findMessageGlyphicon
+    }])
+
     // format special tag values. Last Updated
     .filter('formatSearchValue', ['shortChatTimeFilter', function (shortChatTime) {
         // short format for unix timestamp used in chat
