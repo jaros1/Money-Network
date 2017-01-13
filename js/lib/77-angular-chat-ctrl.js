@@ -101,7 +101,7 @@ angular.module('MoneyNetwork')
                 if (!create) return group_unique_id ;
                 // create pseudo chat group contact without password. password will be added later when sending first chat message in this group
                 var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                var index = Math.floor(MoneyNetworkHelper.random() * public_avatars.length);
+                var index = Math.floor(Math.random() * public_avatars.length);
                 var avatar = public_avatars[index] ;
                 contact = {
                     unique_id: group_unique_id,
@@ -421,7 +421,7 @@ angular.module('MoneyNetwork')
                 // start up hints - user is not chatting
                 if (chat_hint_account_page()) return 'No contacts were found. Please go to "Account" page and enter/update search tags.' ;
                 if (chat_hint_network_page()) return 'Click on "Network page" or enable "Two panel chat" to see contacts' ;
-                if (self.chat_hint_start_chat()) return 'Click on an avatar to start private chat';
+                if (self.chat_hint_start_chat()) return 'Click on an avatar to start PRIVATE CHAT';
 
                 // user is chatting - concatenate hints
                 var send, pubkey, avatar, pushpin, ok, x  ;

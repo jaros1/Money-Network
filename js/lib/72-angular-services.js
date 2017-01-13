@@ -367,7 +367,7 @@ angular.module('MoneyNetwork')
         function add_feedback_info (receiver_sha256, message_with_envelope, contact) {
             var pgm = service + '.add_feedback_info: ' ;
             var feedback, i, message, local_msg_seqs, local_msg_seq, factor, now, key, j, my_unique_id, participant,
-                show_receiver_sha256, error, contact2, message2 ;
+                show_receiver_sha256, error, contact2, message2, contact3, participant_no, k ;
             now = new Date().getTime() ;
 
             // check that json still is valid before adding feedback information to outgoing messages
@@ -383,7 +383,7 @@ angular.module('MoneyNetwork')
             feedback = {} ;
 
             if (contact.type == 'group') {
-                // group chat
+                // encrypted group chat
                 // debug('feedback_info', pgm + 'group = ' + JSON.stringify(contact)) ;
 
                 // check inbox. messages received in group chat
@@ -397,7 +397,7 @@ angular.module('MoneyNetwork')
                         continue ;
                     }
                     message.feedback = now ;
-                    // factor = -1. received feedback request for unknown message. tell contact that message has never been received
+                    // factor = -1. received feedback request for unknown message. lost msg was created in UI. tell contact that message has never been received
                     factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
                     local_msg_seqs.push(message.participant + ',' + (factor*message.message.local_msg_seq)) ;
                 } // for i (contact.messages)
@@ -445,10 +445,10 @@ angular.module('MoneyNetwork')
                 } // for local_msg_seq (deleted_outbox_messages)
                 if (local_msg_seqs.length > 0) feedback.sent = local_msg_seqs ;
 
-                // end group  chat
+                // end group chat
             }
             else {
-                // normal chat.
+                // encrypted private chat.
                 // - always adding a random sender_sha256 address to outgoing message
                 // - listening for any response to this address (receiver_sha256) and remove message from ZeroNet (data.json) after having received response
                 // - see section b) in data.json cleanup routine (z_update_1_data_json)
@@ -493,7 +493,7 @@ angular.module('MoneyNetwork')
 
                     } // for i (contact2.messages)
 
-                    // check deleted inbox messages.
+                    // check deleted inbox messages from contact2
                     if (contact2.deleted_inbox_messages) for (local_msg_seq in contact2.deleted_inbox_messages) {
                         if (contact2.deleted_inbox_messages[local_msg_seq]) {
                             // feedback loop complete - contact knows that this deleted message has been received
@@ -504,7 +504,52 @@ angular.module('MoneyNetwork')
                         local_msg_seqs.push(parseInt(local_msg_seq));
                     } // for local_msg_seq (deleted_inbox_messages)
 
+                    // check encrypted group chat messages from contact2
+                    console.log(pgm + 'todo: check encrypted group chat messages received from contact2');
+                    participant = contact2.unique_id ;
+                    console.log(pgm + 'contact2.unique_id / participant = ' + participant);
+                    for (j=0 ; j<ls_contacts.length ; j++) {
+                        contact3 = ls_contacts[j] ;
+                        if (contact3.type != 'group') continue ;
+                        participant_no = contact3.participants.indexOf(participant) ;
+                        if (participant_no == -1) continue ;
+                        participant_no++ ;
+                        console.log(pgm + 'found relevant group chat contact = ' + JSON.stringify(contact3)) ;
+                        // check group chat inbox messages received from this participant
+                        for (k=0 ; k<contact3.messages.length ; k++) {
+                            message = contact3.messages[k] ;
+                            if (message.folder != 'inbox') continue ;
+                            if (!message.message.local_msg_seq) continue ;
+                            if (message.participant != participant_no) continue ;
+                            console.log(pgm + 'found relevant group chat inbox message = ' + JSON.stringify(message)) ;
+                            //message = {
+                            //    "local_msg_seq": 967,
+                            //    "folder": "inbox",
+                            //    "message": {
+                            //        "msgtype": "chat msg", "message": "group chat msg 1", "local_msg_seq": 18,
+                            //        "feedback": {"received": ["1,963"]}
+                            //    },
+                            //    "zeronet_msg_id": "e0b42bcab8fdaa15c1bb8b80fa6e83ac6f7b111b5712d58348f978ad5d0ade22",
+                            //    "sent_at": 1484289111523,
+                            //    "received_at": 1484289111595,
+                            //    "participant": 3,
+                            //    "ls_msg_size": 305,
+                            //    "seq": 26
+                            //};
 
+                            if (message.feedback) {
+                                // feedback loop complete - contact knows (or should know) that this message has been received
+                                continue ;
+                            }
+                            message.feedback = now ;
+                            // notice special format in feedback.received for lost messages
+                            // - positive local_msg_seq: tell contact that message has been received
+                            // - negative local_msg_seq: tell contact that message has not been received (please resend)
+                            if (message.message.msgtype == 'lost msg') local_msg_seqs.push(-message.message.local_msg_seq) ;
+                            else local_msg_seqs.push(message.message.local_msg_seq) ;
+
+                        } // for k (messages)
+                    } // for j (contacts)
 
                 } // i (contacts)
 
