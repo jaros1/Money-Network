@@ -637,7 +637,7 @@ angular.module('MoneyNetwork')
             var feedback, received, sent, i, message, index, local_msg_seq, old_feedback, now, error, lost_message,
                 lost_message_with_envelope, lost_messages, my_unique_id, my_participant, participant_and_local_msg_seq,
                 from_participant, key, contact2, j, changed_zeronet_cert, move_lost_messages, seq, js_messages_row,
-                found_message, index2 ;
+                found_message, index2, participant, to_participant, contact3, k ;
             feedback = message_with_envelope.message.feedback ;
             now = new Date().getTime() ;
 
@@ -691,6 +691,9 @@ angular.module('MoneyNetwork')
                         message = contact.messages[i];
                         if (message.folder != 'outbox') continue;
                         // outbox
+
+                        // DRY: copy/paste to personal chat received section (feedback to group chat message in a private chat conversation)
+
                         local_msg_seq = message.local_msg_seq;
                         index = lost_messages.indexOf(local_msg_seq);
                         if (index != -1) {
@@ -893,7 +896,7 @@ angular.module('MoneyNetwork')
                 // end group chat
             }
             else {
-                // normal chat
+                // private encrypted chat
 
                 // 1) feedback.received array - check outbox
                 //    example. "received": [476] - contact have received outbox message with local_msg_seq 474
@@ -1015,7 +1018,7 @@ angular.module('MoneyNetwork')
                             }
                         }
 
-                        // check also deleted outbox messages
+                        // check deleted outbox messages
                         if (received.length && contact2.deleted_outbox_messages) for (j=received.length-1 ; j >= 0 ; j--) {
                             local_msg_seq = '' + received[j] ;
                             // debug('feedback_info', pgm + 'j = ' + i + ', local_msg_seq = ' + JSON.stringify(local_msg_seq)) ;
@@ -1023,6 +1026,86 @@ angular.module('MoneyNetwork')
                             received.splice(j,1);
                             if (contact2.deleted_outbox_messages[local_msg_seq]) debug('feedback_info', pgm + 'warning. have already received feedback info for deleted outbox message with local_msg_seq ' + message.local_msg_seq + ' earlier. Old timestamp = ' + contact2.deleted_outbox_messages[local_msg_seq] + ', new timestamp = ' + now) ;
                             contact2.deleted_outbox_messages[local_msg_seq] = now ;
+                        }
+
+                        // check group chat outbox messages (feedback to group chat message in a private chat conversation)
+                        if (received.length) {
+                            participant = contact2.unique_id ;
+                            console.log(pgm + 'todo: check also sent group chat messages to contact with unique id ' + participant) ;
+                            for (j=0 ; j<ls_contacts.length ; j++) {
+                                contact3 = ls_contacts[j] ;
+                                if (contact3.type != 'group') continue ;
+                                to_participant = contact3.participants.indexOf(participant) ;
+                                if (to_participant == -1) continue ;
+                                console.log(pgm + 'found relevant group contact ' + JSON.stringify(contact3)) ;
+                                console.log(pgm + 'to_participant = ' + to_participant) ;
+                                for (k=0 ; k<contact3.messages.length ; k++) {
+                                    message = contact3.messages[k] ;
+                                    if (message.folder != 'outbox') continue ;
+                                    // outbox
+
+                                    // DRY: copy/paste from group chat received section
+                                    local_msg_seq = message.local_msg_seq;
+                                    index = lost_messages.indexOf(local_msg_seq);
+                                    if (index != -1) {
+                                        // message lost in cyberspace. should be resend to contact
+                                        lost_message = true;
+                                        lost_messages.splice(index, 1);
+                                    }
+                                    else {
+                                        index = received.indexOf(message.local_msg_seq);
+                                        if (index == -1) continue; // not relevant
+                                        lost_message = false ;
+                                        received.splice(index, 1);
+                                    }
+                                    if (lost_message) {
+                                        debug('lost_message',
+                                            pgm + 'Message with local_msg_seq ' + local_msg_seq + ' has not been received by contact. ' +
+                                            'Could be a message sent and removed from ZeroNet when contact was offline.');
+                                        debug('lost_message', pgm + 'message = ' + JSON.stringify(message));
+                                        //message = {
+                                        //    "folder": "outbox",
+                                        //    "message": {"msgtype": "chat msg", "message": "message 2 lost in cyberspace"},
+                                        //    "local_msg_seq": 2,
+                                        //    "sender_sha256": "1da65defff8140656d966c84b01411911802b401a37dc090cafdc5d02bc54c5d",
+                                        //    "sent_at": 1480497004317,
+                                        //    "ls_msg_size": 218,
+                                        //    "msgtype": "chat msg"
+                                        //};
+                                        if (message.zeronet_msg_id) {
+                                            // received a negative local_msg_id in received array: feedback = {"received":[-6]},
+                                            // message not received, but message is still on ZeroNet (data.json)
+                                            // could be an error or could be decryption error due to changed ZeroNet certificate (cryptMessage)
+                                            debug('lost_message', pgm + 'UPS: lost message with local_msg_seq ' + local_msg_seq +
+                                                ' has a zeronet_msg_id and should still be on ZeroNet.');
+                                        }
+                                        else if (!message.sent_at) console.log(pgm + 'error. lost message has never been sent. sent_at is null');
+                                        else {
+                                            debug('lost_message', pgm + 'resend old message with old local_msg_id. add old sent_at to message');
+                                            debug('lost_message', pgm + 'todo: group chat. lost message may have been received by other participants in group chat!');
+                                            if (!message.message.sent_at) message.message.sent_at = message.sent_at;
+                                            delete message.sent_at;
+                                            delete message.cleanup_at;
+                                            delete message.feedback;
+                                            // force data.json update after processing of incomming messages
+                                            new_incoming_receipts++;
+                                        }
+                                    }
+                                    else {
+                                        if (!message.feedback) message.feedback = {} ;
+                                        if (message.feedback[to_participant]) {
+                                            debug('feedback_info',
+                                                pgm + 'warning. have already received feedback info for outbox message with local_msg_seq ' + message.local_msg_seq +
+                                                ' earlier from participant ' + to_participant +
+                                                '. Old timestamp = ' + message.feedback[message.participant] + ', new timestamp = ' + now);
+                                        }
+                                        message.feedback[to_participant] = now;
+                                        debug('feedback_info', pgm + 'message.feedback = ' + JSON.stringify(message.feedback) + ', message = ' + JSON.stringify(message)) ;
+                                    }
+
+                                } // for k (messages)
+
+                            } // for j (contacts)
                         }
 
                     } // for i (contacts)
@@ -1047,7 +1130,7 @@ angular.module('MoneyNetwork')
                     }
                 } // if (received)
 
-                // normal chat
+                // private encrypted chat
                 // 2) feedback.sent array - check inbox
                 //    example: "sent": [2] - contact has sent message with local_msg_seq 2 and is waiting for feedback
 
