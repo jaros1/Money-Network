@@ -983,6 +983,82 @@ var MoneyNetworkHelper = (function () {
         "required": ['msgtype', 'message_sha256', 'cert_user_ids', 'unique_id', 'res'],
         "additionalProperties": false
     };
+    // user files:
+    json_schemas['data.json'] = {
+        "type": 'object',
+        "title": 'User data.json file. User info, user search tags and user private messages',
+        "properties": {
+            "version": { "type": 'integer' },
+            "users": {
+                "type": 'array',
+                "description": 'Array with localStorage users. Unique user user_seq used in data.json, status.json and in filenames for optional files',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "user_seq": { "type": 'integer'},
+                        "pubkey": { "type": 'string'},
+                        "pubkey2": { "type": 'string'},
+                        "encryption": { "type": 'string', "pattern": '^(1|2)$'},
+                        "avatar": { "type": ['string']},
+                        "guest": { "type": 'boolean'}
+                    },
+                    "required": [ 'user_seq', 'pubkey', 'pubkey2', 'encryption'],
+                    "additionalProperties": false
+                },
+                "minItems": 1
+            },
+            "search": {
+                "type": 'array',
+                "description": 'Array with public search tags (matching/searching for users)',
+                "properties": {
+                    "user_seq": { "type": 'integer'},
+                    "tag": { "type": 'string'},
+                    "value": { "type": 'string'}
+                },
+                "required": [ 'user_seq', 'tag', 'value'],
+                "additionalProperties": false
+            },
+            "msg": {
+                "type": 'array',
+                "description": 'Array with encrypted messages. Cleanup rutine will delete old messages, received or not. key is public key encrypted random password. message encrypted with this random password. null key used for group chat',
+                "properties": {
+                    "user_seq": { "type": 'integer'},
+                    "timestamp": { "type": 'integer'},
+                    "receiver_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+                    "key": { "type": 'string'},
+                    "message": { "type": 'string'},
+                    "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+
+                },
+                "required": ['user_seq', 'timestamp', 'receiver_sha256', 'message', 'message_sha256'],
+                "additionalProperties": false
+            }
+        },
+        "required": ['version', 'users'],
+        "additionalProperties": false
+    } ;
+    json_schemas['status.json'] = {
+        "type": 'object',
+        "title": 'User status.json file. Last online timestamp. Can be disabled by user',
+        "properties": {
+            "version": { "type": 'integer' },
+            "status": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "user_seq": { "type": 'integer'},
+                        "timestamp": { "type": 'integer'}
+                    },
+                    "required": ['user_seq', 'timestamp'],
+                    "additionalProperties": false
+                },
+                "minItems": 1
+            }
+        },
+        "required": ['version', 'status'],
+        "additionalProperties": false
+    } ;
     // optional files:
     json_schemas['chat-file'] = {
         "type": 'object',

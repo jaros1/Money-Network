@@ -165,15 +165,12 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/status.json', required: false}, function (status) {
                     var pgm = service + '.zeronet_site_publish fileGet callback 1: ';
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
-                    var i, index, timestamp, json_raw ;
+                    var i, index, timestamp, json_raw, error ;
                     if (!status) status = { version: 8, status: []};
                     else {
                         status = JSON.parse(status);
                         z_migrate_status(status) ;
                     }
-
-                    //console.log(pgm + '1: user_seq = ' + user_seq + ', status = ' + JSON.stringify(status) +
-                    //    ', z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs));
                     if (user_seq) {
                         // remove deleted users (removed in z_update_1_data_json)
                         if (z_cache.user_seqs && (z_cache.user_seqs.indexOf(user_seq) != -1)) {
@@ -190,9 +187,16 @@ angular.module('MoneyNetwork')
                         else if (!user_setup.not_online) status.status[index].timestamp = timestamp;
                         // console.log(pgm + 'updated timestamp. status = ' + JSON.stringify(status)) ;
                     }
-                    //console.log(pgm + '2: user_seq = ' + user_seq + ', status = ' + JSON.stringify(status) +
-                    //    ', z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs));
-
+                    // validate status.json before write
+                    error = MoneyNetworkHelper.validate_json (pgm, status, 'status.json', 'Invalid json file') ;
+                    if (error) {
+                        error = 'Cannot write invalid status.json file: ' + error;
+                        console.log(pgm + error);
+                        console.log(pgm + 'status = ' + JSON.stringify(status));
+                        ZeroFrame.cmd("wrapperNotification", ["error", error]);
+                        return ;
+                    }
+                    // write status.json
                     json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
                     ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
                         var pgm = service + '.zeronet_site_publish fileWrite callback 2: ';
@@ -1447,7 +1451,7 @@ angular.module('MoneyNetwork')
                     if (my_user_seq) {
                         data.users[my_user_i].pubkey2 = pubkey2 ;
                         data.users[my_user_i].encryption = user_setup.encryption ;
-                        data.users[my_user_i].avatar = short_avatar ;
+                        if (short_avatar) data.users[my_user_i].avatar = short_avatar ;
                     }
                     else {
                         // add current user to data.users array
@@ -2350,8 +2354,8 @@ angular.module('MoneyNetwork')
         // last step in data.json update - write and publish
         function z_update_4_data_json_write (data, data_str) {
             var pgm = service + '.z_update_4_data_json_write: ' ;
+            var error ;
             // any changes to data.json file?
-            var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
             if (data_str == JSON.stringify(data)) {
                 // debug('public_chat', pgm + 'no updates to data.json. continue with public chat messages and publish') ;
                 // no changes to data.json but maybe a forced publish from z_update_1_data_json param or cleanup_my_image_json callback
@@ -2359,7 +2363,39 @@ angular.module('MoneyNetwork')
                 z_update_5_public_chat (z_cache.publish || false) ;
                 return ;
             }
+            // validate data.json
+            error = MoneyNetworkHelper.validate_json (pgm, data, 'data.json', 'Invalid json file') ;
+            if (error) {
+                error = 'Cannot write invalid data.json file: ' + error ;
+                console.log(pgm +error) ;
+                console.log(pgm + 'data = ' + JSON.stringify(data)) ;
+                data = {
+                    "version": 8,
+                    "users": [{
+                        "user_seq": 1,
+                        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0pMuMJyynH1BmhMJ6vvd\nQZplIBgiiOQSqwu2SpYKICm+P1gGNHnICQic/Nuqi9t93rxJLfWCsl0+lCtoJLen\nf78xz4XzEcGPBeBFn2TbQqPO9loylNlaOgiqDG5qcSc9n7yEF0xmpReDGATwzECi\nJrpZBImwhUMO48iS08b4IfQaMsbnUVY8hdUeJiQ831kMkNQLtxWaeRiyn8cTbKQ6\nLXCDG7GDaFN6t+x3cv/xBX06+ykuYQ0gNIBySiIz69RYzhvOkqOQggLWPF+NMW1J\nO6VRqvX7Sybwm51v3kGGKWeX4znvGY+GwVCpwiH+b2hbGZHIqFp9ogimGVE0WPgu\nnwIDAQAB\n-----END PUBLIC KEY-----",
+                        "pubkey2": "AkbK8Pr9FE/pIWcWM7qLn/GIzmq5RVJ4jOj7iIomwdWe",
+                        "encryption": "2"
+                    }],
+                    "search": [{"user_seq": 1, "tag": "Name", "value": "Money Network dev"}, {
+                        "user_seq": 1,
+                        "tag": "%",
+                        "value": "%%"
+                    }],
+                    "msg": [{
+                        "user_seq": 1,
+                        "receiver_sha256": "b5f394e8ecd49b80d45569f6878b6adf2db0b73b1fdc867802a7dbd91c6cf60d",
+                        "key": "FuBsfnwUWts9IBDKTgv9DTHXxnDK1EGmPe0RSkXmSo1KkAwTKsFdEF/FBUPpNRCNFydEjsNuWcUsWwDkuKimFiHRvwqF3Re7J0n9oFaIFdmRR059P5w4UwpuuKM49Ekgp7Kw4/e2gWw6Ajfuz4Qk/vUDB4gCGOXLp+UpzkoN6MmSHqPuSy3RYEDTZpf7YKytHGhD20ffF0saDhu4IYG9XL7/oas0maJl6L/HDrAr/bQ8uzP4RHRRiVsNyk/tu98NswCbPH5Tc4mRb0LKX9y7pO0RNN84brSDB5nlrNfHV8tKYuuDcwqfoYOFGywdd6Ayr3JWX85YL6kUeiG0+56DdA==",
+                        "message": "U2FsdGVkX19g9kJgMhA6vnGq1Ak7h5rpcsi6MAvvGWHls/JuAdzERYqU55sRjAiFRW9tjrLBvAsA5qhB2b5qY4A82RiZXx69dErz1J5Tx/Tc1wT0qN2YjIVUASSC31FB/6h9CX5CW8gg+Tg6xycf4dPJvxCWz9YlLbQUQPhspvka9+DCV5BKv6c36vv8+keieO6AkZIAPmA1daCEnGVHhxUZMF/TkAXwezPrV/UQ7XfoJ4xSEqcAGqWRLZ5na8sn",
+                        "message_sha256": "1922c955d268a2f89dbbdda2c71e66de03e6bb63f2d39fba4bebc436012c3b57",
+                        "timestamp": 1484413938793
+                    }]
+                };
+                ZeroFrame.cmd("wrapperNotification", ["error", error]);
+                return ;
+            }
             // write data.json and publish
+            var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
             var json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
             ZeroFrame.cmd("fileWrite", [data_json_path, btoa(json_raw)], function (res) {
                 delete zeronet_file_locked[data_json_path] ;
@@ -7825,7 +7861,7 @@ angular.module('MoneyNetwork')
                 // delete any old users in status.json and publish
                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/status.json', required: false}, function (status) {
                     var pgm = service + '.i_am_online fileGet 2 callback: ';
-                    var my_user_seq_found, status_updated ;
+                    var my_user_seq_found, status_updated, error ;
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
                     if (!status) status = { version: 5, status: [] } ;
                     else {
@@ -7846,6 +7882,16 @@ angular.module('MoneyNetwork')
                         // Account setup - user has selected not to update online timestamp
                         return ;
                     }
+                    // validate status.json before write
+                    error = MoneyNetworkHelper.validate_json (pgm, status, 'status.json', 'Invalid json file') ;
+                    if (error) {
+                        error = 'Cannot write invalid status.json file: ' + error;
+                        console.log(pgm + error);
+                        console.log(pgm + 'status = ' + JSON.stringify(status));
+                        ZeroFrame.cmd("wrapperNotification", ["error", error]);
+                        return ;
+                    }
+                    // write status.json
                     // console.log(pgm + 'status = ' + JSON.stringify(status)) ;
                     var json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
                     ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
