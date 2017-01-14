@@ -2479,7 +2479,7 @@ angular.module('MoneyNetwork')
                                 // continue with other public chat messages
                                 z_update_5_public_chat (true) ;
                             };
-                            if (!chat) {
+                            if (!chat || chat.length <= 2) {
                                 // file has been deleted since page start
                                 debug('public_chat',
                                     pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
@@ -2500,13 +2500,20 @@ angular.module('MoneyNetwork')
                                 callback() ;
                                 return ;
                             }
+
+                            // todo: this length (used in cache_status) is not always correct. must use size from content.json file
                             chat_lng = chat.length ;
-                            chat = JSON.parse(chat) ;
-                            if (!chat.msg || !chat.msg.length) {
-                                // empty chat.json file - delete file
+
+                            // validate -chat,json file
+                            error = null ;
+                            try { chat = JSON.parse(chat) }
+                            catch (e) { error = 'Invalid json file: ' + e.message }
+                            if (!error) error = MoneyNetworkHelper.validate_json (pgm, chat, 'chat-file', 'Invalid json file') ;
+                            if (error) {
+                                // invalid -chat.json file - delete file
                                 console.log(
                                     pgm + 'deleted public outbox message ' + message_with_envelope.local_msg_seq +
-                                    '. file ' + z_filename + ' was invalid or empty' + '. chat = ' + JSON.stringify(chat));
+                                    '. file ' + z_filename + ' was invalid. error = ' + error + ', chat = ' + JSON.stringify(chat));
                                 // cleanup all public outbox messages with this z_filename
                                 for (j=0 ; j<contact.messages.length ; j++) {
                                     message_with_envelope2 = contact.messages[j] ;
@@ -2523,6 +2530,7 @@ angular.module('MoneyNetwork')
                                 write_empty_chat_file(file_path, function () { callback() });
                                 return ;
                             }
+
                             // check timestamps
                             first_timestamp = null ;
                             last_timestamp = null ;
@@ -2596,6 +2604,17 @@ angular.module('MoneyNetwork')
                                         ' and creating file ' + new_z_filename);
                                 }
                                 write_file = function () {
+                                    var error, json_raw ;
+                                    // validate -chat.json file before write
+                                    error = MoneyNetworkHelper.validate_json (pgm, chat, 'chat-file', 'Invalid json file') ;
+                                    if (error) {
+                                        error = 'cannot write file ' + new_z_filename + ', error = ' + error ;
+                                        debug('public_chat', pgm + error) ;
+                                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                        // stop. changes were not published
+                                        return ;
+                                    }
+                                    // write -chat.json file
                                     json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
                                     debug('public_chat', 'issue #84 - json_raw.length = ' + json_raw.length + ', JSON.stringify(chat).length = ' + JSON.stringify(chat).length) ;
                                     ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
@@ -2693,11 +2712,37 @@ angular.module('MoneyNetwork')
                         // ready. read old chat file
                         ZeroFrame.cmd("fileGet", [file_path, false], function (chat) {
                             var pgm = service + '.z_update_5_public_chat fileGet callback 1b: ';
-                            var chat_lng, new_msg, json_raw, issue_84 ;
-                            if (!chat) chat = { version: 8, msg: []} ;
+                            var chat_lng, new_msg, json_raw, issue_84, error ;
+                            if (!chat || (chat.length <= 2)) chat = { version: 8, msg: []} ;
                             else {
+                                // todo: this length is not always correct. Must use size from content.json in cache_status
                                 chat_lng = chat.length ;
-                                chat = JSON.parse(chat) ;
+
+                                // validate -chat,json file
+                                error = null ;
+                                try { chat = JSON.parse(chat) }
+                                catch (e) { error = 'Invalid json file: ' + e.message }
+                                if (!error) error = MoneyNetworkHelper.validate_json (pgm, chat, 'chat-file', 'Invalid json file') ;
+                                if (error) {
+                                    // invalid -chat.json file - overwrite with empty file and continue
+                                    console.log(pgm + 'old file ' + z_filename + ' was invalid. error = ' + error + ', chat = ' + JSON.stringify(chat));
+                                    // cleanup all public outbox messages with this z_filename
+                                    for (j=0 ; j<contact.messages.length ; j++) {
+                                        message_with_envelope2 = contact.messages[j] ;
+                                        if (message_with_envelope2.z_filename == z_filename) {
+                                            delete message_with_envelope2.z_filename ;
+                                            message_with_envelope2.cleanup_at = now ;
+                                        }
+                                    }
+                                    // cleanup my optional files list
+                                    delete my_files_optional[z_filename] ;
+                                    // cleanup files_optional_cache
+                                    delete files_optional_cache[file_path] ;
+                                    // ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
+                                    write_empty_chat_file(file_path, function () { z_update_5_public_chat (true) });
+                                    return ;
+                                }
+
                             }
                             cache_status = files_optional_cache[file_path] ;
                             if (!cache_status) {
@@ -2731,6 +2776,16 @@ angular.module('MoneyNetwork')
                             debug('public_chat', pgm + 'added new message to ' + z_filename + '. new_msg = ' + JSON.stringify(new_msg)) ;
 
                             write_file = function () {
+                                var error, json_raw ;
+                                // validate -chat.json file before write
+                                error = MoneyNetworkHelper.validate_json (pgm, chat, 'chat-file', 'Invalid json file') ;
+                                if (error) {
+                                    error = 'cannot write file ' + new_z_filename + ', error = ' + error ;
+                                    debug('public_chat', pgm + error) ;
+                                    ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                    // stop. changes were not published
+                                    return ;
+                                }
                                 // write chat file
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(chat, null, "\t")));
                                 debug('public_chat', 'issue #84: json_raw.length = ' + json_raw.length + ', JSON.stringify(chat).length = ' + JSON.stringify(chat).length) ;
@@ -7245,7 +7300,7 @@ angular.module('MoneyNetwork')
                     var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
                         file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                         new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
-                        image, chat2, found_image, byteAmount, chat_bytes, chat_length ;
+                        image, chat2, found_image, byteAmount, chat_bytes, chat_length, error ;
                     // update cache_status
                     cache_status.is_pending = false;
                     debug('public_chat', pgm + 'downloaded ' + cache_filename + ', chat = ' + chat);
@@ -7259,9 +7314,7 @@ angular.module('MoneyNetwork')
                     file_auth_address = cache_filename.split('/')[2] ;
                     file_user_seq = parseInt(cache_filename.split('-')[2]) ;
 
-
-
-                    // check json size. todo: not working for compressed images!
+                    // check json size. Problem with compressed images!
                     chat_length = chat.length ;
                     chat_bytes = unescape(encodeURIComponent(chat)).length ;
                     if (chat_length != chat_bytes) {
@@ -7274,7 +7327,6 @@ angular.module('MoneyNetwork')
                         console.log(pgm + '3: byteCount     = ' + byteCount(chat)) ;
                         chat_length = chat_bytes ;
                     }
-
                     if (expected_size != chat_length) {
                         debug('public_chat', 'changed size for ' + cache_filename + ' . expected size ' + expected_size + ', found size ' + chat_length);
                         if ((file_auth_address == my_auth_address) && (file_user_seq = '' + my_user_seq)) {
@@ -7283,19 +7335,28 @@ angular.module('MoneyNetwork')
                             zeronet_site_publish();
                         }
                         else {
-                            // file must be out of date. trigger a new download
-                            ZeroFrame.cmd("optionalFileDelete", {inner_path: cache_filename}, function () {
-                            });
+                            // file must be old/changed. trigger a new file download
+                            ZeroFrame.cmd("optionalFileDelete", {inner_path: cache_filename}, function () {});
                         }
                         // chat page must call get_publish_chat again even if no messages were read
                         return cb();
                     }
                     cache_status.size = chat_length;
-
                     cache_status.is_downloaded = true;
                     debug('public_chat', pgm + 'cache_status = ' + JSON.stringify(cache_status)) ;
+
+                    // validate -chat,json file. ignore file if content is invalid
+                    error = null ;
+                    try { chat = JSON.parse(chat) }
+                    catch (e) { error = 'Invalid json file: ' + e.message }
+                    if (!error) error = MoneyNetworkHelper.validate_json (pgm, chat, 'chat-file', 'Invalid json file') ;
+                    if (error) {
+                        console.log(pgm + 'Chat file ' + cache_filename + ' is invalid. error = ' + error) ;
+                        cache_status.timestamps = [] ;
+                        return cb() ;
+                    }
+
                     // read chat msg and copy timestamps to cache_status object
-                    chat = JSON.parse(chat);
                     if (!cache_status.timestamps) {
                         // first read. copy message timestamps into cache_status object
                         cache_status.timestamps = [];

@@ -720,45 +720,45 @@ var MoneyNetworkHelper = (function () {
     } // delete_guest_account
 
     // validate JSON before send and after receive using https://github.com/geraintluff/tv4
-    var json_schemas = {} ;
+    var json_schemas = {};
     json_schemas['contact added'] = {
         "type": 'object',
         "title": 'Contact added message. Message with additional user information',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^contact added$'},
+            "msgtype": {"type": 'string', pattern: '^contact added$'},
             "search": {
                 "type": 'array',
                 "items": {
                     "type": 'object',
                     "properties": {
-                        "tag": { "type": 'string' },
-                        "value": { "type": 'string'},
-                        "privacy": { "type": 'string', "pattern": '^(Public|Unverified)$'},
+                        "tag": {"type": 'string'},
+                        "value": {"type": 'string'},
+                        "privacy": {"type": 'string', "pattern": '^(Public|Unverified)$'},
                     },
                     "required": ['tag', 'value', 'privacy'],
                     "additionalProperties": false
                 }
             },
-            "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "local_msg_seq": {"type": 'integer'},
+            "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "feedback": {
                 "type": 'object',
                 "properties": {
                     "received": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     },
                     "sent": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     }
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'},
-            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
+            "sent_at": {"type": 'integer'},
+            "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'}
         },
         "required": ['msgtype', 'search'],
         "additionalProperties": false
@@ -767,27 +767,27 @@ var MoneyNetworkHelper = (function () {
         "type": 'object',
         "title": 'Contact removed message',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^contact removed$'},
-            "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "msgtype": {"type": 'string', pattern: '^contact removed$'},
+            "local_msg_seq": {"type": 'integer'},
+            "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "feedback": {
                 "type": 'object',
                 "properties": {
                     "received": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     },
                     "sent": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     }
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'},
-            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
+            "sent_at": {"type": 'integer'},
+            "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'}
         },
         "required": ['msgtype'],
         "additionalProperties": false
@@ -797,190 +797,228 @@ var MoneyNetworkHelper = (function () {
         "title": 'Send chat message to contact',
         "description": 'Message is required unless delete old chat message. old_local_msg_seq is reference to old chat message to be changed or deleted. Image must be base64uri. sent_at and message_sha256 are used when resending lost messages',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^chat msg$'},
-            "message": { "type": 'string'},
-            "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
-            "old_local_msg_seq": { "type": 'integer' },
-            "image": { "type": [ 'string', 'boolean'] },
+            "msgtype": {"type": 'string', pattern: '^chat msg$'},
+            "message": {"type": 'string'},
+            "local_msg_seq": {"type": 'integer'},
+            "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "old_local_msg_seq": {"type": 'integer'},
+            "image": {"type": ['string', 'boolean']},
             "feedback": {
                 "type": 'object',
                 "description": 'Feedback info. Has message been received? Normal chat, type integer, with local_msg_seq. Group chat, type string, with participant, local_msg_seq',
                 "properties": {
                     "sent": {
                         "type": 'array',
-                        "items": { "type": ['integer', 'string'] },
+                        "items": {"type": ['integer', 'string']},
                         "minItems": 1
                     },
                     "received": {
                         "type": 'array',
-                        "items": { "type": ['integer', 'string'] },
+                        "items": {"type": ['integer', 'string']},
                         "minItems": 1
                     }
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'},
-            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
+            "sent_at": {"type": 'integer'},
+            "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'}
         },
         "required": ['msgtype'],
         "additionalProperties": false
-    } ;
+    };
     json_schemas['verify'] = {
         "type": 'object',
         "title": 'Send verification request to contact',
         "description": 'Message with sha256 encrypted password. Unencrypted password must be sent to contact in an other trusted communication channal (mail, socialnetwork or whatever)',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^verify$'},
-            "password_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
-            "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "msgtype": {"type": 'string', pattern: '^verify$'},
+            "password_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "local_msg_seq": {"type": 'integer'},
+            "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "feedback": {
                 "type": 'object',
                 "properties": {
                     "received": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     },
                     "sent": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     }
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'},
-            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
+            "sent_at": {"type": 'integer'},
+            "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'}
         },
         "required": ['msgtype', 'password_sha256'],
         "additionalProperties": false
-    } ;
+    };
     json_schemas['verified'] = {
         "type": 'object',
         "title": 'Send verification response to contact',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^verified$'},
-            "password": { "type": 'string'},
-            "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "msgtype": {"type": 'string', pattern: '^verified$'},
+            "password": {"type": 'string'},
+            "local_msg_seq": {"type": 'integer'},
+            "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "feedback": {
                 "type": 'object',
                 "properties": {
                     "received": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     },
                     "sent": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     }
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'},
-            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
+            "sent_at": {"type": 'integer'},
+            "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'}
         },
         "required": ['msgtype', 'password'],
         "additionalProperties": false
-    } ;
+    };
     json_schemas['received'] = {
         "type": 'object',
         "title": 'Send receipt contact. Used for chat messages with image attachment',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^received$'},
-            "remote_msg_seq": { "type": 'integer'},
-            "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "msgtype": {"type": 'string', pattern: '^received$'},
+            "remote_msg_seq": {"type": 'integer'},
+            "local_msg_seq": {"type": 'integer'},
+            "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "feedback": {
                 "type": 'object',
                 "properties": {
                     "received": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     },
                     "sent": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     }
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'},
-            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' }
+            "sent_at": {"type": 'integer'},
+            "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'}
         },
         "required": ['msgtype', 'remote_msg_seq'],
         "additionalProperties": false
-    } ;
+    };
     json_schemas['group chat'] = {
         "type": 'object',
         "title": 'Start group chat. Send group chat password to participants in chat',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^group chat$'},
+            "msgtype": {"type": 'string', pattern: '^group chat$'},
             "participants": {
                 "type": 'array',
-                "items": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+                "items": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
                 "minItems": 1
             },
-            "password": { "type": 'string' },
-            "local_msg_seq": { "type": 'integer'},
-            "sender_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "password": {"type": 'string'},
+            "local_msg_seq": {"type": 'integer'},
+            "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "feedback": {
                 "type": 'object',
                 "properties": {
                     "received": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     },
                     "sent": {
                         "type": 'array',
-                        "items": { "type": 'integer'},
+                        "items": {"type": 'integer'},
                         "minItems": 1
                     }
                 },
                 "additionalProperties": false
             },
-            "sent_at": { "type": 'integer'}
+            "sent_at": {"type": 'integer'}
         },
         "required": ['msgtype', 'participants', 'password'],
         "additionalProperties": false
-    } ;
+    };
+    // two internal lost message notifications in UI. Not sent or received to/from other users
     json_schemas['lost msg'] = {
         "type": 'object',
         "title": 'Lost message notification in UI',
         "description": 'Lost message detected in feedback information. See add_feedback_info and receive_feedback_info',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^lost msg$'},
-            "local_msg_seq": { "type": 'integer'}
+            "msgtype": {"type": 'string', pattern: '^lost msg$'},
+            "local_msg_seq": {"type": 'integer'}
         },
         "required": ['msgtype', 'local_msg_seq'],
         "additionalProperties": false
-    } ;
+    };
     json_schemas['lost msg2'] = {
         "type": 'object',
         "title": 'Lost message notification in UI',
         "description": 'Decrypt error when reading message. Happens for cryptMessage encrypted to an other ZeroNet certificate. User has switched certificate. See process_incoming_cryptmessage. cert_user_ids are possible ZeroNet certificates for decryption. Unique and res are original parameters for process_incoming_cryptmessage call',
         "properties": {
-            "msgtype": { "type": 'string', pattern: '^lost msg2$'},
-            "message_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "msgtype": {"type": 'string', pattern: '^lost msg2$'},
+            "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "cert_user_ids": {
                 "type": 'array',
-                "items": { "type": 'string' },
-                "minItems": 1},
-            "unique_id": { "type": 'string', "pattern": '^[0-9a-f]{64}$' },
+                "items": {"type": 'string'},
+                "minItems": 1
+            },
+            "unique_id": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "res": {
                 "type": 'object'
             }
         },
         "required": ['msgtype', 'message_sha256', 'cert_user_ids', 'unique_id', 'res'],
         "additionalProperties": false
+    };
+    // optional files:
+    json_schemas['chat-file'] = {
+        "type": 'object',
+        "title": 'Optional file with unencrypted public chat.',
+        "description": 'filename <to unix timestamp>-<from unix timestamp>-<user seq>.json. Timestamps for first and last message in msg array',
+        "properties": {
+            "version": { "type": 'integer' },
+            "msg": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "user_seq": { "type": 'integer'},
+                        "timestamp": { "type": 'integer' },
+                        "message": { "type": 'string'},
+                        "image": { "type": 'string'},
+                        "storage": {
+                            "type": 'object',
+                            "description": 'encryption/compression flags for string fields in message. Only c1=LZString.compress is used in public chat files',
+                            "properties": {
+                                "message": { "type": 'string', "pattern": '^c1$'},
+                                "image": { "type": 'string', "pattern": '^c1$'}
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": ['user_seq', 'timestamp', 'message'],
+                    "additionalProperties": false
+                },
+                "minItems": 1
+            }
+        },
+        "required": ['version', 'msg'],
+        "additionalProperties": false
     } ;
+
 
     // validate json:
     // - pgm - calling function. for debug messages
