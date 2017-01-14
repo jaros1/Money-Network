@@ -1643,7 +1643,7 @@ angular.module('MoneyNetwork')
 
             var i, contact, encrypt, j, message_with_envelope, message, local_msg_seq, sent_at, key, password,
                 receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend,
-                user_path, image_path, image_e1, image_e1c1, image_json, json_raw, upload_image_json ;
+                user_path, image_path, image_e1, image_e1c1, image_json, json_raw, upload_image_json, error ;
 
             user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
 
@@ -1861,17 +1861,23 @@ angular.module('MoneyNetwork')
                             else {
                                 image_json = { image: image_e1c1, storage: { image: 'e1,c1'} };
                             }
+                            // validate -image.json before upload
+                            error = MoneyNetworkHelper.validate_json (pgm, image_json, 'image-file', 'Invalid json file') ;
+                            if (error) {
+                                console.log(pgm + 'cannot write -image.json file ' + image_path + '. json is invalid: ' + error) ;
+                                // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
+                                z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str)
+                                return ;
+                            }
                             json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
                             console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                             ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
                                 var pgm = service + '.z_update_2a_data_json_encrypt fileWrite callback: ';
                                 debug('outbox', pgm + 'res = ' + JSON.stringify(res));
                                 console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
-
+                                // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
                                 z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str)
-
                             }); // fileWrite
-
                             return ; // stop- writeFile callback will continue process
                         }
 
@@ -1983,7 +1989,7 @@ angular.module('MoneyNetwork')
                             // encrypt step 4 - aes encrypt image
                             ZeroFrame.cmd("aesEncrypt", [message.image, password], function (image_res) {
                                 var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 4: ';
-                                var iv, encrypted_image_str, user_path, image_path, image_json, json_raw ;
+                                var iv, encrypted_image_str, user_path, image_path, image_json, json_raw, error ;
 
                                 iv = image_res[1] ;
                                 encrypted_image_str = image_res[2];
@@ -2010,6 +2016,15 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'image.e2.length   = ' + (iv + ',' + encrypted_image_str).length) ;
                                     console.log(pgm + 'image.e2c1.length = ' + image_json.image.length) ;
                                 }
+                                // validate -image.json before upload
+                                error = MoneyNetworkHelper.validate_json (pgm, image_json, 'image-file', 'Invalid json file') ;
+                                if (error) {
+                                    console.log(pgm + 'cannot write -image.json file ' + image_path + '. json is invalid: ' + error) ;
+                                    // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
+                                    z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
+                                    return ;
+                                }
+                                // upload
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
                                 console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                                 ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
@@ -4257,7 +4272,7 @@ angular.module('MoneyNetwork')
                 debug('inbox', pgm + 'downloading image ' + image_path) ;
                 ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
                     var pgm = service + '.download_json_image_file fileGet callback 2: ' ;
-                    var data, actions, action ;
+                    var data, actions, action, error ;
                     if (!image || (user_setup.test && user_setup.test.image_timeout)) { // test: force download error
                         console.log(pgm + 'Error. image download timeout for ' + image_path) ;
                         if (cb) cb(false) ;
@@ -4267,24 +4282,34 @@ angular.module('MoneyNetwork')
 
                     // DRY: almost identical code in event_file_done
 
-                    // decrypt/decompress, save in lS and delete downloaded optional file
-                    image = JSON.parse(image) ;
-                    if (!image.storage) image.storage = {} ;
-                    if (!image.storage.image) image.storage.image = 'e1' ; // e1 = JSEcrypted and not compressed
-                    data = image.image ;
-                    actions = image.storage.image.split(',');
-                    try {
-                        while (actions.length) {
-                            action = actions.pop() ;
-                            if (action == 'c1') data = MoneyNetworkHelper.decompress1(data) ;
-                            else if (action == 'e1') data = MoneyNetworkHelper.decrypt(data, password);
-                            else throw "Unsupported decrypt/decompress action " + action ;
-                        }
-                        message_with_envelope.message.image = data ;
-                    }
-                    catch (e) {
-                        console.log(pgm + 'error. image ' + image_path + ' decrypt failed. error = ' + e.message) ;
+                    // validate -image.json
+                    try { image = JSON.parse(image)}
+                    catch (e) { error = e.message}
+                    if (!error) error = MoneyNetworkHelper.validate_json (pgm, image, 'image-file', 'Invalid json file') ;
+                    if (error) {
+                        // File not OK
+                        console.log(pgm + 'cannot write -image.json file ' + image_path + '. json is invalid: ' + error);
                         message_with_envelope.message.image = false ;
+                    }
+                    else {
+                        // File OK. decrypt/decompress, save in lS and delete downloaded optional file
+                        if (!image.storage) image.storage = {} ;
+                        if (!image.storage.image) image.storage.image = 'e1' ; // default: e1 = JSEcrypted and not compressed
+                        data = image.image ;
+                        actions = image.storage.image.split(',');
+                        try {
+                            while (actions.length) {
+                                action = actions.pop() ;
+                                if (action == 'c1') data = MoneyNetworkHelper.decompress1(data) ;
+                                else if (action == 'e1') data = MoneyNetworkHelper.decrypt(data, password);
+                                else throw "Unsupported decrypt/decompress action " + action ;
+                            }
+                            message_with_envelope.message.image = data ;
+                        }
+                        catch (e) {
+                            console.log(pgm + 'error. image ' + image_path + ' decrypt failed. error = ' + e.message) ;
+                            message_with_envelope.message.image = false ;
+                        }
                     }
                     ls_save_contacts(false) ;
                     // ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
@@ -6343,7 +6368,7 @@ angular.module('MoneyNetwork')
 
                     (function() {
                         var timestamp, message_with_envelope, i, contact, found, message_with_envelope, now, dif,
-                            image_download_failed, password, image, actions, action, data, loop;
+                            image_download_failed, password, image, actions, action, data, loop, error;
 
                         console.log(pgm + 'received a downloaded image json file. check for any old message with an image_download_failed object') ;
                         // old: filename = data/users/1PCnWyxKEiFW1u6awWoficZJSyQbxh3BAA/1483887305307-image.json
@@ -6404,6 +6429,10 @@ angular.module('MoneyNetwork')
                             return ;
                         }
 
+                        // ready. image file has already been read (res). password already known (image_download_failed object)
+                        image = res ;
+
+                        // helper: delete optional file and send receipt. note. sending receipt even if there is errors in image.json
                         var send_image_receipt = function (send_receipt) {
                             var pgm = service + '.event_file_done.send_image_receipt: ';
                             // received a chat message with an image. Cleanup
@@ -6411,7 +6440,7 @@ angular.module('MoneyNetwork')
                             delete message_with_envelope.image_download_failed;
                             $rootScope.$apply();
                             if (!send_receipt) return ;
-                            // Send receipt so that other user can delete msg from data.json and free disk space
+                            // Send receipt so that other user can delete msg from data.json, image.json file and free disk space
                             // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
                             var receipt = { msgtype: 'received', remote_msg_seq: message_with_envelope.message.local_msg_seq };
                             // validate json
@@ -6430,13 +6459,19 @@ angular.module('MoneyNetwork')
 
                         };
 
-                        // ready. image file has already been read (res). password already known (image_download_failed object)
-                        // delete downloaded image
+                        error = MoneyNetworkHelper.validate_json (pgm, image, 'image-file', 'Invalid json file') ;
+                        if (error) {
+                            // File not OK
+                            console.log(pgm + 'cannot read -image.json file ' + filename + '. json is invalid: ' + error);
+                            message_with_envelope.message.image = false ;
+                            send_image_receipt(true) ;
+                            return ;
+                        }
+
                         if (image_download_failed.encryption == 1) {
                             // simple symmetric encryption.
 
                             // DRY: almost identical code in download_json_image_file fileGet callback 2
-                            image = res ;
                             if (!image.storage) image.storage = {} ;
                             if (!image.storage.image) image.storage.image = 'e1' ; // e1 = JSEcrypted and not compressed
                             data = image.image ;
@@ -6454,7 +6489,7 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'error. image ' + image_path + ' decrypt failed. error = ' + e.message) ;
                                 message_with_envelope.message.image = false ;
                             }
-                            send_image_receipt(message_with_envelope.message.image) ;
+                            send_image_receipt(true) ;
                         }
                         if (image_download_failed.encryption == 2) {
                             // cryptMessage

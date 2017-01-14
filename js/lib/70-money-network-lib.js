@@ -986,8 +986,8 @@ var MoneyNetworkHelper = (function () {
     // optional files:
     json_schemas['chat-file'] = {
         "type": 'object',
-        "title": 'Optional file with unencrypted public chat.',
-        "description": 'filename <to unix timestamp>-<from unix timestamp>-<user seq>.json. Timestamps for first and last message in msg array',
+        "title": 'Optional file with unencrypted public chat',
+        "description": 'filename: <to unix timestamp>-<from unix timestamp>-<user seq>.json. Timestamps (13 digits) for first and last message in msg array',
         "properties": {
             "version": { "type": 'integer' },
             "msg": {
@@ -1018,7 +1018,25 @@ var MoneyNetworkHelper = (function () {
         "required": ['version', 'msg'],
         "additionalProperties": false
     } ;
+    json_schemas['image-file'] = {
+        "type": 'object',
+        "title": 'Optional file with encrypted image (private or group chat)',
+        "description": 'filename: <unix timestamp>-<user seq>.json. Timestamp 13 digits = sent_at timestamp in encrypted message in msg array in data.json file. Same encryption password used for message and image',
+        "properties": {
+            "image": { "type": 'string'},
+            "storage": {
+                "type": 'object',
+                "description": 'encryption/compression flags for image. c1=LZString.compress, e1=JSEncrypt, e2=cryptMessage. Comma to seperate multiple flags. Encryption must match encryption in message',
+                "properties": {
+                    "image": { "type": 'string'}
+                },
+                "additionalProperties": false
+            }
 
+        },
+        "required": ['image', 'storage'],
+        "additionalProperties": false
+    } ;
 
     // validate json:
     // - pgm - calling function. for debug messages
