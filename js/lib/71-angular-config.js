@@ -1,5 +1,5 @@
 // angularJS app
-angular.module('MoneyNetwork', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'infinite-scroll']);
+angular.module('MoneyNetwork', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'infinite-scroll', 'hc.marked']);
 
 angular.module('MoneyNetwork')
 
@@ -130,4 +130,10 @@ angular.module('MoneyNetwork')
                 }
             });
         // end config (ng-routes)
-    }]) ;
+
+    }]).config(['markedProvider', function (markedProvider) {
+        markedProvider.setOptions({
+            gfm: true,
+            breaks: true
+        });
+    }]);

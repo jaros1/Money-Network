@@ -442,7 +442,7 @@ angular.module('MoneyNetwork')
     }])
 
 
-    .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', function (moneyNetworkService, formatChatMessageAlias) {
+    .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', '$sanitize', function (moneyNetworkService, formatChatMessageAlias, $sanitize) {
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
         return function (message) {
@@ -486,11 +486,11 @@ angular.module('MoneyNetwork')
                     } // for i
                 }
                 // console.log('str = ' + str) ;
-                message.message.formatted_message = str ;
+                message.message.formatted_message = $sanitize(str) ;
                 return str ;
             }
             if (msgtype == 'contact removed') return 'I removed you as contact' ;
-            if (msgtype == 'chat msg') return message.message.message.message ;
+            if (msgtype == 'chat msg') return $sanitize(message.message.message.message) ;
             if (msgtype == 'verify') {
                 // contact verification request. Different presentation for inbox/outbox and status for verification (pending or verified)
                 if (message.message.folder == 'outbox') {
@@ -594,7 +594,7 @@ angular.module('MoneyNetwork')
             }
 
             // other "unknown" messages. Just return JSON dump
-            str = JSON.stringify(message.message) ;
+            str = $sanitize(JSON.stringify(message.message)) ;
             str = str.split('":"').join('": "');
             str = str.split('","').join('", "');
             return str ;

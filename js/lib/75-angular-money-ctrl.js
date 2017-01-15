@@ -5,8 +5,7 @@ angular.module('MoneyNetwork')
         var controller = 'MoneyCtrl';
         console.log(controller + ' loaded');
 
-        var array = new Uint32Array(10);
-        $window.crypto.getRandomValues(array);
+        console.log(marked('I am using __markdown__.'));
 
         // end MoneyCtrl
     }])
