@@ -3949,7 +3949,7 @@ angular.module('MoneyNetwork')
                 }
             }
 
-            // check avatars. All contacts must have a valid avatar
+            // debug. check avatars. All contacts must have a valid avatar
             var contact ;
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
@@ -3990,7 +3990,7 @@ angular.module('MoneyNetwork')
                 // find other clients with matching search words using sqlite like operator
                 // Search: tags shared public on ZeroNet. Hidden: tags stored only in localStorage
 
-                // contacts query. getting timestamp in a column sub query as status.data json file often get received after data.json file
+                // contacts query. getting timestamp in a column sub query as status.json file often get received after data.json file
                 if (auth_address) debug('select || file_done', pgm + 'auth_address = ' + auth_address) ;
                 var contacts_query =
                     "select" +
@@ -4038,7 +4038,14 @@ angular.module('MoneyNetwork')
                     "  search.tag as other_tag, search.value as other_value, " +
                     "  contacts.users_avatar as other_users_avatar, contacts.files_avatar as other_files_avatar " +
                     "from (" + my_search_query + ") as my_search, " +
-                    "     search, (" + contacts_query + ") as contacts " +
+                    "(select user_seq, tag, value, json_id from search " +
+                    "   union all " +
+                    " select user_seq, '' as tag, '' as value, users.json_id" +
+                    " from users" +
+                    " where 0 = (select count(*) from search " +
+                    "            where search.json_id = users.json_id " +
+                    "            and search.user_seq = users.user_seq)) as search, " +
+                    "(" + contacts_query + ") as contacts " +
                     "where (my_search.tag like search.tag and search.tag <> '%' and my_search.value like search.value and search.value <> '%' " +
                     "or search.tag like my_search.tag and search.value like my_search.value) " +
                     "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " +
