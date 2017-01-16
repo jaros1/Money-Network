@@ -298,7 +298,7 @@
                             <span ng-show="c.chat_hint_start_chat()">
                                 Public chat?
                                 <input type="checkbox" ng-model="c.setup.public_chat"
-                                       ng-change="c.debug_settings_changed()">
+                                       ng-change="c.public_chat_changed()">
                             </span>
                             <span ng-hide="!c.chat_hint_chatting()">
                                 <span ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
@@ -785,7 +785,7 @@
                             <span ng-show="c.chat_hint_start_chat()">
                                 Public chat?
                                 <input type="checkbox" ng-model="c.setup.public_chat"
-                                       ng-change="c.debug_settings_changed()">
+                                       ng-change="c.public_chat_changed()">
                             </span>
                             <span ng-hide="!c.chat_hint_chatting()">
                                 <span ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"

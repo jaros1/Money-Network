@@ -1374,9 +1374,24 @@ angular.module('MoneyNetwork')
             } ;
 
             // add/remove public chat
-            self.debug_settings_changed = function () {
+            self.public_chat_changed = function () {
+                var i, contact, message, js_message_row, j ;
                 moneyNetworkService.save_user_setup() ;
                 MoneyNetworkHelper.load_user_setup() ;
+                if (!self.setup.public_chat) {
+                    // public chat changed from true or false. remove already loaded public chat messages
+                    for (i=0 ; i<self.contacts.length ; i++) {
+                        contact = self.contacts[i] ;
+                        for (j=contact.messages.length-1 ; j >= 0 ; j--) {
+                            message = contact.messages[j] ;
+                            if ((contact.type == 'public') || message.z_filename) {
+                                js_message_row = moneyNetworkService.get_message_by_seq(message.seq);
+                                moneyNetworkService.remove_message(js_message_row);
+                            }
+                        }
+                    }
+                }
+                moneyNetworkService.clear_files_optional_cache() ;
                 moneyNetworkService.reset_first_and_last_chat();
                 $timeout(check_public_chat, 100) ;
             };
