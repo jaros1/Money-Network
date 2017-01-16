@@ -228,6 +228,7 @@ angular.module('MoneyNetwork')
 
                             // sitePublish OK
                             zeronet_site_publish_interval = 0 ;
+                            z_cache.publish = false ;
 
                             // is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
                             if (user_setup.debug && user_setup.debug.check_sha256_addresses) check_sha256_addresses('sitePublish', false, false) ;
@@ -1397,7 +1398,7 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 zeronet_file_locked[data_json_path] = lock_pgm ;
-                z_cache.publish = publish ;
+                if (publish) z_cache.publish = true ;
 
                 // update json table with public key and search words
                 // console.log(pgm + 'calling fileGet');
@@ -1576,8 +1577,8 @@ angular.module('MoneyNetwork')
                                 }
                                 if (message_with_envelope.message.image && (message_with_envelope.message.image != true)) {
                                     // deleted a message from data.msg with an image <timestamp>-<user_seq>-image.json file attachment
-                                    // overwrite with empty json as a delete marked optional file.
-                                    cleanup_my_image_json(message_with_envelope.sent_at, function (cleanup) {
+                                    // logical delete - overwrite with empty json as a delete marked optional file.
+                                    cleanup_my_image_json(message_with_envelope.sent_at, true, function (cleanup) {
                                         // force publish to update files_optional information
                                         // todo: is z_cache.publish variable updated correct?
                                         if (cleanup) z_cache.publish = true ;
@@ -2169,45 +2170,11 @@ angular.module('MoneyNetwork')
                             outbox_message.cleanup_at =  now ;
                             local_storage_updated = true ;
                             data_removed = true ;
-                            // todo: from old b) implementation. not possible in new b) implementation
-                            //if (inbox_message.message.msgtype == 'received') {
-                            //    // logical delete. will be physical deleted in next ls_save_contacts
-                            //    inbox_message.deleted_at = new Date().getTime() ;
-                            //}
-
-                            // check image. maybe image was sent in an optional -image.json file
-                            if (outbox_message.message.image) {
-                                // deleted a message from data.msg with an image <timestamp>-image.json file1
-                                // overwrite with empty json as a delete marked optional file.
-                                image_path = "data/users/" + auth_address + '/' + outbox_message.sent_at + '-image.json' ;
-                                query =
-                                    "select filename, files_optional.size " +
-                                    "from files_optional, json " +
-                                    "where json.json_id = files_optional.json_id " +
-                                    "and json.directory = 'users/" + ZeroFrame.site_info.auth_address + "' " +
-                                    "and ( files_optional.filename = '" + outbox_message.sent_at + '-image.json' + "'" +  // old format without <user_seq> in filename
-                                    "   or files_optional.filename = '" + outbox_message.sent_at + '-' + z_cache.user_seq + '-image.json' + "' )" ; // new format with <user_seq> in filename
-                                debug('select', pgm + 'query = ' + query) ;
-                                ZeroFrame.cmd("dbQuery", [query], function (res) {
-                                    var pgm = service + '.z_update_3_data_json_cleanup dbQuery callback 1: ';
-                                    if (res.error) {
-                                        console.log(pgm + "image check failed: " + res.error);
-                                        console.log(pgm + 'query = ' + query);
-                                        return;
-                                    }
-                                    if (res.length == 0) {
-                                        console.log(pgm + 'optional image file ' + image_path + ' was not found');
-                                        return;
-                                    }
-                                    image_path = "data/users/" + ZeroFrame.site_info.auth_address+ '/' + res[0].filename;
-                                    if (res[0].size <= 2) {
-                                        console.log(pgm + 'optional image file ' + image_path + ' has already been deleted');
-                                        return;
-                                    }
-                                    write_empty_chat_file(image_path) ;
-                                }) ; // dbQuery callback 1
-                            }
-
+                            if (outbox_message.message.image) cleanup_my_image_json(outbox_message.sent_at, false, function (cleanup) {
+                                // force publish to update files_optional information
+                                // todo: is z_cache.publish variable updated correct when set in a callback?
+                                if (cleanup) z_cache.publish = true ;
+                            }) ;
                             break ;
                         } // for k (data.msg)
                         if (data_removed) {
@@ -2248,8 +2215,12 @@ angular.module('MoneyNetwork')
                         }
                         debug('data_cleanup', pgm + 'c: all image receipts have been received. Remove message from data.json') ;
                         delete outbox_message.image_receipts ;
-
-                        // check if outbox message is in data.msg array
+                        cleanup_my_image_json(outbox_message.sent_at, false, function (cleanup) {
+                            // force publish to update files_optional information
+                            // todo: is z_cache.publish variable updated correct when set in a callback?
+                            if (cleanup) z_cache.publish = true ;
+                        }) ;
+                        // check if outbox message still is in data.msg array
                         for (k=data.msg.length-1 ; k >= 0 ; k--) {
                             if (data.msg[k].message_sha256 != outbox_message.zeronet_msg_id) continue ;
                             // found a message that can be deleted from ZeroNet (received by contact)
@@ -2317,6 +2288,11 @@ angular.module('MoneyNetwork')
                     delete outbox_message.zeronet_msg_id ;
                     delete outbox_message.zeronet_msg_size ;
                     outbox_message.cleanup_at =  now ;
+                    if (outbox_message.image) cleanup_my_image_json(outbox_message.sent_at, false, function (cleanup) {
+                        // force publish to update files_optional information
+                        // todo: is z_cache.publish variable updated correct when set in a callback?
+                        if (cleanup) z_cache.publish = true ;
+                    }) ;
                     local_storage_updated = true ;
                 }
                 else debug('data_cleanup', pgm + 'd: Warning. Could not find outbox message with zeronet_msg_id ' + data.msg[i].message_sha256) ;
@@ -2424,21 +2400,18 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.write_empty_chat_file fileWrite callback: ' ;
                 var error ;
                 if (res === "ok") {
-                    if (cb) cb() ;
+                    if (cb) cb(true) ;
                     return ;
                 }
                 error = 'failed to write file ' + file_path + ', res = ' + res ;
                 debug('public_chat', pgm + error) ;
                 ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
-                // fallback to delete
-                ZeroFrame.cmd("fileDelete", file_path, function (res) {
-                    if (cb) cb() ;
-                });
+                if (cb) cb(false) ;
             }) ; // fileWrite callback
         } // write_empty_chat_file
 
 
-        function cleanup_my_image_json (sent_at, cb) {
+        function cleanup_my_image_json (sent_at, logical_delete, cb) {
             var pgm = service + '.cleanup_my_image_json: ' ;
             var image_path, query ;
             // overwrite with empty json as a delete marked optional file.
@@ -2465,13 +2438,26 @@ angular.module('MoneyNetwork')
                     return;
                 }
                 image_path = "data/users/" + ZeroFrame.site_info.auth_address+ '/' + res[0].filename;
-                if (res[0].size <= 2) {
-                    console.log(pgm + 'optional image file ' + image_path + ' has already been deleted');
+                if ((res[0].size <= 2) && logical_delete) {
+                    console.log(pgm + 'optional image file ' + image_path + ' has already been logical deleted');
                     if (cb) cb(false) ;
                     return;
                 }
-                write_empty_chat_file(image_path) ;
-                if (cb) cb(true) ;
+                if (logical_delete) {
+                    // logical delete. replace -image.json with empty json file {}. for example after delete outbox message
+                    write_empty_chat_file(image_path, function (ok) {
+                        if (cb) cb(ok) ;
+                    }) ;
+                }
+                else {
+                    // physical delete. for example after receiving receipt for image
+                    ZeroFrame.cmd("fileDelete", image_path, function (res) {
+                        var pgm = service + '.cleanup_my_image_json fileDelete callback 2: ';
+                        // console.log(pgm + 'res = ' + JSON.stringify(res));
+                        if (cb) cb(('res' == 'ok')) ;
+                    }); // fileDelete callback 2
+                }
+
             }) ; // dbQuery callback 1
 
         } // cleanup_my_image_json
@@ -4872,8 +4858,9 @@ angular.module('MoneyNetwork')
                         // image received be all participant in group chat - ready for data.json cleanup
                         debug('inbox && unencrypted', pgm + 'image received be all participant in group chat - ready for data.json cleanup') ;
                         // new image cleanup method
-                        cleanup_my_image_json(message2.message.sent_at);
-                        // old cleanup method.
+                        cleanup_my_image_json(message2.message.sent_at, false, function (ok) {
+                            if (ok) z_cache.publish = true ; // force publish
+                        });
                         // ready for data.json cleanup
                         new_incoming_receipts++
                     }
@@ -4883,8 +4870,9 @@ angular.module('MoneyNetwork')
                     // debug('inbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
                     // debug('inbox && unencrypted', pgm + 'message2 = ' + JSON.stringify(message2));
                     // new image cleanup method
-                    cleanup_my_image_json(message2.message.sent_at);
-                    // old cleanup method.
+                    cleanup_my_image_json(message2.message.sent_at, false, function (ok) {
+                        if (ok) z_cache.publish = true ; // force publish
+                    });
                     // ready for data.json cleanup
                     new_incoming_receipts++ ;
                 }
@@ -5905,8 +5893,17 @@ angular.module('MoneyNetwork')
                         var pgm = service + '.check_image_download_failed optionalFileInfo callback 2: ' ;
                         console.log(pgm + 'filename = ' + filename + ', info = ' + JSON.stringify(file_info)) ;
                         // continue with file_done event or start a new file download
-                        if (file_info.is_downloaded) event_file_done('file_done', filename) ;
-                        else ZeroFrame.cmd("fileGet", {inner_path: filename, required: true}, function () {}) ;
+                        if (file_info.is_downloaded) {
+                            console.log(pgm + 'already downloaded. trigger a file_done event for ' + filename) ;
+                            event_file_done('file_done', filename) ;
+                        }
+                        else {
+                            console.log(pgm + 'Not downloaded. Starting a new download for ' + filename);
+                            ZeroFrame.cmd("fileGet", {inner_path: filename, required: true}, function (res) {
+                                var pgm = service + '.check_image_download_failed fileGet callback 3: ' ;
+                                if (!res) console.log(pgm + 'download timeout for file ' + filename) ;
+                            }) ;
+                        }
                         // next res
                         get_file_info() ;
                     }) ; // optionalFileInfo callback 2
