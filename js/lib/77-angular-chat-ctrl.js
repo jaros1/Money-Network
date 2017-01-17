@@ -773,7 +773,7 @@ angular.module('MoneyNetwork')
                     delete self.messages[i].chat_filter ;
                     delete self.messages[i].formatted_message ;
                 }
-                self.chat_page_context.infinite_scroll_limit = 5 ;
+                // self.chat_page_context.infinite_scroll_limit = 5 ;
                 moneyNetworkService.reset_first_and_last_chat() ;
                 $timeout(check_public_chat, 100) ;
             }
