@@ -581,6 +581,9 @@ form {
     background-position: 0px center;
     background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASBAMAAACp/uMjAAAAMFBMVEUAAACqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqobnPPZAAAAD3RSTlMADcS4pt/IwK9qXE9ELRXt9n51AAAAaElEQVQI12PABRhtGRguC4CZQl8f8MUrggX1/yeK/f8kABL8//+L////imBBEAAJM/+HAgMGHhjzAAPDfgjrN1AbF4S5AGTafBDrJ9gKFhDTAWJz////P6COYAaZBAX13+FuY1JAcywAx1BERa6oCoIAAAAASUVORK5CYII=')
 }
+.glyphicon-remove-msg {
+    font-size:1.15em;
+}
 
 /* image drag and drop to chat */
 /* http://wisercoder.com/drag-drop-image-upload-directive-angular-js/ */
@@ -614,3 +617,4 @@ body #file-drop {
     width: 80px;
     cursor: pointer;
 }
+

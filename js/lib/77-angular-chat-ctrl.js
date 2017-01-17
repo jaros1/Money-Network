@@ -578,6 +578,19 @@ angular.module('MoneyNetwork')
                 }) ;
             };
 
+            self.show_edit_icon = function (message) {
+                return ((message.message.folder == 'outbox') && (message.message.message.msgtype == 'chat msg'))
+            };
+            self.show_remove_icon = function (message) {
+                return !self.show_edit_icon(message) ;
+            };
+            self.show_bullhorn_icon = function (message) {
+                // bullhorn = spam. only ingoing public chat
+                if (message.message.folder != 'inbox') return false ;
+                if (!message.message.z_filename) return false ;
+                if (message.contact.type == 'ignore') return false ;
+                return true ;
+            };
             self.show_verify_icon = function (message) {
                 if (message.message.folder != 'inbox') return false ;
                 if (message.message.message.msgtype != 'verify') return false ;
@@ -1105,23 +1118,24 @@ angular.module('MoneyNetwork')
             }; // send_chat_msg
 
             self.changed_chat_msg = "";
-            self.edit_chat_msg = function (message) {
+            self.edit_chat_msg = function (message, spam) {
                 var pgm = controller + '.edit_chat_msg: ';
+                var textarea_id, img_id, focus_textarea, apply ;
                 // console.log(pgm + 'message.message = ' + JSON.stringify(message.message));
                 if ((message.message.folder == 'outbox') && (message.message.message.msgtype == 'chat msg')) {
                     // edit previously sent chat message. must send changed chat msg to contact
                     message.edit_chat_message = true;
                     // angularJS cheat - ng-bind is too slow - using id for get/set textarea value. Maybe also a problem with handleTextAreaHeight?
-                    var textarea_id = chatEditTextAreaId(message);
+                    textarea_id = chatEditTextAreaId(message);
                     document.getElementById(textarea_id).value = message.message.message.message;
-                    var img_id = chatEditImgId(message) ;
+                    img_id = chatEditImgId(message) ;
                     // console.log(pgm + 'img_id = ' + img_id);
                     if (message.message.message.image) {
                         message.message.message.original_image = message.message.message.image ;
                         document.getElementById(img_id).src = message.message.message.image ;
                     }
                     // focus to edit chat message textarea field
-                    var focus_textarea = function () {
+                    focus_textarea = function () {
                         var id = textarea_id + '' ;
                         var elem = document.getElementById(id) ;
                         if (elem) document.getElementById(id).focus() ;
@@ -1130,26 +1144,27 @@ angular.module('MoneyNetwork')
                     $timeout(focus_textarea);
                 }
                 else {
-                    // just delete other type of messages from localStorage (ingoing chat messages, contact added, contact deleted etc)
-                    var msg_text = formatChatMessage(message);
-                    if (msg_text.length > 40) msg_text = msg_text.substring(0, 20) + "..." + msg_text.substring(msg_text.length - 15);
-                    // console.log(pgm + 'msg_text.length = ' + msg_text.length);
-                    ZeroFrame.cmd("wrapperConfirm", ['Delete "' + msg_text + '" message?', "Delete"], function (confirmed) {
-                        if (!confirmed) return;
-                        // console.log(pgm + 'delete message. message = ' + JSON.stringify(message));
-                        // logical delete here. physical delete in ls_save_contacts
-                        message.message.deleted_at = new Date().getTime(); // logical delete
-                        message.chat_filter = false ;
-                        //// remove from UI
-                        //var index = -1;
-                        //for (var i = 0; i < self.messages.length; i++) if (self.messages[i]["$$hashKey"] == message["$$hashKey"]) index = i;
-                        //// console.log(pgm + 'index = ' + index + ', message = ' + JSON.stringify(message));
-                        //if (index != -1) self.messages.splice(index, 1);
-                        $scope.$apply();
-                        // update localStorage and optional zeronet
-                        var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;
-                        moneyNetworkService.ls_save_contacts(update_zeronet); // physical delete
-                    }); // wrapperConfirm
+                    //// just delete other type of messages from localStorage (ingoing chat messages, contact added, contact deleted etc)
+                    //var msg_text = formatChatMessage(message);
+                    //if (msg_text.length > 40) msg_text = msg_text.substring(0, 20) + "..." + msg_text.substring(msg_text.length - 15);
+                    //// console.log(pgm + 'msg_text.length = ' + msg_text.length);
+                    //ZeroFrame.cmd("wrapperConfirm", ['Delete "' + msg_text + '" message?', "Delete"], function (confirmed) {
+                    //    if (!confirmed) return;
+
+                    // console.log(pgm + 'delete message. message = ' + JSON.stringify(message));
+                    // logical delete here. physical delete in ls_save_contacts
+                    message.chat_filter = false ;
+                    if (spam) {
+                        // move contact to ignored list and hide ignored list
+                        message.contact.type = 'ignore' ;
+                        if (self.setup.contact_filters.ignore == 'green') self.toggle_filter('ignore') ;
+                    }
+                    else message.message.deleted_at = new Date().getTime(); // logical delete. todo: how to delete ingoing public chat?
+                    // if (apply) $scope.$apply();
+                    // update localStorage and optional zeronet
+                    var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;
+                    moneyNetworkService.ls_save_contacts(update_zeronet); // physical delete
+                    //}); // wrapperConfirm
                 }
             }; // edit_chat_msg
             self.edit_chat_message_remove_image = function (message) {
