@@ -145,7 +145,7 @@ ZeroFrame = (function() {
         // console.log(pgm + 'cert = ' + JSON.stringify(cert)) ;
         // add cert - no certSelect dialog - continue with just created money network cert
         // this.log("checkCertUserId: add moneynetwork cert");
-        this.cmd("certAdd", ["moneynetwork", "web", this.site_info.auth_address.slice(0, 13), cert], (function(_this) {
+        this.cmd("certAdd", ["moneynetwork.bit", "web", this.site_info.auth_address.slice(0, 13), cert], (function(_this) {
             return function (res) {
                 var pgm = "checkCertUserId: certAdd callback: ";
                 // _this.log(pgm + 'res = ' + JSON.stringify(res));
@@ -153,9 +153,8 @@ ZeroFrame = (function() {
                 // certAdd OK. Recheck site_info. site_info.cert_user_id should be not null now. sometime user must select newly created cert
                 _this.cmd("siteInfo", {}, function(site_info) {
                     if (site_info.cert_user_id) return ;
-                    _this.cmd("certSelect", [["moneynetwork"]]);
+                    _this.cmd("certSelect", [["moneynetwork.bit", "nanasi", "zeroid.bit", "kaffie.bit", "moneynetwork"]]);
                 });
-
             }
         })(this));
     };

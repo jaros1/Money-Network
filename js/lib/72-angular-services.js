@@ -1378,6 +1378,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info));
                 return ;
             }
+            if (publish) z_cache.publish = true ;
 
             if (user_contents_max_size == null) {
                 // find max_size and call z_update_1_data_json with not null file_size
@@ -1426,7 +1427,6 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 zeronet_file_locked[data_json_path] = lock_pgm ;
-                if (publish) z_cache.publish = true ;
 
                 // update json table with public key and search words
                 // console.log(pgm + 'calling fileGet');
@@ -2373,28 +2373,28 @@ angular.module('MoneyNetwork')
                 error = 'Cannot write invalid data.json file: ' + error ;
                 console.log(pgm +error) ;
                 console.log(pgm + 'data = ' + JSON.stringify(data)) ;
-                data = {
-                    "version": 8,
-                    "users": [{
-                        "user_seq": 1,
-                        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0pMuMJyynH1BmhMJ6vvd\nQZplIBgiiOQSqwu2SpYKICm+P1gGNHnICQic/Nuqi9t93rxJLfWCsl0+lCtoJLen\nf78xz4XzEcGPBeBFn2TbQqPO9loylNlaOgiqDG5qcSc9n7yEF0xmpReDGATwzECi\nJrpZBImwhUMO48iS08b4IfQaMsbnUVY8hdUeJiQ831kMkNQLtxWaeRiyn8cTbKQ6\nLXCDG7GDaFN6t+x3cv/xBX06+ykuYQ0gNIBySiIz69RYzhvOkqOQggLWPF+NMW1J\nO6VRqvX7Sybwm51v3kGGKWeX4znvGY+GwVCpwiH+b2hbGZHIqFp9ogimGVE0WPgu\nnwIDAQAB\n-----END PUBLIC KEY-----",
-                        "pubkey2": "AkbK8Pr9FE/pIWcWM7qLn/GIzmq5RVJ4jOj7iIomwdWe",
-                        "encryption": "2"
-                    }],
-                    "search": [{"user_seq": 1, "tag": "Name", "value": "Money Network dev"}, {
-                        "user_seq": 1,
-                        "tag": "%",
-                        "value": "%%"
-                    }],
-                    "msg": [{
-                        "user_seq": 1,
-                        "receiver_sha256": "b5f394e8ecd49b80d45569f6878b6adf2db0b73b1fdc867802a7dbd91c6cf60d",
-                        "key": "FuBsfnwUWts9IBDKTgv9DTHXxnDK1EGmPe0RSkXmSo1KkAwTKsFdEF/FBUPpNRCNFydEjsNuWcUsWwDkuKimFiHRvwqF3Re7J0n9oFaIFdmRR059P5w4UwpuuKM49Ekgp7Kw4/e2gWw6Ajfuz4Qk/vUDB4gCGOXLp+UpzkoN6MmSHqPuSy3RYEDTZpf7YKytHGhD20ffF0saDhu4IYG9XL7/oas0maJl6L/HDrAr/bQ8uzP4RHRRiVsNyk/tu98NswCbPH5Tc4mRb0LKX9y7pO0RNN84brSDB5nlrNfHV8tKYuuDcwqfoYOFGywdd6Ayr3JWX85YL6kUeiG0+56DdA==",
-                        "message": "U2FsdGVkX19g9kJgMhA6vnGq1Ak7h5rpcsi6MAvvGWHls/JuAdzERYqU55sRjAiFRW9tjrLBvAsA5qhB2b5qY4A82RiZXx69dErz1J5Tx/Tc1wT0qN2YjIVUASSC31FB/6h9CX5CW8gg+Tg6xycf4dPJvxCWz9YlLbQUQPhspvka9+DCV5BKv6c36vv8+keieO6AkZIAPmA1daCEnGVHhxUZMF/TkAXwezPrV/UQ7XfoJ4xSEqcAGqWRLZ5na8sn",
-                        "message_sha256": "1922c955d268a2f89dbbdda2c71e66de03e6bb63f2d39fba4bebc436012c3b57",
-                        "timestamp": 1484413938793
-                    }]
-                };
+                //data = {
+                //    "version": 8,
+                //    "users": [{
+                //        "user_seq": 1,
+                //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0pMuMJyynH1BmhMJ6vvd\nQZplIBgiiOQSqwu2SpYKICm+P1gGNHnICQic/Nuqi9t93rxJLfWCsl0+lCtoJLen\nf78xz4XzEcGPBeBFn2TbQqPO9loylNlaOgiqDG5qcSc9n7yEF0xmpReDGATwzECi\nJrpZBImwhUMO48iS08b4IfQaMsbnUVY8hdUeJiQ831kMkNQLtxWaeRiyn8cTbKQ6\nLXCDG7GDaFN6t+x3cv/xBX06+ykuYQ0gNIBySiIz69RYzhvOkqOQggLWPF+NMW1J\nO6VRqvX7Sybwm51v3kGGKWeX4znvGY+GwVCpwiH+b2hbGZHIqFp9ogimGVE0WPgu\nnwIDAQAB\n-----END PUBLIC KEY-----",
+                //        "pubkey2": "AkbK8Pr9FE/pIWcWM7qLn/GIzmq5RVJ4jOj7iIomwdWe",
+                //        "encryption": "2"
+                //    }],
+                //    "search": [{"user_seq": 1, "tag": "Name", "value": "Money Network dev"}, {
+                //        "user_seq": 1,
+                //        "tag": "%",
+                //        "value": "%%"
+                //    }],
+                //    "msg": [{
+                //        "user_seq": 1,
+                //        "receiver_sha256": "b5f394e8ecd49b80d45569f6878b6adf2db0b73b1fdc867802a7dbd91c6cf60d",
+                //        "key": "FuBsfnwUWts9IBDKTgv9DTHXxnDK1EGmPe0RSkXmSo1KkAwTKsFdEF/FBUPpNRCNFydEjsNuWcUsWwDkuKimFiHRvwqF3Re7J0n9oFaIFdmRR059P5w4UwpuuKM49Ekgp7Kw4/e2gWw6Ajfuz4Qk/vUDB4gCGOXLp+UpzkoN6MmSHqPuSy3RYEDTZpf7YKytHGhD20ffF0saDhu4IYG9XL7/oas0maJl6L/HDrAr/bQ8uzP4RHRRiVsNyk/tu98NswCbPH5Tc4mRb0LKX9y7pO0RNN84brSDB5nlrNfHV8tKYuuDcwqfoYOFGywdd6Ayr3JWX85YL6kUeiG0+56DdA==",
+                //        "message": "U2FsdGVkX19g9kJgMhA6vnGq1Ak7h5rpcsi6MAvvGWHls/JuAdzERYqU55sRjAiFRW9tjrLBvAsA5qhB2b5qY4A82RiZXx69dErz1J5Tx/Tc1wT0qN2YjIVUASSC31FB/6h9CX5CW8gg+Tg6xycf4dPJvxCWz9YlLbQUQPhspvka9+DCV5BKv6c36vv8+keieO6AkZIAPmA1daCEnGVHhxUZMF/TkAXwezPrV/UQ7XfoJ4xSEqcAGqWRLZ5na8sn",
+                //        "message_sha256": "1922c955d268a2f89dbbdda2c71e66de03e6bb63f2d39fba4bebc436012c3b57",
+                //        "timestamp": 1484413938793
+                //    }]
+                //};
                 ZeroFrame.cmd("wrapperNotification", ["error", error]);
                 return ;
             }
@@ -3957,7 +3957,7 @@ angular.module('MoneyNetwork')
                 }
                 if (!ZeroFrame.site_info.cert_user_id) {
                     console.log(pgm + 'Auto login process to ZeroNet not finished. Maybe user forgot to select cert. Checking for new contacts in 1 minute');
-                    ZeroFrame.cmd("certSelect", [["moneynetwork"]]);
+                    ZeroFrame.cmd("certSelect", [["moneynetwork.bit", "nanasi", "zeroid.bit", "kaffie.bit", "moneynetwork"]]);
                     setTimeout(retry_z_contact_search,60000);// outside angularjS - using normal setTimeout function
                     return ;
                 }
@@ -6127,7 +6127,7 @@ angular.module('MoneyNetwork')
             }
             if (!ZeroFrame.site_info.cert_user_id) {
                 console.log(pgm + 'Auto login process to ZeroNet not finished. Maybe user forgot to select cert. Recheck avatar in 1 minute');
-                ZeroFrame.cmd("certSelect", [["moneynetwork"]]);
+                ZeroFrame.cmd("certSelect", [["moneynetwork.bit", "nanasi", "zeroid.bit", "kaffie.bit", "moneynetwork"]]);
                  $timeout(retry_load_avatar,60000);
                 return ;
             }
@@ -7913,7 +7913,9 @@ angular.module('MoneyNetwork')
                 }
                 data = JSON.parse(data);
                 if (!data.users || (data.users.length == 0)) {
-                    console.log(pgm + 'System error. No users in data.json. Updating data.json file') ;
+                    // issue #108 : new user - invalid content in data.json (=content.json)
+                    console.log(pgm + 'System error. No users in data.json. Updating data.json file. data = ' + JSON.stringify(data)) ;
+                    ZeroFrame.cmd("fileDelete", user_path + '/' + 'data.json', function () {}) ;
                     z_update_1_data_json(pgm) ;
                     return ;
                 }

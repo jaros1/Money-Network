@@ -1453,13 +1453,13 @@
                                 <td></td>
                                 <td ng-bind="u.export_info.z"></td>
                             </tr>
-                            <tr title="Check to included optional files (your public chat messages) in export">
+                            <tr title="Check to included optional files in export. This is your unencrypted public chat and encrypted images from private chat">
                                 <td><input type="checkbox" ng-model="u.export_chat"></td>
                                 <td>ZeroNet optional files</td>
                                 <td></td>
                                 <td ng-bind="u.export_info.chat"></td>
                             </tr>
-                            <tr title="Check to create a password protected export file. Data in localStorage and data.json file are already encrypted. Data in optional files are not">
+                            <tr title="Check to create a password protected export file. Data in localStorage and data.json file are already encrypted. Optional files with public unencrypted chat are not">
                                 <td style="vertical-align: top"><input type="checkbox" ng-model="u.export_encrypt"></td>
                                 <td style="vertical-align: top">Encrypt export file</td></td>
                                 <td></td>
@@ -1739,8 +1739,8 @@
 
             <p>
                 Login is used to protect data stored in your browser.
-                Password and your data is stored encrypted in your browser. Not on a server.<br>
-                ZeroNet ID is used for communication with other ZeroNet users. @moneynetwork cert is created for anonymous communication.
+                Password and your data is stored encrypted in your browser. Not on a server and not on ZeroNet.<br>
+                ZeroNet ID is used for communication with other ZeroNet users. A @moneynetwork cert is created for anonymous communication.
             </p>
 
             <form ng-hide="a.is_logged_in()" name="device_login_form" ng-submit="a.login_or_register()">
