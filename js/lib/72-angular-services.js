@@ -230,14 +230,15 @@ angular.module('MoneyNetwork')
                             zeronet_site_publish_interval = 0 ;
                             z_cache.publish = false ;
 
-                            // is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
+                            // debug: is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
                             if (user_setup.debug && user_setup.debug.check_sha256_addresses) check_sha256_addresses('sitePublish', false, false) ;
 
                             // check content.json and add optional file support if missing
                             // also check for
                             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                                 var pgm = service + '.zeronet_site_publish fileGet callback 4: ';
-                                var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status ;
+                                var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
+                                    logical_deleted_files, now, max_logical_deleted_files, some_time_ago ;
 
                                 content_updated = false ;
 
@@ -262,7 +263,7 @@ angular.module('MoneyNetwork')
                                 // - should only delete "old" *chat.json files
                                 // - max number of logical deleted *chat.json files.
 
-                                // check z_cache.user_seqs. deleted users. optional files from deleted users must be removed ;
+                                // check z_cache.user_seqs. deleted users. optional files from deleted users must be removed.
                                 if (content.files_optional && z_cache.user_seqs) {
                                     // console.log(pgm + 'z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs)) ;
                                     // z_cache.user_seqs = [2]
@@ -283,8 +284,35 @@ angular.module('MoneyNetwork')
                                             continue ;
                                         }
                                         if (z_cache.user_seqs.indexOf(file_user_seq) != -1) continue ; // ok user seq
-                                        // console.log(pgm + 'todo: delete ' + filename) ;
+                                        // logical delete - overwrite with empty json
                                         write_empty_chat_file(user_path + '/' + filename);
+                                    }
+                                }
+
+                                // physical delete old logical deleted optional files (empty json)
+                                // - all optional files older when one week
+                                // - keep max <n> logical deleted optional files
+                                if (content.files_optional) {
+                                    now = new Date().getTime() ;
+                                    max_logical_deleted_files = 10 ;
+                                    some_time_ago = now - 1000*60*60*24*7 ; // one week ago
+                                    logical_deleted_files = [] ;
+                                    for (filename in content.files_optional) {
+                                        if (content.files_optional[filename].size > 2) continue ;
+                                        if (!filename.match(/^[0-9]{13}-/)) continue ;
+                                        timestamp = parseInt(filename.substr(0,13)) ;
+                                        if (timestamp < some_time_ago) {
+                                            ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {}) ;
+                                            content_updated = true ;
+                                            continue ;
+                                        }
+                                        logical_deleted_files.push(filename) ;
+                                    }
+                                    logical_deleted_files.sort() ;
+                                    while (logical_deleted_files.length > max_logical_deleted_files) {
+                                        filename = logical_deleted_files.shift() ;
+                                        ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {}) ;
+                                        content_updated = true ;
                                     }
                                 }
 
@@ -4947,7 +4975,7 @@ angular.module('MoneyNetwork')
                 }
             }
 
-            // todo: add more message post processing ...
+            // add more message post processing ...
 
             return true ;
 
