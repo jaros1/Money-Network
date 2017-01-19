@@ -1748,8 +1748,8 @@
                 An anonymous @moneynetwork.bit ZeroNet ID has been created for you. Use that or your preferred ZeroNet ID.
                 Click on link to change ZeroNet certificate.
                 <br><br>
-                Private data are saved in browser (localStorage) or todo: in encrypted optional files on ZeroNet.
-                You can use checkbox on this page to enable/disable the extra password protection of your private data.
+                Private data are saved in browser (localStorage).
+                You can use checkbox on this page to enable/disable password protection of your private data.
                 Recommend that you password protect your private data.
             </p>
 
@@ -1758,7 +1758,7 @@
                 <input type="checkbox" ng-model="a.use_login" ng-change="a.use_login_changed()">&nbsp;&nbsp;&nbsp;
                 <span ng-hide="a.use_login">
                     <input ng-hide="a.is_logged_in()" type="submit" value="Log in" ng-click="a.login_or_register()">
-                    <input ng-show="a.is_logged_in()" type="submit" value="Log out">
+                    <input ng-show="a.is_logged_in()" type="submit" value="Log out" ng-click="a.logout()">
                 </span>
             </p>
 
@@ -1879,14 +1879,13 @@
 
                 <p ng-show="a.register == 'G'">
                     Click "Create" if you wish to visit Money Network as a guest.
-                    A temporary guest account with a random password and a dummy setup will be created for you.
-                    Note that there can only be one guest account in a browser. Any existing guest account is deleted at
-                    next guest log in.
-                    And that access to a guest account is very easy lost:
-                    do not log out without writing down password and do not use guest log in twice.
+                    A temporary guest account with a random password and a dummy setup will be created for you.<br>
+                    Please note that there can only be one guest account in a browser.
+                    Any existing guest account is deleted at next guest log in.
+                    Access to a guest account is very easy lost:
+                    Do not log out without writing down password and do not use guest log in twice.
                     <br>
-                    You can use most functions in here but will probably only be communicating with other guests.
-                    Most non guest accounts will ignore communication from quests.
+                    You can use all functions in here but other users may ignore communication from quests.
                 </p>
 
             </div>

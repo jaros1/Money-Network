@@ -8403,7 +8403,10 @@ angular.module('MoneyNetwork')
             }
             else login = JSON.parse(login) ;
             MoneyNetworkHelper.use_login_changed() ;
-            if (!login) client_login('') ;
+            if (!login) {
+                client_login('') ;
+                ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+            }
         }) ; // ls_bind callback
 
         // export MoneyNetworkService API

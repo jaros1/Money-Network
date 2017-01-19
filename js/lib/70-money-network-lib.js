@@ -56,12 +56,16 @@ var MoneyNetworkHelper = (function () {
         for (key in res) local_storage[key] = res[key] ;
         // console.log(pgm + 'local_storage = ' + JSON.stringify(local_storage));
         // execute any function waiting for localStorage to be ready
+        if (!local_storage_functions.length) return ;
         for (var i=0 ; i<local_storage_functions.length ; i++) {
             var f = local_storage_functions[i] ;
             f();
         }
         local_storage_functions.length = 0 ;
     }) ;
+    function ls_is_loading() {
+        return local_storage.loading ;
+    }
 
     function ls_get () {
         return local_storage ;
@@ -1225,7 +1229,8 @@ var MoneyNetworkHelper = (function () {
         "Theodora Bartoletti", "Annalise Gorczany", "Rubie Jacobson", "Gaetano Osinski", "Yvonne Heidenreich",
         "Diana Stoltenberg", "Andres Harris", "Randall Gibson", "Gust Donnelly", "Brandy Hayes", "Lew Stroman",
         "Ali Monahan", "Ralph Hessel", "Kennith Berge", "Bryon Graham", "Susan Corwin", "Tania Gerhold", "Ransom Abshire",
-        "Kasey Denesik", "Tanya Corwin", "Lora Hahn", "Erna Gerhold"
+        "Kasey Denesik", "Tanya Corwin", "Lora Hahn", "Erna Gerhold", "Alford Lueilwitz", "Jimmy Kub", "Rossie Bashirian",
+        "Sheil Hansen", "Shanel Pouros", "Sonia Effertz", "Gail Hartmann"
     ];
     function get_fake_name() {
         var index = Math.floor(Math.random() * fake_user_names.length);
@@ -1245,6 +1250,7 @@ var MoneyNetworkHelper = (function () {
         removeItem: removeItem,
         ls_get: ls_get,
         ls_bind: ls_bind,
+        ls_is_loading: ls_is_loading,
         ls_save: ls_save,
         ls_clear: ls_clear,
         utoa: utoa, atou: atou,

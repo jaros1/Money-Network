@@ -28,6 +28,7 @@ Todo:
 - https://onlyzero.net/moneynetwork.bit/ (proxy)
 - https://www.zerogate.tk/moneynetwork.bit/ (proxy)
 - https://zeronet.iikb.org/moneynetwork.bit/ (proxy)
+- https://zero.btnova.org/moneynetwork.bit/ (proxy)
 
 This demo should be safe to check out on a ZeroNet proxy server. 
 You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server.

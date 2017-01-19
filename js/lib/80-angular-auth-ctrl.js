@@ -11,7 +11,7 @@ angular.module('MoneyNetwork')
             return MoneyNetworkHelper.getUserId();
         };
 
-        // startup. ZeroFrame's localStorage API is a little slow.
+        // startup. set register
         // Y is users in localStorage. N if users in localStorage.
         self.register = 'Y' ;
         function set_register_yn() {
@@ -37,22 +37,35 @@ angular.module('MoneyNetwork')
             self.use_login = login ;
             // console.log(pgm + 'login = ' + login + ', self.use_login = ' + self.use_login) ;
         }
-
-        // called when localStorage is ready
-        MoneyNetworkHelper.ls_bind(function() {
-            set_register_yn() ;
-            set_use_login() ;
-            // $rootScope.$apply() ;
-        }) ;
-
         self.use_login_changed = function () {
             var pgm = controller + '.use_login_changed: ' ;
-            console.log(pgm + 'click. use_login = ' + self.use_login) ;
+            // console.log(pgm + 'click. use_login = ' + self.use_login) ;
             moneyNetworkService.client_logout(true) ; // true: disable notification and redirect
             MoneyNetworkHelper.setItem('login', JSON.stringify(self.use_login)) ;
             MoneyNetworkHelper.ls_save() ;
             MoneyNetworkHelper.use_login_changed() ;
+            // warning
+            if (self.use_login) {
+                ZeroFrame.cmd("wrapperNotification", ['done',
+                    'Password log in was enabled. No data was moved.<br>' +
+                    'Note that private data from the unprotected<br>' +
+                    'account still is in localStorage', 10000]);
+            }
+            else {
+                ZeroFrame.cmd("wrapperNotification", ['done',
+                    'Password log in was disabled. No data was moved.<br>' +
+                    'Note that private data from password protected<br>' +
+                    'account still is in localStorage', 10000]);
+            }
         } ;
+
+        // call when localStorage is ready (ZeroFrame's localStorage API is a little slow)
+        var ls_was_loading = MoneyNetworkHelper.ls_is_loading();
+        MoneyNetworkHelper.ls_bind(function() {
+            set_register_yn() ;
+            set_use_login() ;
+            if (ls_was_loading) $rootScope.$apply() ; // workaround. Only needed after page start/reload
+        }) ;
 
         // focus
         if (!self.is_logged_in()) {
@@ -82,7 +95,7 @@ angular.module('MoneyNetwork')
             if (!self.use_login) {
                 // login/register without a password. minimum keysize and using cryptMessage as preferred encryption method
                 self.register = 'Y' ;
-                self.device_password = ''
+                self.device_password = '';
                 self.confirm_device_password = '';
                 self.keysize = '256' ;
             }
@@ -102,7 +115,7 @@ angular.module('MoneyNetwork')
                 if (moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize))) {
                     // log in OK - clear login form and redirect
                     register = self.register ;
-                    if (self.use_login) ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+                    ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
                     self.device_password = '';
                     self.confirm_device_password = '';
                     self.register = 'N';
@@ -166,6 +179,11 @@ angular.module('MoneyNetwork')
             else login_or_register_cb() ;
 
         }; // self.login_or_register
+
+        self.logout = function() {
+            moneyNetworkService.client_logout();
+        }; // self.logout
+
 
         // private key keysize. It takes long time to generate keys > 2048 bits
         self.keysize = "2048" ;

@@ -654,16 +654,18 @@ angular.module('MoneyNetwork')
             self.show_delete_user1 = moneyNetworkService.is_admin() ;
             self.delete_user1 = function () {
                 var pgm = controller + '.delete_user1: ' ;
+                var contact ;
                 if (!self.contact || (self.contact.type == 'group')) return ;
+                contact = self.contact ;
 
                 // any files to delete? check content.json file
-                var user_path = "data/users/" + self.contact.auth_address;
+                var user_path = "data/users/" + contact.auth_address;
                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                     var pgm = controller + '.delete_user1 fileGet callback: ' ;
                     var error, files, file_names, total_size, file_name, file_texts, text, files_optional,
                         file_names_lng1, file_names_lng2, last_online, modified, dif ;
                     if (!content) {
-                        error = 'system error. content.json file was not found for auth_address ' + self.contact.auth_address ;
+                        error = 'system error. content.json file was not found for auth_address ' + contact.auth_address ;
                         console.log(pgm + error) ;
                         ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
                         return ;
@@ -695,13 +697,13 @@ angular.module('MoneyNetwork')
                     }
 
                     // check last online timestamp. Maybe user has selected "Show as offline" in Account setup
-                    last_online = moneyNetworkService.get_last_online (self.contact) ;
+                    last_online = moneyNetworkService.get_last_online (contact) ;
                     modified = content.modified ; // unix timestamp
                     dif = Math.abs(last_online - modified) ;
                     // console.log(pgm + 'dif = ' + dif + ', content.modified = ' + modified + ', last_online = ' + last_online) ;
 
                     // admin dialog
-                    text = "Delete user with auth_address " + self.contact.auth_address + "?<br>" ;
+                    text = "Delete user with auth_address " + contact.auth_address + "?<br>" ;
                     if (dif > 60) text += 'Maybe "show as offline" user. Last online ' + date(modified*1000, 'short') + '<br>' ;
                     text += "This function should only be used for test accounts!<br>" ;
                     if (file_texts.size == 1) text += file_texts[0] + ' file.' ;
@@ -733,7 +735,7 @@ angular.module('MoneyNetwork')
                             }
 
                             // remove public key. rest of cleanup job can be done with normal delete function
-                            delete self.contact.pubkey ;
+                            delete contact.pubkey ;
                         }); // sitePublish
 
                     }) ; // confirm_admin_task

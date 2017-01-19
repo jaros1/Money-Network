@@ -9,8 +9,8 @@
    "size": 18027
   },
   "README.md": {
-   "sha512": "bd1fcd7e93c194ef219b5878b05849163e2c4e2f259a27306cace51e1b24e561",
-   "size": 2615
+   "sha512": "0337cfe6a7254e7a050f405ad4ef5bf55ac456813ab0d93520acd53ecbccc19b",
+   "size": 2667
   },
   "css/all.css": {
    "sha512": "0c9b1721c1f0d630327ec0d22de2d08bf8c150aa238774aa31762acb3d4700d6",
@@ -25,8 +25,8 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "564102a7b51eec52455480661af363ff46c29aa99a874fa6466ddbf0424c1448",
-   "size": 115867
+   "sha512": "fff7db67d71cb1c4f43b6cf8d74acecb67abf3a9d6f1e8b0b9ae598a241f5420",
+   "size": 115744
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -141,8 +141,8 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "4a39cb1afab0855c1361176a646a6ece256d68e7c4303d8af2f061f2e6888a6d",
-   "size": 786697
+   "sha512": "17e9b0b55e9f79b94cb723578fd376e195086be5bd5013c2db94d24aaea8dbfb",
+   "size": 787827
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -227,15 +227,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1484806203,
+ "modified": 1484844023,
  "postmessage_nonce_security": true,
  "sign": [
-  98735846113984152699366763608407530371078401554014757522664956826166533269048,
-  79822967871432855698297365017051620703198437185301549305256653191649823211991
+  49225515606042469047737209753853640737011422081359983581894162181220712697139,
+  80130307427506944309130963026978249308933857413810303951667436888003763806589
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G/jix7O4bfNefnF+U7GOBlOXxkwSJ7UtOGLLHon7gP1uG0gxVDVZxJDU+pPYsS1K2CijNxXuGzGXeEyGpYAFcKI="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HLAmiN0V43mZ1B3yToHYs/JbV6dlWoRI8JVjTYxj6J6PMCmiyuoThmlLj8z5MK2mdDzpFqupeMXROH3f3bixI/4="
  },
  "signs_required": 1,
  "title": "Money Network",
