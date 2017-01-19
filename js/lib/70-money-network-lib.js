@@ -213,7 +213,8 @@ var MoneyNetworkHelper = (function () {
     // - default values are <userid> prefix, no encryption and no compression (write warning in console.log)
 
     var storage_rules = {
-        // basic authorization - see client_login
+        // user authorization - see client_login
+        login: {session: false, userid: false, compress: false, encrypt: false}, // enable/disable local log in. disabled: use password = ''
         key: {session: false, userid: true, compress: true, encrypt: true}, // random password - used for localStorage encryption
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
         passwords: {session: false, userid: false, compress: false, encrypt: false}, // array with hashed passwords. size = number of accounts
@@ -337,9 +338,22 @@ var MoneyNetworkHelper = (function () {
         //    console.log(pgm + 'Warning. using default value key=false for key ' + key) ;
         //    key_options.key = false ;
         //}
-        return key_options;
+
+        // console.log(pgm + 'key = ' + key + ', use_login = ' + use_login);
+        if (use_login || !key_options.encrypt) return key_options;
+        else {
+            // not using local log in. disable localStorage encryption
+            key_options = JSON.parse(JSON.stringify(key_options)) ;
+            key_options.encrypt = false ;
+            return key_options ;
+        }
     } // get_local_storage_rule
 
+    // cache getItem('login'). used in almost all get/set operations
+    var use_login = true ;
+    function use_login_changed() {
+        use_login = JSON.parse(getItem('login')) ;
+    }
 
     // get/set item
     function getItem(key) {
@@ -1224,6 +1238,7 @@ var MoneyNetworkHelper = (function () {
         get_public_avatars: get_public_avatars,
         get_last_online: get_last_online,
         set_last_online: set_last_online,
+        use_login_changed: use_login_changed,
         getItem: getItem,
         getItemSize: getItemSize,
         setItem: setItem,
@@ -1249,7 +1264,8 @@ var MoneyNetworkHelper = (function () {
         load_user_setup: load_user_setup,
         debug: debug,
         stringify: stringify,
-        get_fake_name: get_fake_name
+        get_fake_name: get_fake_name,
+        sha256: sha256
     };
 })();
 // MoneyNetworkHelper end

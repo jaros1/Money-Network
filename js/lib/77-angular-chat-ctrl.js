@@ -501,9 +501,9 @@ angular.module('MoneyNetwork')
             // filter contacts in chat. show chat from contacts with green filter. hide chat from contacts with red filter
             // saved in localStorage.setup.contact_filters (per user)
             // todo: refactor: same functions are used in network controller
-            self.toggle_filter = function (filter) {
+            self.toggle_filter = function (filter, spam) {
                 var pgm = controller + '.toggle_filter: ' ;
-                clear_chat_filter_cache() ;
+                clear_chat_filter_cache(spam) ;
                 if (self.setup.contact_filters[filter] == 'green') self.setup.contact_filters[filter] = 'red' ;
                 else self.setup.contact_filters[filter] = 'green' ;
                 // special action for all
@@ -768,12 +768,12 @@ angular.module('MoneyNetwork')
             }
 
             // filter and order by used in ng-repeat messages filter
-            function clear_chat_filter_cache () {
+            function clear_chat_filter_cache (spam) {
                 for (var i=0 ; i<self.messages.length ; i++) {
                     delete self.messages[i].chat_filter ;
                     delete self.messages[i].formatted_message ;
                 }
-                // self.chat_page_context.infinite_scroll_limit = 5 ;
+                if (!spam) self.chat_page_context.infinite_scroll_limit = 5 ;
                 moneyNetworkService.reset_first_and_last_chat() ;
                 $timeout(check_public_chat, 100) ;
             }
@@ -1157,7 +1157,7 @@ angular.module('MoneyNetwork')
                     if (spam) {
                         // move contact to ignored list and hide ignored list
                         message.contact.type = 'ignore' ;
-                        if (self.setup.contact_filters.ignore == 'green') self.toggle_filter('ignore') ;
+                        if (self.setup.contact_filters.ignore == 'green') self.toggle_filter('ignore', spam) ;
                     }
                     else message.message.deleted_at = new Date().getTime(); // logical delete. todo: how to delete ingoing public chat?
                     // if (apply) $scope.$apply();

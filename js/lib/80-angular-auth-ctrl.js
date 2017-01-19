@@ -15,14 +15,44 @@ angular.module('MoneyNetwork')
         // Y is users in localStorage. N if users in localStorage.
         self.register = 'Y' ;
         function set_register_yn() {
-            var pgm = controller + '.login_or_register: ' ;
+            var pgm = controller + '.set_register_yn: ' ;
             var passwords, no_users ;
             passwords = MoneyNetworkHelper.getItem('passwords') ;
             if (!passwords) no_users = 0 ;
             else no_users = JSON.parse(passwords).length ;
             self.register = (no_users == 0) ? 'Y' : 'N';
         }
-        MoneyNetworkHelper.ls_bind(set_register_yn) ; // called when localStorage is ready
+        // startup. Set use_login
+        self.use_login = true ;
+        function set_use_login() {
+            var pgm = controller + '.set_use_login: ' ;
+            var login ;
+            login = MoneyNetworkHelper.getItem('login') ;
+            if (!login) {
+                // still waiting for moneyNetworkService to be initialized ...
+                $timeout(set_use_login, 100) ;
+                return ;
+            }
+            login = JSON.parse(login) ;
+            self.use_login = login ;
+            // console.log(pgm + 'login = ' + login + ', self.use_login = ' + self.use_login) ;
+        }
+
+        // called when localStorage is ready
+        MoneyNetworkHelper.ls_bind(function() {
+            set_register_yn() ;
+            set_use_login() ;
+            // $rootScope.$apply() ;
+        }) ;
+
+        self.use_login_changed = function () {
+            var pgm = controller + '.use_login_changed: ' ;
+            console.log(pgm + 'click. use_login = ' + self.use_login) ;
+            moneyNetworkService.client_logout(true) ; // true: disable notification and redirect
+            MoneyNetworkHelper.setItem('login', JSON.stringify(self.use_login)) ;
+            MoneyNetworkHelper.ls_save() ;
+            MoneyNetworkHelper.use_login_changed() ;
+        } ;
 
         // focus
         if (!self.is_logged_in()) {
@@ -48,6 +78,14 @@ angular.module('MoneyNetwork')
         self.login_or_register = function () {
             var pgm = controller + '.login_or_register: ';
             var create_new_account, create_guest_account ;
+
+            if (!self.use_login) {
+                // login/register without a password. minimum keysize and using cryptMessage as preferred encryption method
+                self.register = 'Y' ;
+                self.device_password = ''
+                self.confirm_device_password = '';
+                self.keysize = '256' ;
+            }
             create_new_account = (self.register != 'N');
             create_guest_account = (self.register == 'G');
 
@@ -64,7 +102,7 @@ angular.module('MoneyNetwork')
                 if (moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize))) {
                     // log in OK - clear login form and redirect
                     register = self.register ;
-                    ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+                    if (self.use_login) ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
                     self.device_password = '';
                     self.confirm_device_password = '';
                     self.register = 'N';
@@ -77,7 +115,7 @@ angular.module('MoneyNetwork')
                         $location.path(a_path);
                         $location.replace() ;
                         ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]) ;
-                        ZeroFrame.cmd("wrapperNotification", ["info", "Welcome to Money Network. Please update your user info", 10000]);
+                        if (self.use_login) ZeroFrame.cmd("wrapperNotification", ["info", "Welcome to Money Network. Please update your user info", 10000]);
                         return ;
                     }
 
@@ -169,6 +207,7 @@ angular.module('MoneyNetwork')
         self.zeronet_cert_changed = function () {
             get_site_info() ;
         };
+
 
         // end AuthCtrl
     }])

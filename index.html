@@ -1738,94 +1738,114 @@
         <div class="bodyfull">
 
             <p>
-                Login is used to protect data stored in your browser.
-                Password and your data is stored encrypted in your browser. Not on a server and not on ZeroNet.<br>
-                ZeroNet ID is used for communication with other ZeroNet users. A @moneynetwork cert is created for anonymous communication.
+                ZeroNet ID
+                <a href="" ng-bind="a.site_info.cert_user_id|shortCertId"
+                   ng-click="a.select_zeronet_cert()"
+                   title="{{a.site_info.cert_user_id}}">select ...
+                </a>
+                <a href="" id="zeronet_cert_changed_link" ng-click="a.zeronet_cert_changed()" style="display: none"></a>
+                is used for communication with other ZeroNet users.
+                An anonymous @moneynetwork.bit ZeroNet ID has been created for you. Use that or your preferred ZeroNet ID.
+                Click on link to change ZeroNet certificate.
+                <br><br>
+                Private data are saved in browser (localStorage) or todo: in encrypted optional files on ZeroNet.
+                You can use checkbox on this page to enable/disable the extra password protection of your private data.
+                Recommend that you password protect your private data.
             </p>
 
-            <form ng-hide="a.is_logged_in()" name="device_login_form" ng-submit="a.login_or_register()">
-                <table>
-                    <thead>
-                    <tr>
-                        <th></th>
-                        <th style="width:52px"></th>
-                        <th style="width:52px"></th>
-                        <th style="width:52px"></th>
-                        <th></th>
-                    </tr>
-                    </thead>
-
-                    <tbody>
-                    <tr>
-                        <td colspan="5" style="text-align: center">
-                            Log in <input type="radio" ng-model="a.register" value="N" > &nbsp;&nbsp;
-                            Register <input type="radio" ng-model="a.register" value="Y" ng-change="a.set_keysize()"> &nbsp;&nbsp;
-                            Guest <input type="radio" ng-model="a.register" value="G" ng-change="a.set_keysize()"> &nbsp;&nbsp;&nbsp;&nbsp;
-                            ZeroNet ID:
-                            <a href="" ng-bind="a.site_info.cert_user_id|shortCertId" ng-click="a.select_zeronet_cert()"
-                                    title="{{a.site_info.cert_user_id}}">select ...</a>
-                            <a href="" id="zeronet_cert_changed_link" ng-click="a.zeronet_cert_changed()" style="display: none"></a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="5">&nbsp;</td>
-                    </tr>
-                    </tbody>
-                    <tbody ng-hide="a.register == 'G'">
-                    <tr>
-                        <td>Password</td>
-                        <td colspan="3">
-                            <input id="auth_password" type="password" name="device_password"
-                                   ng-model="a.device_password"
-                                   required ng-minlength="10" placeholder="Enter password"
-                                   style="width: 120px">
-                        </td>
-                        <td><input ng-show="a.register == 'N'" type="submit" value="Log in" ng-hide="ctrl.register"
-                                   ng-disabled="a.login_disabled()">
-                        </td>
-                    </tr>
-                    <tr ng-show="device_login_form.device_password.$error.required">
-                        <td colspan="5">Password is a required field</td>
-                    </tr>
-                    <tr ng-show="device_login_form.device_password.$error.minlength">
-                        <td colspan="5">Minimum password length is 10</td>
-                    </tr>
-                    </tbody>
-
-                    <tbody ng-show="a.register == 'Y'">
-                    <tr>
-                        <td>Confirm<br>password</td>
-                        <td colspan="3">
-                            <input type='password' name="confirm_device_password" ng-model="a.confirm_device_password"
-                                   on-key-enter="a.login_or_register()" placeholder="Confirm password"
-                                   style="width: 120px">
-                        </td>
-                        <td><input ng-show="a.register" type="submit" value="Register"
-                                   ng-disabled="a.register_disabled()">
-                        </td>
-                    </tr>
-                    <tr ng-show="a.confirm_device_password != a.device_password">
-                        <td colspan="5">Passwords do not match</td>
-                    </tr>
-                    </tbody>
-                    <tbody ng-show="a.register == 'G'">
-                    <tr>
-                        <td colspan="5" style="text-align: center" title="Create guest account">
-                            <input type="button" value="Create" ng-click="a.login_or_register()">
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-
-            </form>
-
-            <p ng-show="a.register == 'Y'">
-                Please choose a secure password (minimum 10 characters) and do <b style="font-size: 150%">NOT</b> forget
-                or lose it.
-                Remember your password. There is <b style="font-size: 150%">NO</b> help if you forget your password.
-                Use "Register" after forgotten password to create a new empty account.
-                Register takes a few seconds while generating private and public key for encrypted communication.
+            <p>
+                Use password to symmetric encrypt your private data?
+                <input type="checkbox" ng-model="a.use_login" ng-change="a.use_login_changed()">&nbsp;&nbsp;&nbsp;
+                <span ng-hide="a.use_login">
+                    <input ng-hide="a.is_logged_in()" type="submit" value="Log in" ng-click="a.login_or_register()">
+                    <input ng-show="a.is_logged_in()" type="submit" value="Log out">
+                </span>
             </p>
+
+            <div ng-show="a.use_login" style="width: 100%">
+
+                <form ng-hide="a.is_logged_in()" name="device_login_form" ng-submit="a.login_or_register()">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th></th>
+                            <th style="width:52px"></th>
+                            <th style="width:52px"></th>
+                            <th style="width:52px"></th>
+                            <th></th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        <tr>
+                            <td colspan="5" style="text-align: center">
+                                Log in <input type="radio" ng-model="a.register" value="N"> &nbsp;&nbsp;
+                                Register <input type="radio" ng-model="a.register" value="Y"
+                                                ng-change="a.set_keysize()"> &nbsp;&nbsp;
+                                Guest <input type="radio" ng-model="a.register" value="G" ng-change="a.set_keysize()">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="5">&nbsp;</td>
+                        </tr>
+                        </tbody>
+                        <tbody ng-hide="a.register == 'G'">
+                        <tr>
+                            <td>Password</td>
+                            <td colspan="3">
+                                <input id="auth_password" type="password" name="device_password"
+                                       ng-model="a.device_password"
+                                       required ng-minlength="10" placeholder="Enter password"
+                                       style="width: 120px">
+                            </td>
+                            <td><input ng-show="a.register == 'N'" type="submit" value="Log in" ng-hide="ctrl.register"
+                                       ng-disabled="a.login_disabled()">
+                            </td>
+                        </tr>
+                        <tr ng-show="device_login_form.device_password.$error.required">
+                            <td colspan="5">Password is a required field</td>
+                        </tr>
+                        <tr ng-show="device_login_form.device_password.$error.minlength">
+                            <td colspan="5">Minimum password length is 10</td>
+                        </tr>
+                        </tbody>
+
+                        <tbody ng-show="a.register == 'Y'">
+                        <tr>
+                            <td>Confirm<br>password</td>
+                            <td colspan="3">
+                                <input type='password' name="confirm_device_password"
+                                       ng-model="a.confirm_device_password"
+                                       on-key-enter="a.login_or_register()" placeholder="Confirm password"
+                                       style="width: 120px">
+                            </td>
+                            <td><input ng-show="a.register" type="submit" value="Register"
+                                       ng-disabled="a.register_disabled()">
+                            </td>
+                        </tr>
+                        <tr ng-show="a.confirm_device_password != a.device_password">
+                            <td colspan="5">Passwords do not match</td>
+                        </tr>
+                        </tbody>
+                        <tbody ng-show="a.register == 'G'">
+                        <tr>
+                            <td colspan="5" style="text-align: center" title="Create guest account">
+                                <input type="button" value="Create" ng-click="a.login_or_register()">
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                </form>
+
+                <p ng-show="a.register == 'Y'">
+                    Please choose a secure password (minimum 10 characters) and do <b style="font-size: 150%">NOT</b>
+                    forget
+                    or lose it.
+                    Remember your password. There is <b style="font-size: 150%">NO</b> help if you forget your password.
+                    Use "Register" after forgotten password to create a new empty account.
+                    Register takes a few seconds while generating private and public key for encrypted communication.
+                </p>
 
             <span ng-hide="a.register == 'N'"
                   title="Select encryption method for your ingoing messages. Recommend 2048 bits keys (JSEncrypt)">
@@ -1833,14 +1853,18 @@
             <table>
                 <tbody>
                 <tr>
-                    <td><a href="https://zeronet.readthedocs.io/en/latest/site_development/zeroframe_api_reference/#plugin-cryptmessage"
-                           target="_blank" rel="noopener noreferrer">CryptMessage</a> :</td>
+                    <td>
+                        <a href="https://zeronet.readthedocs.io/en/latest/site_development/zeroframe_api_reference/#plugin-cryptmessage"
+                           target="_blank" rel="noopener noreferrer">CryptMessage</a> :
+                    </td>
                     <td>
                         <input type="radio" ng-model="a.keysize" value="256">256 (BitCoin key)
                     </td>
                 </tr>
                 <tr>
-                    <td><a href="https://github.com/travist/jsencrypt" target="_blank" rel="noopener noreferrer">JSEncrypt</a> :</td>
+                    <td><a href="https://github.com/travist/jsencrypt" target="_blank" rel="noopener noreferrer">JSEncrypt</a>
+                        :
+                    </td>
                     <td>
                         <input type="radio" ng-model="a.keysize" value="1024">1024
                         <input type="radio" ng-model="a.keysize" value="2048">2048
@@ -1853,17 +1877,19 @@
             <br>
             </span>
 
-            <p ng-show="a.register == 'G'">
-                Click "Create" if you wish to visit Money Network as a guest.
-                A temporary guest account with a random password and a dummy setup will be created for you.
-                Note that there can only be one guest account in a browser. Any existing guest account is deleted at
-                next guest log in.
-                And that access to a guest account is very easy lost:
-                do not log out without writing down password and do not use guest log in twice.
-                <br>
-                You can use most functions in here but will probably only be communicating with other guests.
-                Most non guest accounts will ignore communication from quests.
-            </p>
+                <p ng-show="a.register == 'G'">
+                    Click "Create" if you wish to visit Money Network as a guest.
+                    A temporary guest account with a random password and a dummy setup will be created for you.
+                    Note that there can only be one guest account in a browser. Any existing guest account is deleted at
+                    next guest log in.
+                    And that access to a guest account is very easy lost:
+                    do not log out without writing down password and do not use guest log in twice.
+                    <br>
+                    You can use most functions in here but will probably only be communicating with other guests.
+                    Most non guest accounts will ignore communication from quests.
+                </p>
+
+            </div>
 
         </div>
 

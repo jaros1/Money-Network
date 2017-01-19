@@ -5,8 +5,6 @@ angular.module('MoneyNetwork')
         var controller = 'MoneyCtrl';
         console.log(controller + ' loaded');
 
-        console.log(marked('I am using __markdown__.'));
-
         // end MoneyCtrl
     }])
 

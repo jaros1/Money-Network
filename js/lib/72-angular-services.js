@@ -1489,9 +1489,9 @@ angular.module('MoneyNetwork')
                             user_seq: my_user_seq,
                             pubkey: pubkey,
                             pubkey2: pubkey2,
-                            encryption: user_setup.encryption,
-                            avatar: short_avatar
+                            encryption: user_setup.encryption
                         };
+                        if (short_avatar) new_user_row.avatar = short_avatar ;
                         guest_id = MoneyNetworkHelper.getItem('guestid');
                         guest = (guest_id == '' + user_id) ;
                         if (guest) {
@@ -2373,6 +2373,7 @@ angular.module('MoneyNetwork')
                 error = 'Cannot write invalid data.json file: ' + error ;
                 console.log(pgm +error) ;
                 console.log(pgm + 'data = ' + JSON.stringify(data)) ;
+                console.log(pgm + 'Object.keys(data) = ' + JSON.stringify(Object.keys(data))) ;
                 //data = {
                 //    "version": 8,
                 //    "users": [{
@@ -6081,7 +6082,7 @@ angular.module('MoneyNetwork')
         var my_files_optional = {} ;
         function save_my_files_optional (files_optional) {
             var pgm = service + '.save_my_files_optional: ' ;
-            console.log(pgm + 'files_optional = ' + JSON.stringify(files_optional));
+            // console.log(pgm + 'files_optional = ' + JSON.stringify(files_optional));
             get_user_seq(function(user_seq) {
                 var key, key_a, optional_regexp, now ;
                 // console.log(pgm + 'user_seq = ' + user_seq) ;
@@ -6098,7 +6099,7 @@ angular.module('MoneyNetwork')
                     else if (files_optional[key].size <= 2) null ; // debug('public_chat', pgm + 'ignoring empty logical deleted json file ' + key) ;
                     else if (!user_seq || ('' + user_seq == key_a[2])) my_files_optional[key] = files_optional[key] ; // ok
                 } // for key
-                console.log(pgm + 'user_seq = ' + user_seq + ', my_files_optional = ' + JSON.stringify(my_files_optional)) ;
+                // console.log(pgm + 'user_seq = ' + user_seq + ', my_files_optional = ' + JSON.stringify(my_files_optional)) ;
             }) ; // get_user_seq
         } // save_my_files_optional
 
@@ -7457,7 +7458,7 @@ angular.module('MoneyNetwork')
                         image, chat2, found_image, byteAmount, chat_bytes, chat_length, error ;
                     // update cache_status
                     cache_status.is_pending = false;
-                    debug('public_chat', pgm + 'downloaded ' + cache_filename + ', chat = ' + chat);
+                    debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
                     if (!chat) {
                         cache_status.is_downloaded = false;
                         cache_status.download_failed_at = new Date().getTime() ;
@@ -7799,8 +7800,26 @@ angular.module('MoneyNetwork')
         var user_id = 0 ;
         var my_unique_id ;
         function client_login(password, create_new_account, guest, keysize) {
+            var login, passwords, password_sha256, i ;
+            // login/register with a empty password?
+            // See "Use password to symmetric encrypt your private data?" checkbox in Auth page
+            login = JSON.parse(MoneyNetworkHelper.getItem('login')) ;
+            if (!login && (password == '')) {
+                passwords = MoneyNetworkHelper.getItem('passwords') ;
+                if (!passwords) register = true ;
+                else {
+                    passwords = JSON.parse(passwords) ;
+                    password_sha256 = MoneyNetworkHelper.sha256(password) ;
+                    create_new_account = true ;
+                    for (i=0 ; i<passwords.length ; i++) if (passwords[i] == password_sha256) create_new_account = false ;
+                }
+                guest = false ;
+                keysize = 256 ;
+                console.log(service + ': Log in disabled. ' + (create_new_account ? 'Register' : 'Login') + ' with empty password') ;
+            }
+
             // login or register. update sessionStorage and localStorage
-            if (!create_new_account) { guest = false ; keysize = 0 } ;
+            if (!create_new_account) { guest = false ; keysize = 0 }
             user_id = MoneyNetworkHelper.client_login(password, create_new_account, keysize);
             if (user_id) {
                 if (create_new_account && guest) MoneyNetworkHelper.setItem('guestid', user_id);
@@ -7820,12 +7839,13 @@ angular.module('MoneyNetwork')
             }
             return user_id ;
         } // client_login
-        function get_user_id () { return user_id } ;
+        function get_user_id () { return user_id }
 
-        function client_logout() {
+        // login_setting_changed: true: auth page. "login" changed. no need for notifications and redirect
+        function client_logout(login_setting_changed) {
             // notification
             var key, a_path, z_path ;
-            ZeroFrame.cmd("wrapperNotification", ['done', 'Log out OK', 3000]);
+            if (!login_setting_changed) ZeroFrame.cmd("wrapperNotification", ['done', 'Log out OK', 3000]);
             // clear sessionStorage
             MoneyNetworkHelper.client_logout();
             // clear all JS work data in MoneyNetworkService
@@ -7845,7 +7865,10 @@ angular.module('MoneyNetwork')
             admin_key = null ;
             for (key in user_setup) delete user_setup[key] ;
             for (key in chat_page_context) delete chat_page_context[key] ;
+            chat_page_context.no_processes = 0 ;
+            chat_page_context.end_of_page = true ;
             clear_files_optional_cache() ;
+            if (login_setting_changed) return ;
             // redirect
             a_path = '/auth' ;
             z_path = "?path=" + a_path ;
@@ -8368,6 +8391,20 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.debug(keys, text) ;
         } // debug
 
+        // moneyNetworkService ready.
+        // using ls_bind (interface to ZeroNet API localStorage functions may still be loading)
+        MoneyNetworkHelper.ls_bind(function () {
+            var login, password, passwords, password_sha256, register, i ;
+            login = MoneyNetworkHelper.getItem('login') ;
+            if (!login) {
+                login = true ;
+                MoneyNetworkHelper.setItem('login', JSON.stringify(login)) ;
+                MoneyNetworkHelper.ls_save() ;
+            }
+            else login = JSON.parse(login) ;
+            MoneyNetworkHelper.use_login_changed() ;
+            if (!login) client_login('') ;
+        }) ; // ls_bind callback
 
         // export MoneyNetworkService API
         return {
