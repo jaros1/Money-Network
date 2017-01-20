@@ -976,7 +976,12 @@ angular.module('MoneyNetwork')
             // start chat with contact
             self.chat_contact = function (contact) {
                 var pgm = controller + '.chat_contact: ';
-                if (self.contact && (self.contact.unique_id == contact.unique_id)) return ;
+                if (self.contact && (self.contact.unique_id == contact.unique_id)) {
+                    contact.seen_at = new Date().getTime() ;
+                    moneyNetworkService.update_chat_notifications() ;
+                    moneyNetworkService.ls_save_contacts(false) ;
+                    return ;
+                }
                 // console.log(pgm + 'contact = ' + JSON.stringify(contact));
                 var old_contact, a_path, z_path ;
                 clear_chat_filter_cache() ;
@@ -1108,7 +1113,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'contact = ' + JSON.stringify(contact));
                     // update localStorage and ZeroNet
                     // console.log(pgm + 'calling ls_save_contacts');
-                    contact.seen_at = new Date().getTime() ;
+                    if (contact) contact.seen_at = new Date().getTime() ;
                     moneyNetworkService.update_chat_notifications() ;
                     moneyNetworkService.ls_save_contacts(true);
 
@@ -1273,7 +1278,8 @@ angular.module('MoneyNetwork')
             self.delete_edit_chat_msg = function (message) {
                 // called from edit chat message form. Always outbox message
                 var pgm = controller + '.delete_edit_chat_msg: ';
-                var msg_text = formatChatMessage(message);
+                var msg_text, update_zeronet ;
+                msg_text = formatChatMessage(message);
                 if (!message.message.sent_at || !msg_text) {
                     console.log(pgm + 'error cleanup. deleting message without a sent_at timestamp / message. message.message = ' + JSON.stringify(message.message)) ;
                     moneyNetworkService.remove_message(message) ;
@@ -1287,7 +1293,8 @@ angular.module('MoneyNetwork')
                     message.chat_filter = false ;
                     debug('public_chat', pgm + 'deleted public outbox message ' + JSON.stringify(message.message)) ;
                     // save localStorage and update ZeroNet
-                    moneyNetworkService.ls_save_contacts(true);
+                    update_zeronet = (message.contact.type == 'public') ; // my outgoing public chat
+                    moneyNetworkService.ls_save_contacts(update_zeronet); // physical delete
                     return ;
                 }
                 // person or group chat. confirm dialog and send a special empty delete chat message

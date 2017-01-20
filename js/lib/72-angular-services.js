@@ -147,19 +147,17 @@ angular.module('MoneyNetwork')
             return MoneyNetworkHelper.generate_random_password(200);
         }
 
-
-        // wrapper for fileGet for data.json file (use z_cache)
+        // wrapper for data.json fileGet and fileWrite (cache data.json file in memory)
         function get_data_json (cb) {
             var pgm = service + '.get_data_json: ' ;
             var user_path ;
             if (z_cache.data_json) {
                 // data.json file is already in cache
-                cb(z_cache.data_json) ;
+                cb(z_cache.data_json, false) ;
                 return ;
             }
             // download data.json and add file to cache
-
-            var user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data_str) {
                 var pgm = service + '.get_data_json fileGet callback 1: ';
                 // console.log(pgm + 'data = ' + JSON.stringify(data));
@@ -173,6 +171,7 @@ angular.module('MoneyNetwork')
                 if (data_str) {
                     data = JSON.parse(data_str);
                     zeronet_migrate_data(data);
+                    empty = false ;
                 }
                 else {
                     data = {
@@ -181,14 +180,62 @@ angular.module('MoneyNetwork')
                         search: [],
                         msg: []
                     };
+                    empty = true ;
                 }
                 // add data.json to cache
                 z_cache.data_json = data ;
-                cb(z_cache.data_json) ;
+                cb(z_cache.data_json, empty) ;
             }) ;
         } // get_data_json
+        function write_data_json (cb) {
+            var pgm = service + '.write_data_json: ' ;
+            var user_path, data, json_raw ;
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            data = z_cache.data_json || {} ;
+            json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
+            ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
+                cb(res) ;
+            }) ;
+        } // write_data_json
 
-
+        // wrapper for status.json fileGet and fileWrite (cache status.json file in memory)
+        function get_status_json (cb) {
+            var pgm = service + '.get_status_json: ' ;
+            var user_path ;
+            if (z_cache.status_json) {
+                // status.json file is already in cache
+                cb(z_cache.status_json, false) ;
+                return ;
+            }
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            // read status.jsonn into cache
+            ZeroFrame.cmd("fileGet", {inner_path: user_path + '/status.json', required: false}, function (status) {
+                var pgm = service + '.get_status_json fileGet callback 1: ';
+                // console.log(pgm + 'data = ' + JSON.stringify(data));
+                var empty;
+                if (!status) {
+                    status = {version: 8, status: []};
+                    empty = true ;
+                }
+                else {
+                    status = JSON.parse(status);
+                    z_migrate_status(status);
+                    empty = false ;
+                }
+                z_cache.status_json = status ;
+                cb(status, empty);
+            }) ;
+        } // get_status_json
+        function write_status_json (cb) {
+            var pgm = service + '.write_status_json: ' ;
+            var status, json_raw, user_path ;
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            status = z_cache.status_json || {} ;
+            json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
+            ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
+                cb(res) ;
+            }) ;
+        } // write_status_json
 
         // optional files format:
         // - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
@@ -205,15 +252,10 @@ angular.module('MoneyNetwork')
             get_user_seq(function(user_seq) {
 
                 // update timestamp in status
-                ZeroFrame.cmd("fileGet", {inner_path: user_path + '/status.json', required: false}, function (status) {
+                get_status_json(function (status) {
                     var pgm = service + '.zeronet_site_publish fileGet callback 1: ';
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
                     var i, index, timestamp, json_raw, error ;
-                    if (!status) status = { version: 8, status: []};
-                    else {
-                        status = JSON.parse(status);
-                        z_migrate_status(status) ;
-                    }
                     if (user_seq) {
                         // remove deleted users (removed in z_update_1_data_json)
                         if (z_cache.user_seqs && (z_cache.user_seqs.indexOf(user_seq) != -1)) {
@@ -240,8 +282,7 @@ angular.module('MoneyNetwork')
                         return ;
                     }
                     // write status.json
-                    json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
-                    ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
+                    write_status_json(function (res) {
                         var pgm = service + '.zeronet_site_publish fileWrite callback 2: ';
                         var error ;
                         if (res != "ok") {
@@ -1442,34 +1483,13 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.z_update_1_data_json dbQuery callback 1: ';
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
-                var data_json_max_size, i, user_path, data_json_path ;
+                var data_json_max_size, i ;
                 // calculate data.json max size - reserve 1700 (2200 * 0.75) bytes for avatar - reserve 100 bytes for status
                 data_json_max_size = user_contents_max_size - 1800;
                 for (i=0 ; i<res.length ; i++) {
                     if (['data.json','avatar.png','avatar.jpg'].indexOf(res[i].filename) != -1) continue ;
                     data_json_max_size = data_json_max_size - res[i].size ;
                 }
-                // console.log(pgm + 'data_json_max_size = ' + data_json_max_size) ;
-                user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
-                data_json_path = user_path + "/data.json";
-                //if (zeronet_file_locked[data_json_path] && (lock_pgm != 'force')) {
-                //    var error =
-                //        "Warning. File " + data_json_path + ' is being updated by an other process. ' +
-                //        'Process with lock is ' + zeronet_file_locked[data_json_path] + '. Process requesting lock is ' + lock_pgm ;
-                //    console.log(pgm + error) ;
-                //    if (pending_force_update) {
-                //        console.log(pgm + 'Force data.json update already pending') ;
-                //        return ;
-                //    }
-                //    console.log(pgm + 'Force data.json update in 30 seconds') ;
-                //    pending_force_update = true ;
-                //    $timeout(function () {
-                //        pending_force_update = false ;
-                //        z_update_1_data_json('force')
-                //    }, 30000);
-                //    return ;
-                //}
-                //zeronet_file_locked[data_json_path] = lock_pgm ;
 
                 // update json table with public key and search words
                 // console.log(pgm + 'calling fileGet');
@@ -1689,6 +1709,7 @@ angular.module('MoneyNetwork')
                     // insert and encrypt new outgoing messages into data.json
                     // using callback technique (not required for JSEncrypt but used in cryptMessage plugin)
                     // will call data cleanup, write and publish when finished encrypting messages
+                    debug('issue_112', pgm + 'issue  #112 - z_update_2a_data_json_encrypt');
                     z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
                 }); // fileGet callback 2
@@ -1865,6 +1886,7 @@ angular.module('MoneyNetwork')
                             message_with_envelope.encryption = 2 ;
                             // 3 callbacks. 1) generate password, 2) encrypt password=key and 3) encrypt message,
                             if (resend) debug('lost_message', pgm + 'resend. calling z_update_data_cryptmessage for old message with local_msg_seq ' + local_msg_seq) ;
+                            debug('issue_112', pgm + 'issue  #112 - calling z_update_2b_data_json_encrypt');
                             z_update_2b_data_json_encrypt (
                                 true, data_json_max_size, data, data_str,
                                 contact.pubkey2, message_with_envelope, receiver_sha256, sent_at
@@ -1929,6 +1951,7 @@ angular.module('MoneyNetwork')
                             if (error) {
                                 console.log(pgm + 'cannot write -image.json file ' + image_path + '. json is invalid: ' + error) ;
                                 // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
+                                debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                                 z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str)
                                 return ;
                             }
@@ -1939,6 +1962,7 @@ angular.module('MoneyNetwork')
                                 debug('outbox', pgm + 'res = ' + JSON.stringify(res));
                                 console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
                                 // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
+                                debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                                 z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str)
                             }); // fileWrite
                             return ; // stop- writeFile callback will continue process
@@ -1967,8 +1991,10 @@ angular.module('MoneyNetwork')
             // no more messages to encrypt. continue with cleanup, write and publish data.json
 
             // update data.json step 3. cleanup. try to keep data.json file small. check max user dictionary size
+            debug('issue_112', pgm + 'issue  #112 - calling z_update_3_data_json_cleanup');
             if (z_update_3_data_json_cleanup (local_storage_updated, data_json_max_size, data)) {
                 // Cleanup OK - write data.json file and continue with any public outbox messages
+                debug('issue_112', pgm + 'issue  #112 - calling z_update_4_data_json_write');
                 z_update_4_data_json_write (data, data_str) ;
             }
             else {
@@ -2096,6 +2122,7 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
 
                                     // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
+                                    debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                                     z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
                                 }); // fileWrite callback 5
@@ -2107,6 +2134,7 @@ angular.module('MoneyNetwork')
                         }
 
                         // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
+                        debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                         z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
                     }); // aesEncrypt callback 3
@@ -2430,11 +2458,9 @@ angular.module('MoneyNetwork')
                 return ;
             }
             // write data.json and publish
-            var data_json_path = "data/users/" + ZeroFrame.site_info.auth_address + "/data.json";
-            var json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
-            ZeroFrame.cmd("fileWrite", [data_json_path, btoa(json_raw)], function (res) {
+            write_data_json(function (res) {
                 // delete zeronet_file_locked[data_json_path] ;
-                var pgm = service + '.z_update_data_write_publish fileWrite callback: ' ;
+                var pgm = service + '.z_update_data_write_publish write_data_json callback: ' ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                 if (res === "ok") {
                     // data.json ok. check public chat and publish
@@ -3216,7 +3242,7 @@ angular.module('MoneyNetwork')
                 js_messages_index.local_msg_seq[message.local_msg_seq] = js_messages_row ;
                 // console.log(pgm + 'inserted local_msg_seq address ' + message.local_msg_seq + ' into js_messages local_msg_seq index') ;
             }
-            if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
+            // if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
         } // add_message
 
         function remove_message (js_messages_row) {
@@ -3363,10 +3389,9 @@ angular.module('MoneyNetwork')
                 if (delete_msg_rows.length) update_zeronet = true ;
 
                 if (update_zeronet) {
-                    // data.json was updated. update and publish
-                    var json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
-                    ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
-                        var pgm = service + '.check_sha256_addresses fileWrite callback: ' ;
+                    // data.json was updated. update and publish1
+                    write_data_json(function (res) {
+                        var pgm = service + '.check_sha256_addresses write_data_json callback: ' ;
                         // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                         if (res === "ok") {
                             if (update_local_storage) ls_save_contacts(false) ;
@@ -3376,7 +3401,7 @@ angular.module('MoneyNetwork')
                             ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
                             console.log(pgm + 'Error. Failed to post: ' + res.error) ;
                         }
-                    }); // fileWrite
+                    }); // write_data_json
 
                 }
                 else if (update_local_storage) ls_save_contacts(false) ;
@@ -3760,34 +3785,40 @@ angular.module('MoneyNetwork')
             var i, contact, j, message, auth_address, local_msg_seq, key, sender_sha256 ;
             for (i=0 ; i<ls_contacts.length ; i++)  {
                 contact = ls_contacts[i] ;
-                if (contact.type == 'public') continue ;
+                if (contact.type == 'public') continue ; // my outgoing public chat messages
                 auth_address = contact.auth_address ;
                 if (!contact.messages) continue ;
                 for (j=contact.messages.length-1 ; j>=0 ; j--) {
                     message = contact.messages[j] ;
                     if (!message.deleted_at) continue ;
                     if (message.folder == 'inbox') {
-                        // physical delete inbox message.
-                        // 1) remember zeronet_msg_id from deleted message. do not recreate deleted inbox messages
-                        if (message.zeronet_msg_id) {
-                            if (!contact.inbox_zeronet_msg_id) contact.inbox_zeronet_msg_id = [] ;
-                            contact.inbox_zeronet_msg_id.push(message.zeronet_msg_id) ;
-                            if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
-                            ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id) ;
+                        if (message.z_filename) {
+                            // physical delete inbox message (public chat)
+                            console.log(pgm + 'todo: physical delete inbox message (public chat)');
                         }
-                        // 2) remember local_msg_seq from deleted inbox messages. Contact may request feedback info for this local_msg_seq later
-                        local_msg_seq = message.message.local_msg_seq ;
-                        if (local_msg_seq) {
-                            if (!contact.deleted_inbox_messages) contact.deleted_inbox_messages = {};
-                            key = contact.type == 'group' ? message.participant + ',' + local_msg_seq : local_msg_seq ;
-                            contact.deleted_inbox_messages[key] = message.feedback;
-                            //debug('feedback_info', pgm + 'feedback_info: contact ' + contact.auth_address +
-                            //    ', deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
-                            //    ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
+                        else {
+                            // physical delete inbox message (private or group chat)
+                            // 1) remember zeronet_msg_id from deleted message. do not recreate deleted inbox messages
+                            if (message.zeronet_msg_id) {
+                                if (!contact.inbox_zeronet_msg_id) contact.inbox_zeronet_msg_id = [] ;
+                                contact.inbox_zeronet_msg_id.push(message.zeronet_msg_id) ;
+                                if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
+                                ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id) ;
+                            }
+                            // 2) remember local_msg_seq from deleted inbox messages. Contact may request feedback info for this local_msg_seq later
+                            local_msg_seq = message.message.local_msg_seq ;
+                            if (local_msg_seq) {
+                                if (!contact.deleted_inbox_messages) contact.deleted_inbox_messages = {};
+                                key = contact.type == 'group' ? message.participant + ',' + local_msg_seq : local_msg_seq ;
+                                contact.deleted_inbox_messages[key] = message.feedback;
+                                //debug('feedback_info', pgm + 'feedback_info: contact ' + contact.auth_address +
+                                //    ', deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
+                                //    ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
+                            }
                         }
                     }
                     else if (message.zeronet_msg_id) {
-                        // outbox. wait. zeronet_msg_id reference should be removed in z_update_1_data_json first before physical delete here
+                        // outbox. wait. zeronet_msg_id reference must be removed in z_update_1_data_json before physical delete here
                         debug('data_cleanup', pgm + 'data_cleanup: waiting with physical delete of outbox message. zeronet_msg_id has yet been removed. should be done in next z_update_1_data_json call. message = ' + JSON.stringify(message)) ;
                         continue ;
                     }
@@ -3837,6 +3868,7 @@ angular.module('MoneyNetwork')
                 // remove other internal information
                 delete contact['$$hashKey'] ;
                 delete contact.new_alias ;
+                delete contact.notifications ; // recalculated after login
                 delete contact.user_seq ; // available on ZeroNet
                 delete contact.pubkey ; // available on ZeroNet
                 delete contact.pubkey2 ; // available on ZeroNet
@@ -3873,6 +3905,7 @@ angular.module('MoneyNetwork')
                 // update localStorage and zeronet
                 $timeout(function () {
                     MoneyNetworkHelper.ls_save() ;
+                    debug('issue_112', pgm + 'issue  #112 - calling z_update_1_data_json');
                     z_update_1_data_json(pgm) ;
                 })
             }
@@ -6856,7 +6889,8 @@ angular.module('MoneyNetwork')
         // - failures: number of download failure for actual page context. stop download if too many errors
         var chat_page_context = {
             no_processes: 0,
-            end_of_page: true
+            end_of_page: true,
+            failures: 0
         } ;
         function get_chat_page_context() {
             return chat_page_context ;
@@ -7488,7 +7522,7 @@ angular.module('MoneyNetwork')
 
                 // read optional file. can take some time depending of number of peers
                 cache_status.is_pending = true;
-                debug('public_chat', pgm + 'start download ' + cache_filename) ;
+                debug('public_chat || issue_112', pgm + 'start download ' + cache_filename) ;
                 ZeroFrame.cmd("fileGet", {inner_path: cache_filename, required: true}, function (chat) {
                     var pgm = service + '.get_and_load_chat_file fileGet callback 2: ';
                     var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
@@ -7907,6 +7941,7 @@ angular.module('MoneyNetwork')
             for (key in chat_page_context) delete chat_page_context[key] ;
             chat_page_context.no_processes = 0 ;
             chat_page_context.end_of_page = true ;
+            chat_page_context.failures = 0 ;
             clear_files_optional_cache() ;
             if (login_setting_changed) return ;
             // redirect
@@ -7958,13 +7993,13 @@ angular.module('MoneyNetwork')
                 ', my auth address is ' + ZeroFrame.site_info.auth_address +
                 ' and my unique id ' + get_my_unique_id()) ;
 
-            ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data) {
-                var pgm = service + '.i_am_online fileGet 1 callback: ';
+            get_data_json(function (data, empty) {
+                var pgm = service + '.i_am_online get_data_json callback: ';
                 var my_user_seq, data_user_seqs, i, pubkey, pubkey2 ;
                 pubkey = MoneyNetworkHelper.getItem('pubkey') ;
                 pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
                 // console.log(pgm + 'data = ' + JSON.stringify(data));
-                if (!data) {
+                if (empty) {
                     if (is_user_info_empty()) console.log(pgm + 'New empty user account. No data.json file' + info) ;
                     else {
                         // non empty user account. Must be changed ZeroNet certificate.
@@ -7974,11 +8009,11 @@ angular.module('MoneyNetwork')
                     }
                     return ;
                 }
-                data = JSON.parse(data);
                 if (!data.users || (data.users.length == 0)) {
                     // issue #108 : new user - invalid content in data.json (=content.json)
                     console.log(pgm + 'System error. No users in data.json. Updating data.json file. data = ' + JSON.stringify(data)) ;
                     ZeroFrame.cmd("fileDelete", user_path + '/' + 'data.json', function () {}) ;
+                    delete z_cache.data_json ;
                     z_update_1_data_json(pgm) ;
                     return ;
                 }
@@ -8007,15 +8042,10 @@ angular.module('MoneyNetwork')
                 }
 
                 // delete any old users in status.json and publish
-                ZeroFrame.cmd("fileGet", {inner_path: user_path + '/status.json', required: false}, function (status) {
+                get_status_json(function (status) {
                     var pgm = service + '.i_am_online fileGet 2 callback: ';
                     var my_user_seq_found, status_updated, error ;
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
-                    if (!status) status = { version: 5, status: [] } ;
-                    else {
-                        status = JSON.parse(status);
-                        z_migrate_status(status);
-                    }
                     // remove deleted users from status.json
                     my_user_seq_found = false ;
                     status_updated = false ;
@@ -8040,9 +8070,7 @@ angular.module('MoneyNetwork')
                         return ;
                     }
                     // write status.json
-                    // console.log(pgm + 'status = ' + JSON.stringify(status)) ;
-                    var json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
-                    ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
+                    write_status_json(function (res) {
                         var pgm = service + '.i_am_online fileWrite callback: ' ;
                         // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                         if (res === "ok") {
