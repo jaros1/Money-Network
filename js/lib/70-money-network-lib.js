@@ -177,7 +177,10 @@ var MoneyNetworkHelper = (function () {
     function get_last_online (contact) {
         if (!contact.search) contact.search = [] ;
         for (var i=0 ; i<contact.search.length ; i++) {
-            if (typeof contact.search[i].value == 'number') return contact.search[i].value ;
+            if (typeof contact.search[i].value == 'number') {
+                if (!contact.search[i].unique_id) contact.search[i].unique_id = contact.unique_id ;
+                return contact.search[i].value ;
+            }
         }
         return null ;
     }

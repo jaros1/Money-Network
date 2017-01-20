@@ -618,3 +618,11 @@ body #file-drop {
     cursor: pointer;
 }
 
+
+.notification {
+    background-color:red;
+    color:white;
+    font-size:x-small;
+    padding-left: 1px;
+    padding-right: 1px;
+}

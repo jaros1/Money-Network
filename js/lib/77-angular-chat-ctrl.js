@@ -278,6 +278,9 @@ angular.module('MoneyNetwork')
                                 self.group_chat = false ;
                                 self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
                             }
+                            self.contact.seen_at = new Date().getTime() ;
+                            moneyNetworkService.update_chat_notifications() ;
+                            moneyNetworkService.ls_save_contacts(false) ;
                             // console.log(pgm + 'self.group_chat = ' + self.group_chat) ;
                             // console.log(pgm + 'self.contact = ' + (self.contact ? true : false)) ;
                             loading_contact = false ;
@@ -312,6 +315,9 @@ angular.module('MoneyNetwork')
                         if (!self.contact.messages) self.contact.messages = [];
                         self.group_chat = false ;
                         self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
+                        self.contact.seen_at = new Date().getTime() ;
+                        moneyNetworkService.update_chat_notifications() ;
+                        moneyNetworkService.ls_save_contacts(false) ;
                         loading_contact = false ;
                         clear_chat_filter_cache() ;
                         return ;
@@ -986,6 +992,9 @@ angular.module('MoneyNetwork')
                     self.group_chat = false ;
                     self.group_chat_contacts.splice(0,self.group_chat_contacts.length) ;
                 }
+                contact.seen_at = new Date().getTime() ;
+                moneyNetworkService.update_chat_notifications() ;
+                moneyNetworkService.ls_save_contacts(false) ;
                 // update zeronet path - no angularJS redirect
                 // console.log(pgm + '$location.path = ' + $location.path()) ;
                 a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
@@ -1099,6 +1108,8 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'contact = ' + JSON.stringify(contact));
                     // update localStorage and ZeroNet
                     // console.log(pgm + 'calling ls_save_contacts');
+                    contact.seen_at = new Date().getTime() ;
+                    moneyNetworkService.update_chat_notifications() ;
                     moneyNetworkService.ls_save_contacts(true);
 
                 } ; // cb

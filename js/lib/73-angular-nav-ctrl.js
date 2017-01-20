@@ -20,6 +20,7 @@ angular.module('MoneyNetwork')
         self.logout = function() {
             moneyNetworkService.client_logout();
         };
+        self.chat_notifications = moneyNetworkService.get_chat_notifications ;
 
         // end NavCtrl
     }])

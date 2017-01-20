@@ -731,7 +731,8 @@
                     <td ng-bind-html="y.tag"></td>
                     <td>:</td>
                     <td colspan="{{[1,2].indexOf(x.search.row) == -1 ? 2 : 1}}" ng-bind-html="y|formatSearchValue"
-                        title="{{y|formatSearchTitle}}"></td>
+                        title="{{y|formatSearchTitle}}">
+                    </td>
                 </tr>
                 <tr style="background-color: white">
                     <td colspan="4">&nbsp;</td>
@@ -1919,7 +1920,9 @@
                             <ul class="nav">
                                 <li><a href="#/money">Money</a></li>
                                 <li><a href="#/network">Network</a></li>
-                                <li><a ng-href="{{n.chat_link()}}">Chat</a></li>
+                                <li><a ng-href="{{n.chat_link()}}">
+                                    Chat <span ng-bind-html="n.chat_notifications()|formatNotifications"></span>
+                                </a></li>
                                 <li><a href="#/wallet">Wallet</a></li>
                                 <li><a href="#/user">Account</a></li>
                                 <li ng-hide="n.is_logged_in()"><a href="#/auth">Log in</a></li>

@@ -389,12 +389,15 @@ angular.module('MoneyNetwork')
     }])
 
     // format special tag values. Last Updated
-    .filter('formatSearchValue', ['shortChatTimeFilter', function (shortChatTime) {
+    .filter('formatSearchValue', ['shortChatTimeFilter', 'formatNotificationsFilter', 'MoneyNetworkService', function (shortChatTime, formatNotifications, moneyNetworkService) {
         // short format for unix timestamp used in chat
         return function (row) {
             var pgm = 'formatSearchValue: ' ;
+            var contact, notifications ;
             if (typeof row.value != 'number') return row.value ;
-            return shortChatTime(row.value*1000) ;
+            contact = moneyNetworkService.get_contact_by_unique_id(row.unique_id) ;
+            notifications = contact ? formatNotifications(contact.notifications) : '' ;
+            return shortChatTime(row.value*1000) + ' ' + notifications;
         } ;
         // end formatSearchValue filter
     }])
@@ -403,7 +406,7 @@ angular.module('MoneyNetwork')
     .filter('formatSearchTitle', ['dateFilter', function (date) {
         // short format for unix timestamp used in chat
         return function (row) {
-            var pgm = 'formatSearchValue: ' ;
+            var pgm = 'formatSearchTitle: ' ;
             if (typeof row.value != 'number') return row.value ;
             return date(row.value*1000, 'short') ;
         } ;
@@ -726,7 +729,7 @@ angular.module('MoneyNetwork')
     .filter('getLastUpdated', ['shortChatTimeFilter', function (shortChatTime) {
         // short format for unix timestamp used in chat
         return function (contact) {
-            var pgm = 'formatSearchValue: ' ;
+            var pgm = 'getLastUpdated: ' ;
             var timestamp = MoneyNetworkHelper.get_last_online(contact);
             return shortChatTime(timestamp*1000) ;
         } ;
@@ -749,6 +752,15 @@ angular.module('MoneyNetwork')
             index = cert_user_id.indexOf('@') ;
             if (index == -1) return cert_user_id ;
             else return cert_user_id.substr(0,index);
+        } ;
+        // end formatSearchTitle filter
+    }])
+
+    .filter('formatNotifications', [ function () {
+        // short format for unix timestamp used in chat
+        return function (notifications) {
+            if (!notifications) return '' ;
+            return '<b><sup><span class="notification">' + notifications + '</span></sup></b>' ;
         } ;
         // end formatSearchTitle filter
     }])

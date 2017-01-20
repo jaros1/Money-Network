@@ -3817,6 +3817,7 @@ angular.module('MoneyNetwork')
                     delete contact.search[j]['$$hashKey'] ;
                     delete contact.search[j].edit_alias ;
                     delete contact.search[j].row ;
+                    delete contact.search[j].unique_id ;
                 }
                 for (j=contact.messages.length-1 ; j >= 0 ; j--) {
                     if (contact.messages[j].z_filename) {
@@ -5036,6 +5037,9 @@ angular.module('MoneyNetwork')
                 }
             }
 
+            // update chat notifications
+            update_chat_notifications() ;
+
             // add more message post processing ...
 
             return true ;
@@ -5846,6 +5850,20 @@ angular.module('MoneyNetwork')
             var pgm = service + '.recheck_old_decrypt_errors: ' ;
 
             var cert_user_id, decrypt_errors, i, contact, j, message_with_envelope, message, contacts_updated, res ;
+
+            if (!ZeroFrame.site_info) {
+                // ZeroFrame websocket connection not ready. Try again in 5 seconds
+                console.log(pgm + 'ZeroFrame.site_info is not ready. Try again in 5 seconds. Refresh page (F5) if problem continues') ;
+                setTimeout(recheck_old_decrypt_errors,5000); // outside angularjS - using normal setTimeout function
+                return ;
+            }
+            if (!ZeroFrame.site_info.cert_user_id) {
+                console.log(pgm + 'Auto login process to ZeroNet not finished. Maybe user forgot to select cert. Checking for old decrypt errors in 1 minute');
+                ZeroFrame.cmd("certSelect", [["moneynetwork.bit", "nanasi", "zeroid.bit", "kaffie.bit", "moneynetwork"]]);
+                setTimeout(recheck_old_decrypt_errors,60000);// outside angularjS - using normal setTimeout function
+                return ;
+            }
+
 
             cert_user_id = ZeroFrame.site_info.cert_user_id ;
             decrypt_errors = [] ;
@@ -7835,6 +7853,7 @@ angular.module('MoneyNetwork')
                 i_am_online() ;
                 load_user_contents_max_size() ;
                 // load_my_public_chat() ;
+                update_chat_notifications() ;
                 cleanup_inactive_users() ;
             }
             return user_id ;
@@ -8409,6 +8428,31 @@ angular.module('MoneyNetwork')
             }
         }) ; // ls_bind callback
 
+        var chat_notifications = 0 ;
+        function get_chat_notifications () {
+            if (!user_id || (chat_notifications == 0)) return null ;
+            return chat_notifications ;
+        }
+        function update_chat_notifications () {
+            var notifications, contact_notifications, i, contact, contact_seen_at, j, message ;
+            notifications = 0 ;
+            for (i=0 ; i<ls_contacts.length ; i++) {
+                contact = ls_contacts[i] ;
+                if (contact.type == 'public') continue ;
+                contact_notifications = 0 ;
+                contact_seen_at = contact.seen_at || 0 ;
+                for (j=0 ; j<contact.messages.length ; j++) {
+                    message = contact.messages[j] ;
+                    if (message.folder != 'inbox') continue ;
+                    if (message.z_filename) continue ;
+                    if (message.sent_at > contact_seen_at) contact_notifications++ ;
+                }
+                notifications+= contact_notifications ;
+                contact.notifications = contact_notifications ;
+            } // for i (contacts)
+            chat_notifications = notifications ;
+        } // update_chat_notifications
+
         // export MoneyNetworkService API
         return {
             get_tags: get_tags,
@@ -8473,7 +8517,9 @@ angular.module('MoneyNetwork')
             reset_first_and_last_chat: reset_first_and_last_chat,
             get_user_seq: get_user_seq,
             get_user_id: get_user_id,
-            event_file_done: event_file_done
+            event_file_done: event_file_done,
+            get_chat_notifications: get_chat_notifications,
+            update_chat_notifications: update_chat_notifications
         };
 
         // end MoneyNetworkService
