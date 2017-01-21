@@ -758,6 +758,7 @@ angular.module('MoneyNetwork')
             // called in a $timeout as timestamps for first and last row in chat page are used as filter for public chat messages
             var startup_public_chat_check = true ;
             function check_public_chat () {
+                var pgm = controller + '.check_public_chat: ' ;
                 var no_msg, i, end_of_page ;
                 if (!self.setup.public_chat) return ;
                 if (startup_public_chat_check && (self.setup.chat_sort != 'Last message')) {
@@ -772,19 +773,22 @@ angular.module('MoneyNetwork')
                     }
                 }
                 startup_public_chat_check = false ;
+                debug('infinite_scroll || public_chat', pgm + 'calling moneyNetworkService.check_public_chat');
                 moneyNetworkService.check_public_chat() ;
-            }
+            } // check_public_chat
 
             // filter and order by used in ng-repeat messages filter
             function clear_chat_filter_cache (spam) {
+                var pgm = controller + '.clear_chat_filter_cache: ' ;
                 for (var i=0 ; i<self.messages.length ; i++) {
                     delete self.messages[i].chat_filter ;
                     delete self.messages[i].formatted_message ;
                 }
                 if (!spam) self.chat_page_context.infinite_scroll_limit = 5 ;
+                debug('infinite_scroll || public_chat', pgm + 'calling moneyNetworkService.reset_first_and_last_chat') ;
                 moneyNetworkService.reset_first_and_last_chat() ;
                 $timeout(check_public_chat, 100) ;
-            }
+            } // clear_chat_filter_cache
             clear_chat_filter_cache() ;
 
             // keep track of first and last chat message in chat page
@@ -966,6 +970,7 @@ angular.module('MoneyNetwork')
             self.chat_sort_changed = function () {
                 var pgm = controller + '.sort_changed: ' ;
                 console.log(pgm + 'chat_sort = ' + self.setup.chat_sort) ;
+                debug('infinite_scroll || public_chat', pgm + 'calling moneyNetworkService.reset_first_and_last_chat') ;
                 moneyNetworkService.reset_first_and_last_chat();
                 moneyNetworkService.save_user_setup();
             };
@@ -1410,6 +1415,7 @@ angular.module('MoneyNetwork')
 
             // add/remove public chat
             self.public_chat_changed = function () {
+                var pgm = controller + '.public_chat_changed: ' ;
                 var i, contact, message, js_message_row, j ;
                 moneyNetworkService.save_user_setup() ;
                 MoneyNetworkHelper.load_user_setup() ;
@@ -1427,6 +1433,7 @@ angular.module('MoneyNetwork')
                     }
                 }
                 moneyNetworkService.clear_files_optional_cache() ;
+                debug('infinite_scroll || public_chat', pgm + 'calling moneyNetworkService.reset_first_and_last_chat') ;
                 moneyNetworkService.reset_first_and_last_chat();
                 $timeout(check_public_chat, 100) ;
             };
@@ -1443,6 +1450,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.get_more_messages: ' ;
                 self.chat_page_context.infinite_scroll_limit = self.chat_page_context.infinite_scroll_limit + 5;
                 debug('infinite_scroll', pgm + 'self.chat_page_context.infinite_scroll_limit = ' + self.chat_page_context.infinite_scroll_limit) ;
+                debug('infinite_scroll || public_chat', pgm + 'calling moneyNetworkService.reset_first_and_last_chat') ;
                 moneyNetworkService.reset_first_and_last_chat() ;
             }; // self.get_more_messages
 

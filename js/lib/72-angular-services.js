@@ -6892,6 +6892,7 @@ angular.module('MoneyNetwork')
             end_of_page: true,
             failures: 0
         } ;
+        var old_chat_page_context ;
         function get_chat_page_context() {
             return chat_page_context ;
         }
@@ -6908,6 +6909,7 @@ angular.module('MoneyNetwork')
 
         // reset timestamps and get new timestamp information from chat page.
         function reset_first_and_last_chat () {
+            debug('infinite_scroll', service + '.reset_first_and_last_chat: called') ;
             chat_page_context.first_top_timestamp = null ;
             chat_page_context.last_bottom_timestamp = null ;
             chat_page_context.end_of_page = true ;
@@ -6917,11 +6919,33 @@ angular.module('MoneyNetwork')
             var pgm = service + '.check_public_chat: ' ;
             var check ;
 
-            // check for public chat relevant for current chat page. loop until status == done
+            // any change in chat page context since last call?
+            if (old_chat_page_context &&
+                (old_chat_page_context.contact == chat_page_context.contact) &&
+                (old_chat_page_context.first_top_timestamp == chat_page_context.first_top_timestamp) &&
+                (old_chat_page_context.last_bottom_timestamp == chat_page_context.last_bottom_timestamp) &&
+                (old_chat_page_context.end_of_page == chat_page_context.end_of_page) &&
+                (old_chat_page_context.chat_sort == user_setup.chat_sort)) {
+                debug('infinite_scroll', pgm + 'stop. unchanged chat page context.') ;
+                return ;
+            }
+
+            // changed chat page context
+            old_chat_page_context = {
+                contact: chat_page_context.contact,
+                first_top_timestamp: chat_page_context.first_top_timestamp,
+                last_bottom_timestamp: chat_page_context.last_bottom_timestamp,
+                end_of_page: chat_page_context.end_of_page,
+                chat_sort: user_setup.chat_sort
+            };
+            chat_page_context.failures = 0 ;
+
+            // check for public chat relevant for current chat page. loop until status == done or too many errors
             chat_page_context.no_processes++ ;
             check = function () {
-                var pgm = service + '.set_first_and_last_chat.check: ' ;
+                var pgm = service + '.check_public_chat: ' ;
                 get_public_chat(function (status) {
+                    if (!status) status = 'not updated' ;
                     debug('public_chat', pgm + 'status = ' + status + ', chat_page_context.failures = ' + chat_page_context.failures);
                     if (chat_page_context.failures > 3) {
                         // too many errors
@@ -6933,7 +6957,7 @@ angular.module('MoneyNetwork')
                         chat_page_context.no_processes-- ;
                         return ;
                     }
-                    else if (status = 'updated') {
+                    else if (status == 'updated') {
                         // chat page updated. update and continue
                         reset_first_and_last_chat();
                         $rootScope.$apply() ;
@@ -6961,7 +6985,6 @@ angular.module('MoneyNetwork')
             if (last && !chat_page_context.last_bottom_timestamp) chat_page_context.last_bottom_timestamp = message.message.sent_at ;
             if (!chat_page_is_ready()) return;
             // chat page updated with new chat page context
-            chat_page_context.failures = 0 ;
             chat_page_context.contact = contact ;
             no_msg = 0 ;
             for (i=0 ; i<js_messages.length ; i++) if (js_messages[i].chat_filter) no_msg = no_msg + 1 ;
@@ -6972,6 +6995,7 @@ angular.module('MoneyNetwork')
                 ', end_of_page = ' + chat_page_context.end_of_page +
                 ', no_processes = ' + chat_page_context.no_processes +
                 ', chat_sort = ' + user_setup.chat_sort);
+
             // start public chat download?
             if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return ; // group chat
             if ((user_setup.chat_sort != 'Last message') && !chat_page_context.end_of_page) return ; // sort by size and not end of page. public chat with size 0 at end of page
@@ -6982,7 +7006,7 @@ angular.module('MoneyNetwork')
             }
             if (chat_page_context.failures >= 3) {
                 // something is wrong. maybe offline?
-                debug('public_chat', pgm + 'stop. already ' + chat_page_context.failures + ' for actual chat page context') ;
+                debug('public_chat', pgm + 'stop. already ' + chat_page_context.failures + ' failed downloads for current chat page context') ;
                 return ;
             }
 
@@ -7367,28 +7391,38 @@ angular.module('MoneyNetwork')
                         if (cache_status) res[i].download_failed_at = cache_status.download_failed_at || 0 ;
                     } // for i
 
-                    // random sort but keep any files with download failed in bottom of file list
-                    res.sort(function(a, b){
-                        if (a.download_failed_at != b.download_failed_at) return b.download_failed_at - a.download_failed_at ;
-                        else return 0.5 - Math.random()
-                    }) ;
+                    // random sort. just to check number of peers for different files every time
+                    res.sort(function(a, b){return 0.5 - Math.random()}) ;
                     debug('public_chat', pgm + 'done with already downloaded public chat files' + '. res = ' + JSON.stringify(res)) ;
 
                     // get number of peers serving optional files.
                     // callback loop starting with res[0].
                     // check max 10 files. looking for optional files with many peers
+                    // prefer files without download failure
                     get_no_peers = function (cb2) {
                         var pgm = service + '.get_public_chat get_no_peers: ';
-                        var i, j, max_peers = -1, max_peers_i, cache_filename, cache_status ;
+                        var i, j, max_peers, max_peers_i, max_peers_ok, max_peers_ok_i, max_peers_failed, max_peers_failed_i, cache_filename, cache_status ;
+                        max_peers_ok = -1;
+                        max_peers_failed = -1;
                         i = -1 ;
 
-                        // find next file to check peer
+                        // find next file to check peer for
                         for (j=0 ; j<res.length ; j++) {
                             if (res[j].hasOwnProperty('peer')) {
-                                // already checked. Find file with must peers
-                                if (res[j].peer > max_peers) {
-                                    max_peers = res[j].peer ;
-                                    max_peers_i = j ;
+                                // already checked. Remember file with most peers
+                                if (res[j].download_failed_at) {
+                                    // Error - download failure for this file
+                                    if (res[j].peer > max_peers_ok) {
+                                        max_peers_failed = res[j].peer ;
+                                        max_peers_failed_i = j ;
+                                    }
+                                }
+                                else {
+                                    // OK - no download failure for this file
+                                    if (res[j].peer > max_peers_ok) {
+                                        max_peers_ok = res[j].peer ;
+                                        max_peers_ok_i = j ;
+                                    }
                                 }
                             }
                             else {
@@ -7396,6 +7430,16 @@ angular.module('MoneyNetwork')
                                 break ;
                             }
                         } // for j
+
+                        if (max_peers_ok == -1) {
+                            // UPS: all download have failed
+                            max_peers = max_peers_failed ;
+                            max_peers_i = max_peers_failed_i ;
+                        }
+                        else {
+                            max_peers = max_peers_ok ;
+                            max_peers_i = max_peers_ok_i ;
+                        }
 
                         // get peer info for next file. check minimum 10 files. looking for file with peer >= 3
                         if ( (i != -1) &&
@@ -7424,11 +7468,11 @@ angular.module('MoneyNetwork')
                         }
 
                         // done / end loop. found file with peer >= 3 or have downloaded peer info for all files
-                        debug('public_chat', pgm + 'max_peers = ' + max_peers + ', max_peers_i = ' + max_peers_i) ;
+                        debug('public_chat', pgm + 'max_peers = ' + max_peers_ok + ', max_peers_i = ' + max_peers_ok_i) ;
                         debug('public_chat', pgm + 'res = ' + JSON.stringify(res)) ;
                         if (res.length == 0) { cb2('done') ; return }
 
-                        // download optional file. file with must peers or random file
+                        // download optional file. file with most peers or random file
                         i = max_peers_i || Math.floor(Math.random() * res.length) ;
                         debug('public_chat', pgm + 'selected res[' + i + '] = ' + JSON.stringify(res[i])) ;
                         cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename;
@@ -7531,7 +7575,7 @@ angular.module('MoneyNetwork')
                         image, chat2, found_image, byteAmount, chat_bytes, chat_length, error ;
                     // update cache_status
                     cache_status.is_pending = false;
-                    debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
+                    debug('public_chat', pgm + 'downloaded ' + cache_filename + ', required = ' + cache_status.required) ; // + ', chat = ' + chat);
                     if (!chat) {
                         cache_status.is_downloaded = false;
                         cache_status.download_failed_at = new Date().getTime() ;
