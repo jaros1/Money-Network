@@ -292,8 +292,9 @@ angular.module('MoneyNetwork')
         var ls_msg_factor = Math.abs(moneyNetworkService.get_ls_msg_factor()) ;
         return function (message) {
             var pgm = 'formatMsgSize: ' ;
-            var ls_msg_size = Math.round(message.ls_msg_size * ls_msg_factor) ;
-            var z_msg_size ;
+            var ls_msg_size, z_msg_size ;
+            if (message.hasOwnProperty('ls_msg_size')) ls_msg_size = Math.round(message.ls_msg_size * ls_msg_factor) ;
+            else ls_msg_size = 0 ;
             // console.log(pgm + 'message = ' + JSON.stringify(message));
             if (message.folder == 'outbox') {
                 z_msg_size = message.zeronet_msg_size || 0 ;
@@ -301,7 +302,7 @@ angular.module('MoneyNetwork')
             }
             else return ls_msg_size + ' bytes' ;
         } ;
-        // end shortChatTime filter
+        // end formatMsgSize filter
     }])
 
     .filter('shortChatTime', ['$filter', function ($filter) {
@@ -358,11 +359,25 @@ angular.module('MoneyNetwork')
         // end shortChatTime filter
     }])
 
+    .filter('messageShortChatTime', ['shortChatTimeFilter', function (shortChatTime) {
+        // short format for unix timestamp used in chat
+        return function (message) {
+            if (message.message.sent_at) return shortChatTime(message.message.sent_at) ;
+            else return 'Sending ...' ;
+        } ;
+        // end messageShortChatTime filter
+    }])
+
     .filter('messageOutSentTitle', ['dateFilter', function (date) {
         // outbox: sent_at mouseover text. short sent_at timestamp + any feedback info
         // m.message.sent_at|date:'short'
         return function (message) {
             var text, no_receivers, no_feedback ;
+            if (!message.message.sent_at) {
+                // https://github.com/jaros1/Zeronet-Money-Network/issues/112#issuecomment-274316500
+                text = 'Sending message: todo: add info about any problems' ;
+                return text ;
+            }
             text = 'Sent ' + date(message.message.sent_at, 'short') ;
             if (message.message.z_filename) return text ; // public chat
             if (!message.message.feedback) {
@@ -522,13 +537,8 @@ angular.module('MoneyNetwork')
             }
             if (msgtype == 'received') {
                 // receipt for chat message with image. Used for quick data.json cleanup to free disk space in users directory
+                // message is not displayed in UI. chat_filter = false for image receipts
                 return 'Thank you. I have received your photo.' ;
-                if (message.message.folder == 'outbox') {
-                    // sent receipt for chat message with to contact
-                }
-                else {
-                    // received receipt for chat message with image from contact
-                }
             }
             if (msgtype == 'group chat') {
                 // sent or received group chat password

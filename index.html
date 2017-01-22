@@ -528,7 +528,7 @@
                                         <span class="speech-time"
                                               title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
                                         <span class="speech-time" title="{{m|messageOutSentTitle}}">
-                                            <i class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
+                                            <i class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
                                             <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
                                         <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                               ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
@@ -630,7 +630,7 @@
                                         <span class="speech-time"
                                               title="Message size in browser"> {{m.message|formatMsgSize}}</span>
                                         <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
-                                                class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
+                                                class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
                                         <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                               ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
                                         <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
@@ -1021,7 +1021,7 @@
                                     <span class="speech-time"
                                           title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
                                     <span class="speech-time" title="{{m|messageOutSentTitle}}"> <i
-                                            class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
+                                            class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
                                         <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
                                         <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                               ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
@@ -1124,7 +1124,7 @@
                                     <td style="text-align: right; vertical-align: top">
                                     <span class="speech-time" title="Message size in browser"> {{m.message|formatMsgSize}}</span>
                                     <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
-                                            class="fa fa-clock-o fa-fw"></i> {{m.message.sent_at|shortChatTime}}</span>
+                                            class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
 
                                         <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                               ng-click="c.edit_chat_msg(m)" title="Click to delete message xxxx"></span>

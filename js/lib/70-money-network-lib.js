@@ -1164,56 +1164,76 @@ var MoneyNetworkHelper = (function () {
 
     // for debug. copy of user settings from Account page
     var user_setup = {} ;
+    var old_debug_setup ;
     function load_user_setup() {
         var setup = getItem('setup') ;
         if (!setup) return ;
         setup = JSON.parse(setup);
         for (var key in user_setup) delete user_setup[key] ;
         for (key in setup) user_setup[key] = setup[key] ;
+        // debug settings changed?
+        var new_debug_setup = JSON.stringify(user_setup.debug) ;
+        if (new_debug_setup == old_debug_setup) return ;
+        var debug_changed = old_debug_setup ;
+        old_debug_setup = new_debug_setup ;
+        if (!debug_changed) return ;
+        for (key in debug_cache) delete debug_cache[key] ;
     } // load_user_setup
+
+
+    // debug help - shorten long strings in debug output. for example images or encrypted strings
+    var regexp_long_strings = new RegExp('"([^"]{500,}?)"','g');
+    function shorten_long_strings (text) {
+        if (!text) return text ;
+        return text.replace(regexp_long_strings, function(match, $1, $2, offset, original) { return $1.substr(0,480) + '...' }) ;
+    }
+    // as JSON.stringify but shorten long message and image. Also used in debug
+    function stringify (json) {
+        var str = JSON.stringify(json) ;
+        return shorten_long_strings(str) ;
+    }
 
     // output debug info in log. For key, see user page and setup.debug hash
     // keys: simple expressions are supported. For example inbox && unencrypted
+    var debug_cache = {} ;
     function debug (keys, text) {
         var pgm = module + '. debug: ' ;
         if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
-        // console.log(pgm + 'old keys = ' + keys);
-        // console.log(pgm + 'user_setup = ' + JSON.stringify(user_setup));
-        var debug_keys = [
+        if (debug_cache.hasOwnProperty(keys)) {
+            // keys expression already in cache
+            if (debug_cache[keys]) console.log(shorten_long_strings(text)) ;
+            return ;
+        }
+        // new keys expression
+        var old_keys, show_debug, debug_keys, i, key, debug_value, regexp;
+        old_keys = keys ;
+        debug_keys = [
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
             'issue_112'];
-        var i, key, debug_value, regexp ;
-        for (i=0 ; i<debug_keys.length ; i++) {
-            key = debug_keys[i] ;
-            if (user_setup.debug[key]) debug_value = 'true' ;
-            else debug_value = 'false' ;
+        for (i = 0; i < debug_keys.length; i++) {
+            key = debug_keys[i];
+            if (user_setup.debug[key]) debug_value = 'true';
+            else debug_value = 'false';
             regexp = new RegExp(key, 'g');
-            keys = keys.replace(regexp, debug_value) ;
+            keys = keys.replace(regexp, debug_value);
         }
         // console.log(pgm + 'new keys = ' + keys);
-        var regexp ;
         try {
-            if (eval(keys)) {
-                // shorten long strings. for example images
-                regexp = new RegExp('"([^"]{500,}?)"','g');
-                text = text.replace(regexp, function(match, $1, $2, offset, original) { return $1.substr(0,480) + '...' }) ;
-                console.log(text) ;
-            }
+            show_debug = eval(keys) ;
         }
         catch (err) {
             console.log(pgm + 'invalid call. keys = ' + keys + ', text = ' + text + ', error = ' + err.message) ;
+            return ;
         }
+        if (show_debug) console.log(shorten_long_strings(text)) ;
+        // add to cache
+        debug_cache[old_keys] = show_debug ;
     } // debug
 
-    // as JSON.stringify but shorten long message and image. Also used in debug
-    function stringify (json) {
-        var str = JSON.stringify(json) ;
-        var regexp = new RegExp('"([^"]{500,}?)"','g');
-        return str.replace(regexp, function(match, $1, $2, offset, original) { return $1.substr(0,480) + '...' }) ;
-    }
 
+    // fake user names. dummy user setup for guests and lazy users
     var fake_user_names = ["Annalise Glover", "Hollis Ortiz", "Bertha Schaefer", "Santino Grant", "Elbert Greenfelder",
         "Katharina Leffler", "Ernie Schroeder", "Layla Stracke", "Estevan Howell", "Bonnie Torp", "Nolan Bogisich",
         "Lisandro Walsh", "Colten Gislason", "Allen Davis", "Dayne Feest", "Santiago Ebert", "Bo Johnson", "Kelli Mraz",

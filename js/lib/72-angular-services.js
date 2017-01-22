@@ -269,7 +269,8 @@ angular.module('MoneyNetwork')
                             if (status.status[i].user_seq == user_seq) index = i ;
                         }
                         if (index == -1) status.status.push({ user_seq: user_seq, timestamp: timestamp}); // add new user
-                        else if (!user_setup.not_online) status.status[index].timestamp = timestamp;
+                        else if (!user_setup.not_online) status.status[index].timestamp = timestamp; // show as online
+                        else console.log(pgm + 'Show as offline - status.json was not updated') ; // not online
                         // console.log(pgm + 'updated timestamp. status = ' + JSON.stringify(status)) ;
                     }
                     // validate status.json before write
@@ -281,6 +282,7 @@ angular.module('MoneyNetwork')
                         ZeroFrame.cmd("wrapperNotification", ["error", error]);
                         return ;
                     }
+
                     // write status.json
                     write_status_json(function (res) {
                         var pgm = service + '.zeronet_site_publish fileWrite callback 2: ';
@@ -1709,7 +1711,7 @@ angular.module('MoneyNetwork')
                     // insert and encrypt new outgoing messages into data.json
                     // using callback technique (not required for JSEncrypt but used in cryptMessage plugin)
                     // will call data cleanup, write and publish when finished encrypting messages
-                    debug('issue_112', pgm + 'issue  #112 - z_update_2a_data_json_encrypt');
+                    debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                     z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
                 }); // fileGet callback 2
@@ -1998,7 +2000,7 @@ angular.module('MoneyNetwork')
                 z_update_4_data_json_write (data, data_str) ;
             }
             else {
-                // cannot write and publish. data.json file is too big. error notification already in UI
+                // stop: cannot write and publish. data.json file is too big. error notification already in UI
             }
 
         } // z_update_2a_data_json_encrypt
@@ -2013,14 +2015,23 @@ angular.module('MoneyNetwork')
         {
             var pgm = service + '.z_update_2b_data_json_encrypt: ' ;
 
+            debug('outbox && unencrypted', pgm + 'sending message = ' + JSON.stringify(message_with_envelope.message));
+            if (!sent_at) {
+                console.log(pgm + 'Invalid call. sent_at was null. using now') ;
+                sent_at = new Date().getTime() ;
+            }
+
+            debug('issue_112', pgm + 'issue #112 - calling aesEncrypt');
             ZeroFrame.cmd("aesEncrypt", [""], function (res) {
                 var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 1: ';
                 var password = res[0];
 
-                return ZeroFrame.cmd("eciesEncrypt", [password, pubkey2], function (key) {
+                debug('issue_112', pgm + 'issue #112 - calling eciesEncrypt');
+                ZeroFrame.cmd("eciesEncrypt", [password, pubkey2], function (key) {
                     var pgm = service + '.z_update_2b_data_json_encrypt eciesEncrypt callback 2: ';
 
                     // encrypt step 3 - aes encrypt message
+                    debug('issue_112', pgm + 'issue #112 - calling aesEncrypt');
                     ZeroFrame.cmd("aesEncrypt", [JSON.stringify(message_with_envelope.message), password], function (msg_res) {
                         var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 3: ';
                         var iv, encrypted_message_str, message, upload_image_json ;
@@ -2076,6 +2087,7 @@ angular.module('MoneyNetwork')
                             // message with image. must encrypt and upload image as an optional json file
                             // cryptMessage encrypt image using same key/password as for message
                             // encrypt step 4 - aes encrypt image
+                            debug('issue_112', pgm + 'issue #112 - calling aesEncrypt for image');
                             ZeroFrame.cmd("aesEncrypt", [message.image, password], function (image_res) {
                                 var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 4: ';
                                 var iv, encrypted_image_str, user_path, image_path, image_json, json_raw, error ;
@@ -6092,7 +6104,8 @@ angular.module('MoneyNetwork')
             // save message in localStorage. local_storage_save_messages / z_update_1_data_json call will encrypt and add encrypted message to data.json (ZeroNet)
             var message_with_envelope = {
                 folder: 'outbox',
-                message: message
+                message: message,
+                created_at: new Date().getTime()
             } ;
             // add message to contact.messages and js_messages array. not yet a sender_sha256 address. will be added in z_update_1_data_json
             add_message(contact, message_with_envelope) ;
@@ -6868,7 +6881,7 @@ angular.module('MoneyNetwork')
         // - is_deleted: received logical deleted json file that has also physical deleted
         // - timestamps: list with timestamps for messages not yet loaded into JS
         // - size: physical size from last fileGet request. Must match size from files_optional in content.json files
-        // - download_failed_at: timestamp for failed (timeout) download.
+        // - download_failed_at: array with timestamps for failed (timeout) download.
         var files_optional_cache = { } ;
         function clear_files_optional_cache() {
             for (var key in files_optional_cache) delete files_optional_cache[key] ;
@@ -6938,7 +6951,7 @@ angular.module('MoneyNetwork')
                 end_of_page: chat_page_context.end_of_page,
                 chat_sort: user_setup.chat_sort
             };
-            chat_page_context.failures = 0 ;
+            chat_page_context.failures = [] ;
 
             // check for public chat relevant for current chat page. loop until status == done or too many errors
             chat_page_context.no_processes++ ;
@@ -6946,8 +6959,8 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.check_public_chat: ' ;
                 get_public_chat(function (status) {
                     if (!status) status = 'not updated' ;
-                    debug('public_chat', pgm + 'status = ' + status + ', chat_page_context.failures = ' + chat_page_context.failures);
-                    if (chat_page_context.failures > 3) {
+                    debug('public_chat', pgm + 'status = ' + status + ', chat_page_context.failures = ' + chat_page_context.failures.length);
+                    if (chat_page_context.failures.length > 3) {
                         // too many errors
                         chat_page_context.no_processes-- ;
                         return ;
@@ -6978,7 +6991,7 @@ angular.module('MoneyNetwork')
         // check for public chat messages within chat page context when finished loading page chat page
         function set_first_and_last_chat (first,last,message, contact) {
             var pgm = service + '.set_first_and_last_chat: ' ;
-            var no_msg, i ;
+            var no_msg, i, cache_filename, cache_status, download_failed_at ;
             if (chat_page_is_ready()) return ;
             // chat page is loading.
             if (first && !chat_page_context.first_top_timestamp) chat_page_context.first_top_timestamp = message.message.sent_at ;
@@ -6999,14 +7012,22 @@ angular.module('MoneyNetwork')
             // start public chat download?
             if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return ; // group chat
             if ((user_setup.chat_sort != 'Last message') && !chat_page_context.end_of_page) return ; // sort by size and not end of page. public chat with size 0 at end of page
-            if (chat_page_context.no_processes >= 2) {
-                // do not start more that 2 download processes
-                debug('public_chat', pgm + 'stop. already ' + chat_page_context.no_processes + ' downloads running') ;
+            if (chat_page_context.no_processes >= 1) {
+                // do not start more that 1 download process
+                debug('public_chat', pgm + 'stop. already ' + chat_page_context.no_processes + ' check_public_chat process running') ;
                 return ;
             }
-            if (chat_page_context.failures >= 3) {
+            if (chat_page_context.failures.length >= 3) {
                 // something is wrong. maybe offline?
-                debug('public_chat', pgm + 'stop. already ' + chat_page_context.failures + ' failed downloads for current chat page context') ;
+                debug('public_chat', pgm + 'stop. already ' + chat_page_context.failures.length + ' failed downloads for current chat page context') ;
+                for (i=0 ; i<chat_page_context.failures.length ; i++) {
+                    cache_filename = chat_page_context.failures[i] ;
+                    cache_status = files_optional_cache[cache_filename] ;
+                    if (cache_status && cache_status.download_failed_at) download_failed_at = cache_status.download_failed_at.pop() ;
+                    else download_failed_at = null ;
+                    debug('public_chat', pgm + '- ' + cache_filename +
+                        (download_failed_at ? ', download failed at ' + date(download_failed_at*1000, 'short') : 'n/a')) ;
+                } // for i
                 return ;
             }
 
@@ -7016,7 +7037,7 @@ angular.module('MoneyNetwork')
         } // set_first_and_last_chat
 
 
-        // callback from chatCtrl (set_first_and_last_chat)
+        // callback from chatCtrl
         // check for any public chat relevant for current chat page context
         function get_public_chat (cb) {
             var pgm = service + '.get_public_chat: ' ;
@@ -7072,7 +7093,7 @@ angular.module('MoneyNetwork')
                     var i, cache_filename, cache_status, j, pending_files, get_no_peers, unique_id,
                         contact, compare_files1, compare_files2, auth_address, filename, interval_obj, user_seq, key,
                         hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
-                        deleted_messages, message, cb_status, js_messages_row ;
+                        deleted_messages, message, cb_status, js_messages_row, one_hour_ago ;
                     if (res.error) {
                         ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error, 5000]);
                         console.log(pgm + "Search for public chat failed: " + res.error);
@@ -7385,11 +7406,25 @@ angular.module('MoneyNetwork')
 
                     // finished processing already downloaded chat files within actual chat page context
                     // continue with not yet downloaded chat files within actual chat page context
-                    for (i=0 ; i < res.length ; i++) {
+
+                    // check download failures withín the last hour. max 1 failure is allowed for a optional file
+                    // todo: what about running ui-server but offline internet? lots of download failures. but maybe offline internet already is reported in ZeroNet UI? (Content publish failed message only)
+                    one_hour_ago = new Date().getTime() - 1000*60*60 ;
+                    for (i=res.length-1 ; i >= 0 ; i--) {
                         cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename;
                         cache_status = files_optional_cache[cache_filename];
-                        if (cache_status) res[i].download_failed_at = cache_status.download_failed_at || 0 ;
+                        res[i].download_failed_at = [] ;
+                        if (cache_status && cache_status.download_failed_at) {
+                            // check timestamps in cache_status.download_failed_at array
+                            for (j=cache_status.download_failed_at.length-1 ; j>=0 ; j--) {
+                                timestamp = cache_status.download_failed_at[j] ;
+                                if (timestamp > one_hour_ago) res[i].download_failed_at.push(timestamp) ;
+                                else cache_status.download_failed_at.splice(j,1) ;
+                            }
+                        }
+                        if (res[i].download_failed_at.length > 1) res.splice(i,1) ;
                     } // for i
+                    if (res.length == 0) return cb(cb_status || 'done') ;
 
                     // random sort. just to check number of peers for different files every time
                     res.sort(function(a, b){return 0.5 - Math.random()}) ;
@@ -7410,7 +7445,7 @@ angular.module('MoneyNetwork')
                         for (j=0 ; j<res.length ; j++) {
                             if (res[j].hasOwnProperty('peer')) {
                                 // already checked. Remember file with most peers
-                                if (res[j].download_failed_at) {
+                                if (res[j].download_failed_at[0]) {
                                     // Error - download failure for this file
                                     if (res[j].peer > max_peers_ok) {
                                         max_peers_failed = res[j].peer ;
@@ -7578,9 +7613,10 @@ angular.module('MoneyNetwork')
                     debug('public_chat', pgm + 'downloaded ' + cache_filename + ', required = ' + cache_status.required) ; // + ', chat = ' + chat);
                     if (!chat) {
                         cache_status.is_downloaded = false;
-                        cache_status.download_failed_at = new Date().getTime() ;
-                        chat_page_context.failures++ ;
-                        console.log(pgm + 'download failed for ' + cache_filename + ', failures = ' + chat_page_context.failures) ;
+                        if (!cache_status.download_failed_at) cache_status.download_failed_at = [] ;
+                        cache_status.download_failed_at.push(new Date().getTime()) ;
+                        chat_page_context.failures.push(cache_filename) ;
+                        console.log(pgm + 'download failed for ' + cache_filename + ', failures = ' + chat_page_context.failures.length) ;
                         return cb() ;
                     }
                     file_auth_address = cache_filename.split('/')[2] ;
@@ -7985,7 +8021,7 @@ angular.module('MoneyNetwork')
             for (key in chat_page_context) delete chat_page_context[key] ;
             chat_page_context.no_processes = 0 ;
             chat_page_context.end_of_page = true ;
-            chat_page_context.failures = 0 ;
+            chat_page_context.failures = [] ;
             clear_files_optional_cache() ;
             if (login_setting_changed) return ;
             // redirect
@@ -8378,7 +8414,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.chat_order_by: ';
             var sort1, sort2, short_date, unix_timestamp, debug_msg, padding ;
             // 2. sort condition - always Last message unix timestamp
-            sort2 = message.message.sent_at ;
+            sort2 = message.message.sent_at || message.message.created_at ;
             short_date  = date(sort2*1000, 'short') ;
             if (short_date == 'Invalid Date') {
                 sort2 = 0 ;
