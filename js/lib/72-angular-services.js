@@ -6232,6 +6232,7 @@ angular.module('MoneyNetwork')
                         if (within_page_context) {
                             // trigger a new chatCtrl.page_is_ready call and a new check for public chat files
                             debug('public_chat', pgm + 'calling reset_first_and_last_chat. should check/update public chat') ;
+                            old_chat_page_context = null ;
                             reset_first_and_last_chat() ;
                         }
                     })() ;
@@ -7701,11 +7702,11 @@ angular.module('MoneyNetwork')
 
 
         // administrator helpers. cleanup old inactive users. delete test users etc
-        var admin_auth_address = '16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH' ;
+        var admin_auth_address = ['16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH', '18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ', '1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF'] ;
         function is_admin () {
             var pgm = service + '.is_admin: ' ;
             if (user_setup.guest) return false ;
-            var admin = ZeroFrame.site_info.auth_address == admin_auth_address ;
+            var admin =  (admin_auth_address.indexOf(ZeroFrame.site_info.auth_address) != -1) ;
             // console.log(pgm + 'admin = ' + admin) ;
             return admin ;
         }
