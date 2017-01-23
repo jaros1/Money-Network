@@ -5280,160 +5280,12 @@ angular.module('MoneyNetwork')
                     }
 
 
-                    // moved to processing_incoming_message post message processing
-                    // any optional image json file to download and decrypt?
-                    //if (decrypted_message.image == true) {
-                    //
-                    //    contact = get_contact_by_unique_id(unique_id) ;
-                    //
-                    //    // temporary image path. used in error messages
-                    //    image_path = "data/users/" + contact.auth_address + '/' + res.timestamp + '-%-image.json' ;
-                    //
-                    //    // check if image attachment exist. could have been cleanup or deleted by user
-                    //    query =
-                    //        "select files_optional.filename, files_optional.size " +
-                    //        "from files_optional, json " +
-                    //        "where json.json_id = files_optional.json_id " +
-                    //        "and json.directory = 'users/" + contact.auth_address + "' " +
-                    //        "and  ( files_optional.filename = '" + res.timestamp + '-image.json' + "'" +
-                    //        "    or files_optional.filename like '" + res.timestamp + '-%-image.json' + "' )" ;
-                    //    debug('select', pgm + 'query = ' + query) ;
-                    //
-                    //    ZeroFrame.cmd("dbQuery", [query], function (query_res) {
-                    //        var pgm = service + '.process_incoming_cryptmessage dbQuery callback 3: ' ;
-                    //        var found_auth_addresses = [], i, unique_id, new_contact, public_avatars, index, j, last_updated;
-                    //        // console.log(pgm + 'res = ' + JSON.stringify(res));
-                    //        if (query_res.error) {
-                    //            console.log(pgm + "image download check failed: " + query_res.error) ;
-                    //            console.log(pgm + 'query = ' + query) ;
-                    //            // replace image with a image_download_failed object. the image can arrive later and be processes in a file_done event
-                    //            decrypted_message.image = {
-                    //                download_failure_at: new Date().getTime(),
-                    //                encryption: 2,
-                    //                password: password
-                    //            } ;
-                    //            decrypted_message_str = JSON.stringify(decrypted_message) ;
-                    //            // done. save decrypted message and return to process_incoming_message
-                    //            res.decrypted_message_str = decrypted_message_str ;
-                    //            cb() ;
-                    //            return ;
-                    //        }
-                    //        if (query_res.length == 0) {
-                    //            console.log(pgm + 'optional image file ' + image_path + ' was not found in optional files.') ;
-                    //            // replace image with a image_download_failed object. the image can arrive later and be processes in a file_done event
-                    //            decrypted_message.image = {
-                    //                download_failure_at: new Date().getTime(),
-                    //                encryption: 2,
-                    //                password: password
-                    //            } ;
-                    //            decrypted_message_str = JSON.stringify(decrypted_message) ;
-                    //            // done. save decrypted message and return to process_incoming_message
-                    //            res.decrypted_message_str = decrypted_message_str ;
-                    //            cb() ;
-                    //            return ;
-                    //        }
-                    //        // OK. optional image json file exist. continue with download. set real image path
-                    //        image_path = "data/users/" + contact.auth_address + '/' + query_res[0].filename ;
-                    //        debug('inbox', pgm + 'downloading image ' + image_path) ;
-                    //        ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
-                    //            var pgm = service + '.process_incoming_cryptmessage fileGet callback 4: ' ;
-                    //            var image_array, iv, encrypted, actions, data, loop ;
-                    //            if (!image || (user_setup.test && user_setup.test.image_timeout)) {
-                    //                console.log(pgm + 'Error. image download timeout for ' + image_path + '. removed image from message');
-                    //                // replace image with a image_download_failed object. the image can arrive later and be processes in a file_done event
-                    //                decrypted_message.image = {
-                    //                    download_failure_at: new Date().getTime(),
-                    //                    encryption: 2,
-                    //                    password: password
-                    //                } ;
-                    //                decrypted_message_str = JSON.stringify(decrypted_message) ;
-                    //                // done. save decrypted message and return to process_incoming_message
-                    //                res.decrypted_message_str = decrypted_message_str ;
-                    //                cb() ;
-                    //                return ;
-                    //            }
-                    //
-                    //            // delete downloaded image
-                    //            // ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
-                    //            ZeroFrame.cmd("optionalFileDelete", {inner_path: image_path}, function () {});
-                    //            // decrypt image
-                    //            debug('inbox', pgm + 'downloaded image ' + image_path);
-                    //            image = JSON.parse(image) ;
-                    //
-                    //            // DRY: almost identical code in event_file_done
-                    //
-                    //            if (!image.storage) image.storage = {} ;
-                    //            if (!image.storage.image) image.storage.image = 'e2' ;
-                    //            actions = image.storage.image.split(',') ;
-                    //            data = image.image ;
-                    //            // "loop". one callback for each action in actions
-                    //            loop = function (end_of_loop_cb) {
-                    //                var pgm = service + '.process_incoming_cryptmessage fileGet.loop: ' ;
-                    //                var action, image_array, iv, encrypted ;
-                    //                if (!actions.length) {
-                    //                    // done without decrypt/decompress without any errors
-                    //                    debug('inbox', 'done') ;
-                    //                    end_of_loop_cb() ;
-                    //                    return ;
-                    //                }
-                    //                action = actions.pop() ;
-                    //                debug('inbox', pgm + 'action = ' + action) ;
-                    //                if (action == 'c1') {
-                    //                    // decompress
-                    //                    try {
-                    //                        data = MoneyNetworkHelper.decompress1(data) ;
-                    //                    }
-                    //                    catch (e) {
-                    //                        end_of_loop_cb('action ' + action + ': ' + e.message);
-                    //                        return ;
-                    //                    }
-                    //                    debug('inbox', pgm + 'decompress ok') ;
-                    //                    loop(end_of_loop_cb) ;
-                    //                    return ;
-                    //                }
-                    //                if (action == 'e2') {
-                    //                    // aesDecrypt. note: no error handling for aesDecrypt. Error only in UI (notification)
-                    //                    image_array = data.split(',') ;
-                    //                    iv = image_array[0] ;
-                    //                    encrypted = image_array[1] ;
-                    //                    // ready for aesDecrypt
-                    //                    debug('inbox', pgm + 'calling aesDecrypt') ;
-                    //                    ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_str) {
-                    //                        var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 5: ';
-                    //                        debug('inbox', pgm + 'aesDecrypt ok') ;
-                    //                        data = decrypted_str ;
-                    //                        loop(end_of_loop_cb) ;
-                    //                    }) ; // aesDecrypt callback 5
-                    //                    return ;
-                    //                }
-                    //                end_of_loop_cb("unknown image decrypt/decompress action " + action) ;
-                    //            } ;
-                    //            loop(function (error) {
-                    //                var pgm = service + '.process_incoming_cryptmessage loop callback 5: ';
-                    //                if (error) {
-                    //                    console.log(pgm + 'error. decrypt/decompress failed for ' + image_path + '. error = ' + error) ;
-                    //                    decrypted_message.image = false ;
-                    //                }
-                    //                else decrypted_message.image = data ;
-                    //                decrypted_message_str = JSON.stringify(decrypted_message) ;
-                    //
-                    //                // done. save decrypted message and image and return to process_incoming_message
-                    //                res.decrypted_message_str = decrypted_message_str ;
-                    //                cb() ;
-                    //
-                    //            }) ; // loop callback 5
-                    //
-                    //        }) ; // fileGet callback 4
-                    //
-                    //    }) ; // dbQuery callback 3
-                    //
-                    //    // stop. aesDecrypt callback 5 will continue callback sequence
-                    //    return ;
-                    //} // if decrypted_message.image == true
-
                     // done. save decrypted message and return to process_incoming_message
                     res.decrypted_message_str = decrypted_message_str ;
-                    if (decrypted_message.image == true) res.decrypted_message_password = password ;
+                    if (decrypted_message.image == true) {
+                        // attached -image.json file is read and decrypted in process_incoming_message.
+                        res.decrypted_message_password = password ;
+                    }
                     cb() ;
                     return ;
 
@@ -6379,7 +6231,8 @@ angular.module('MoneyNetwork')
                         debug('public_chat', pgm + 'res.files_optional = ' + JSON.stringify(res.files_optional) + ', within_page_context = ' + within_page_context);
                         if (within_page_context) {
                             // trigger a new chatCtrl.page_is_ready call and a new check for public chat files
-                            chat_page_context.last_bottom_timestamp = null ;
+                            debug('public_chat', pgm + 'calling reset_first_and_last_chat. should check/update public chat') ;
+                            reset_first_and_last_chat() ;
                         }
                     })() ;
 
@@ -7093,7 +6946,7 @@ angular.module('MoneyNetwork')
                     var i, cache_filename, cache_status, j, pending_files, get_no_peers, unique_id,
                         contact, compare_files1, compare_files2, auth_address, filename, interval_obj, user_seq, key,
                         hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
-                        deleted_messages, message, cb_status, js_messages_row, one_hour_ago ;
+                        deleted_messages, message, cb_status, js_messages_row, one_hour_ago, k ;
                     if (res.error) {
                         ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error, 5000]);
                         console.log(pgm + "Search for public chat failed: " + res.error);
@@ -7112,6 +6965,7 @@ angular.module('MoneyNetwork')
                     // 1) logical deleted by owner and is in optional files list with size 2 = {}
                     // 2) physical deleted by downloader here
                     // 3) physical deleted by owner in a later publish
+                    cb_status = null ;
                     for (i=res.length-1 ; i >= 0 ; i--) {
                         if (res[i].size != 2) continue ;
                         if ((res[i].auth_address == my_auth_address) && (res[i].user_seq == my_user_seq)) {
@@ -7120,19 +6974,42 @@ angular.module('MoneyNetwork')
                             continue ;
                         }
                         // other users logical deleted json files. 2) physical deleted by downloader here
-                        cache_filename = cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
-                        res.splice(i,1) ;
-                        if (files_optional_cache[cache_filename] && files_optional_cache[cache_filename].is_deleted) continue ;
-                        if (!files_optional_cache[cache_filename]) files_optional_cache[cache_filename] = {} ;
+                        cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                        // cache_filename = data/users/16SNxdSpUYVLdVQWx6azQjoZXsZJHJUzKN/1485167995925-1485167995925-3-chat.json
+                        if (files_optional_cache[cache_filename] && files_optional_cache[cache_filename].is_deleted) {
+                            res.splice(i,1) ;
+                            continue ;
+                        }
                         // physical delete logical deleted json file. maybe already done. ignore any error message
+                        debug('public_chat', pgm + 'physical delete logical deleted json file ' + cache_filename +
+                            ', res[' + i + '] = ' + JSON.stringify(res[i])) ;
                         ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function () {}) ;
+                        // check already read public chat messages from this file
+                        for (j=0 ; j<ls_contacts.length ; j++) {
+                            contact = ls_contacts[j] ;
+                            if (['public','group'].indexOf(contact.type) != -1) continue ;
+                            if (contact.auth_address != res[i].auth_address) continue ;
+                            for (k=0 ; k<contact.messages.length ; k++) {
+                                message = contact.messages[k] ;
+                                if (message.folder != 'inbox') continue ;
+                                debug('public_chat', pgm + 'message = ' + JSON.stringify(message)) ;
+                                if (message.z_filename != res[i].filename) continue ;
+                                if (message.deleted_at) continue ;
+                                // found public chat inbox message from this deleted public chat file
+                                debug('public_chat', pgm + 'deleting public chat message ' + JSON.stringify(message)) ;
+                                js_messages_row = get_message_by_seq(message.seq) ;
+                                remove_message(js_messages_row) ;
+                                cb_status = 'updated' ;
+                            } // for k (messages)
+                        } // for j (contacts)
+                        if (!files_optional_cache[cache_filename]) files_optional_cache[cache_filename] = {} ;
                         files_optional_cache[cache_filename].is_deleted = true ;
+                        res.splice(i,1) ;
                     } // for i
-                    if (res.length == 0) return cb('done') ;
+                    if (res.length == 0) return cb(cb_status || 'done') ;
 
                     // compare filenames from dbQuery result with filenames in files_optional_cache.
                     // check for deleted chat files, changed intervals and changed chat files
-                    cb_status = null ;
                     compare_files1 = {} ;
                     compare_files2 = {} ;
                     deleted_messages = 0 ;
@@ -7140,6 +7017,7 @@ angular.module('MoneyNetwork')
                     // compare step 1 - compare cache_filenames (files_optional_cache (read messages) and db query result
                     for (cache_filename in files_optional_cache) {
                         cache_status = files_optional_cache[cache_filename] ;
+                        if (!cache_status.is_downloaded) continue ;
                         if (cache_status.is_deleted) continue ;
                         compare_files1[cache_filename] = { in_cache: true, cache_size: cache_status.size } ;
                     }
@@ -7610,7 +7488,7 @@ angular.module('MoneyNetwork')
                         image, chat2, found_image, byteAmount, chat_bytes, chat_length, error ;
                     // update cache_status
                     cache_status.is_pending = false;
-                    debug('public_chat', pgm + 'downloaded ' + cache_filename + ', required = ' + cache_status.required) ; // + ', chat = ' + chat);
+                    debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
                     if (!chat) {
                         cache_status.is_downloaded = false;
                         if (!cache_status.download_failed_at) cache_status.download_failed_at = [] ;
