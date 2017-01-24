@@ -140,12 +140,15 @@ angular.module('MoneyNetwork')
 
         // new markdown-it config
     }]).config(['markdownItConverterProvider', function(markdownItConverter) {
-        markdownItConverter.config('commonmark', {
-            gfm: true,
-            breaks: true,
-            html: true,
-            linkify: true
-        });
+        markdownItConverter
+            .config('commonmark', {
+                gfm: true,
+                breaks: true,
+                html: true,
+                linkify: true,
+                typographer: true
+            })
+            .use(window.markdownitEmoji);
 
     }])
 

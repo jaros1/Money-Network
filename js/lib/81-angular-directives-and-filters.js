@@ -508,7 +508,13 @@ angular.module('MoneyNetwork')
                 return str ;
             }
             if (msgtype == 'contact removed') return 'I removed you as contact' ;
-            if (msgtype == 'chat msg') return $sanitize(message.message.message.message) ;
+            if (msgtype == 'chat msg') {
+                str = message.message.message.message ;
+                str = (str + '').replace(/([^>\r\n]?)(\r\n|\n\r|\r|\n)/g, '$1<br>$2');
+                str = $sanitize(str) ;
+                message.formatted_message = str ;
+                return str ;
+            }
             if (msgtype == 'verify') {
                 // contact verification request. Different presentation for inbox/outbox and status for verification (pending or verified)
                 if (message.message.folder == 'outbox') {

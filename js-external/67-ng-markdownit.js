@@ -20,6 +20,7 @@
       } else if (angular.isObject(preset)) {
         options = preset;
       }
+      return this ;
     };
     this.use = function addPlugin(pluginObject) {
       var options = Array.prototype.slice.call(arguments);
@@ -27,7 +28,7 @@
       return this;
     };
     this.$get = [ '$log', function($log) {
-      var constructor = window.markdownit || markdownit;
+      var constructor = (window.markdownit || markdownit);
       if (angular.isFunction(constructor)) {
         return markdownItFactory(constructor);
       }
