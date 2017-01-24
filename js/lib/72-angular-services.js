@@ -1754,13 +1754,16 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'deleting message') ;
                                 // delete invalid message
                                 js_messages_row = js_messages_index.seq[message.seq] ;
-                                remove_message(js_messages_row) ;
-                                //contact.messages.splice(j,1);
-                                //for (k=js_messages.length-1 ; k>= 0 ; k--) {
-                                //    if (js_messages[k].message == message_with_envelope) {
-                                //        js_messages.splice(k,1) ;
-                                //    }
-                                //}
+                                if (js_messages_row) remove_message(js_messages_row) ; // new cleanup method
+                                else {
+                                    // old cleanup method (if seq is null)
+                                    contact.messages.splice(j,1);
+                                    for (k=js_messages.length-1 ; k>= 0 ; k--) {
+                                        if (js_messages[k].message == message_with_envelope) {
+                                            js_messages.splice(k,1) ;
+                                        }
+                                    }
+                                }
                                 continue ;
                             }
                         }
@@ -3260,6 +3263,10 @@ angular.module('MoneyNetwork')
         function remove_message (js_messages_row) {
             var pgm = service + '.remove_message' ;
             var contact, message, i, seq ;
+            if (!js_messages_row) {
+                console.log(pgm + 'invalid call. js_message_row is null') ;
+                return ;
+            }
             contact = js_messages_row.contact ;
             message = js_messages_row.message ;
             seq = message.seq ;
@@ -7760,13 +7767,16 @@ angular.module('MoneyNetwork')
                 "  json.directory," +
                 "  files.filename," +
                 "  files.size " +
-                "from keyvalue, json, files " +
+                "from keyvalue, json, " +
+                "  (select filename, sha512, size,  'N' as optional, json_id from files" +
+                "     union all" +
+                "   select filename, sha512, size,  'Y' as optional, json_id from files_optional) as files " +
                 "where keyvalue.key = 'modified' " +
                 "and keyvalue.value <  strftime('%s','now')-60*60*24*" + days_before_cleanup_users + " " +
                 "and json.json_id = keyvalue.json_id " +
                 "and files.json_id = keyvalue.json_id " +
                 "order by keyvalue.value, keyvalue.json_id";
-            debug('select', 'query = ' + query);
+            debug('select', pgm + 'query = ' + query);
 
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.cleanup_inactive_users dbQuery callback: ';
@@ -7816,10 +7826,8 @@ angular.module('MoneyNetwork')
                             last_directory = res[i].directory;
                         }
                         filename = "data/" + res[i].directory + "/" + res[i].filename;
-                        ZeroFrame.cmd("fileDelete", filename, function (res) {
-                            var pgm = service + '.cleanup_inactive_users fileDelete callback: ';
-                            // console.log(pgm + 'res = ' + JSON.stringify(res));
-                        });
+                        if (res[i].optional == 'N') ZeroFrame.cmd("fileDelete", filename, function (res) {});
+                        else ZeroFrame.cmd("optionalFileDelete", filename, function (res) {});
                     } // for i (res)
                     sign_and_publish(last_directory);
 
@@ -8057,6 +8065,11 @@ angular.module('MoneyNetwork')
             var pgm = service + '.contact_add: ' ;
             // console.log(pgm + 'click');
             // move contact to unverified contacts
+            if (!contact.pubkey) {
+                // cleanup user or temp user from a proxy server
+                console.log(pgm + 'Not allowed. No pubkey was found. Maybe a deleted contact') ;
+                return ;
+            }
             contact.type = 'unverified' ;
             // send contact info. to unverified contact (privacy public and unverified)
             // console.log(pgm + 'todo: send message add contact message to other contact including relevant tags') ;
@@ -8085,6 +8098,11 @@ angular.module('MoneyNetwork')
             var pgm = service + '.contact_remove: ' ;
             var zeronet_updated ;
             contact.type = 'new' ;
+            if (!contact.pubkey) {
+                // deleted contact? maybe cleanup or temporary user from a proxy server
+                ls_save_contacts(false) ;
+                return ;
+            }
             // send remove contact message
             var message = { msgtype: 'contact removed' } ;
             // validate json
@@ -8097,6 +8115,7 @@ angular.module('MoneyNetwork')
             // send message
             add_msg(contact, message) ;
             ls_save_contacts(true) ;
+            return ;
         } // contact_remove
 
         function contact_ignore (contact) {
@@ -8119,6 +8138,11 @@ angular.module('MoneyNetwork')
         function contact_verify (contact) {
             var pgm = service + '.contact_verify: ' ;
             // send verify message
+            if (!contact.pubkey) {
+                // cleanup user or temp user from a proxy server
+                console.log(pgm + 'Not allowed. No pubkey was found. Maybe a deleted contact') ;
+                return ;
+            }
             var password = MoneyNetworkHelper.generate_random_password(10);
             var message = { msgtype: 'verify', password_sha256: CryptoJS.SHA256(password).toString() };
             // validate json
