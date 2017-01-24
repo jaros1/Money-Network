@@ -542,7 +542,7 @@
                                             <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
                                                  title="Click to chat" alt="Click to chat"
                                                  ng-click="c.chat_contact(m.contact)">
-                                            <span marked="m|formatChatMessage"></span>
+                                            <span markdown-it="m|formatChatMessage"></span>
                                         </td>
 
                                     </tr>
@@ -648,7 +648,7 @@
                                             <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
                                                  title="Click to chat" alt="Click to chat"
                                                  ng-click="c.chat_contact(m.contact)">
-                                            <span marked="m|formatChatMessage"></span>
+                                            <span markdown-it="m|formatChatMessage"></span>
                                         </td>
 
                                     </tr>
@@ -1038,7 +1038,7 @@
                                         <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
                                              ng-click="c.chat_contact(m.contact)">
-                                        <span marked="m|formatChatMessage"></span>
+                                        <span markdown-it="m|formatChatMessage"></span>
                                     </td>
 
                                 </tr>
@@ -1143,7 +1143,7 @@
                                         <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
                                              ng-click="c.chat_contact(m.contact)">
-                                        <span marked="m|formatChatMessage"></span>
+                                        <span markdown-it="m|formatChatMessage"></span>
                                     </td>
                                 </tr>
                                 <tr ng-show="c.show_image(m)">
@@ -2002,8 +2002,8 @@
 <script type="text/javascript" src="js-external/62-tv4.js"></script>
 <script type="text/javascript" src="js-external/63-Blob.js"></script>
 <script type="text/javascript" src="js-external/64-FileSaver.js"></script>
-<script type="text/javascript" src="js-external/65-marked.js"></script>
-<script type="text/javascript" src="js-external/66-angular-marked.js"></script>
+<script type="text/javascript" src="js-external/65-markdown-it.js"></script>
+<script type="text/javascript" src="js-external/66-ng-markdownit.js"></script>
 <!-- the money network app - dynamic part - many changes -->
 <script type="text/javascript" src="js/all.js"></script>
 <!-- end - some more static js files -->

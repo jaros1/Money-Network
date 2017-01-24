@@ -1,54 +1,54 @@
 // angularJS app
-angular.module('MoneyNetwork', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'infinite-scroll', 'hc.marked']);
+angular.module('MoneyNetwork', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'infinite-scroll', 'mdMarkdownIt']); // 'hc.marked']);
 
 angular.module('MoneyNetwork')
 
     .config(['$routeProvider', function ($routeProvider) {
 
-        var pgm = 'routeProvider: ' ;
+        var pgm = 'routeProvider: ';
 
         // resolve: check if user is logged. check is used in multiple routes
         var check_auth_resolve = ['$location', function ($location) {
             var pgm = 'routeProvider.check_auth_resolve: ';
             if (!MoneyNetworkHelper.getUserId()) {
                 // notification and redirect to auth. remember path for redirect after log in
-                var old_a_path, new_a_path, z_path, info ;
-                old_a_path = $location.path() ;
-                info = 'Not allowed. Please log in ' ;
-                if (old_a_path == '/money') info += 'to see your wallet' ;
-                else if (old_a_path == '/network') info += 'to see your contacts' ;
-                else if (old_a_path.substr(0,5) == '/chat') info += 'to chat' ;
-                else if (old_a_path == '/user') info += 'to see you user profile' ;
-                new_a_path = '/auth' ;
-                z_path = "?path=/user&redirect=" + old_a_path ;
-                ZeroFrame.cmd("wrapperNotification", ['info', info , 3000]);
+                var old_a_path, new_a_path, z_path, info;
+                old_a_path = $location.path();
+                info = 'Not allowed. Please log in ';
+                if (old_a_path == '/money') info += 'to see your wallet';
+                else if (old_a_path == '/network') info += 'to see your contacts';
+                else if (old_a_path.substr(0, 5) == '/chat') info += 'to chat';
+                else if (old_a_path == '/user') info += 'to see you user profile';
+                new_a_path = '/auth';
+                z_path = "?path=/user&redirect=" + old_a_path;
+                ZeroFrame.cmd("wrapperNotification", ['info', info, 3000]);
                 $location.path(new_a_path).search('redirect', old_a_path);
                 $location.replace();
-                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]) ;
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]);
                 // console.log(pgm + 'old angularjs path = ' + old_a_path + ', new angularjs path = ' + new_a_path + ', z_path = ' + z_path + ', info = ' + info) ;
             }
             else {
-                var a_path, a_search, key ;
-                a_path = $location.path() ;
-                a_search = $location.search() ;
-                z_path = "?path=" + a_path ;
-                for (key in a_search) z_path += '&' + key + '=' + a_search[key] ;
+                var a_path, a_search, key;
+                a_path = $location.path();
+                a_search = $location.search();
+                z_path = "?path=" + a_path;
+                for (key in a_search) z_path += '&' + key + '=' + a_search[key];
                 // console.log(pgm + 'z_path = ' + z_path) ;
-                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
-                return z_path ;
+                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]);
+                return z_path;
             }
         }];
 
         var set_z_path = ['$location', function ($location) {
             var pgm = 'routeProvider.set_z_path: ';
-            var a_path, a_search, z_path, key ;
-            a_path = $location.path() ;
-            a_search = $location.search() ;
-            z_path = "?path=" + a_path ;
-            for (key in a_search) z_path += '&' + key + '=' + a_search[key] ;
+            var a_path, a_search, z_path, key;
+            a_path = $location.path();
+            a_search = $location.search();
+            z_path = "?path=" + a_path;
+            for (key in a_search) z_path += '&' + key + '=' + a_search[key];
             // console.log(pgm + 'z_path = ' + z_path) ;
-            ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
-            return z_path ;
+            ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]);
+            return z_path;
         }];
 
         // setup routes. see ng-template in index.html page. same sequence as in menu
@@ -111,29 +111,44 @@ angular.module('MoneyNetwork')
             .otherwise({
                 redirectTo: function () {
                     // error or startup. Check deep link. redirect to auth or deep link
-                    var pgm = 'routeProvider.otherwise: ' ;
-                    var search, a_path, z_path, i ;
-                    search = window.location.search ;
+                    var pgm = 'routeProvider.otherwise: ';
+                    var search, a_path, z_path, i;
+                    search = window.location.search;
                     // check for deep link
-                    i = search.indexOf('path=') ;
-                    if (i==-1) a_path = '/auth' ; // error or no path in startup url
+                    i = search.indexOf('path=');
+                    if (i == -1) a_path = '/auth'; // error or no path in startup url
                     else {
                         // deep link
-                        a_path = search.substr(i+5) ;
-                        i = a_path.indexOf('&') ;
-                        if (i!=-1) a_path = a_path.substr(0,i) ;
+                        a_path = search.substr(i + 5);
+                        i = a_path.indexOf('&');
+                        if (i != -1) a_path = a_path.substr(0, i);
                     }
-                    z_path = "?path=" + a_path ;
+                    z_path = "?path=" + a_path;
                     // console.log(pgm + 'window.location.search = ' + search + ', angularjs_path = ' + a_path + ', z_path = ' + z_path) ;
-                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]) ;
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
                     return a_path;
                 }
             });
         // end config (ng-routes)
 
-    }]).config(['markedProvider', function (markedProvider) {
-        markedProvider.setOptions({
+        // old marked config (https://github.com/chjj/marked)
+        //}]).config(['markedProvider', function (markedProvider) {
+        //    markedProvider.setOptions({
+        //        gfm: true,
+        //        breaks: true
+        //    });
+
+        // new markdown-it config
+    }]).config(['markdownItConverterProvider', function(markdownItConverter) {
+        markdownItConverter.config('commonmark', {
             gfm: true,
-            breaks: true
+            breaks: true,
+            html: true,
+            linkify: true
         });
-    }]);
+
+    }])
+
+;
+
+
