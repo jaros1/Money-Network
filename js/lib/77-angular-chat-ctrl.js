@@ -1438,6 +1438,11 @@ angular.module('MoneyNetwork')
                 $timeout(check_public_chat, 100) ;
             };
 
+            // long texts. remove max height and show more text link from message
+            self.hide_overflow = function (message) {
+                message.overflow = false ;
+            };
+
             // infinite scroll
             // startup with infinite_scroll_limit = 5.
             // public_chat = false. No nothing after page startup
@@ -1453,8 +1458,6 @@ angular.module('MoneyNetwork')
                 debug('infinite_scroll || public_chat', pgm + 'calling moneyNetworkService.reset_first_and_last_chat') ;
                 moneyNetworkService.reset_first_and_last_chat() ;
             }; // self.get_more_messages
-
-
 
             // ChatCtrl
         }])

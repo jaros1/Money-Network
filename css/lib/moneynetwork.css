@@ -626,3 +626,8 @@ body #file-drop {
     padding-left: 1px;
     padding-right: 1px;
 }
+
+
+.overflow {
+    max-height: 150px; overflow: hidden
+}

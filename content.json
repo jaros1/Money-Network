@@ -13,8 +13,8 @@
    "size": 2667
   },
   "css/all.css": {
-   "sha512": "e0e8d2533e604ebf7a35a333880681dee8fd27e9b9e2500ab83887ffd1120a91",
-   "size": 402167
+   "sha512": "841ec4532b68488bea9f9025a557829da0b3773e632b8ba1e24ba62c645557df",
+   "size": 402222
   },
   "dbschema.json": {
    "sha512": "bc25419cbfce1cb094dcebdee30ef460365e8868fb77c7cd1673daf8c57b92ce",
@@ -25,8 +25,8 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "2f77ff81d57e0059d7c9b55d6ba29227fde553421798569d6bf0deca885b6afe",
-   "size": 116425
+   "sha512": "55c44f9198d2e751723b56d4dc06e6df9e617cf241de1fe8a4fd72fc3b6acb96",
+   "size": 116899
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -133,8 +133,8 @@
    "size": 11594
   },
   "js-external/67-ng-markdownit.js": {
-   "sha512": "69335847da7ce8cd4ffad6c05f2d4bdba216df408fc0f2eaa6f9cd7461b70823",
-   "size": 1978
+   "sha512": "0959ac695ebf6510b73c018cf5d130aa1e19395a1c4958557e0fecf6ac7193c3",
+   "size": 2047
   },
   "js-external/90-ui-bootstrap-tpls-2.1.3.js": {
    "sha512": "7c6ced7ae68ddd3b8f88a24ff43f450c02b03a540a82def53e4704d32d66fe69",
@@ -145,8 +145,8 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "8f156f9601f9ef3368d61fa3b48c70916286eb61ca983ad849b68ae0fe48e5b7",
-   "size": 800658
+   "sha512": "d22663459a1641aaa1bf0eb75564d68812eed6ddff08afb5952f9bd27159c72b",
+   "size": 804409
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -231,15 +231,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1485316804,
+ "modified": 1485359842,
  "postmessage_nonce_security": true,
  "sign": [
-  18850929766447246816330581943182996951379237113716046200820353722954785516641,
-  38039448241849756941628904259486642934151498595333496201461231110558939970349
+  74716820451743935461215167847971192603752002881380077431621634846755984527081,
+  101898873312996479871700690360471039731554556574202529190052616119774340287591
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "Gw8YMve49RmwStNIz6cwHq9vJOdw/NGqPQ5ToKuI9ClpEjpdZji4o2Kco6gTVMp2QEEhICzrRVI2oH5+R5A9FWc="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G/esUfAq686lMRPMBOhBfUg8B11EiYWjQ/Hf7mZSYF+KXzBHHqFb811Aun4N8kMuwg/7/hyVFrsHdN4+vboO7K4="
  },
  "signs_required": 1,
  "title": "Money Network",

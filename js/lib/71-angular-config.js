@@ -1,5 +1,5 @@
 // angularJS app
-angular.module('MoneyNetwork', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'infinite-scroll', 'mdMarkdownIt']); // 'hc.marked']);
+angular.module('MoneyNetwork', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'infinite-scroll', 'mdMarkdownIt']);
 
 angular.module('MoneyNetwork')
 

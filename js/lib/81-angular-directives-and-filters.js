@@ -48,7 +48,6 @@ angular.module('MoneyNetwork')
         };
     }])
 
-
     // http://wisercoder.com/drag-drop-image-upload-directive-angular-js/
     .directive("imagedrop", function ($parse, $document) {
         return {
@@ -96,7 +95,6 @@ angular.module('MoneyNetwork')
         };
     })
 
-
     // http://stackoverflow.com/questions/17922557/angularjs-how-to-check-for-changes-in-file-input-fields
     .directive('customOnChange', function() {
         return {
@@ -107,7 +105,6 @@ angular.module('MoneyNetwork')
             }
         };
     })
-
 
     .filter('toJSON', [function () {
         // debug: return object as a JSON string
@@ -171,8 +168,8 @@ angular.module('MoneyNetwork')
         // return placeholder text for contact type. a warning when using public chat.
         return function (contact) {
             var bit_lng ;
-            if (!contact || (contact.type == 'public')) return 'PUBLIC CHAT. Image drag&drop support in E10+, Chrome and Firefox' ;
-            else return 'Private chat. Image drag&drop support in E10+, Chrome and Firefox' ;
+            if (!contact || (contact.type == 'public')) return 'PUBLIC CHAT. Image drag&drop, markdown-it and markdown-it emojis light support' ;
+            else return 'Private chat. Image drag&drop, markdown-it and markdown-it emojis light support' ;
         } ;
         // end contactPlaceholderText filter
     }])
@@ -791,6 +788,15 @@ angular.module('MoneyNetwork')
             return '<b><sup><span class="notification">' + notifications + '</span></sup></b>' ;
         } ;
         // end formatSearchTitle filter
+    }])
+
+    .filter('messageOverflow', [ function () {
+        // return null or overflow (long texts)
+        return function (message) {
+            if (message.overflow == false) return null ;
+            else return 'overflow' ;
+        } ;
+        // end messageShortChatTime filter
     }])
 
 ;

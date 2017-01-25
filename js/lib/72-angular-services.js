@@ -3257,6 +3257,7 @@ angular.module('MoneyNetwork')
                 js_messages_index.local_msg_seq[message.local_msg_seq] = js_messages_row ;
                 // console.log(pgm + 'inserted local_msg_seq address ' + message.local_msg_seq + ' into js_messages local_msg_seq index') ;
             }
+            if (load_contacts) check_overflow() ;
             // if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
         } // add_message
 
@@ -6859,6 +6860,7 @@ angular.module('MoneyNetwork')
             if (last && !chat_page_context.last_bottom_timestamp) chat_page_context.last_bottom_timestamp = message.message.sent_at ;
             if (!chat_page_is_ready()) return;
             // chat page updated with new chat page context
+            check_overflow() ;
             chat_page_context.contact = contact ;
             no_msg = 0 ;
             for (i=0 ; i<js_messages.length ; i++) if (js_messages[i].chat_filter) no_msg = no_msg + 1 ;
@@ -6869,6 +6871,7 @@ angular.module('MoneyNetwork')
                 ', end_of_page = ' + chat_page_context.end_of_page +
                 ', no_processes = ' + chat_page_context.no_processes +
                 ', chat_sort = ' + user_setup.chat_sort);
+
 
             // start public chat download?
             if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return ; // group chat
@@ -8484,6 +8487,57 @@ angular.module('MoneyNetwork')
             } // for i (contacts)
             chat_notifications = notifications ;
         } // update_chat_notifications
+
+        // check overflow. any div with x-overflow. show/hide show-more link
+        var overflow_status = { pending: false } ;
+        function check_overflow() {
+            var pgm = service + '.check_overflow: ' ;
+            if (overflow_status.pending) return ;
+            overflow_status.pending = true ;
+            // console.log(pgm + 'check') ;
+            $timeout(function() {
+                var pgm = service + '.check_overflow $timeout callback: ' ;
+                var overflows, i, overflow, seq, js_messages_row, screen_width_factor, screen_width, text_max_height ;
+                // console.log(pgm + 'done') ;
+                overflow_status.pending = false ;
+                if (document.getElementsByClassName) overflows = document.getElementsByClassName('overflow') ;
+                else if (document.querySelectorAll) overflows = document.querySelectorAll('.overflow') ;
+                else return ; // IE8 running in compatibility mode - ignore div overflow
+                // console.log(pgm + 'overflows.length = ' + overflows.length) ;
+                for (i=0 ; i<overflows.length ; i++) {
+                    overflow = overflows[i] ;
+                    seq = parseInt(overflow.getAttribute('data-seq'));
+                    if (!seq) continue ; // error
+                    js_messages_row = get_message_by_seq(seq) ;
+                    if (!js_messages_row) continue ; // error
+                    if (js_messages_row.hasOwnProperty('overflow')) continue ; // already checked
+                    // check overflow for message
+                    if (!screen_width) {
+                        // initialize
+                        screen_width = (document.width !== undefined) ? document.width : document.body.offsetWidth;
+                        screen_width_factor = screen_width / 320.0 ;
+                        if (screen_width_factor < 1) screen_width_factor = 1 ;
+                    }
+                    text_max_height = parseInt(overflow.style.maxHeight) ;
+                    // add2log(pgm + 'key = ' + key + ', text.style.maxHeight = ' + text_max_height +
+                    //        ', text.client height = ' + text.clientHeight + ', text.scroll height = ' + text.scrollHeight +
+                    //        ', link.style.display = ' + link.style.display) ;
+                    if (overflow.scrollHeight * screen_width_factor < text_max_height) {
+                        // small text - overflow is not relevant - skip in next call
+                        js_messages_row.overflow = false ;
+                    }
+                    else if (overflow.scrollHeight <= overflow.clientHeight) {
+                        // not relevant with actual screen width
+                        js_messages_row.overflow = false ;
+                    }
+                    else {
+                        // show overflow link
+                        js_messages_row.overflow = true ;
+                    }
+                    console.log(pgm + 'i = ' + i + ', seq = ' + JSON.stringify(seq) + ', overflow = ' + js_messages_row.overflow) ;
+                } // for i
+            }); // $timeout callback
+        } // check_overflow
 
         // export MoneyNetworkService API
         return {

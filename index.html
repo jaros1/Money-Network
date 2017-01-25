@@ -515,7 +515,7 @@
                             </div>
                             <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
 
-                                <!-- show outgoing message -->
+                                <!-- chat: show outgoing message -->
                                 <table class="speech" ng-hide="m.edit_chat_message">
                                     <tr>
                                         <td>
@@ -542,11 +542,13 @@
                                     <tr>
 
                                         <td colspan="2">
+
                                             Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
                                             <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
                                                  title="Click to chat" alt="Click to chat"
                                                  ng-click="c.chat_contact(m.contact)">
                                             <span ng-bind-html="m|formatChatMessage"></span>
+
                                         </td>
 
                                     </tr>
@@ -619,7 +621,7 @@
                             </div>
                             <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
 
-                                <!-- show inbox message -->
+                                <!-- chat: show inbox message -->
                                 <table class="speech">
                                     <tr>
                                         <td style="text-align: left">
@@ -647,12 +649,15 @@
                                     </tr>
                                     <tr>
 
+
                                         <td colspan="2" style="text-align: left">
+
                                             Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
                                             <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
                                                  title="Click to chat" alt="Click to chat"
                                                  ng-click="c.chat_contact(m.contact)">
                                             <span ng-bind-html="m|formatChatMessage"></span>
+
                                         </td>
 
                                     </tr>
@@ -1008,7 +1013,7 @@
                         </div>
                         <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
 
-                            <!-- show outgoing message -->
+                            <!-- chat2: show outgoing message -->
                             <table class="speech" ng-hide="m.edit_chat_message">
                                 <tr>
                                     <td>
@@ -1038,11 +1043,13 @@
                                 <tr>
 
                                     <td colspan="2">
+
                                         Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
                                         <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
                                              ng-click="c.chat_contact(m.contact)">
                                         <span ng-bind-html="m|formatChatMessage"></span>
+
                                     </td>
 
                                 </tr>
@@ -1116,7 +1123,7 @@
                         </div>
                         <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
 
-                            <!-- show inbox message -->
+                            <!-- chat2: show inbox message -->
                             <table class="speech">
                                 <tr>
                                     <td style="text-align: left">
@@ -1141,15 +1148,30 @@
 
                                     </td>
                                 </tr>
+
+
                                 <tr>
                                     <td colspan="2" style="text-align: left">
+
+                                        <div ng-class="m|messageOverflow" data-seq="{{m.message.seq}}">
+
                                         Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
                                         <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
                                              ng-click="c.chat_contact(m.contact)">
                                         <span ng-bind-html="m|formatChatMessage"></span>
+
+                                        </div>
+
                                     </td>
                                 </tr>
+
+                                <tr ng-show="m.overflow">
+                                    <td colspan="2" style="text-align: center" >
+                                        <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
+                                    </td>
+                                </tr>
+
                                 <tr ng-show="c.show_image(m)">
                                     <td colspan="2">
                                         <img ng-src="{{c.get_image_src(m)}}">
