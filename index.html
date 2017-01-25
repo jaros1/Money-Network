@@ -546,7 +546,7 @@
                                             <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
                                                  title="Click to chat" alt="Click to chat"
                                                  ng-click="c.chat_contact(m.contact)">
-                                            <span markdown-it="m|formatChatMessage"></span>
+                                            <span ng-bind-html="m|formatChatMessage"></span>
                                         </td>
 
                                     </tr>
@@ -652,7 +652,7 @@
                                             <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
                                                  title="Click to chat" alt="Click to chat"
                                                  ng-click="c.chat_contact(m.contact)">
-                                            <span markdown-it="m|formatChatMessage"></span>
+                                            <span ng-bind-html="m|formatChatMessage"></span>
                                         </td>
 
                                     </tr>
@@ -1042,7 +1042,7 @@
                                         <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
                                              ng-click="c.chat_contact(m.contact)">
-                                        <span markdown-it="m|formatChatMessage"></span>
+                                        <span ng-bind-html="m|formatChatMessage"></span>
                                     </td>
 
                                 </tr>
@@ -1147,7 +1147,7 @@
                                         <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
                                              ng-click="c.chat_contact(m.contact)">
-                                        <span markdown-it="m|formatChatMessage"></span>
+                                        <span ng-bind-html="m|formatChatMessage"></span>
                                     </td>
                                 </tr>
                                 <tr ng-show="c.show_image(m)">

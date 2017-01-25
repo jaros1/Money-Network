@@ -463,6 +463,14 @@ angular.module('MoneyNetwork')
     .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', '$sanitize', function (moneyNetworkService, formatChatMessageAlias, $sanitize) {
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
+        // markdown-it with emojis light plugin
+        var md = window.markdownit().use(window.markdownitEmoji, {
+            gfm: true,
+            breaks: true,
+            html: true,
+            linkify: true,
+            typographer: true
+        });
         return function (message) {
             var pgm = 'formatChatMessage: ' ;
             // check cache. maybe already saved as a formatted string
@@ -487,7 +495,7 @@ angular.module('MoneyNetwork')
             //}
             //greeting = '' ;
             // check known message types
-            var str, msgtype, search ;
+            var str, msgtype, search, str_a, md_result, dump_str, last_char ;
             msgtype = message.message.message.msgtype ;
             // console.log(pgm + 'msgtype = ' + msgtype);
             if (msgtype == 'contact added') {
@@ -509,9 +517,13 @@ angular.module('MoneyNetwork')
             }
             if (msgtype == 'contact removed') return 'I removed you as contact' ;
             if (msgtype == 'chat msg') {
-                str = message.message.message.message ;
-                str = (str + '').replace(/([^>\r\n]?)(\r\n|\n\r|\r|\n)/g, '$1<br>$2');
-                str = $sanitize(str) ;
+                str = $sanitize(message.message.message.message) ;
+                dump_str = function (str) { return JSON.stringify(str.split ('').map (function (c) { return c.charCodeAt (0); }))} ;
+                // console.log(pgm + 'old str = ' + str + ' <=> ' + dump_str(str)) ;
+                str = str.replace(/&#10;/g, "\n").replace(/\r\n/g,"\n").replace(/\r/g,"\n") ;
+                str = md.render(str) ;
+                if (str.substr(0,3) == '<p>') str = str.substr(3,str.length-8);
+                // console.log(pgm + 'new str = ' + str + ' <=> ' + dump_str(str)) ;
                 message.formatted_message = str ;
                 return str ;
             }
