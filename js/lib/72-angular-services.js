@@ -8534,7 +8534,7 @@ angular.module('MoneyNetwork')
                         // show overflow link
                         js_messages_row.overflow = true ;
                     }
-                    console.log(pgm + 'i = ' + i + ', seq = ' + JSON.stringify(seq) + ', overflow = ' + js_messages_row.overflow) ;
+                    // console.log(pgm + 'i = ' + i + ', seq = ' + JSON.stringify(seq) + ', overflow = ' + js_messages_row.overflow) ;
                 } // for i
             }); // $timeout callback
         } // check_overflow

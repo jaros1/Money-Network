@@ -799,5 +799,23 @@ angular.module('MoneyNetwork')
         // end messageShortChatTime filter
     }])
 
+    .filter('messageOverflowInbox', [ function () {
+        // return null or overflow (long texts)
+        return function (message) {
+            if ((message.message.folder != 'inbox') || (message.overflow == false)) return null ;
+            else return 'overflow' ;
+        } ;
+        // end messageShortChatTime filter
+    }])
+
+    .filter('messageOverflowOutbox', [ function () {
+        // return null or overflow (long texts)
+        return function (message) {
+            if ((message.message.folder != 'outbox') || (message.overflow == false)) return null ;
+            else return 'overflow' ;
+        } ;
+        // end messageShortChatTime filter
+    }])
+
 ;
 // angularJS app end
