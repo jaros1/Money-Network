@@ -619,10 +619,10 @@ angular.module('MoneyNetwork')
                         // - positive local_msg_seq: tell contact that message has been received
                         // - negative local_msg_seq: tell contact that message has not been received (please resend)
                         // - sha256 address: tell contact that message with sha256 address was received with a decrypt error (please resend)
-                        if (message.message.msgtype == 'lost msg2') local_msg_seqs.push(message.message.message_sha256) ;
-                        else if (message.message.msgtype == 'lost msg') local_msg_seqs.push(-message.message.local_msg_seq) ;
-                        else local_msg_seqs.push(message.message.local_msg_seq) ;
-
+                        if (message.message.msgtype == 'lost msg2') local_msg_seq = message.message.message_sha256 ; // decrypt error
+                        else if (message.message.msgtype == 'lost msg') local_msg_seq = -message.message.local_msg_seq ; // lost message
+                        else local_msg_seq = message.message.local_msg_seq ; // OK message
+                        if (local_msg_seqs.indexOf(local_msg_seq) == -1) local_msg_seqs.push(local_msg_seq) ;
                     } // for i (contact2.messages)
 
                     // check deleted inbox messages from contact2
@@ -637,7 +637,7 @@ angular.module('MoneyNetwork')
                     } // for local_msg_seq (deleted_inbox_messages)
 
                     // check encrypted group chat messages from contact2
-                    console.log(pgm + 'todo: check encrypted group chat messages received from contact2');
+                    console.log(pgm + 'checking encrypted group chat messages received from contact2');
                     participant = contact2.unique_id ;
                     console.log(pgm + 'contact2.unique_id / participant = ' + participant);
                     for (j=0 ; j<ls_contacts.length ; j++) {
@@ -1869,6 +1869,7 @@ angular.module('MoneyNetwork')
                             receiver_sha256 = CryptoJS.SHA256(password).toString();
                         }
                         else if (contact.encryption != '2') {
+                            debug('lost_message', pgm + 'using JSEncrypt. contact.encryption = ' + JSON.stringify(contact.encryption));
                             // JSEncrypt
                             message_with_envelope.encryption = 1 ;
                             if (!encrypt) {
@@ -1888,6 +1889,7 @@ angular.module('MoneyNetwork')
                         }
                         else {
                             // cryptMessage plugin encryption
+                            debug('lost_message', pgm + 'using cryptMessage. contact.encryption = ' + JSON.stringify(contact.encryption));
                             message_with_envelope.encryption = 2 ;
                             // 3 callbacks. 1) generate password, 2) encrypt password=key and 3) encrypt message,
                             if (resend) debug('lost_message', pgm + 'resend. calling z_update_data_cryptmessage for old message with local_msg_seq ' + local_msg_seq) ;
@@ -1898,7 +1900,6 @@ angular.module('MoneyNetwork')
                             ) ;
                             // stop. z_update_data_cryptmessage will callback to this function when done with this message
                             return ;
-
                         }
 
                         // same post encryption cleanup as in z_update_data_cryptmessage
