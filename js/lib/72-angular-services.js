@@ -5193,6 +5193,7 @@ angular.module('MoneyNetwork')
                         "and content_json.directory = data_json.directory " +
                         "and content_json.file_name = 'content.json' " +
                         "and keyvalue.json_id = content_json.json_id " +
+                        "and keyvalue.key = 'cert_user_id' " +
                         "and keyvalue.value <> '" + ZeroFrame.site_info.cert_user_id + "' " +
                         "and status_json.directory = data_json.directory " +
                         "and status_json.file_name = 'status.json' " +
@@ -5241,7 +5242,7 @@ angular.module('MoneyNetwork')
                         // validate json
                         error = MoneyNetworkHelper.validate_json(pgm, lost_message, lost_message.msgtype, 'Cannot insert dummy lost inbox message in UI. message_sha256 = ' + res.message_sha256);
                         if (error) {
-                            console.log(pgm + error) ;
+                            console.log(pgm + error + ', lost_message = ' + JSON.stringify(lost_message)) ;
                         }
                         else {
                             // insert into inbox
@@ -6265,8 +6266,9 @@ angular.module('MoneyNetwork')
                     // debug('file_done', pgm + 'res.msg.length before = ' + res.msg.length) ;
 
                     // find inbox messages that have been removed from zeronet
-                    // - removed after contact has received feedback info (message has been received by you)
-                    // - removed when contacts data.json file was too big
+                    // - compare previous received messages (ignore_zeronet_msg_id[auth_address]) with msg array in data.file
+                    // - messages removed from data.json file after contact has received feedback info (message has been received by you)
+                    // - messages removed from data.json file when contact data.json file was too big
                     if (ignore_zeronet_msg_id[auth_address]) {
                         cleanup_inbox_messages = JSON.parse(JSON.stringify(ignore_zeronet_msg_id[auth_address])) ;
                         cleanup_inbox_messages_lng1 = cleanup_inbox_messages.length ;
@@ -6323,7 +6325,7 @@ angular.module('MoneyNetwork')
                                 debug('file_done', pgm + 'cleanup_inbox_messages_lng1 = ' + cleanup_inbox_messages_lng1) ;
                                 debug('file_done', pgm + 'cleanup_inbox_messages_lng2 = ' + cleanup_inbox_messages_lng2) ;
                                 debug('file_done', pgm + 'cleanup_inbox_messages_lng3 = ' + cleanup_inbox_messages_lng3) ;
-                                debug('file_done', pgm + 'cleanup_inbox_messages ' + JSON.stringify(cleanup_inbox_messages)) ;
+                                debug('file_done', pgm + 'cleanup_inbox_messages = ' + JSON.stringify(cleanup_inbox_messages)) ;
                             }
 
                         }
