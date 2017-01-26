@@ -460,7 +460,10 @@ angular.module('MoneyNetwork')
     .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', '$sanitize', function (moneyNetworkService, formatChatMessageAlias, $sanitize) {
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
-        // markdown-it with emojis light plugin
+
+        // markdown-it with emojis light plugin and twitter emojis
+        // https://github.com/markdown-it/markdown-it
+        // https://github.com/markdown-it/markdown-it-emoji
         var md = window.markdownit().use(window.markdownitEmoji, {
             gfm: true,
             breaks: true,
@@ -468,6 +471,10 @@ angular.module('MoneyNetwork')
             linkify: true,
             typographer: true
         });
+        md.renderer.rules.emoji = function(token, idx) {
+            return twemoji.parse(token[idx].content);
+        };
+
         return function (message) {
             var pgm = 'formatChatMessage: ' ;
             // check cache. maybe already saved as a formatted string
@@ -788,15 +795,6 @@ angular.module('MoneyNetwork')
             return '<b><sup><span class="notification">' + notifications + '</span></sup></b>' ;
         } ;
         // end formatSearchTitle filter
-    }])
-
-    .filter('messageOverflow', [ function () {
-        // return null or overflow (long texts)
-        return function (message) {
-            if (message.overflow == false) return null ;
-            else return 'overflow' ;
-        } ;
-        // end messageShortChatTime filter
     }])
 
     .filter('messageOverflowInbox', [ function () {

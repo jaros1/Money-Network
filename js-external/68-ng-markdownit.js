@@ -1,3 +1,4 @@
+// angularJS directive for markdown-it. Only used in Money page. todo: delete
 // https://github.com/macedigital/angular-markdown-it version 0.6.1
 
 (function(window, angular) {

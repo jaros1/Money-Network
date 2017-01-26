@@ -631,3 +631,8 @@ body #file-drop {
 .overflow {
     max-height: 150px; overflow: hidden
 }
+
+/* markdown-it markdown-emojis and twemoji */
+.emoji {
+    height: 1.2em;
+}
