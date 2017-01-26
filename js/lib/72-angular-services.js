@@ -8465,13 +8465,14 @@ angular.module('MoneyNetwork')
             }
         }) ; // ls_bind callback
 
+        // notification. little red number in menu and (x) in title
         var chat_notifications = 0 ;
         function get_chat_notifications () {
             if (!user_id || (chat_notifications == 0)) return null ;
             return chat_notifications ;
         }
         function update_chat_notifications () {
-            var notifications, contact_notifications, i, contact, contact_seen_at, j, message ;
+            var notifications, contact_notifications, i, contact, contact_seen_at, j, message, title ;
             notifications = 0 ;
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
@@ -8488,6 +8489,9 @@ angular.module('MoneyNetwork')
                 contact.notifications = contact_notifications ;
             } // for i (contacts)
             chat_notifications = notifications ;
+            title = 'Money Network' ;
+            if (chat_notifications) title = '(' + chat_notifications + ') ' + title ;
+            ZeroFrame.cmd("wrapperSetTitle", title) ;
         } // update_chat_notifications
 
         // check overflow. any div with x-overflow. show/hide show-more link
