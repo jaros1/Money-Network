@@ -156,6 +156,7 @@ var MoneyNetworkHelper = (function () {
 
     // initialize array with public avatars from public/images/avatar
     var public_avatars = [] ;
+    // var twemojis = {} ;
     function load_public_avatars () {
         ZeroFrame.cmd("fileGet", ['content.json', false], function (res) {
             var pgm = module + '.load_public_avatars fileGet callback: ';
@@ -165,13 +166,22 @@ var MoneyNetworkHelper = (function () {
                 if (!res.files.hasOwnProperty(key)) continue ;
                 if (key.substr(0,20) == 'public/images/avatar') public_avatars.push(key.substr(20,key.length-20)) ;
             } // for key
+            //if (!res.files_optional) res.files_optional = {} ;
+            //for (key in res.files_optional) {
+            //    if (key.substr(0,8) != 'twemoji/') continue ;
+            //    twemojis[key] = false ;
+            //}
             // console.log(pgm + 'public_avatars = ' + JSON.stringify(public_avatars));
+            // console.log(pgm + 'twemojis = ' + JSON.stringify(twemojis)) ;
         })
     } // load_public_avatars
     load_public_avatars() ;
     function get_public_avatars () {
         return public_avatars ;
     }
+    //function get_twemojis () {
+    //    return twemojis ;
+    //}
 
     // return Last online from contact search array. Only value with typeof = number
     function get_last_online (contact) {
@@ -1265,6 +1275,7 @@ var MoneyNetworkHelper = (function () {
     return {
         // local storage helpers
         get_public_avatars: get_public_avatars,
+        //get_twemojis: get_twemojis,
         get_last_online: get_last_online,
         set_last_online: set_last_online,
         use_login_changed: use_login_changed,

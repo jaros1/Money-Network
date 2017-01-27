@@ -636,3 +636,7 @@ body #file-drop {
 .emoji {
     height: 1.2em;
 }
+
+/* enlarge reaction on hover */
+.grow20pct { transition: all .2s ease-in-out; }
+.grow20pct:hover { transform: scale(1.3); }

@@ -7519,12 +7519,12 @@ angular.module('MoneyNetwork')
                     chat_bytes = unescape(encodeURIComponent(chat)).length ;
                     if (chat_length != chat_bytes) {
                         // image in chat file. Maybe compressed with UTF-16 characters. Print out different length alternatives for debugging
-                        console.log(pgm + 'special characters in file ' + cache_filename + '. problem with length and utf-16 characters') ;
+                        debug('public_chat', pgm + 'special characters in file ' + cache_filename + '. problem with length and utf-16 characters') ;
                         byteAmount = unescape(encodeURIComponent(chat)).length ;
-                        console.log(pgm + '0: expected_size = ' + expected_size) ;
-                        console.log(pgm + '1: chat.length   = ' + chat.length);
-                        console.log(pgm + '2: byteAmount    = ' + chat_bytes + ' - select currently');
-                        console.log(pgm + '3: byteCount     = ' + byteCount(chat)) ;
+                        debug('public_chat', pgm + '0: expected_size = ' + expected_size) ;
+                        debug('public_chat', pgm + '1: chat.length   = ' + chat.length);
+                        debug('public_chat', pgm + '2: byteAmount    = ' + chat_bytes + ' - select currently');
+                        debug('public_chat', pgm + '3: byteCount     = ' + byteCount(chat)) ;
                         chat_length = chat_bytes ;
                     }
                     if (expected_size != chat_length) {
@@ -8546,6 +8546,39 @@ angular.module('MoneyNetwork')
             }); // $timeout callback
         } // check_overflow
 
+        //// twemoji. Use ZeroNet links instead of external https:twemoji.maxcdn.com/2/72x72/ links
+        //var twemojis = MoneyNetworkHelper.get_twemojis() ;
+        //function check_twemojis(str) {
+        //    var pgm = service + '.check_twemojis: ' ;
+        //    var new_url, image ;
+        //    str = str.replace(/https:\/\/twemoji\.maxcdn\.com\/2\/72x72\/[0-9a-f]+\.png/gm, function (match) {
+        //        var pgm = service + '.check_twemojis replace callback: ' ;
+        //        // console.log(pgm + 'match = ' + match) ;
+        //        new_url = 'twemoji/2/72x72/' + match.split('/').pop() ;
+        //        if (!twemojis.hasOwnProperty(new_url)) {
+        //            console.log(pgm + 'Unknown twemojis ' + match) ;
+        //            return match ;
+        //        }
+        //        // could not get optional files and twemojis to work ....
+        //        //if (!twemojis[new_url]) {
+        //        //    // download optional file with twemoji
+        //        //    console.log(pgm + 'downloading twemoji ' + new_url) ;
+        //        //    $timeout(function () {
+        //        //        twemojis[new_url] = new Image();
+        //        //        twemojis[new_url].src = new_url;
+        //        //        twemojis[new_url].onload = (function() {
+        //        //            var pgm = service + '.check_twemojis.$timeout.image.onload: ' ;
+        //        //            console.log(pgm + 'downloaded twemoji ' + new_url) ;
+        //        //            twemojis[new_url] = true ;
+        //        //        });
+        //        //    }) ;
+        //        //}
+        //        twemojis[new_url] = true ;
+        //        return new_url ;
+        //    }) ;
+        //    return str ;
+        //}
+
         // export MoneyNetworkService API
         return {
             get_tags: get_tags,
@@ -8613,6 +8646,7 @@ angular.module('MoneyNetwork')
             event_file_done: event_file_done,
             get_chat_notifications: get_chat_notifications,
             update_chat_notifications: update_chat_notifications
+            // check_twemojis: check_twemojis
         };
 
         // end MoneyNetworkService

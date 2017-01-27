@@ -13,8 +13,8 @@
    "size": 2667
   },
   "css/all.css": {
-   "sha512": "f62497c04dceb6149bc332827da69387ed846ee3865edb6eb766dd7e7a68e300",
-   "size": 402299
+   "sha512": "b37fdb54cb986639c5ef6b188cddf505ee68d2404340b6cb42c2d4f217829fac",
+   "size": 402691
   },
   "dbschema.json": {
    "sha512": "bc25419cbfce1cb094dcebdee30ef460365e8868fb77c7cd1673daf8c57b92ce",
@@ -25,8 +25,8 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "07ad71b127962c55788b11493d158d0d2fff0eec2caa99f81cb88456dceee261",
-   "size": 118512
+   "sha512": "399d1698ef4ae7706b618f25feb16be3a83fc89f0dea301dfddacc3efb9b5a17",
+   "size": 123663
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -149,8 +149,8 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "bebfc9c5b4fe9b53d7ac490963ae19e23d485e50230e193f21415a0c63edebe3",
-   "size": 806015
+   "sha512": "2ab01034fd2f7de5546661384f3c719ef8c708be780ba3b2d1f06f6c67eb0e79",
+   "size": 808811
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -171,6 +171,42 @@
   "public/css/fonts/glyphicons-halflings-regular.woff2": {
    "sha512": "3811804f56ec3c82f0bef35de0a9250e546a1e357fb59e2784f610d638fec355",
    "size": 18028
+  },
+  "public/images/1f602.png": {
+   "sha512": "80ec6d3b05b7e48e064600c110d18cd22c72609b6cd3dd51aac1a13f36bdbca1",
+   "size": 1214
+  },
+  "public/images/1f603.png": {
+   "sha512": "ee91f3332a3363182bea36bbca1d83e11c10e0b1fb1ee5dab8078adcdd9ed018",
+   "size": 1059
+  },
+  "public/images/1f606.png": {
+   "sha512": "07205003e1cc608804f3f991f94e3530a6814bf333e0d2da4b2fea529bbe6866",
+   "size": 1142
+  },
+  "public/images/1f60e.png": {
+   "sha512": "87cf281ba967061cc3d400adffb8d03c848cdc07161de33b9ed73d05af7e2636",
+   "size": 1025
+  },
+  "public/images/1f621.png": {
+   "sha512": "f966123aa4ecaa7297d8be186683a445845fc7be14ad90ec8fbd8712bf946bd7",
+   "size": 999
+  },
+  "public/images/1f622.png": {
+   "sha512": "5f4869b1d293cc721fe1d038cd188558fc54be603b52012ad38106785610ea2f",
+   "size": 1081
+  },
+  "public/images/1f62e.png": {
+   "sha512": "357ebd461291c4e84a61e57b83780358fc3840d13aefbbb41cd708a550396ae4",
+   "size": 896
+  },
+  "public/images/2639.png": {
+   "sha512": "c2f0ddba12d306d8555ef46224cdd126268e90109a1c6aafcdc16b24c803b7d8",
+   "size": 916
+  },
+  "public/images/2764.png": {
+   "sha512": "b22f32886be9bac1428c27345df4894ad209bd7f2d156a0a76cf6531360914d4",
+   "size": 808
   },
   "public/images/avatar1.png": {
    "sha512": "9145522f1d399f0526d83b1af008f004130ac5e8fb49e15030f0e53df7a3dbbb",
@@ -223,6 +259,4468 @@
   "public/images/image_loading.gif": {
    "sha512": "c80a27ebf9b6110d3020376867f4462904dcebfeecdb6da0514e90192e4d3fcf",
    "size": 11755
+  },
+  "twemoji/2/3299.png": {
+   "sha512": "1a8518fa2a89611c554ca32098ee001ed4d14fd6b7f53fc33fccc5bdeba6b63a",
+   "size": 1978
+  }
+ },
+ "files_optional": {
+  "twemoji/2/72x72/1f004.png": {
+   "sha512": "4f49dcd8a5cc25b21feaa8e3035fa211e1cb163a4606760c3b269f271dd1fc18",
+   "size": 843
+  },
+  "twemoji/2/72x72/1f0cf.png": {
+   "sha512": "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce",
+   "size": 0
+  },
+  "twemoji/2/72x72/1f170.png": {
+   "sha512": "bab07ce0449613042a3e77bf2066bacf276e6f52812a6cccc8e4f87c8e2b9f81",
+   "size": 806
+  },
+  "twemoji/2/72x72/1f171.png": {
+   "sha512": "d758c6bd2155d8250fa1344a654684f05bd0d6f04faf3af5d4728eb295c10e07",
+   "size": 706
+  },
+  "twemoji/2/72x72/1f17e.png": {
+   "sha512": "0a6d2dc348bcd15e1ba1de1a4a69039c1367be4b4621f0f80e849b7e630ba2c2",
+   "size": 869
+  },
+  "twemoji/2/72x72/1f17f.png": {
+   "sha512": "7f152c67fcef1b123e4d8f0c2a4e7ec1c15495753713d55ccbca96488b93f974",
+   "size": 631
+  },
+  "twemoji/2/72x72/1f18e.png": {
+   "sha512": "72099b055ee603e4e5325deea43e6db5793287618f3e0edbb631212ae3c62ff5",
+   "size": 973
+  },
+  "twemoji/2/72x72/1f191.png": {
+   "sha512": "c7d91c7a0c800f6f22fa666dad22ddb8fde8215808a6ffd5fbe6410cc98cec79",
+   "size": 841
+  },
+  "twemoji/2/72x72/1f192.png": {
+   "sha512": "fa1cfd89fa55dfeece182377cec878d1c5cc27b21358c2be4efa0ea30e5b1f5b",
+   "size": 940
+  },
+  "twemoji/2/72x72/1f193.png": {
+   "sha512": "d66b4992b22bd590178790475322e7177d39a3566a5b057f3a7a3c817e38cfa4",
+   "size": 839
+  },
+  "twemoji/2/72x72/1f194.png": {
+   "sha512": "7beaedff0933c25834032c500ba56eb3fd02bce25ef18d3f565fe66d1230476f",
+   "size": 756
+  },
+  "twemoji/2/72x72/1f195.png": {
+   "sha512": "0fed57281321237c01e6413f62aeae14fca0f811d659774af971285cab193777",
+   "size": 965
+  },
+  "twemoji/2/72x72/1f196.png": {
+   "sha512": "12b312ddbc9624742c86fd54fcc4f24b3fbd47dcba7cf2a50314598d9d3c791e",
+   "size": 978
+  },
+  "twemoji/2/72x72/1f197.png": {
+   "sha512": "99307d39f1be45a6928a281ea9d23a144f6c260aa1f2362e835efe6ebada4124",
+   "size": 995
+  },
+  "twemoji/2/72x72/1f198.png": {
+   "sha512": "006f4b39e9c605962813cd383203bca6a9ee4a1d6353eebfa2631d1d0fad8935",
+   "size": 1074
+  },
+  "twemoji/2/72x72/1f199.png": {
+   "sha512": "d40d45f4645690eba750ed5c714ed224f783a4645c7395159416c48ae79dd7e9",
+   "size": 827
+  },
+  "twemoji/2/72x72/1f19a.png": {
+   "sha512": "cf087ff8530a79bd2eba09f8c46304ef0d364c985063f857d1076d48b2a51493",
+   "size": 1072
+  },
+  "twemoji/2/72x72/1f1e6.png": {
+   "sha512": "f2053081293361a4729dff489a9d6b5e7a420b8f93bfc4383870ad4fea79e0d1",
+   "size": 804
+  },
+  "twemoji/2/72x72/1f1e7.png": {
+   "sha512": "e60b57d1cf7afb5782891f1b6f785a11ef6e2841a018b641db701e5d0717a0b7",
+   "size": 696
+  },
+  "twemoji/2/72x72/1f1e8.png": {
+   "sha512": "2c15e8005bbc9401b304813f25c00f19eec3eb7245140a76eaf292591176a344",
+   "size": 760
+  },
+  "twemoji/2/72x72/1f1e9.png": {
+   "sha512": "3a5a62331f12bc50fb2f91d66fd6c2340858f15208f0a3a2d6bf9ed3cae4b65f",
+   "size": 689
+  },
+  "twemoji/2/72x72/1f1ea.png": {
+   "sha512": "19de4bd43f0032bd3e8ede28d4a76c64ef37a250455c70b446a8c97d02addd8f",
+   "size": 586
+  },
+  "twemoji/2/72x72/1f1eb.png": {
+   "sha512": "a1b3077145cc23f5244384721232324d15738635768c5a7053f6b3d8d2af6a5d",
+   "size": 574
+  },
+  "twemoji/2/72x72/1f1ec.png": {
+   "sha512": "028edd1f857a66e1a699ba72c9da73f3384d2e8e1d76ee92f4da91d3825de0a0",
+   "size": 883
+  },
+  "twemoji/2/72x72/1f1ed.png": {
+   "sha512": "dcec5ba00445261dc5466adc6c65f731e045b989bb2739e6065ed34445f2c725",
+   "size": 490
+  },
+  "twemoji/2/72x72/1f1ee.png": {
+   "sha512": "107a1a5926b7427e039ab1bc170da0a552924b4e9f949f3ddcf370be368808ae",
+   "size": 505
+  },
+  "twemoji/2/72x72/1f1ef.png": {
+   "sha512": "9e9bf5907f845cff382058feb34284b82f8d5c0473e617cc67c41d6b78d516b3",
+   "size": 595
+  },
+  "twemoji/2/72x72/1f1f0.png": {
+   "sha512": "ddfef777a8c0320a672c6ed9ccc406b86802568b7725f58ee2e2a61dd415f225",
+   "size": 738
+  },
+  "twemoji/2/72x72/1f1f1.png": {
+   "sha512": "a3633bc73bb0d8966aef844bb2d54f967490601ef4fd9f7a3d8c73abec21da98",
+   "size": 514
+  },
+  "twemoji/2/72x72/1f1f2.png": {
+   "sha512": "fc3cd27877d8d0867f8975135247c19b526dbcf0464cb2f6cdafcb08e83dd767",
+   "size": 1004
+  },
+  "twemoji/2/72x72/1f1f3.png": {
+   "sha512": "2a6162c254ee9d4cf417e46716e3f68d7d6c83fe06dc14065b95dec9b84c9da9",
+   "size": 714
+  },
+  "twemoji/2/72x72/1f1f4.png": {
+   "sha512": "b2299f037b9d95ceff1929f44df7384a517b675ea3b27c32a7b1cefbf8389651",
+   "size": 869
+  },
+  "twemoji/2/72x72/1f1f5.png": {
+   "sha512": "ad1baee7e8d731a0cabb35f155b49aae64d319fd2ae7332a194c7a67f3754e93",
+   "size": 652
+  },
+  "twemoji/2/72x72/1f1f6.png": {
+   "sha512": "0ef3020281d82abc6bde07b7b312e2bf6b0317a2c2d3e7fd751a065d3b5db209",
+   "size": 910
+  },
+  "twemoji/2/72x72/1f1f7.png": {
+   "sha512": "e9883bd63f6e601246f81f3d8793f346811941c1b0782c90eff10f0f75a7cb53",
+   "size": 730
+  },
+  "twemoji/2/72x72/1f1f8.png": {
+   "sha512": "978b3f8f00e47d98bd75d39bc15d10a62c3b74bc6d1ace6947870f02c995f1c4",
+   "size": 799
+  },
+  "twemoji/2/72x72/1f1f9.png": {
+   "sha512": "01224e9085f0f3084cf13eca099d6b771135886a9f50c3a3467536bac1edb12b",
+   "size": 540
+  },
+  "twemoji/2/72x72/1f1fa.png": {
+   "sha512": "04ec610e819855a40a5b2b7e075a65fd06954164b5c435afe2b730dfa4de74ee",
+   "size": 698
+  },
+  "twemoji/2/72x72/1f1fb.png": {
+   "sha512": "10ad23adc0251b3717d4f5f6c1af46e45ee3ebabb46b2364f8d4dadefb94d2c4",
+   "size": 813
+  },
+  "twemoji/2/72x72/1f1fc.png": {
+   "sha512": "e3f923ede1a37266150eacedc10b531e05cd93b08edd3c21e3cbc4661232d616",
+   "size": 1035
+  },
+  "twemoji/2/72x72/1f1fd.png": {
+   "sha512": "8539cbb19ba8c8ce189b43fee48f8e9f4f7c16d388f0fd0872b247beee448525",
+   "size": 855
+  },
+  "twemoji/2/72x72/1f1fe.png": {
+   "sha512": "2aca48994414a415b1a6755e5b7c63d01274ca5f2cd30f68aa58d69b05a77207",
+   "size": 695
+  },
+  "twemoji/2/72x72/1f1ff.png": {
+   "sha512": "f05f127e4a8fa787441c87a8f152f3f4c34e098569c5572d4a2309accb887990",
+   "size": 709
+  },
+  "twemoji/2/72x72/1f201.png": {
+   "sha512": "e957cf51d1dfd5df5f14605b4f94a63417dd653bab24e8555af7a6497080a1d8",
+   "size": 594
+  },
+  "twemoji/2/72x72/1f202.png": {
+   "sha512": "8c9e63d96352a3e8242b4cdbadb54b2af19b6d66bdf4993b45e3d01e41296a53",
+   "size": 698
+  },
+  "twemoji/2/72x72/1f21a.png": {
+   "sha512": "ed049191548265a496be1b5747ccb8ff3c591efb34182e1d417ac774dc3db942",
+   "size": 894
+  },
+  "twemoji/2/72x72/1f22f.png": {
+   "sha512": "910fac60823d897acf5b0d1b4d318a425a7e2fe895221705fd670bda20ac0111",
+   "size": 881
+  },
+  "twemoji/2/72x72/1f232.png": {
+   "sha512": "7996e38e2775a45490a10d4f0c1d5f3e6a92a5d89952521dd5a8a23cde304f3d",
+   "size": 1013
+  },
+  "twemoji/2/72x72/1f233.png": {
+   "sha512": "4101314d1183f9b93fe9eae139f526bbf1d1fb7b66b025d95bbe5cc5278cf70a",
+   "size": 787
+  },
+  "twemoji/2/72x72/1f234.png": {
+   "sha512": "fd0f73c63805159df74439372264ff1cee99ce6a36d4ea0f09693d8bd01b904e",
+   "size": 779
+  },
+  "twemoji/2/72x72/1f235.png": {
+   "sha512": "1e81c20e56cd26b8b0cad852c64a6cbc8aa233d9fa8a2a09b214ef950e094e0a",
+   "size": 933
+  },
+  "twemoji/2/72x72/1f236.png": {
+   "sha512": "91347308d5d2c2e57f1bbe24d69f4ae9fcd39e130c1c9bab558b8ae8fb753bd7",
+   "size": 731
+  },
+  "twemoji/2/72x72/1f237.png": {
+   "sha512": "f0e078ab8bd313d1672bb85d7b96b0a2658f5942462ab7acc99b275b257b80c6",
+   "size": 705
+  },
+  "twemoji/2/72x72/1f238.png": {
+   "sha512": "8d444dc64e545155980fedef063fd39789e14ec625752b0308062d6e167ace6a",
+   "size": 613
+  },
+  "twemoji/2/72x72/1f239.png": {
+   "sha512": "50e6d41fc3f6a17c405e37706975a7382ff851981a3cc984a69902914dbfc0b5",
+   "size": 801
+  },
+  "twemoji/2/72x72/1f23a.png": {
+   "sha512": "975d5256d730db42714f326ba6cad8a9c0b3223c53b7fe2f4f9f63a5704b1576",
+   "size": 827
+  },
+  "twemoji/2/72x72/1f250.png": {
+   "sha512": "41b23257be447bf2ff1695ef013ed1e4d62e22ce6c6be5d335e3776e92879180",
+   "size": 1492
+  },
+  "twemoji/2/72x72/1f251.png": {
+   "sha512": "860730131db01197efe8e78ae0969655060d0553c16622a55ccd84190d94e6c1",
+   "size": 928
+  },
+  "twemoji/2/72x72/1f300.png": {
+   "sha512": "dfd925ff1b43bbda9ccf043c6fc2ee8d3fee609e0465041724e06261b0850b8a",
+   "size": 1330
+  },
+  "twemoji/2/72x72/1f301.png": {
+   "sha512": "c4cd097b6905562b61fae6f633939147fe1f3d5757bfa0301cc1873c01560fde",
+   "size": 810
+  },
+  "twemoji/2/72x72/1f302.png": {
+   "sha512": "a843ace788da214be1e744d0eb973eadbada1b5747178e40457a2cf22a7dbf42",
+   "size": 951
+  },
+  "twemoji/2/72x72/1f303.png": {
+   "sha512": "69f9c395d1c7540380f59f79523643cfa939389d13e36bc0cc7c3d7a3dd80d56",
+   "size": 715
+  },
+  "twemoji/2/72x72/1f304.png": {
+   "sha512": "ccdf3020a51d1587cdcb443d4c33007f6dfccb676788b2907eb615e925f9b682",
+   "size": 1049
+  },
+  "twemoji/2/72x72/1f305.png": {
+   "sha512": "fca71274d58cc5d9c66d91c76f0bff8075aa7b609f47e99eeafd5eb26dfb1234",
+   "size": 982
+  },
+  "twemoji/2/72x72/1f306.png": {
+   "sha512": "3e992a885f5a014b6124f8c083b6083a57b63f4dc79a06f2bad40056c8e02414",
+   "size": 599
+  },
+  "twemoji/2/72x72/1f307.png": {
+   "sha512": "7ce51ba2014c24726e868e648e9af38033e8fdcbec23d91337e9361b62e24fc6",
+   "size": 1052
+  },
+  "twemoji/2/72x72/1f308.png": {
+   "sha512": "9c9538c29cdb34d99c0b7e2040d3d5137807db265a9cd71f8151c76bddfdd94c",
+   "size": 1137
+  },
+  "twemoji/2/72x72/1f309.png": {
+   "sha512": "54a7fc8340f873f5b5fba7ed9106add9c314521e0a9b9632a109c6f611581557",
+   "size": 957
+  },
+  "twemoji/2/72x72/1f30a.png": {
+   "sha512": "602919f1d4241315a5cb2d229a96dfbc80b79fe5941df259d6d23cf3e3f622b1",
+   "size": 910
+  },
+  "twemoji/2/72x72/1f30b.png": {
+   "sha512": "b5f9eaa956ec459a3f11684a420bb28dd70e555919581ef1af5abcc61d07ff77",
+   "size": 1193
+  },
+  "twemoji/2/72x72/1f30c.png": {
+   "sha512": "333907b103a885229d03a84533d8acde06aebe54d90f72da5adf793b01888fec",
+   "size": 1239
+  },
+  "twemoji/2/72x72/1f30d.png": {
+   "sha512": "4c1379a167e15b31074c0741f90635693efaf2f46137ba3708caa18eb8411b97",
+   "size": 1243
+  },
+  "twemoji/2/72x72/1f30e.png": {
+   "sha512": "74519078dd8f8c17ed22c7b37128c5a21c1b04ea3603a8a39ee6e638ce652ab0",
+   "size": 1177
+  },
+  "twemoji/2/72x72/1f30f.png": {
+   "sha512": "7adc522ed4404d39cf9034967aefcc149d32da6a2f8d9672800fb845f718821e",
+   "size": 1268
+  },
+  "twemoji/2/72x72/1f310.png": {
+   "sha512": "4d4a07b18d57d42af501d1c2e38c4c2fefa19b5896d76db5f22299de3a5e26f1",
+   "size": 1235
+  },
+  "twemoji/2/72x72/1f311.png": {
+   "sha512": "297482f2347801a6b62c85a27966885df6d3def8e6540b482e2f8f128fdd7d46",
+   "size": 1033
+  },
+  "twemoji/2/72x72/1f312.png": {
+   "sha512": "b930c4911132d10c154ede44f70885a57edd841b34bff9f7c6d910d65785b9bb",
+   "size": 1095
+  },
+  "twemoji/2/72x72/1f313.png": {
+   "sha512": "2ae6254c884015e3cca5331096c475ad8e7c88716c3f1e212e2fade06bb6bb90",
+   "size": 1051
+  },
+  "twemoji/2/72x72/1f314.png": {
+   "sha512": "8fea6207f7b78e53ceccf215182e668bcd00d3c22395ceb022fc585cc686e5c9",
+   "size": 1067
+  },
+  "twemoji/2/72x72/1f315.png": {
+   "sha512": "23dcd612c0fc828d03cfb1c2ec184a2b089b0f3351676c277a6b0d233e47ec46",
+   "size": 1023
+  },
+  "twemoji/2/72x72/1f316.png": {
+   "sha512": "3d964320fee5155a5c86252f4cb8bb630939bd5f3f2d92736e3b0362e446c0fb",
+   "size": 1079
+  },
+  "twemoji/2/72x72/1f317.png": {
+   "sha512": "084d1b7e7a1e48567bcd23e13974f4c0134646fd696342753d3cced5cd05cc78",
+   "size": 1030
+  },
+  "twemoji/2/72x72/1f318.png": {
+   "sha512": "f2dc139c80e52c09d5afca0b964899b5a083956539c483b4e48d51a98563146b",
+   "size": 1064
+  },
+  "twemoji/2/72x72/1f319.png": {
+   "sha512": "e77a4e20dc727933b5572587f78e52dd1d0b97b37096cc849da565f50678b03b",
+   "size": 903
+  },
+  "twemoji/2/72x72/1f31a.png": {
+   "sha512": "6938c263ccafb87e27ca3d79d9efdd88d96d39e22eaebe84f18678b113c784b8",
+   "size": 1119
+  },
+  "twemoji/2/72x72/1f31b.png": {
+   "sha512": "d2316a93c065646a2c2df223be05e865a924a24e459af13a9bc850d10cdfb968",
+   "size": 963
+  },
+  "twemoji/2/72x72/1f31c.png": {
+   "sha512": "266385495470d5432f756909c0dd18cf62c90fa24b9688c3bae8a229787267d6",
+   "size": 966
+  },
+  "twemoji/2/72x72/1f31d.png": {
+   "sha512": "2bfbd075130c4212e8c74601115c28161892d64b345e630bf9160a0f050c78df",
+   "size": 1112
+  },
+  "twemoji/2/72x72/1f31e.png": {
+   "sha512": "fef901bd247044f4919bd8f3b015dada49909268bd40e533eccddea4490b3713",
+   "size": 1185
+  },
+  "twemoji/2/72x72/1f31f.png": {
+   "sha512": "4a347132630ec4c5f85fff05258a9d3ccc856627c67d1331225509c63e3e341a",
+   "size": 1084
+  },
+  "twemoji/2/72x72/1f320.png": {
+   "sha512": "2d380ca8d757fa81b63431555d3f4eb0ce02393095db262e7a40988531cc12e9",
+   "size": 967
+  },
+  "twemoji/2/72x72/1f321.png": {
+   "sha512": "03cc3c67d82e92308c5deb350d4ad2b88d4b2107ac55b13f3ab22ac767ba4b2c",
+   "size": 868
+  },
+  "twemoji/2/72x72/1f324.png": {
+   "sha512": "b81e5e42aa9e973452e4e39d5127a798720811a78eaad0b3b16c2937bfe7691a",
+   "size": 932
+  },
+  "twemoji/2/72x72/1f325.png": {
+   "sha512": "c316c6fc65d91a90f1966ace147d5fe434438e86789ee941f88c860917c196c0",
+   "size": 809
+  },
+  "twemoji/2/72x72/1f326.png": {
+   "sha512": "290f2f7f968f45ec170cdc85c2abb41b41e06029a9269f74d4ef529bb7be572c",
+   "size": 989
+  },
+  "twemoji/2/72x72/1f327.png": {
+   "sha512": "1821cf8ed3603956b39b650df9f8e6da9b977703d043b7d09747f52b271d7314",
+   "size": 870
+  },
+  "twemoji/2/72x72/1f328.png": {
+   "sha512": "7768ce7d5ac331303f311649ce8117f5392c0cb30254d6a9a26f21d21a6b6ba2",
+   "size": 803
+  },
+  "twemoji/2/72x72/1f329.png": {
+   "sha512": "ce5104bf54dbc92e6513ab3324035c669a22504068ad35b0bb630dfcd4126b8d",
+   "size": 775
+  },
+  "twemoji/2/72x72/1f32a.png": {
+   "sha512": "db842afbb32447dd85c9e4c97a1d0405088e8e67fcf7ae61e74359af54bc546e",
+   "size": 1278
+  },
+  "twemoji/2/72x72/1f32b.png": {
+   "sha512": "85227589e94d03d439ba8ffdd5b27e79125451961a7c8531dbbb359a9c91cee1",
+   "size": 1194
+  },
+  "twemoji/2/72x72/1f32c.png": {
+   "sha512": "20b62e32237310607a78867d5a7d24eb2aed775864a81d0c4c2a82879bd5f444",
+   "size": 1047
+  },
+  "twemoji/2/72x72/1f32d.png": {
+   "sha512": "d6edef3b2ab0f30fbc3a839037dd7e310039876d20da185a6c08efe6903c5518",
+   "size": 1066
+  },
+  "twemoji/2/72x72/1f32e.png": {
+   "sha512": "40fb8aebd936c16ed8d9b66b1e5c149249902b90bce821662a8b065492763427",
+   "size": 1035
+  },
+  "twemoji/2/72x72/1f32f.png": {
+   "sha512": "b91e6d9e8fe2112cb7e885687726ae607dcdf84ac5876c02ccb0f5272a905f22",
+   "size": 1256
+  },
+  "twemoji/2/72x72/1f330.png": {
+   "sha512": "8fb29fb0aed9774efa45a93093325f83376b9976f4e7ba7bee3d07e926670304",
+   "size": 1412
+  },
+  "twemoji/2/72x72/1f331.png": {
+   "sha512": "ff3f061a3e5e8e7d61263e03a6b374e96f54957f57780a61e69901ef0dea7cc3",
+   "size": 777
+  },
+  "twemoji/2/72x72/1f332.png": {
+   "sha512": "0b1b16dbb990d9b7f099f7d01937937673c10c5726860a168638607bcbe670b2",
+   "size": 1070
+  },
+  "twemoji/2/72x72/1f333.png": {
+   "sha512": "86436339a8e52719a045d831ed0b201586e6b9936471e08e6ebb9853a84c0a0b",
+   "size": 876
+  },
+  "twemoji/2/72x72/1f334.png": {
+   "sha512": "8ed17f588ed0196210ddaef7eaad25fe9ce0d93ea345b36fa97a60527a3b320a",
+   "size": 1024
+  },
+  "twemoji/2/72x72/1f335.png": {
+   "sha512": "098657c740b508ee829befb011271a2dea72d34ff2bed04b61357f2d162f324b",
+   "size": 861
+  },
+  "twemoji/2/72x72/1f336.png": {
+   "sha512": "8dc89addfe1181af21c0a90e3ecee94d27bcb07dc102e64bf448ea5aed8e0b75",
+   "size": 828
+  },
+  "twemoji/2/72x72/1f337.png": {
+   "sha512": "ab51064c9b86edb3926c54c0819d635efd575c3dd028ea081dff113f6d81db4a",
+   "size": 1047
+  },
+  "twemoji/2/72x72/1f338.png": {
+   "sha512": "a7dc732df4741e31b54259a3c5168f54dcd574fdb030fbb45d62e93bd4e0861f",
+   "size": 1382
+  },
+  "twemoji/2/72x72/1f339.png": {
+   "sha512": "87481d682adda219be48b951997e82f13a05d1c01ffa807df6ff26a752552bc3",
+   "size": 894
+  },
+  "twemoji/2/72x72/1f33a.png": {
+   "sha512": "0978c84ddae487ec52cc2f69ac253db4248f78e974329ee6376c15002110e20c",
+   "size": 1224
+  },
+  "twemoji/2/72x72/1f33b.png": {
+   "sha512": "cf8cdc9533216d0b7ba82af1bcec4c100fa457093c988be9390966b319773830",
+   "size": 1065
+  },
+  "twemoji/2/72x72/1f33c.png": {
+   "sha512": "df29fa7630f1b973cda12c4788b6814a0ddf23d4db9c568aacefc1aa9114efe8",
+   "size": 1020
+  },
+  "twemoji/2/72x72/1f33d.png": {
+   "sha512": "7f6106ee652c0c65ec380c533f00cade1823a6f5561d33394b84f2b975c32607",
+   "size": 1212
+  },
+  "twemoji/2/72x72/1f33e.png": {
+   "sha512": "125579dd0e2321a141075aa579ff3be777520a63e396f0c959e2acff5f3ce99e",
+   "size": 1185
+  },
+  "twemoji/2/72x72/1f33f.png": {
+   "sha512": "4044e45b0113247d9a481c83f86e9dd6c3027c236e1c895d5e83b56a80dda71a",
+   "size": 1200
+  },
+  "twemoji/2/72x72/1f340.png": {
+   "sha512": "48a4d0f9734de9105d90b219324289c5fb9830c62b24f864671d3c68d8733678",
+   "size": 1089
+  },
+  "twemoji/2/72x72/1f341.png": {
+   "sha512": "09ecff6ac35bd1ffc148ac3bd2df6467a88ef5435ecd8ae6ffbdc20036289458",
+   "size": 921
+  },
+  "twemoji/2/72x72/1f342.png": {
+   "sha512": "36648f856d5fa8e8914f37d3fadcdb0af6ebba5467f440553600b7fd9d945ecb",
+   "size": 1486
+  },
+  "twemoji/2/72x72/1f343.png": {
+   "sha512": "450ca125dab98cd3283071ccac6cccb9024b0e86ee4448f811acde4a4feeab65",
+   "size": 1365
+  },
+  "twemoji/2/72x72/1f344.png": {
+   "sha512": "b362f238079a437b0b3eb2db62ca8c7f4902696b862f643ee8f56f9875b5ecc4",
+   "size": 1021
+  },
+  "twemoji/2/72x72/1f345.png": {
+   "sha512": "abaf3286983dfb51faacd684ac0f6761c8ae1fdad29349f781327e55976e1e29",
+   "size": 948
+  },
+  "twemoji/2/72x72/1f346.png": {
+   "sha512": "5cf613537d2b52d883daa9b66b1feb9d54aa990bcf42eeb92730bd81f32e899e",
+   "size": 821
+  },
+  "twemoji/2/72x72/1f347.png": {
+   "sha512": "7303c1f4c9fd17f66a6bcfd0ffe78969ec00b5e5e17a61b309c11e3f24a0c94a",
+   "size": 996
+  },
+  "twemoji/2/72x72/1f348.png": {
+   "sha512": "b63b6d59cb21aa7cd4a39bfa51d33d2098125bce27f43e225e85728d3faad899",
+   "size": 1227
+  },
+  "twemoji/2/72x72/1f349.png": {
+   "sha512": "06cb4da9dcb1d4b6046397595097bf9a12215b01fd4cece85b7f359bdd4eafc3",
+   "size": 974
+  },
+  "twemoji/2/72x72/1f34a.png": {
+   "sha512": "6f37c644bebe17b5295d1cec209204c369ea881d76be04ea635ee8a13736d538",
+   "size": 849
+  },
+  "twemoji/2/72x72/1f34b.png": {
+   "sha512": "aa55ed9b8fb524d21e8683bf34e9841433a70cc91662e234a452a160ec1af2b9",
+   "size": 905
+  },
+  "twemoji/2/72x72/1f34c.png": {
+   "sha512": "4bd21810c4aa3fbde5d33b42c0914e8a595ccc17c96496b38bb608c38d3344ad",
+   "size": 1171
+  },
+  "twemoji/2/72x72/1f34d.png": {
+   "sha512": "6c7b35a35f7f6238b12850527278405d48560ad9336763ff9a49f01f83962000",
+   "size": 1172
+  },
+  "twemoji/2/72x72/1f34e.png": {
+   "sha512": "d2d253d6825361fff4015c6e2e978216f704b1aa1641acf85d9943e94e2e16c9",
+   "size": 846
+  },
+  "twemoji/2/72x72/1f34f.png": {
+   "sha512": "8b298f0bd9e27ae54c7c46a00e5a4ed12c6040b0d9d387e15f784b1ea570852c",
+   "size": 871
+  },
+  "twemoji/2/72x72/1f350.png": {
+   "sha512": "2c8b025793203858767fbd7d0eb2625352e4dbf145ddf85666c9d8d1c35913c9",
+   "size": 787
+  },
+  "twemoji/2/72x72/1f351.png": {
+   "sha512": "4050f6c5fa573bc065ca8eddc3e157452d87f9e5a84ae946d49d8fb686844bf5",
+   "size": 1002
+  },
+  "twemoji/2/72x72/1f352.png": {
+   "sha512": "f382bcbe50db888dc1f5a71d5d8f0f0b3e776262eff41e04c9f533000a3d3ba4",
+   "size": 940
+  },
+  "twemoji/2/72x72/1f353.png": {
+   "sha512": "8e084751f7200afb3c5120a3177086b7a5bc08dfb699cf84ddcf5df60a423f41",
+   "size": 1119
+  },
+  "twemoji/2/72x72/1f354.png": {
+   "sha512": "37ff614c7fa130486775de9b421d66e706c8bda6e7e54f9032982fd7a30dfad4",
+   "size": 1099
+  },
+  "twemoji/2/72x72/1f355.png": {
+   "sha512": "1e570497f457bf8042e5f9b2dc162cc4f02ac9cce43f3caaaaaabf0020b5d02e",
+   "size": 986
+  },
+  "twemoji/2/72x72/1f356.png": {
+   "sha512": "d7e3d89b2832b9daaacaa5c5613dd75993ddfacacf575e0b18f50b65ce25ac66",
+   "size": 950
+  },
+  "twemoji/2/72x72/1f357.png": {
+   "sha512": "602cd13eb4fcb446de3ee8960d8b25f6f85f9e7836fdebf7c76ac9d265d2c5ac",
+   "size": 777
+  },
+  "twemoji/2/72x72/1f358.png": {
+   "sha512": "394e29e923ac8c0b2b0413ef01f6adcecde306a924722288ee6b2a0d1ecbfc2b",
+   "size": 966
+  },
+  "twemoji/2/72x72/1f359.png": {
+   "sha512": "4894f666619eeda4133a1757bf95b3913d23a110826ab5fafe35be2d64e1b8ce",
+   "size": 971
+  },
+  "twemoji/2/72x72/1f35a.png": {
+   "sha512": "74110548cf1408da540845e038e063df4762106943ef664cb0ce2852b4532312",
+   "size": 1132
+  },
+  "twemoji/2/72x72/1f35b.png": {
+   "sha512": "bf805d725e262b92ba422193f5d76240dc6ee1e3c5c644ec17b92760ec8fb85a",
+   "size": 1170
+  },
+  "twemoji/2/72x72/1f35c.png": {
+   "sha512": "2a1076780ada8cc312572050b912e18a506a7893f2f0d1d38371827cf5fd4cf7",
+   "size": 1515
+  },
+  "twemoji/2/72x72/1f35d.png": {
+   "sha512": "4c824e84abbaf7a8952f46ed1fbe2cda7e88a296979088aedee39ef21587ae94",
+   "size": 1516
+  },
+  "twemoji/2/72x72/1f35e.png": {
+   "sha512": "e9c0eda899c04fb6c1fb3b31df70fef15fddb76b0c8dd3d7117899177710f77d",
+   "size": 731
+  },
+  "twemoji/2/72x72/1f35f.png": {
+   "sha512": "7df5dee103ca36d4832529e62ed3f84a992af06d6a4d830a47deb30a23d62f6e",
+   "size": 1192
+  },
+  "twemoji/2/72x72/1f360.png": {
+   "sha512": "a18a31fe302f07cce0f20279f1f3c220116b6e39cce0cdd763689e27945428db",
+   "size": 962
+  },
+  "twemoji/2/72x72/1f361.png": {
+   "sha512": "cd12a240bee30ebfad12d713e1d74cee59b72926e5544e803dbb0928587cd5f5",
+   "size": 804
+  },
+  "twemoji/2/72x72/1f362.png": {
+   "sha512": "646317023fbeef45ae6c9c11d293e49cbaa77cfe9f094d1ebaa6ce1756dbd6f8",
+   "size": 796
+  },
+  "twemoji/2/72x72/1f363.png": {
+   "sha512": "5e0b2a3c3494538d802744a9e954d977f0ba1cf15f0a575682afaa8d0e5992af",
+   "size": 1227
+  },
+  "twemoji/2/72x72/1f364.png": {
+   "sha512": "0001235dd41e89091530a5b54ba4336e889da8a25f347159b487df878cea56b8",
+   "size": 1079
+  },
+  "twemoji/2/72x72/1f365.png": {
+   "sha512": "969d98fff0a6783141e888321451731ec862a11470d6bab738abf435d3f95d6b",
+   "size": 1319
+  },
+  "twemoji/2/72x72/1f366.png": {
+   "sha512": "7800e30b9e5fe499a8fe061dbe28edb4395e8aa8b12595a81e6d6863392cdf4b",
+   "size": 1030
+  },
+  "twemoji/2/72x72/1f367.png": {
+   "sha512": "5835a1d532e17798e1298a4d35434f782f87cf93a42572299db7c5cf1db88455",
+   "size": 970
+  },
+  "twemoji/2/72x72/1f368.png": {
+   "sha512": "7276b5c1d3ea8184f13d5f3ac9385e4f1996be64ad9a9997fe0d47b5e2982284",
+   "size": 961
+  },
+  "twemoji/2/72x72/1f369.png": {
+   "sha512": "6988374a965e4499c9e9338cb89da0d4fed1241a7835c4321c51157eb09155d4",
+   "size": 1171
+  },
+  "twemoji/2/72x72/1f36a.png": {
+   "sha512": "0bd96f4c941e856cc0fb8d704e49cc862ed4bf89833114e398a6f09f0ca2b648",
+   "size": 1068
+  },
+  "twemoji/2/72x72/1f36b.png": {
+   "sha512": "aa124e5194aa4d09564be7bd41ddd4f9975f32806d5f272e59992c70543e6b24",
+   "size": 869
+  },
+  "twemoji/2/72x72/1f36c.png": {
+   "sha512": "4d975a52f33eb49a2ab6016ef948bcd73b776f10b2bd3be47f477c1d4e8b1be0",
+   "size": 1232
+  },
+  "twemoji/2/72x72/1f36d.png": {
+   "sha512": "aa74cbf6d510e33ee5bb068c192d84f73453e0d11441353ec22a35ae36fa1496",
+   "size": 1443
+  },
+  "twemoji/2/72x72/1f36e.png": {
+   "sha512": "1b6c3a8ec27f2b987f8dade9665caf8d241af9cbba5fb8670c64b314651735be",
+   "size": 1094
+  },
+  "twemoji/2/72x72/1f36f.png": {
+   "sha512": "748479976b09697a1e50037046f7ee8bac3949c9b1805e5fdc1d41173764da80",
+   "size": 1107
+  },
+  "twemoji/2/72x72/1f370.png": {
+   "sha512": "8e005735b8582fac3cfec5d4ba302622c2d55d1ea7ce0a9d731b2509d6351271",
+   "size": 1301
+  },
+  "twemoji/2/72x72/1f371.png": {
+   "sha512": "01f3661ca0ab7e99b181ab61e3ca4745ff70652ab794e27d21f8f2a0c5811d9a",
+   "size": 1110
+  },
+  "twemoji/2/72x72/1f372.png": {
+   "sha512": "f2da3b0fa0b73724a528ec2394654023f4a5cc8a2697ccf3b3296d7c143459d1",
+   "size": 1121
+  },
+  "twemoji/2/72x72/1f373.png": {
+   "sha512": "a2c163c008fc11e17273a54ea27d281ecdad2bb1c09fa873ba572f16354bf623",
+   "size": 1179
+  },
+  "twemoji/2/72x72/1f374.png": {
+   "sha512": "95fe6ef271712d43e2c4bbc64d98499d5a4c841408d556795ca7311cb90fd668",
+   "size": 677
+  },
+  "twemoji/2/72x72/1f375.png": {
+   "sha512": "0de3ea650c300a04cd57ed528061bf7084469e50924699a65e7d8e2c80230fed",
+   "size": 1313
+  },
+  "twemoji/2/72x72/1f376.png": {
+   "sha512": "6c9ca07137b638d23cce209894194c3b4f568fea2e7d8b2e89b547ed6ef07d38",
+   "size": 1049
+  },
+  "twemoji/2/72x72/1f377.png": {
+   "sha512": "524e812128e26f323a36cb0453df7fdcef2879befebdeed6886c3a67808c7551",
+   "size": 919
+  },
+  "twemoji/2/72x72/1f378.png": {
+   "sha512": "e794ae4ab0358ed1455a5f18e768b8a441f9baf1772f090d6f629e412e8a198c",
+   "size": 918
+  },
+  "twemoji/2/72x72/1f379.png": {
+   "sha512": "e4ec8826f57cf327223dc66ba8081db378a38c9e658baf30060c2aba298a48ee",
+   "size": 1045
+  },
+  "twemoji/2/72x72/1f37a.png": {
+   "sha512": "b8e313d4a7a8abb5d34986512d77be29ec8af17fc04d99c5209b8b3d520537f0",
+   "size": 764
+  },
+  "twemoji/2/72x72/1f37b.png": {
+   "sha512": "2e7a73e56b409cf0a795bf546c283b03b556ae99bd93c639fa2782e120242626",
+   "size": 878
+  },
+  "twemoji/2/72x72/1f37c.png": {
+   "sha512": "86b70106a5f52f7677ea0293a8dcaa9c30d83c7c92bb03ee9e7c7af2d488ce8c",
+   "size": 762
+  },
+  "twemoji/2/72x72/1f37d.png": {
+   "sha512": "a3d877443e2a668082c7a92d8cae21b5ce6ee8fca2d22dd264262ea4d3f1a464",
+   "size": 1160
+  },
+  "twemoji/2/72x72/1f37e.png": {
+   "sha512": "87d17ec4bf20572e5c94c7df59fa583f2ae7c229a0db2070dee3835c82772907",
+   "size": 960
+  },
+  "twemoji/2/72x72/1f37f.png": {
+   "sha512": "55d5b551fc380facb86dbc5dcb4cb901225b84095953aa29289986630be3f66d",
+   "size": 878
+  },
+  "twemoji/2/72x72/1f380.png": {
+   "sha512": "6975c536bc39006e68c504be954d2596173d5727e95ebccc0bfd493f31692fee",
+   "size": 1064
+  },
+  "twemoji/2/72x72/1f381.png": {
+   "sha512": "752349a5b7ba1fa8e7113ab319ae17fc8d7a254acb67ddd8c20206ec5ad4ee9e",
+   "size": 696
+  },
+  "twemoji/2/72x72/1f382.png": {
+   "sha512": "d8ad0b2685421edf97135e4bd7c5a557d4e09d807d303ce96b4a76566852cffc",
+   "size": 1210
+  },
+  "twemoji/2/72x72/1f383.png": {
+   "sha512": "fdb303bd6dff7993481eaa6301d1829354ee053fbfcd761ccc502d3d76f01b4c",
+   "size": 1133
+  },
+  "twemoji/2/72x72/1f384.png": {
+   "sha512": "7a9690fbc2244b71e4ef458b1f43cbc7fe9b0f7889e4dadda24198f1af542709",
+   "size": 1042
+  },
+  "twemoji/2/72x72/1f385.png": {
+   "sha512": "d0b4742337835b361e08828216ff27eb7321b91eb5ecc3cd406567aa34b33569",
+   "size": 1030
+  },
+  "twemoji/2/72x72/1f386.png": {
+   "sha512": "f134d07c9749e281b5fdafd40e5690fe0075e44ec8bb1a17619c51e7f2413b80",
+   "size": 1285
+  },
+  "twemoji/2/72x72/1f387.png": {
+   "sha512": "17f694c2fda36fbe3c3e088900c4253243af99fefc622f783953b6717140e0b8",
+   "size": 1428
+  },
+  "twemoji/2/72x72/1f388.png": {
+   "sha512": "56a97ad3cc5587651f540804be820fcdcc8d49df3475682fc3fca2adacda04f0",
+   "size": 771
+  },
+  "twemoji/2/72x72/1f389.png": {
+   "sha512": "ebae1f32aee868738b670e9587e27cd50a2e56a466acf0b9ea4466e2ba923022",
+   "size": 1345
+  },
+  "twemoji/2/72x72/1f38a.png": {
+   "sha512": "5041d044290a7383bee5819166f2f65332bd0a775ec68d85b53a1c9341b1258b",
+   "size": 1258
+  },
+  "twemoji/2/72x72/1f38b.png": {
+   "sha512": "a1fbbf1d3da65e95b0707deaf543822f5ff7c21ff09b0a3a49c3ddbc76c92e87",
+   "size": 1374
+  },
+  "twemoji/2/72x72/1f38c.png": {
+   "sha512": "bc22d01cbba1c6b1e8b9cd6a08204d7b77e8936b71a7bd6a2a2ec632c94fc401",
+   "size": 1055
+  },
+  "twemoji/2/72x72/1f38d.png": {
+   "sha512": "63871f1221318e06d6b9a76f15053f6cab9081c50fcb87b9277f9b9a60c14213",
+   "size": 882
+  },
+  "twemoji/2/72x72/1f38e.png": {
+   "sha512": "ceb3a0bd104196129bb99b639687da660a9b9426287eebcf2e56c1ea50150f8d",
+   "size": 1394
+  },
+  "twemoji/2/72x72/1f38f.png": {
+   "sha512": "9be908812faea25f4ba13fcd8024f2764f0e214ebe6e9d698866823794a7957a",
+   "size": 922
+  },
+  "twemoji/2/72x72/1f390.png": {
+   "sha512": "d33c6eefb81acd4804304c6d3af6eb08c2347a3a9d70e51f22d8156ef3fe335a",
+   "size": 832
+  },
+  "twemoji/2/72x72/1f391.png": {
+   "sha512": "efae7eb74758898965761b712f68125a329b79bf694509b1f6f3b41375de2e99",
+   "size": 1282
+  },
+  "twemoji/2/72x72/1f392.png": {
+   "sha512": "ab91ec9018e1233980334e06ae5731d1a0c4fdb27f968a76d606ed0d3e024620",
+   "size": 1118
+  },
+  "twemoji/2/72x72/1f393.png": {
+   "sha512": "faeef6b79de710b173ec21ce0317a7e0f085b43467012cada55e06543906b96a",
+   "size": 961
+  },
+  "twemoji/2/72x72/1f396.png": {
+   "sha512": "874a6b80744561b4aebb28c9a0f98224e86e6a9a7e9e5c3f3b05fe8a19d84544",
+   "size": 755
+  },
+  "twemoji/2/72x72/1f397.png": {
+   "sha512": "5416a35e67464f742ab51608a5fdca1cb448963243a623151605dd6e6b5c1999",
+   "size": 1003
+  },
+  "twemoji/2/72x72/1f399.png": {
+   "sha512": "f9d1b44d59c13bd052a745c410b0caf0a26ea6471914b4696e24e3bab33512f0",
+   "size": 1017
+  },
+  "twemoji/2/72x72/1f39a.png": {
+   "sha512": "9ea4f977e536ba00be704275fbf9751381f140567ceb61e8f9b8fdbda30fdd7c",
+   "size": 605
+  },
+  "twemoji/2/72x72/1f39b.png": {
+   "sha512": "01a4aa25afb2698bcbe3b84cb00e23e937b614d377602bb7b1ac54cb89b170d4",
+   "size": 1262
+  },
+  "twemoji/2/72x72/1f39e.png": {
+   "sha512": "e2b0d617b953da1a2b7441986c8492a0a0060d6beec2d2fe4880a112ea4376c2",
+   "size": 153
+  },
+  "twemoji/2/72x72/1f39f.png": {
+   "sha512": "35f62acdbe5a3c6732c5ea1b6a6aac8ef94a3d3528d7d16853ff29169d79ec3d",
+   "size": 1010
+  },
+  "twemoji/2/72x72/1f3a0.png": {
+   "sha512": "11c9af8b3693a709ef2ea3d13534ea0a8f3c0f5085099bc1c619ddbde41cd63a",
+   "size": 1005
+  },
+  "twemoji/2/72x72/1f3a1.png": {
+   "sha512": "1a8347821523cd83775e620f569e5f3c6c359dcb1757fc6ce503baae8b741be4",
+   "size": 1117
+  },
+  "twemoji/2/72x72/1f3a2.png": {
+   "sha512": "ef669b24f0a81f274a4f97128168d1f487a6875da4a007b7738ef4c586b7ca68",
+   "size": 790
+  },
+  "twemoji/2/72x72/1f3a3.png": {
+   "sha512": "d2fc52a7f0896652e39dec20e7e91a17efc3c314bf7683b0aa97890573996d23",
+   "size": 1221
+  },
+  "twemoji/2/72x72/1f3a4.png": {
+   "sha512": "cbf4436e6ad6a5fbb7ff61ac9a07bb4d566713338f504c2fc574bdd739ad41af",
+   "size": 886
+  },
+  "twemoji/2/72x72/1f3a5.png": {
+   "sha512": "b2a7a0cbc2c1ee9769975b4a2982795df649e6bf3262e21fa78724ffb75d3c4e",
+   "size": 927
+  },
+  "twemoji/2/72x72/1f3a6.png": {
+   "sha512": "4214acb7604788b6072381e1e8eb06a0ca0a65940585887f1d856b233dabeda4",
+   "size": 779
+  },
+  "twemoji/2/72x72/1f3a7.png": {
+   "sha512": "ebde9e24b18095d17ef000ca1197a27c9b537afb024ba9aaa41757b2fcb9ac17",
+   "size": 1003
+  },
+  "twemoji/2/72x72/1f3a8.png": {
+   "sha512": "724da16c1398e733de355c65d16322677ad38abb6f78feb759c5c6651c3539f2",
+   "size": 1035
+  },
+  "twemoji/2/72x72/1f3a9.png": {
+   "sha512": "3c37b37f682d2ad7cb5284113e38607eff6aa6d49ce64713f93ae9bc54e91c41",
+   "size": 997
+  },
+  "twemoji/2/72x72/1f3aa.png": {
+   "sha512": "745c6149755dbe76c2beebbd252f05914d1b27bef0d59d1e82fab32187a2109d",
+   "size": 1049
+  },
+  "twemoji/2/72x72/1f3ab.png": {
+   "sha512": "3995c3a7f6ddeb0aca5d01a817e678753bb66eccceef6b9581126d9d1e8180b5",
+   "size": 917
+  },
+  "twemoji/2/72x72/1f3ac.png": {
+   "sha512": "0e4577be3ec0d10d67b6c8a475f3300f67f735e60e8c7ce32b0ac4e7af61dff6",
+   "size": 771
+  },
+  "twemoji/2/72x72/1f3ad.png": {
+   "sha512": "b1dd0b038be288618fca3dac51bcec2492542d4356264948f46c8a9133addafe",
+   "size": 1184
+  },
+  "twemoji/2/72x72/1f3ae.png": {
+   "sha512": "ec008b23e14153ef70ddee0599b23e8c84b02e9dbfc0359bb76de11516a7692f",
+   "size": 1017
+  },
+  "twemoji/2/72x72/1f3af.png": {
+   "sha512": "fb982ed7054c3fdf824770e2f50ff99e7c79c02c5876377e1d4b5bacdc5fdde5",
+   "size": 1074
+  },
+  "twemoji/2/72x72/1f3b0.png": {
+   "sha512": "7c48301b8fbad69f7564846f706db82643f8e950da0b520fe0422be2dd61a937",
+   "size": 718
+  },
+  "twemoji/2/72x72/1f3b1.png": {
+   "sha512": "d22f8686b0bffd6e03a2e2e40a2b0f5167d3a9646d43bd7406d5729ef21e5449",
+   "size": 1052
+  },
+  "twemoji/2/72x72/1f3b2.png": {
+   "sha512": "7c85d1fd98cf21e4496a359a64ead373bf775c8f9ab6ee47a3f6f97b92c45507",
+   "size": 1027
+  },
+  "twemoji/2/72x72/1f3b3.png": {
+   "sha512": "035130702524e4a5ce7db9791e35591e73af889efb28cbb38550cec966ce0901",
+   "size": 1021
+  },
+  "twemoji/2/72x72/1f3b4.png": {
+   "sha512": "ab49e58ec569858109f9fab53953c7d5fdb5d034287a76aac7c6b9af7c54fce2",
+   "size": 693
+  },
+  "twemoji/2/72x72/1f3b5.png": {
+   "sha512": "a543859313e94b673aea8a0f8ea61bada04d543a6b33afb46209aabca28f70fa",
+   "size": 685
+  },
+  "twemoji/2/72x72/1f3b6.png": {
+   "sha512": "bbccd2abfdf19b0a2e078f21769a4f0dc9626210e4d102904e50e86baaa7a1e1",
+   "size": 650
+  },
+  "twemoji/2/72x72/1f3b7.png": {
+   "sha512": "3dbd465e5f17a8b1483b1fd96f90f2c8231b233b2e098cb22b0b45905b4ce55c",
+   "size": 901
+  },
+  "twemoji/2/72x72/1f3b8.png": {
+   "sha512": "1ac8e6e0374244726be33bbf90f2a37c0ee223332367bb6c1d232ebd6c322a54",
+   "size": 830
+  },
+  "twemoji/2/72x72/1f3b9.png": {
+   "sha512": "9fe5a9bd168e0963e24630d11238dd7e0ba58efa4ca4615c0f818698635c4377",
+   "size": 308
+  },
+  "twemoji/2/72x72/1f3ba.png": {
+   "sha512": "cd901f62ab140c05ea4784a5c3c92daee6f1c9f192b01b5d09cea26c4f403b9b",
+   "size": 991
+  },
+  "twemoji/2/72x72/1f3bb.png": {
+   "sha512": "bd97860b5b5838559de43595fb5c41e29c95fced70bcdc84ef45ea1719e45447",
+   "size": 951
+  },
+  "twemoji/2/72x72/1f3bc.png": {
+   "sha512": "e38ff4ad0bce6329792c63414670f406ffdc28aeb243175e61fd9f5e4e2aa958",
+   "size": 1020
+  },
+  "twemoji/2/72x72/1f3bd.png": {
+   "sha512": "1c1bca258fd6030a7483578fb39a551575652e1a09039cc5a05eacae8b0537cb",
+   "size": 1060
+  },
+  "twemoji/2/72x72/1f3be.png": {
+   "sha512": "d5ad7ef39864007826f38f1ffd2972521948f22528a03e77a16d4348176d9576",
+   "size": 923
+  },
+  "twemoji/2/72x72/1f3bf.png": {
+   "sha512": "3f982f8fc12563d59b1e1b77c145ca03e2d910eb279c669f3d28750cf018d369",
+   "size": 1081
+  },
+  "twemoji/2/72x72/1f3c0.png": {
+   "sha512": "1c83ac2eb1bdbea630508c04c18eaf199340e1f7ce790f26257285249ba0fc0f",
+   "size": 955
+  },
+  "twemoji/2/72x72/1f3c1.png": {
+   "sha512": "2f2162609097ace7bbc675bdab86a1d29399b528c6f34c0baee7583f66d51f92",
+   "size": 696
+  },
+  "twemoji/2/72x72/1f3c2.png": {
+   "sha512": "65eab61a16981f2359a655c5dffcde65a3703c6174bc2ece5bc52de972714e2e",
+   "size": 1172
+  },
+  "twemoji/2/72x72/1f3c3.png": {
+   "sha512": "46790a6b6ef114ba6d99050facc82c5c92d7964dedc4963a72a63c40231a00a7",
+   "size": 955
+  },
+  "twemoji/2/72x72/1f3c4.png": {
+   "sha512": "10be5589747e22d6beebbb35597ecbb149cad1dc20cdda09c1267a8baccd65be",
+   "size": 1198
+  },
+  "twemoji/2/72x72/1f3c5.png": {
+   "sha512": "b8a6ee7b51d2550d3e7f5fade5451e0116dc6aca648d4354c4f346e7cece9d58",
+   "size": 949
+  },
+  "twemoji/2/72x72/1f3c6.png": {
+   "sha512": "388ea9f47f54006a550ab3c680a9a2a0237f8691de4320c7d09c1649da36c2fe",
+   "size": 984
+  },
+  "twemoji/2/72x72/1f3c7.png": {
+   "sha512": "2a35f4704104fc008648a5739ac337e0a3a56b5125a3ae53a563c1da12d2cd5b",
+   "size": 1332
+  },
+  "twemoji/2/72x72/1f3c8.png": {
+   "sha512": "a51081dbeb794c6eda14c84c9e7e24eb08741b0585703a602db49a0dd3da1cba",
+   "size": 1052
+  },
+  "twemoji/2/72x72/1f3c9.png": {
+   "sha512": "848c5339a00206d0b5df846e96fa8a1540c88c465d7d9cd88a5735822c536bd2",
+   "size": 1151
+  },
+  "twemoji/2/72x72/1f3ca.png": {
+   "sha512": "d68375c2b20f293a48d4df8804a6ce7e07b0c049e70f3bfc3a72bcb1ff800305",
+   "size": 926
+  },
+  "twemoji/2/72x72/1f3cb.png": {
+   "sha512": "5abf05fbf820023558f10e9dbe9f00bd7cc2c793ec99353b7cbe3a8f0f14356d",
+   "size": 933
+  },
+  "twemoji/2/72x72/1f3cc.png": {
+   "sha512": "f66db52483d29dc1db93872d00fe9a4079b646dada430bbf0cd6f1537c0f66d8",
+   "size": 1136
+  },
+  "twemoji/2/72x72/1f3cd.png": {
+   "sha512": "10da2e75deeebc8ce0bc9bd04c9c40d4de0acd82cd921f1a296341b431301140",
+   "size": 1221
+  },
+  "twemoji/2/72x72/1f3ce.png": {
+   "sha512": "8f56803aad02e6df11a44738145d91f48032370b6fca255c5122196cadc37fc8",
+   "size": 923
+  },
+  "twemoji/2/72x72/1f3cf.png": {
+   "sha512": "d50d4fe50fb7c6258b40d5403412f0a8c9ff005d1257ee46ecf81f9706098de2",
+   "size": 766
+  },
+  "twemoji/2/72x72/1f3d0.png": {
+   "sha512": "142a3bbd509070facccac600f6720ea1594211ed713688095b8b78de9c1b2303",
+   "size": 1695
+  },
+  "twemoji/2/72x72/1f3d1.png": {
+   "sha512": "633d9a65ac41557f6b891c3a15bded1325f2486a492216299d02d5f95c91b18b",
+   "size": 865
+  },
+  "twemoji/2/72x72/1f3d2.png": {
+   "sha512": "1f0baccfca6a2c477fb50b3e13986eb3c16e2dfb4b5cd19feb8d317c82bcd873",
+   "size": 801
+  },
+  "twemoji/2/72x72/1f3d3.png": {
+   "sha512": "d60fc86eb21d92fcde891b3480487c217dded790443d2b8c22ed49e9cfdf41aa",
+   "size": 891
+  },
+  "twemoji/2/72x72/1f3d4.png": {
+   "sha512": "6587dafebc9d2f2a13dc90a49cf67ed6d17e8ce97fd389620ad2b296b745c9a2",
+   "size": 856
+  },
+  "twemoji/2/72x72/1f3d5.png": {
+   "sha512": "c6ec27eeb667977cf5119625f13f17ee0109e9604008a540b030f09bb17a1073",
+   "size": 1118
+  },
+  "twemoji/2/72x72/1f3d6.png": {
+   "sha512": "3949bb5b1362226b9c428883ef34c4b7683c00b9c809c936a565282bc4026d92",
+   "size": 1037
+  },
+  "twemoji/2/72x72/1f3d7.png": {
+   "sha512": "2caf461c08e7a2b699be99cacaace58bc3f52e763a07d4b3ee2ee21f814153fc",
+   "size": 1195
+  },
+  "twemoji/2/72x72/1f3d8.png": {
+   "sha512": "5a6f2a962293aeab82ad7b721aa59f4f14f7d68859f568ed695af98924364e83",
+   "size": 780
+  },
+  "twemoji/2/72x72/1f3d9.png": {
+   "sha512": "05cb3356a08ba8941cc6732891ffd2f58433054fa872805e1eaf97f4e0f4ed1c",
+   "size": 619
+  },
+  "twemoji/2/72x72/1f3da.png": {
+   "sha512": "ed3a6f5110663d45d3971b7a35aff22a0ed98e94f449138e5cddec28c6de653a",
+   "size": 691
+  },
+  "twemoji/2/72x72/1f3db.png": {
+   "sha512": "75fb2bb8c47a2c800690bce78a37c11e861e7a58ca16d952c6dd283338c7d4df",
+   "size": 690
+  },
+  "twemoji/2/72x72/1f3dc.png": {
+   "sha512": "4693f9fddec1f91a6f1659c11e37fee0c7cf1db72408c8a57f71ea3060bd742b",
+   "size": 1001
+  },
+  "twemoji/2/72x72/1f3dd.png": {
+   "sha512": "f92a52c256722df2d672f04811a1d7c81f82eb68e2d523b58e929786757003a4",
+   "size": 1083
+  },
+  "twemoji/2/72x72/1f3de.png": {
+   "sha512": "da28f21c36a4ba4d21afee673847c30cfc6054af648213b3b109d5299ee903c7",
+   "size": 1020
+  },
+  "twemoji/2/72x72/1f3df.png": {
+   "sha512": "59c1fced8a55245bd1250fccaaf52337427419a0942ba5b4886c2659e7bb0ad3",
+   "size": 1188
+  },
+  "twemoji/2/72x72/1f3e0.png": {
+   "sha512": "25b2bc2c84345016c40927194a39bdd52eeb195acfb965b12c90d6ee8bef0c47",
+   "size": 401
+  },
+  "twemoji/2/72x72/1f3e1.png": {
+   "sha512": "01623b538ccf3f7a554df507f0dbc53c3172edf34f445c46d69ea8f0343cad9f",
+   "size": 776
+  },
+  "twemoji/2/72x72/1f3e2.png": {
+   "sha512": "2727b8914c487eb152a627c7c16f5c7dabe88b022ef78e3dcc382649fbd6f9e7",
+   "size": 424
+  },
+  "twemoji/2/72x72/1f3e3.png": {
+   "sha512": "f0d8e0663b876eaee007b88ca98099a0f93ebc868e6b064571ca2abfdc1bd3ef",
+   "size": 498
+  },
+  "twemoji/2/72x72/1f3e4.png": {
+   "sha512": "b9dfd8a400d2126d77b4ccc283ae7d96b9e6b4d8ea0916d0d1157bcb1eeb874b",
+   "size": 738
+  },
+  "twemoji/2/72x72/1f3e5.png": {
+   "sha512": "8a70401ea6cc0ea11f19e75db85d51b4d236c6c769e11116f2d722c048744bfe",
+   "size": 379
+  },
+  "twemoji/2/72x72/1f3e6.png": {
+   "sha512": "14f7df42bd3319e3a2b456634b84485dfeab645ad0451bbb6fa4f7ee6daae840",
+   "size": 682
+  },
+  "twemoji/2/72x72/1f3e7.png": {
+   "sha512": "b69306e47ec6dbdecb1210e52d5cba6ee8ff675373faba11bcbcf9251b6ed8bb",
+   "size": 943
+  },
+  "twemoji/2/72x72/1f3e8.png": {
+   "sha512": "1b39ae7640e08c2cd8eea8ac89e1e721a438694d5339f8aaae6a7bc2a547f149",
+   "size": 433
+  },
+  "twemoji/2/72x72/1f3e9.png": {
+   "sha512": "5a031d4b392efabb05b753da8d147b2a65a5a7d4107412ace31b30646a667ef3",
+   "size": 660
+  },
+  "twemoji/2/72x72/1f3ea.png": {
+   "sha512": "41266395192d2e3a695b45580bb2a32fb42cd8df627ed8cf22ed59800709cd03",
+   "size": 763
+  },
+  "twemoji/2/72x72/1f3eb.png": {
+   "sha512": "b56d67fc4660e720ba0b119e40000bd8652b1cb0fd09ea92c701cdd94cec58a1",
+   "size": 699
+  },
+  "twemoji/2/72x72/1f3ec.png": {
+   "sha512": "74ca17be1d75fce4a995d48aeb736054a548829a1ed8603bd5008db7e2a5aa5d",
+   "size": 504
+  },
+  "twemoji/2/72x72/1f3ed.png": {
+   "sha512": "0fc62f5b92dac09ea4f674ddd0e3aa54c64dd0a2968a3c1f4ff8acc2203f717c",
+   "size": 624
+  },
+  "twemoji/2/72x72/1f3ee.png": {
+   "sha512": "881c84310a4d622d28d3b9ba612956f35ad9b67c4446a09b2cd9722e00d01fed",
+   "size": 717
+  },
+  "twemoji/2/72x72/1f3ef.png": {
+   "sha512": "c262d8fbb6795db5c8c7adeef60ff7fb8d37d8b5c7ecb1e09d5ba097470836e7",
+   "size": 598
+  },
+  "twemoji/2/72x72/1f3f0.png": {
+   "sha512": "85a93cb902c9066bb882abe4c8488bc917839187997e26a652c6348808f92cb9",
+   "size": 648
+  },
+  "twemoji/2/72x72/1f3f3.png": {
+   "sha512": "12f41fa5cef14ab5acec451c023b5ff77c80bb5cdded39f4dabc50c77e76f5b9",
+   "size": 601
+  },
+  "twemoji/2/72x72/1f3f4.png": {
+   "sha512": "85692e08ef367770c90de7f97ae760172d264195de99092496b9c855aceadd45",
+   "size": 601
+  },
+  "twemoji/2/72x72/1f3f5.png": {
+   "sha512": "f7c7bdd0bbb6f881abb78685c0e80696316d449f68bf12ed50897258406c99b0",
+   "size": 1002
+  },
+  "twemoji/2/72x72/1f3f7.png": {
+   "sha512": "cc1eff34ffe574631928de736422d3d499dd9d8499b209968ac90e13f9f9d89e",
+   "size": 754
+  },
+  "twemoji/2/72x72/1f3f8.png": {
+   "sha512": "15290607062b7d8f74373b1531e6528bcc627fbd07dd5a9f110dae01c294956b",
+   "size": 1212
+  },
+  "twemoji/2/72x72/1f3f9.png": {
+   "sha512": "12c17e8f957b71b4bf22440e949c4395f64061d05114b11fe380ce871f30046c",
+   "size": 1018
+  },
+  "twemoji/2/72x72/1f3fa.png": {
+   "sha512": "0833646519d64210ee73f727fe0c1a07683e8517f5493daea21c94f869e13ec7",
+   "size": 979
+  },
+  "twemoji/2/72x72/1f3fb.png": {
+   "sha512": "fee37689c3149c767c978e60058141aec67def61034d6435bc340b0078d8d5fb",
+   "size": 264
+  },
+  "twemoji/2/72x72/1f3fc.png": {
+   "sha512": "fe42bf36699907fcf4a2c90409b1fd2e6263fd6ec7aa328655fcb879e3f987a7",
+   "size": 264
+  },
+  "twemoji/2/72x72/1f3fd.png": {
+   "sha512": "c793ec9fa81ace00d9fedeaf06c35fe1a9e0b640fba42a4d2806c8ff8137af5d",
+   "size": 264
+  },
+  "twemoji/2/72x72/1f3fe.png": {
+   "sha512": "8a69ecd4e9afa8a9e76a3c13e0c33882748ce758ff130a2447425285e74c2e93",
+   "size": 264
+  },
+  "twemoji/2/72x72/1f3ff.png": {
+   "sha512": "575849049aac9a0388ba787b18f5422346c29649995364ddf013cf08ce46228e",
+   "size": 264
+  },
+  "twemoji/2/72x72/1f400.png": {
+   "sha512": "c5f46b0253ef10c7aa0bbf6f1ca90614ca0035da9fb8e23bdc27ed21b3524a64",
+   "size": 863
+  },
+  "twemoji/2/72x72/1f401.png": {
+   "sha512": "f45779bee77578db843105377cd0e70389b5d943c578453da590b8658ad33fb9",
+   "size": 797
+  },
+  "twemoji/2/72x72/1f402.png": {
+   "sha512": "9919d82083f8eb40e6edc24c8a383727a50fd580a0393686859ef4096fb87fa8",
+   "size": 772
+  },
+  "twemoji/2/72x72/1f403.png": {
+   "sha512": "e5d178c4be16af807ea4165ffabb07ff66791b58a571e0e7717de54b1b289b3e",
+   "size": 881
+  },
+  "twemoji/2/72x72/1f404.png": {
+   "sha512": "b136ce9d0687da0aded26662cd3aac8b4097dd4a6143e194f0d2b010c16a3d93",
+   "size": 1006
+  },
+  "twemoji/2/72x72/1f405.png": {
+   "sha512": "bb07efb0affaf4532aa6c21ab3f33e78621f1e5aff2bb034751744b2a03dc213",
+   "size": 1029
+  },
+  "twemoji/2/72x72/1f406.png": {
+   "sha512": "7a913e3e2086b09aeb26d5e9e1126085cd6cfdd631e908bbeaad39f55fdc6907",
+   "size": 901
+  },
+  "twemoji/2/72x72/1f407.png": {
+   "sha512": "a504ca79188422a06cfd60dc7d15717065fee362d938ab7cc3ebb9d5f3ba7d11",
+   "size": 1038
+  },
+  "twemoji/2/72x72/1f408.png": {
+   "sha512": "724a1b7feba80d880f48bb5b8b4dec10466945d78e392d6a97f349b382f9dc3a",
+   "size": 1020
+  },
+  "twemoji/2/72x72/1f409.png": {
+   "sha512": "8a53fdf9d943501fdbbac11ad18a5b6186922f809b3d925dcab1f23c781befea",
+   "size": 1474
+  },
+  "twemoji/2/72x72/1f40a.png": {
+   "sha512": "3a1d3ff56cd4d10c4c3d0a98adcadc3499bbc9e96b94904bff6d3c04dee95ae9",
+   "size": 820
+  },
+  "twemoji/2/72x72/1f40b.png": {
+   "sha512": "5eccea03f413de107f1fbe66746c72153128d029c0ed262b5f66fc4622c6637a",
+   "size": 917
+  },
+  "twemoji/2/72x72/1f40c.png": {
+   "sha512": "46edcd26e56e45190cc8ded630ed072b00438ddcb0865d86a35a0c0983fa2fd8",
+   "size": 1135
+  },
+  "twemoji/2/72x72/1f40d.png": {
+   "sha512": "a0345608cd0c31d474225f93ecd7067475293c79149701a77e2522592318187b",
+   "size": 1105
+  },
+  "twemoji/2/72x72/1f40e.png": {
+   "sha512": "9079f7b3e9bf0cc9bd5c2f3e2443b384cfe3c9864018de6f9bc00ba501e8bf92",
+   "size": 1161
+  },
+  "twemoji/2/72x72/1f40f.png": {
+   "sha512": "96354636e39e784d63174dec0206db51d177e05bc5c3c238bd04013abab5020b",
+   "size": 977
+  },
+  "twemoji/2/72x72/1f410.png": {
+   "sha512": "441d2bb86c0b34fd395bfd2358ee8e4434e024235ad8bf8d6cd20049c205cce0",
+   "size": 981
+  },
+  "twemoji/2/72x72/1f411.png": {
+   "sha512": "abdf0f4757c00eab0710dd5f791fcab65688d0be0eab594770df7632c89cda39",
+   "size": 919
+  },
+  "twemoji/2/72x72/1f412.png": {
+   "sha512": "9e1fe33c70b40853584758aa5960ed725f08ce49b6680484bc46ac733ad2de0e",
+   "size": 1315
+  },
+  "twemoji/2/72x72/1f413.png": {
+   "sha512": "af5180f43aec38f0bb330094f73d7e5f1b2b90932374ff82e8c4de024806007a",
+   "size": 932
+  },
+  "twemoji/2/72x72/1f414.png": {
+   "sha512": "efdc6ecaec60dec8c36b40426337fc39506c16254585948b7214571d902e7246",
+   "size": 954
+  },
+  "twemoji/2/72x72/1f415.png": {
+   "sha512": "96acbde5de5d376c14ffa8bed2ac9d8486f54f0fefcc57ad5bff179a9e789030",
+   "size": 969
+  },
+  "twemoji/2/72x72/1f416.png": {
+   "sha512": "47b97ba80b65d1bce3885d92ba897885d55510b19becca036720bf5605776654",
+   "size": 791
+  },
+  "twemoji/2/72x72/1f417.png": {
+   "sha512": "3dc73cabedcdcc1140d0a62088ec5e8aa57dcda1b7ee8280241404212dd56391",
+   "size": 1330
+  },
+  "twemoji/2/72x72/1f418.png": {
+   "sha512": "12d5ce3ea73c674fab710d6748e383215224cd5f7fbf47d76b3b638e87610844",
+   "size": 1107
+  },
+  "twemoji/2/72x72/1f419.png": {
+   "sha512": "95050eac3800bb310cdfa55097a2067e0959a78b96259bf8739e8227a8a90164",
+   "size": 970
+  },
+  "twemoji/2/72x72/1f41a.png": {
+   "sha512": "67c2aac94b40b0d51ba1482f71284e31df4ff1160cc00e662d401d443fb8dd46",
+   "size": 1166
+  },
+  "twemoji/2/72x72/1f41b.png": {
+   "sha512": "8be5379193b2d57540010a42d10cd8e93aa3820301b2575c5630ce5821f03e2d",
+   "size": 1123
+  },
+  "twemoji/2/72x72/1f41c.png": {
+   "sha512": "a152c046c6598a85e70d78e0ef458e1416d7a242cc70f14f91705ce6025121c8",
+   "size": 1083
+  },
+  "twemoji/2/72x72/1f41d.png": {
+   "sha512": "dec03aa604bd1549f24664f62277f638c75e7bd3bc07d95a58ce14021f4b7eef",
+   "size": 1064
+  },
+  "twemoji/2/72x72/1f41e.png": {
+   "sha512": "d2e7fc1761cd024f4ee325d8abb8a3fde8e41b7f93c27c2e432a05322844af1f",
+   "size": 1181
+  },
+  "twemoji/2/72x72/1f41f.png": {
+   "sha512": "9bfe5e98864f4b2ae3a4c43fde6251efa4a73c0de83fff22f041b9ddebb19e46",
+   "size": 1055
+  },
+  "twemoji/2/72x72/1f420.png": {
+   "sha512": "7d1f0cf0184584333973437430d157a2a6d1aa7628027e5d76860418fe245e41",
+   "size": 1140
+  },
+  "twemoji/2/72x72/1f421.png": {
+   "sha512": "ab9512ef6aead1239bad562a42a4fef2966d430221abdc60670810a567ed2d24",
+   "size": 917
+  },
+  "twemoji/2/72x72/1f422.png": {
+   "sha512": "593b5a485c95ad8d15b07588a3f2b2d0232ddf148aaf39013aa02d29f1cb6291",
+   "size": 1014
+  },
+  "twemoji/2/72x72/1f423.png": {
+   "sha512": "87c8f0f48a7643105f9309d25bf7dc2c2e3ae0a4a434e5329a9470791a0fba8c",
+   "size": 1027
+  },
+  "twemoji/2/72x72/1f424.png": {
+   "sha512": "ae4de4e6a9b55cdba34bcaa068589b59c1d3fe98d886866918da1b0891ba1b2d",
+   "size": 950
+  },
+  "twemoji/2/72x72/1f425.png": {
+   "sha512": "9fcaf0a751c48c1a3ebacd76faa9d699daec264ace11def2749848a72ad32892",
+   "size": 968
+  },
+  "twemoji/2/72x72/1f426.png": {
+   "sha512": "e982fcfb33b032efab4741a476d66159e9e6eb421726f0a1b88d2d14c5c4531b",
+   "size": 1058
+  },
+  "twemoji/2/72x72/1f427.png": {
+   "sha512": "f5eb0720f4c66b0c7d8de2ef4ecb62709d07133bc2934909b709bf0fc8515625",
+   "size": 1136
+  },
+  "twemoji/2/72x72/1f428.png": {
+   "sha512": "fde56a13b21254246dbdd8c07a6e28cbd490c5129603f3be1d4ba3f73ed1e254",
+   "size": 1024
+  },
+  "twemoji/2/72x72/1f429.png": {
+   "sha512": "9f5173ed9983035c6bf0a1bfa2854c73bdd67d81a96ff0af0a4eb28f47d3ebbb",
+   "size": 1100
+  },
+  "twemoji/2/72x72/1f42a.png": {
+   "sha512": "99b5bda394e8bb471da289f016e40822f936363020b4b0e3e0b2f6db0a0d3a2f",
+   "size": 1071
+  },
+  "twemoji/2/72x72/1f42b.png": {
+   "sha512": "4bccaaab59780cda85c6873610f1088df6ae6c0f43be2a603d064e8c424c67d5",
+   "size": 1084
+  },
+  "twemoji/2/72x72/1f42c.png": {
+   "sha512": "ef4a023f31760d7f2fc329eea9c5ef13d6faf2ba1733a3af64d1b23e50464ffa",
+   "size": 940
+  },
+  "twemoji/2/72x72/1f42d.png": {
+   "sha512": "0ade1e8b6cb012833216ea27613795a4c550b2830fe6af87a3d6a23b9f1304be",
+   "size": 1222
+  },
+  "twemoji/2/72x72/1f42e.png": {
+   "sha512": "e3a19e76db5aeadc885e4d06c9135b1468082d0c050a03ef82aa2d5af351b3b6",
+   "size": 990
+  },
+  "twemoji/2/72x72/1f42f.png": {
+   "sha512": "40fcd106ea9e07c565821ea6fd4ea9e955de1ffbd2af2abcf07863d810ae850a",
+   "size": 1257
+  },
+  "twemoji/2/72x72/1f430.png": {
+   "sha512": "e435598bb05a40f22914b5a45442279a1cc1c8462ecf5d24aa1b0b68c924bf5f",
+   "size": 1283
+  },
+  "twemoji/2/72x72/1f431.png": {
+   "sha512": "05a93583a6ee842d6ff66afe72f0d9258d6b4c89ffccda64ecf295689251e2c0",
+   "size": 1381
+  },
+  "twemoji/2/72x72/1f432.png": {
+   "sha512": "a26b97904bd3e514123730d49e0e07c57aaff40698919d4eb3e221fdf3a7c117",
+   "size": 1166
+  },
+  "twemoji/2/72x72/1f433.png": {
+   "sha512": "b0f37f41a9b7702a1c0c5e47a6909963ca33c5e3eda7fc08d6015410b2b8d0b3",
+   "size": 1022
+  },
+  "twemoji/2/72x72/1f434.png": {
+   "sha512": "c7080f89db078f8df564df763b71cdf317dd0a5634407472e27fbee69e505239",
+   "size": 1028
+  },
+  "twemoji/2/72x72/1f435.png": {
+   "sha512": "7401c6e19b7f7180b9d0ae6ea8789e07b85948e445bdcebd0da94b143c73ded1",
+   "size": 1111
+  },
+  "twemoji/2/72x72/1f436.png": {
+   "sha512": "8e191dac9a12768f412ab0e6930de7151a969f749a90ceed62e44d1260652491",
+   "size": 1133
+  },
+  "twemoji/2/72x72/1f437.png": {
+   "sha512": "dfdb2b3ae96d66d88b4cd3c4f5b23361673d446f2970da74eeb25b75491edae7",
+   "size": 1185
+  },
+  "twemoji/2/72x72/1f438.png": {
+   "sha512": "0560fc8812d4e35fa13a2b1c4bee94a2a66a836359639e8ca88ecdd72fe018fd",
+   "size": 941
+  },
+  "twemoji/2/72x72/1f439.png": {
+   "sha512": "dafeeb9c8fb17873b0c01ffdbc44889c84f72d4d6163dcb432e235ea4c43d9e9",
+   "size": 1236
+  },
+  "twemoji/2/72x72/1f43a.png": {
+   "sha512": "fcf3528e229fd60e33a540f0dbe11b222e1dd3cdda48d52ab814cb7028c8e27c",
+   "size": 1154
+  },
+  "twemoji/2/72x72/1f43b.png": {
+   "sha512": "d8e615db722eacb874107cf9ae4ccb69354862d0cf90438cc5587838d15e8f2d",
+   "size": 1148
+  },
+  "twemoji/2/72x72/1f43c.png": {
+   "sha512": "b119a3da79ac4244cc98c2f0ca96d59fed07a8c4d98efe2911e87bcb86931b01",
+   "size": 1335
+  },
+  "twemoji/2/72x72/1f43d.png": {
+   "sha512": "f2ff4272875c9cf5c4f9ca226c3014236e0c0a051f367c5c94bfe5ffebbd98eb",
+   "size": 720
+  },
+  "twemoji/2/72x72/1f43e.png": {
+   "sha512": "10d4b7c30130c1efc9361e9460f1c19ef397c4fb854b469bae27944b356e00be",
+   "size": 803
+  },
+  "twemoji/2/72x72/1f43f.png": {
+   "sha512": "c28e69064e6b8a5b93d56ba87ca370e5b7b46d94b6d7199ed7fc3d7f66696a97",
+   "size": 1248
+  },
+  "twemoji/2/72x72/1f440.png": {
+   "sha512": "9b6b702b6fd8a694567ab4cb1a35857bcf36d9be1d0d91f69023ac3dd21cd346",
+   "size": 706
+  },
+  "twemoji/2/72x72/1f441.png": {
+   "sha512": "f5e8a9e2834a2251bc36a643645214ee405eaea02163515b9d41ce30cf4e0959",
+   "size": 1022
+  },
+  "twemoji/2/72x72/1f442.png": {
+   "sha512": "d62236fce19693fdfd648a8ac71f7d942ce507727338707d80eefd02dbb61905",
+   "size": 1190
+  },
+  "twemoji/2/72x72/1f443.png": {
+   "sha512": "9b00389348ab735d4b242732ef289eea162b382bd15e7fa879a66c9658843242",
+   "size": 867
+  },
+  "twemoji/2/72x72/1f444.png": {
+   "sha512": "5a39e84cee528c6f36e3000044460b6eb005ff79fa9401ec08e465d05ee0e23d",
+   "size": 854
+  },
+  "twemoji/2/72x72/1f445.png": {
+   "sha512": "f3a1be1c2bf8f69e43445f9bb32e982c887f147cc8d4bbc343c6eaf7aa378965",
+   "size": 738
+  },
+  "twemoji/2/72x72/1f446.png": {
+   "sha512": "ddb365f67af9a70d7ab221241fd8159b7e8fb4994e731397024601304ac21ba6",
+   "size": 758
+  },
+  "twemoji/2/72x72/1f447.png": {
+   "sha512": "860fa1d8f3c2c8b519ecfd9cc19dc5f832967c8dbf4af0c0c6661b233f6c4f59",
+   "size": 754
+  },
+  "twemoji/2/72x72/1f448.png": {
+   "sha512": "1ad398d2e2326eeaa48ebbdc6aa22861f8fa2b2ec82e9e440237ce068f027613",
+   "size": 715
+  },
+  "twemoji/2/72x72/1f449.png": {
+   "sha512": "1fb8548caee9816c9ad0dd9a1cf75765d9554380f285559adc58ef75c9d1afad",
+   "size": 714
+  },
+  "twemoji/2/72x72/1f44a.png": {
+   "sha512": "7a864dad84ce11d9965ab8d3032db761e21756b6800149b883afff2fb15e16fa",
+   "size": 1040
+  },
+  "twemoji/2/72x72/1f44b.png": {
+   "sha512": "472c23536c87935acc02a0837e33ce8c94ea747db7006e554bc3e007fc2d58d0",
+   "size": 1457
+  },
+  "twemoji/2/72x72/1f44c.png": {
+   "sha512": "5d593684dd8bbeae8e7305795e64244cb357587e31e49629d464700d4cce0e4d",
+   "size": 991
+  },
+  "twemoji/2/72x72/1f44d.png": {
+   "sha512": "7aa9200c74c615011a08d70a2b5a43dac142405942c14b4a443aa00681ef12be",
+   "size": 1098
+  },
+  "twemoji/2/72x72/1f44e.png": {
+   "sha512": "54dc4a01d525d19a0e02f909072c8e52c7828eef3ef7b4a0ebfabc768450239a",
+   "size": 1090
+  },
+  "twemoji/2/72x72/1f44f.png": {
+   "sha512": "0855ce5de90c4829c41d613800af16a4124d6a8c4c43d70a01fb0ec887222dbe",
+   "size": 1151
+  },
+  "twemoji/2/72x72/1f450.png": {
+   "sha512": "0d6a09de8f327debdf1590148247b6ac1224c68a03c7d1bd76985483e94d71b9",
+   "size": 1203
+  },
+  "twemoji/2/72x72/1f451.png": {
+   "sha512": "06a47c1d5fb4370bf3d72a706c57bf341f9fd2664a4ba36e2ffbbe3331c251c0",
+   "size": 836
+  },
+  "twemoji/2/72x72/1f452.png": {
+   "sha512": "4f34931544f8d9456f1154cec4600f25ac2ec87b2b236b9cacbff4b401bf0232",
+   "size": 855
+  },
+  "twemoji/2/72x72/1f453.png": {
+   "sha512": "096cf5062014951243b3a5a2ee1fbbcd6e7a8a7428d5d68adfa56634523c591f",
+   "size": 1057
+  },
+  "twemoji/2/72x72/1f454.png": {
+   "sha512": "be4b39f17e4a0a993640735c6fe0a66619bed6c9d1abe2a06d7bb169fa77eec8",
+   "size": 968
+  },
+  "twemoji/2/72x72/1f455.png": {
+   "sha512": "e5f8a1900becd731b9f3c77b5e1b354ed878e48e170f2fe81b10feedbb4f5262",
+   "size": 864
+  },
+  "twemoji/2/72x72/1f456.png": {
+   "sha512": "4f7cfc2d44d7300ccd2e6c4b238c10ec7a4c2c66b7526623e24421c8f47d1625",
+   "size": 907
+  },
+  "twemoji/2/72x72/1f457.png": {
+   "sha512": "dd9683d6feacc400f41ec6af32e9175d1c9d8eef64078c2b425f9212268e33d6",
+   "size": 1006
+  },
+  "twemoji/2/72x72/1f458.png": {
+   "sha512": "9987e6350224f42f133166017bcc62e1d33bc65f501e88dc288582e144509d01",
+   "size": 1000
+  },
+  "twemoji/2/72x72/1f459.png": {
+   "sha512": "47c9891388ca521ae269eb8538bbcbb865f603a0a70617b42323ad64e0a6b78b",
+   "size": 977
+  },
+  "twemoji/2/72x72/1f45a.png": {
+   "sha512": "edd61df330c4aacf85757971d0f0db80f799eee925a36d6b565c193ce9efe632",
+   "size": 950
+  },
+  "twemoji/2/72x72/1f45b.png": {
+   "sha512": "a4fad1cbe5a6401a62bc7701ba3bd30851ff3445c95f91e9160dff480cede944",
+   "size": 976
+  },
+  "twemoji/2/72x72/1f45c.png": {
+   "sha512": "f8c8e6409e55c945f025fd3321b3e3b5248c7b7c890f6bbd93a1fa5fd04265ec",
+   "size": 906
+  },
+  "twemoji/2/72x72/1f45d.png": {
+   "sha512": "16b5d16319ed229e5b0fbe79dd137ab8a24a888f35b00f70d93cf2b882912275",
+   "size": 796
+  },
+  "twemoji/2/72x72/1f45e.png": {
+   "sha512": "e463f51a098eff3c89ca56b45772574d0a4f5e265accc1309dcf0e2d39993593",
+   "size": 738
+  },
+  "twemoji/2/72x72/1f45f.png": {
+   "sha512": "da105fc8af11b832db682a29a869381c16dbc9043da127d72f75b52ded2e5e3d",
+   "size": 654
+  },
+  "twemoji/2/72x72/1f460.png": {
+   "sha512": "2bc7e7d35dc92283a5109ebc5ee65eed7d88fcc3f94918d25665fff144f25391",
+   "size": 909
+  },
+  "twemoji/2/72x72/1f461.png": {
+   "sha512": "911c3388d8a71e1ad428cf88acabc6b58dfa68615da7e00aab767ec9ddddeb5a",
+   "size": 733
+  },
+  "twemoji/2/72x72/1f462.png": {
+   "sha512": "f47a75114f1726dcad3c97f3dbc48795c9643d26181f92c830eb0f3b422b6b4b",
+   "size": 839
+  },
+  "twemoji/2/72x72/1f463.png": {
+   "sha512": "d2c40b13153810944030d11bf3c34a6a15cb61a8e87fc886524de98424db4de4",
+   "size": 1216
+  },
+  "twemoji/2/72x72/1f464.png": {
+   "sha512": "f86de6724e0b52d19a10f8849f70b17928003d36cd20f0fe53ef2688b67ac345",
+   "size": 764
+  },
+  "twemoji/2/72x72/1f465.png": {
+   "sha512": "343e32ca7f9c091283cb2fdc876605edfb55bb01355b1fbe69df523b38450319",
+   "size": 815
+  },
+  "twemoji/2/72x72/1f466.png": {
+   "sha512": "377d6ef6246271be9028ac8940c6cbb2e3735c71a0b351feeae603d76022c33f",
+   "size": 976
+  },
+  "twemoji/2/72x72/1f467.png": {
+   "sha512": "67c0cb069dec9967ca6384bd153d3b738e9f7ffee4f54d5c948c618b05af338a",
+   "size": 1120
+  },
+  "twemoji/2/72x72/1f468.png": {
+   "sha512": "c327249cc752a1b667d8628ec596b849157ece96c704304d240fddd481f846c5",
+   "size": 1003
+  },
+  "twemoji/2/72x72/1f469.png": {
+   "sha512": "e975a16b494d0631347a183cab4c261886912b8c98fc56f31bb028b1fa3dee3b",
+   "size": 1035
+  },
+  "twemoji/2/72x72/1f46a.png": {
+   "sha512": "877e7ab29e9c0b37ab19c7085211dbd53df74c3c67cc626a580ed88cdacb2928",
+   "size": 1124
+  },
+  "twemoji/2/72x72/1f46b.png": {
+   "sha512": "33c0e03089a38a02dc722074b791d58d421d17c8b43629a2c12ee1df7c37cd4f",
+   "size": 1136
+  },
+  "twemoji/2/72x72/1f46c.png": {
+   "sha512": "adf93aebfd46d622638a55e2a2bdcc654ff83e4e538ecdfddb076500c81a61a4",
+   "size": 1076
+  },
+  "twemoji/2/72x72/1f46d.png": {
+   "sha512": "3539195ab167bef704bf297ad1edebaf9794fcafd010688007593492c077e680",
+   "size": 1072
+  },
+  "twemoji/2/72x72/1f46e.png": {
+   "sha512": "26ce4bfbb26f90f02a34fb8ee6a43d0cb1f2169d9454aa78844c6c6d89d4ead9",
+   "size": 1172
+  },
+  "twemoji/2/72x72/1f46f.png": {
+   "sha512": "d280c9169a76253e1ffeb6669c6ca52d910fd9a55bb503b25319f1d34041cc79",
+   "size": 1157
+  },
+  "twemoji/2/72x72/1f470.png": {
+   "sha512": "997edff54118c7916316c3aa3f7dd995de9f1b6aef874df0f7abde6e3bcce62f",
+   "size": 1223
+  },
+  "twemoji/2/72x72/1f471.png": {
+   "sha512": "c2a7be5c01ca99660be563274315a9edc0f969d73d2145b3aa23a0190e751875",
+   "size": 992
+  },
+  "twemoji/2/72x72/1f472.png": {
+   "sha512": "b877a5f2b41d4f77267d99bde3495c6e8e55a9934e38b211cae7a336090f36be",
+   "size": 1006
+  },
+  "twemoji/2/72x72/1f473.png": {
+   "sha512": "198787306a9a1d4cce2cb8e3e49b2b8c7719ac7b78307329c8a008252f5ecfcf",
+   "size": 1010
+  },
+  "twemoji/2/72x72/1f474.png": {
+   "sha512": "cacff32c5afeabe660195ed0405744f9ab1555bea9400d14281ec1ba96e6b3c5",
+   "size": 1004
+  },
+  "twemoji/2/72x72/1f475.png": {
+   "sha512": "e5e8b99828ec73cc43d9756d7cdf3062a0acd4b0ab7c1921c1cf5831e1881de7",
+   "size": 987
+  },
+  "twemoji/2/72x72/1f476.png": {
+   "sha512": "7a9bdf5766eac1b8a1d48b1f1a82278fdc5fad311052ada370204542a70eba8d",
+   "size": 991
+  },
+  "twemoji/2/72x72/1f477.png": {
+   "sha512": "e332cdf88f4cebe907478863dd89ebe5150fefab8db28e79f59964b52d719fe9",
+   "size": 1066
+  },
+  "twemoji/2/72x72/1f478.png": {
+   "sha512": "cc0db762afc2694b4dafe216483c7e772ffeda9447dcee9b123b630759e32928",
+   "size": 1012
+  },
+  "twemoji/2/72x72/1f479.png": {
+   "sha512": "ea96178466424533e5f0349a684fe929dccbfca5dfc1a6dcb4f3d5157b618119",
+   "size": 1304
+  },
+  "twemoji/2/72x72/1f47a.png": {
+   "sha512": "dd2dbc40152158dd106e013c84da1ebb2f1f728354a863e576c81e4df0e42702",
+   "size": 1141
+  },
+  "twemoji/2/72x72/1f47b.png": {
+   "sha512": "ae97fb788a404421a5aff3483bc5713daf3e79a6a2ae8832e2ecab2031744dd6",
+   "size": 1109
+  },
+  "twemoji/2/72x72/1f47c.png": {
+   "sha512": "7ef57c4919cf2807d3c879db514e926a65299fa30627af8802e816eaa6bf147f",
+   "size": 1131
+  },
+  "twemoji/2/72x72/1f47d.png": {
+   "sha512": "d9b4d27fec42df57fb6d6422c19737d6cc4676ccf68db1ba5fef38a3d9eed6bd",
+   "size": 1094
+  },
+  "twemoji/2/72x72/1f47e.png": {
+   "sha512": "8bcd19bd8a5153ad04fc87a9d2ba45cd22d1170b2ece6619a49af30b31dd969c",
+   "size": 156
+  },
+  "twemoji/2/72x72/1f47f.png": {
+   "sha512": "2cc9fde601299df7243a54ffcf068a4f996eb82ed2649a94df43ffa488477ab0",
+   "size": 1018
+  },
+  "twemoji/2/72x72/1f480.png": {
+   "sha512": "7b21753d3607971c7343b1b55a892ef9fe80f416c08ab6943dd186932627c501",
+   "size": 919
+  },
+  "twemoji/2/72x72/1f481.png": {
+   "sha512": "88c8bb174962682bc0181210a0f1ffcac9cc3f0f05eb2e82b7ce4ecfa8dafa0d",
+   "size": 892
+  },
+  "twemoji/2/72x72/1f482.png": {
+   "sha512": "1297662d21f9185c2fdca49693bb34c6d3707889ffdb3e4172b75b3eaafaebfa",
+   "size": 916
+  },
+  "twemoji/2/72x72/1f483.png": {
+   "sha512": "2d5430c9a5c28de0a63650fad58432b0aa0b6f432fb4cfb81aff2693d5445f95",
+   "size": 1016
+  },
+  "twemoji/2/72x72/1f484.png": {
+   "sha512": "d8711c64190cfd032ce7e0e899a14bde636f9b32be6eeb26f7089927cd52aef6",
+   "size": 670
+  },
+  "twemoji/2/72x72/1f485.png": {
+   "sha512": "8325807870d32aa06d150d0e3c099413f5121a05757795993c34ad9bf2c3a256",
+   "size": 783
+  },
+  "twemoji/2/72x72/1f486.png": {
+   "sha512": "5b2b77f67bfdbcde818aa1a18eeabbb36e68d39d73feef9cd16519c05530c14a",
+   "size": 1010
+  },
+  "twemoji/2/72x72/1f487.png": {
+   "sha512": "9df4b120de8d5e05a72bf29364166f66bbf794cd4ec094e56259a4df1c6fcc88",
+   "size": 1151
+  },
+  "twemoji/2/72x72/1f488.png": {
+   "sha512": "0f2bd1325873bfda0ed779e7288b4dfd433e2fb429c6a2abe59ad5ccde29476c",
+   "size": 682
+  },
+  "twemoji/2/72x72/1f489.png": {
+   "sha512": "9516dbeecc82ed6e4b1dd3968bc350b600b3396364b75f9cdd9148e8c5b25755",
+   "size": 810
+  },
+  "twemoji/2/72x72/1f48a.png": {
+   "sha512": "618c765db68c0631a4f71ec3cd4dc14df5d2ff58f54331e0004f601d42bc9348",
+   "size": 759
+  },
+  "twemoji/2/72x72/1f48b.png": {
+   "sha512": "eb860aaf53cce9bd8ac4612258a19e41070ccfe43ecb0448c3c3e6592c5e2fe8",
+   "size": 921
+  },
+  "twemoji/2/72x72/1f48c.png": {
+   "sha512": "918eaff4010b20214dc2a9ac322a9429da89b204d3132e7732f435a62cb09c72",
+   "size": 796
+  },
+  "twemoji/2/72x72/1f48d.png": {
+   "sha512": "d35a47f3b1d85a65c94aa5af88215ed1e8b25d89a24fb6ed7abfd17adc2c9cbc",
+   "size": 885
+  },
+  "twemoji/2/72x72/1f48e.png": {
+   "sha512": "b37175effa1b5061b648a0733bf9b8f17956b64b25832568ebe05ef4d63a08d7",
+   "size": 857
+  },
+  "twemoji/2/72x72/1f48f.png": {
+   "sha512": "0cefdc8eacd1271069968bc1367cbc5c4c5367d090c89dbe46650bfdae97bde6",
+   "size": 1121
+  },
+  "twemoji/2/72x72/1f490.png": {
+   "sha512": "76e6744902c8ef4c86afc60234b1e5958740ba8d19c8d2f025b4bb141c24f266",
+   "size": 1224
+  },
+  "twemoji/2/72x72/1f491.png": {
+   "sha512": "bc2387944cef8b1fb5a6a663347c5834eca589bc46e58d81686862ee81ef9667",
+   "size": 985
+  },
+  "twemoji/2/72x72/1f492.png": {
+   "sha512": "64576395e124ba78c2704efcbd93afb49c6f0c87f91303177c0d24b7527d8957",
+   "size": 891
+  },
+  "twemoji/2/72x72/1f493.png": {
+   "sha512": "9c083f0dce16c10bb6198965efc3ab00f020eb69bc25a4da03850548d58c3540",
+   "size": 1010
+  },
+  "twemoji/2/72x72/1f494.png": {
+   "sha512": "22c4fc51f581121643f8788a9ce4c53b864ca07ec21cc5af4d97d0f48b5196bc",
+   "size": 1004
+  },
+  "twemoji/2/72x72/1f495.png": {
+   "sha512": "054cc4035a6b0548657320edd77edcf5e66f965796b134ddc4e1c571b501d5e7",
+   "size": 880
+  },
+  "twemoji/2/72x72/1f496.png": {
+   "sha512": "59e24498b0e32996a6aa6aa82868186a528c6ea1e784573e2fc7bc4677e48450",
+   "size": 991
+  },
+  "twemoji/2/72x72/1f497.png": {
+   "sha512": "9297932e219fe27e21c49c0b6bcb65d57f7a7d95f1ce2d37f2359b5a119176d5",
+   "size": 1208
+  },
+  "twemoji/2/72x72/1f498.png": {
+   "sha512": "b72817d9f4d39aaea29912714beba3e79918a42a1bbfd62cf2a65110e9af4edc",
+   "size": 1017
+  },
+  "twemoji/2/72x72/1f499.png": {
+   "sha512": "52d12b816f4f84a15e23d1ddbfafb7223901ee0ff2323b6fd904fbbc640c963d",
+   "size": 808
+  },
+  "twemoji/2/72x72/1f49a.png": {
+   "sha512": "9cf27da7abd2ab5eee8adf98e673315712d6b605e4eaa462f134c31bd39f22bc",
+   "size": 810
+  },
+  "twemoji/2/72x72/1f49b.png": {
+   "sha512": "03729ff20687b2db022b5a333bc1c00faad93b261de36884080a508c7c4c1a09",
+   "size": 808
+  },
+  "twemoji/2/72x72/1f49c.png": {
+   "sha512": "0fa3edbfe5a1e4e71760ebc550f57f562b2d0cf473dd3f2f9cd6f8ff6ddde7d3",
+   "size": 807
+  },
+  "twemoji/2/72x72/1f49d.png": {
+   "sha512": "da344e15742fe452ddb40c8e92197e60d0c4f30f337b42ae30b249d53ffa304b",
+   "size": 949
+  },
+  "twemoji/2/72x72/1f49e.png": {
+   "sha512": "93972a720d77109bee08bf4e709abea46849b2dd3abd624f02acda515ec1c259",
+   "size": 1087
+  },
+  "twemoji/2/72x72/1f49f.png": {
+   "sha512": "6b84681aa625bf96ac9c1af7772887dffecdec5cb7d904e67ec68cc1d0389e15",
+   "size": 795
+  },
+  "twemoji/2/72x72/1f4a0.png": {
+   "sha512": "d0c69717240f947a5316c2f9bef1ccd02312e08d9198601b34ef1d5cd338b1d8",
+   "size": 896
+  },
+  "twemoji/2/72x72/1f4a1.png": {
+   "sha512": "c61aab86aa6362aadcc5564067ecf679cadb54a2c3c51f3ac2059e7f969a7f16",
+   "size": 813
+  },
+  "twemoji/2/72x72/1f4a2.png": {
+   "sha512": "b3fbd3f7ca71759af80f20d63f3d0f13c260042aba0a187232f01ab799f32887",
+   "size": 1145
+  },
+  "twemoji/2/72x72/1f4a3.png": {
+   "sha512": "2281f32b26f848a64e5c22c6cdb726032348c6d3a412afc163a31daa91db284a",
+   "size": 810
+  },
+  "twemoji/2/72x72/1f4a4.png": {
+   "sha512": "19b790c3b82f712aa7447e73a509b9cf483ea22b7179bc08d8ed777aa2cecca7",
+   "size": 652
+  },
+  "twemoji/2/72x72/1f4a5.png": {
+   "sha512": "18b229e2277eb646d3408855f5c454838eafda3e3caa215157b471598dff8ac9",
+   "size": 1197
+  },
+  "twemoji/2/72x72/1f4a6.png": {
+   "sha512": "2eaefaf940042477e16e86177b2293228dc6b366cf1db9acdd07e5654b8ab233",
+   "size": 1017
+  },
+  "twemoji/2/72x72/1f4a7.png": {
+   "sha512": "99364d5083b6c24077f0662014890182a9faaad5bdbce448116df60c7618a464",
+   "size": 730
+  },
+  "twemoji/2/72x72/1f4a8.png": {
+   "sha512": "3afabebe639e169e9a0db13b88c8d1fc0d4279c0906d6ade1e5ff9b82e77fc82",
+   "size": 918
+  },
+  "twemoji/2/72x72/1f4a9.png": {
+   "sha512": "8b209cfa0c60ab4c01b34fd64ce20e0c5515345e9fb2a696f609b6f2179d04c8",
+   "size": 1010
+  },
+  "twemoji/2/72x72/1f4aa.png": {
+   "sha512": "de84fd51668d046c67ba8c8a5bde67896e88c9b1dd720f5963dddc67ef782c80",
+   "size": 977
+  },
+  "twemoji/2/72x72/1f4ab.png": {
+   "sha512": "a70f636ca80de1c0e2f2bde57569277d25364d762f5a5f2fca27c86723d35764",
+   "size": 1079
+  },
+  "twemoji/2/72x72/1f4ac.png": {
+   "sha512": "991ad8ee78208972b633058849f01b71a9e18f321ae41faf0295e48154eeda81",
+   "size": 830
+  },
+  "twemoji/2/72x72/1f4ad.png": {
+   "sha512": "c701c4763ce974e7c4516d4e03332d15401563337d5682d44abd793a684425f7",
+   "size": 812
+  },
+  "twemoji/2/72x72/1f4ae.png": {
+   "sha512": "03cd09cab31d52d0001450491439183eafc392c0e6885ac94712a9ad42675ba9",
+   "size": 1540
+  },
+  "twemoji/2/72x72/1f4af.png": {
+   "sha512": "b526854f4dc458a55e1df776cbbfed3dffb43edb5e9a600e869e7baaaa8095b8",
+   "size": 1388
+  },
+  "twemoji/2/72x72/1f4b0.png": {
+   "sha512": "bf562d8f3e78d86e2f457070e735ff5569536e5a27af7e5b5037316383106ab7",
+   "size": 997
+  },
+  "twemoji/2/72x72/1f4b1.png": {
+   "sha512": "9fac2c6fd009a019c94c92cdb7c3aa953a3c708b9677bab52ff0cec24a25b100",
+   "size": 1144
+  },
+  "twemoji/2/72x72/1f4b2.png": {
+   "sha512": "dd35821c0b86053fe7449bba2763ff7d3be759ef8ed1a357797587bdf0783317",
+   "size": 870
+  },
+  "twemoji/2/72x72/1f4b3.png": {
+   "sha512": "fac8bf236bdbddde9803c9fd794792df68b6e6964933971be77133fa9f662810",
+   "size": 624
+  },
+  "twemoji/2/72x72/1f4b4.png": {
+   "sha512": "a7052773cf3c1c7389a61e9e728d7e596284ba48fbf3da36fb8b94c02e1f01f6",
+   "size": 533
+  },
+  "twemoji/2/72x72/1f4b5.png": {
+   "sha512": "6e6e354c1ab661d903f2d87c21774ab8560047a981ff81eeebbe6b6b6ad556ed",
+   "size": 581
+  },
+  "twemoji/2/72x72/1f4b6.png": {
+   "sha512": "18d54e3ca854fbb7c52bbf8ff5cbbaa0a3f0fb0ff36dd4b47fa0a3b125b78963",
+   "size": 564
+  },
+  "twemoji/2/72x72/1f4b7.png": {
+   "sha512": "6f14ddd03594e73f2e93c387b8f8e2b46c5dd9557ff97f08cbbe9a9618d6c67d",
+   "size": 570
+  },
+  "twemoji/2/72x72/1f4b8.png": {
+   "sha512": "18e7834aac07d44f09244e342f0e81cc4d0b92a4deeda9f8372a9fbf576632b1",
+   "size": 1189
+  },
+  "twemoji/2/72x72/1f4b9.png": {
+   "sha512": "201ade4c1cae60cd44dc5fbebc76689f0e2cb745406c110ae9432b21265f7fdf",
+   "size": 996
+  },
+  "twemoji/2/72x72/1f4ba.png": {
+   "sha512": "85241404c12019432c3c957a0b5779900113bc95047856a80a48893b25446a12",
+   "size": 637
+  },
+  "twemoji/2/72x72/1f4bb.png": {
+   "sha512": "02bac0a6b2d34200e785538daf8c3a5862e92b05d7af0b033e3eae17c66b8e1e",
+   "size": 642
+  },
+  "twemoji/2/72x72/1f4bc.png": {
+   "sha512": "874ceb2c1fce010489ad758fc7a6dfdf751c27e5363e67fa333520203616fa35",
+   "size": 681
+  },
+  "twemoji/2/72x72/1f4bd.png": {
+   "sha512": "881771f8f4e03edc53287ef19c801480279e6e30a3d3558db83e8786e00eb442",
+   "size": 1067
+  },
+  "twemoji/2/72x72/1f4be.png": {
+   "sha512": "e2667b9a29f2d275d6819361a5372d7ba3f06e0cb025503281ee00823fb80653",
+   "size": 517
+  },
+  "twemoji/2/72x72/1f4bf.png": {
+   "sha512": "ca2c708d3f7d63a8f9f0ee4cde98affbabb573bb4386532e554a99290a9432ec",
+   "size": 1159
+  },
+  "twemoji/2/72x72/1f4c0.png": {
+   "sha512": "a0cbb3f062f35f52cd10ff715fd20ef17354194ae665261719e6bc0a5992740a",
+   "size": 1132
+  },
+  "twemoji/2/72x72/1f4c1.png": {
+   "sha512": "d9bf2cdff17448854aed44de14176343fdc6946b002d2b5775e7d247a18f95da",
+   "size": 610
+  },
+  "twemoji/2/72x72/1f4c2.png": {
+   "sha512": "48ba8b7b2e984af7b79faf272bbefdc11a572c3367574af808eb16fdd7cbd823",
+   "size": 705
+  },
+  "twemoji/2/72x72/1f4c3.png": {
+   "sha512": "31584096cdc84291e313129a84f5169917556316d2000619ec7d40e7a54eb560",
+   "size": 609
+  },
+  "twemoji/2/72x72/1f4c4.png": {
+   "sha512": "f0270eb620e6b98b0709c7567eac97e6585261fab3ce9eaca635634421ce2b67",
+   "size": 607
+  },
+  "twemoji/2/72x72/1f4c5.png": {
+   "sha512": "3489b8d774088b7aaf582d132d8afeeec9db6ec62a9f3f69d8e9eb097556b823",
+   "size": 1016
+  },
+  "twemoji/2/72x72/1f4c6.png": {
+   "sha512": "d89f4a74b0bd67b7d2f3b43e9ebfad4e3ee9fc07ff5d773402be434ee76465e2",
+   "size": 993
+  },
+  "twemoji/2/72x72/1f4c7.png": {
+   "sha512": "5b3ffa093ce8401a8dfe420cd48af8c6fe1d45e53c38c9eda1d653cde87eec93",
+   "size": 631
+  },
+  "twemoji/2/72x72/1f4c8.png": {
+   "sha512": "b79bc19aea64bd185be242062acc998f08ec53f5ee2e3600132ebe7dff9056ab",
+   "size": 901
+  },
+  "twemoji/2/72x72/1f4c9.png": {
+   "sha512": "c2108cd498625d18cef1158588548216be71e9ee04d33ecbed651c08aadf5329",
+   "size": 904
+  },
+  "twemoji/2/72x72/1f4ca.png": {
+   "sha512": "f7155636b23a890b9701fcce92c1ea08df08d7c76b6922dfbd76dc66ec77d26a",
+   "size": 663
+  },
+  "twemoji/2/72x72/1f4cb.png": {
+   "sha512": "486dfd5a91470ce9fad1d986fd8f271c55fd9624f680f614a53ff9d14417fec4",
+   "size": 619
+  },
+  "twemoji/2/72x72/1f4cc.png": {
+   "sha512": "c4174e33919ead031fcb90d14994842fff8275c68d39d618a4eb7553849b5347",
+   "size": 858
+  },
+  "twemoji/2/72x72/1f4cd.png": {
+   "sha512": "e8d9552e28f913a1fb95fa1361b0a536ea2c30242b2137c0b40f35abe090f96d",
+   "size": 743
+  },
+  "twemoji/2/72x72/1f4ce.png": {
+   "sha512": "94f2d0ee2410d52921687f8a1a91808ace91c323874f1a5f8ec14fb9c9e1ab61",
+   "size": 910
+  },
+  "twemoji/2/72x72/1f4cf.png": {
+   "sha512": "215417991787c5dbec3bcff0b902711cbde0a5466aabf931499647eb56713a40",
+   "size": 794
+  },
+  "twemoji/2/72x72/1f4d0.png": {
+   "sha512": "7d8ea14617480442641dba590ca6678b06a9928c40a68a9be992e9be6ceb2442",
+   "size": 559
+  },
+  "twemoji/2/72x72/1f4d1.png": {
+   "sha512": "b8a483d88ac1a960f1247d18faf031fdc28eb35c6150c6976d118ee2325458e9",
+   "size": 689
+  },
+  "twemoji/2/72x72/1f4d2.png": {
+   "sha512": "1d286db72a400ff77fd540ab3aecb3eb1af8a4f9afdeea82d02b0412715841f2",
+   "size": 802
+  },
+  "twemoji/2/72x72/1f4d3.png": {
+   "sha512": "1fa1d237e1d107122e70cc5425d21f51411257f138581acc207ac4200ee390b0",
+   "size": 676
+  },
+  "twemoji/2/72x72/1f4d4.png": {
+   "sha512": "8592b8997f41f67265cd198afd1294c340aa39c9161b6c7c96b1e710b4f8f5a9",
+   "size": 697
+  },
+  "twemoji/2/72x72/1f4d5.png": {
+   "sha512": "38277d972c92ca6e5e153a88937a1d852ea1ac4b4a632ba2516539bd1139b85d",
+   "size": 645
+  },
+  "twemoji/2/72x72/1f4d6.png": {
+   "sha512": "8648fc1b4b2bc5068a06f7289f9be269191f92393047c780216483ec0d7d84e2",
+   "size": 714
+  },
+  "twemoji/2/72x72/1f4d7.png": {
+   "sha512": "16ecf1a0673206a88db8605ac28aa06470d8c3458c52d6646e40e9dc04d2ebf1",
+   "size": 665
+  },
+  "twemoji/2/72x72/1f4d8.png": {
+   "sha512": "af1c89f46d70164d671244fd6fa0cf958391068e142129fcdebeeb9921b6799c",
+   "size": 665
+  },
+  "twemoji/2/72x72/1f4d9.png": {
+   "sha512": "a21481177580ed527f83a254d3c02d5fb1d4f7055fa3bdaf66f0a62652c79933",
+   "size": 657
+  },
+  "twemoji/2/72x72/1f4da.png": {
+   "sha512": "3bf0db97200f1bab14f615dcb7c054aabce31287877b29b9fa87cf0b2aad3c91",
+   "size": 749
+  },
+  "twemoji/2/72x72/1f4db.png": {
+   "sha512": "d9012f62a02698be26c82da044e9a3be506a44aca2d8e59029263064be970796",
+   "size": 916
+  },
+  "twemoji/2/72x72/1f4dc.png": {
+   "sha512": "e278ec23ab7e7a356999d2aaa3ed2a993de20a883362b3cb67db6efb15e8ebd3",
+   "size": 623
+  },
+  "twemoji/2/72x72/1f4dd.png": {
+   "sha512": "7d11ae5a4c241da7524240a72f50c75372a27cf2eea2fcc48ac647984b3af377",
+   "size": 861
+  },
+  "twemoji/2/72x72/1f4de.png": {
+   "sha512": "9580d6c520cf010535fd1b895c71e2e0a4e6867f97207bc0649291b1c0c5fd82",
+   "size": 832
+  },
+  "twemoji/2/72x72/1f4df.png": {
+   "sha512": "7bab5e763ac97d4343a669f8ccd80546b0ca0f086fecb96dfdd3cd7b5305e989",
+   "size": 800
+  },
+  "twemoji/2/72x72/1f4e0.png": {
+   "sha512": "6e318f7e810cf9c0d6a2692839697b6b9e26bebee8f0cb176e1c4bd898fd6d39",
+   "size": 858
+  },
+  "twemoji/2/72x72/1f4e1.png": {
+   "sha512": "dc41ebd1a69d443ddb8da7a4fde7ceb29c19e202f37a57104a40f33763cbac38",
+   "size": 1138
+  },
+  "twemoji/2/72x72/1f4e2.png": {
+   "sha512": "51a3ce4f26c8be5447599d7699577b0ded16303779b62f43944fbe60bd2081cc",
+   "size": 786
+  },
+  "twemoji/2/72x72/1f4e3.png": {
+   "sha512": "0d218e81c3a15076efd872ca84954c894ae2ffed5f0fdf3b7ac410cd737ec529",
+   "size": 756
+  },
+  "twemoji/2/72x72/1f4e4.png": {
+   "sha512": "484718e8fae531415141fa44142421180ae592f9ca63b1a752ea89fcba8aeea6",
+   "size": 659
+  },
+  "twemoji/2/72x72/1f4e5.png": {
+   "sha512": "31e2f56ae11a50584126a1663cdee6dff999ddc30b6431f24214c5403ac3e6f5",
+   "size": 663
+  },
+  "twemoji/2/72x72/1f4e6.png": {
+   "sha512": "8fe4d82c5ccd799382f65bd0d231af50f7d9a45b48a9cc748a6784147ff9a730",
+   "size": 902
+  },
+  "twemoji/2/72x72/1f4e7.png": {
+   "sha512": "ff7a0f0ae117420c3de8b5887770308b721a80fa06de980b250ba0167a1e2397",
+   "size": 756
+  },
+  "twemoji/2/72x72/1f4e8.png": {
+   "sha512": "92bc16f4e70f7b22904eea7c545291fc8f44f8653f01aecddd1bc787b692ca84",
+   "size": 892
+  },
+  "twemoji/2/72x72/1f4e9.png": {
+   "sha512": "7383897ee05be39a8024a40c9996d8801d97b2c56ae623129d2500500e1d10d6",
+   "size": 788
+  },
+  "twemoji/2/72x72/1f4ea.png": {
+   "sha512": "bfcdb97d0b6ee3a4044a41cb2b59f888fbdbae6584248c3c14f35231f71a7a82",
+   "size": 660
+  },
+  "twemoji/2/72x72/1f4eb.png": {
+   "sha512": "5bda412f41e0c9f32b15d5c0f65d53efa002fc51ee1fe01bb3f00ede79c06403",
+   "size": 669
+  },
+  "twemoji/2/72x72/1f4ec.png": {
+   "sha512": "79773015f36bd1fec2918a1f047e7fe7c87f40406c2ad41dd0081b650e566d8d",
+   "size": 768
+  },
+  "twemoji/2/72x72/1f4ed.png": {
+   "sha512": "2c48886ccf3b2b2240e36be284a8d3ba43929e37dfb807c907f6eeeb7974e408",
+   "size": 622
+  },
+  "twemoji/2/72x72/1f4ee.png": {
+   "sha512": "e0241e9114da5cd4e227904a08ab1901209e613660532984027045323c4b3519",
+   "size": 673
+  },
+  "twemoji/2/72x72/1f4ef.png": {
+   "sha512": "af312da64a1a96779f424ff0e5c8c2b9c0b6f4301be6151d4ca580883e483d77",
+   "size": 1052
+  },
+  "twemoji/2/72x72/1f4f0.png": {
+   "sha512": "b302998cf8e0bf5f7233af797a9513c5f48c67993423313ed61cab4763d9f06a",
+   "size": 675
+  },
+  "twemoji/2/72x72/1f4f1.png": {
+   "sha512": "9ac74a43476c20b3599b640f22462cba4d3ed24687ff337c0be623d342da6a14",
+   "size": 304
+  },
+  "twemoji/2/72x72/1f4f2.png": {
+   "sha512": "0b68d34c58105db3eaea65de589347b965da20543489b48a72f774ad9c197087",
+   "size": 516
+  },
+  "twemoji/2/72x72/1f4f3.png": {
+   "sha512": "d5d370137bb20163d9953cfa0022f4fc590344aad1810d4e5c6762c6ba7fe0b5",
+   "size": 669
+  },
+  "twemoji/2/72x72/1f4f4.png": {
+   "sha512": "3df772f6f0aa8f854ae38f57d011d3bed4f6bc8b961e77f1b3c2da0f33be63d4",
+   "size": 859
+  },
+  "twemoji/2/72x72/1f4f5.png": {
+   "sha512": "a7e7448bb5bf7719076baeaed172102335fae4f6683e1669fb03fa55f70051b9",
+   "size": 1191
+  },
+  "twemoji/2/72x72/1f4f6.png": {
+   "sha512": "72da55bf8ee0a76f3c22df03b85143339416156560ee53eefdaed4c3ef51ad43",
+   "size": 310
+  },
+  "twemoji/2/72x72/1f4f7.png": {
+   "sha512": "fdce6c352ddc88b36feb704934b80cf4217dcf2dd75cd83d8e07658c84b3f389",
+   "size": 898
+  },
+  "twemoji/2/72x72/1f4f8.png": {
+   "sha512": "915057bcdd40339f53e65bd311bf5bd2d96f2f95a983f6ffd16c057b14ab8f2b",
+   "size": 1133
+  },
+  "twemoji/2/72x72/1f4f9.png": {
+   "sha512": "d41168076dd6516ac61430e713fd9601efaf39a3020fe3a2fe0020e10e5bb9e0",
+   "size": 684
+  },
+  "twemoji/2/72x72/1f4fa.png": {
+   "sha512": "fe546c5e16cc8a8f69ce116ce80b8692a70c063afdceb20369a9515149928a4b",
+   "size": 739
+  },
+  "twemoji/2/72x72/1f4fb.png": {
+   "sha512": "efa6f5c1253d64191856dd43fc1a46369cc974c1c2626e5f8467bc44402c6c97",
+   "size": 848
+  },
+  "twemoji/2/72x72/1f4fc.png": {
+   "sha512": "d71f3a5291541245e61e344412b0d4fc757f4fab90584a174f5acb35fd9ed71b",
+   "size": 699
+  },
+  "twemoji/2/72x72/1f4fd.png": {
+   "sha512": "31f6e2a8a9ac61fedef1c5173de9bf65354265cd42c737ff04434495630bf705",
+   "size": 1155
+  },
+  "twemoji/2/72x72/1f4ff.png": {
+   "sha512": "4e5691d967fe4d5d765acc03f21c4b3df869a1a423b0ca7a522ef3e0849e1d00",
+   "size": 1283
+  },
+  "twemoji/2/72x72/1f500.png": {
+   "sha512": "c61e3d41088f158a9319a6766c5d6504f5be937dc7b7c5b85fe4c410fbcf9921",
+   "size": 797
+  },
+  "twemoji/2/72x72/1f501.png": {
+   "sha512": "71ea374f56e72fda5e62188a2a22f7c8fd4da58240b313d86eec1a4cb67343c3",
+   "size": 848
+  },
+  "twemoji/2/72x72/1f502.png": {
+   "sha512": "5e24c01fe93804f06505a71fe98aad08959a0ae35121ac4ba463fe1a6656b3c2",
+   "size": 935
+  },
+  "twemoji/2/72x72/1f503.png": {
+   "sha512": "77cf0ddd3303e5bd668b28ab720c56dfe0414bef73e657f9da7c677d7ec3e128",
+   "size": 816
+  },
+  "twemoji/2/72x72/1f504.png": {
+   "sha512": "4e675b175bf3bb1aa8f67a70f0bc8c9920f2c69bbbade53ede63502bf519849d",
+   "size": 1023
+  },
+  "twemoji/2/72x72/1f505.png": {
+   "sha512": "c9b84e4728dfc08e36323c5f322d5f7ac051a822161698d263af3e09d193bac8",
+   "size": 916
+  },
+  "twemoji/2/72x72/1f506.png": {
+   "sha512": "f40397db06e4422a0dcf3cf276493ca74e4d6e784d6237e2dc0577af0dcf2f9f",
+   "size": 1046
+  },
+  "twemoji/2/72x72/1f507.png": {
+   "sha512": "014fc2dcd705c7646b42e16354742e0105716609e455fce34e03573658a01d7b",
+   "size": 526
+  },
+  "twemoji/2/72x72/1f508.png": {
+   "sha512": "8e59080d63882187e98412bf6dcf682c9e8f130f6235dbcaf7d4a4f01b19e088",
+   "size": 318
+  },
+  "twemoji/2/72x72/1f509.png": {
+   "sha512": "93e1e657b5c596c5a36416e06bfdb5e1cbbb859d976a7b42b18c49bf8462063b",
+   "size": 652
+  },
+  "twemoji/2/72x72/1f50a.png": {
+   "sha512": "1e104d658f709c8b5e14d687f110ae2ca24010cf895ddffea767c6a86de5fb1b",
+   "size": 1040
+  },
+  "twemoji/2/72x72/1f50b.png": {
+   "sha512": "6a9e69cbf7484ee7c2140b29f9f3774e49cb4e3669fdbf7a63dafbb28407c752",
+   "size": 579
+  },
+  "twemoji/2/72x72/1f50c.png": {
+   "sha512": "88b1d5438363b735fb30d7fe4bb90b1995286ffc06e2b89308a2c418121c73bd",
+   "size": 751
+  },
+  "twemoji/2/72x72/1f50d.png": {
+   "sha512": "700fe50368a993a6f0b5fc8dfdd354c4e7484dc48ecf75e55ab039c641b21ca9",
+   "size": 873
+  },
+  "twemoji/2/72x72/1f50e.png": {
+   "sha512": "fed19628c4e8f042d3b912634e5645ef98aafb0608b47e7412ffd11e068bd061",
+   "size": 863
+  },
+  "twemoji/2/72x72/1f50f.png": {
+   "sha512": "77d7fd824fb8fa8603c3bcae028ca2c420e70732c9ff08a9dd9639bef5daceb5",
+   "size": 807
+  },
+  "twemoji/2/72x72/1f510.png": {
+   "sha512": "959f06c91f7b5039ca389257cb26f166365c0149e5caece163fe80b87fdd2468",
+   "size": 842
+  },
+  "twemoji/2/72x72/1f511.png": {
+   "sha512": "dc08fda17cdccf33573bc740f3c9e4b3c1bb29f743fded28c529800ef4bb3b2c",
+   "size": 814
+  },
+  "twemoji/2/72x72/1f512.png": {
+   "sha512": "a1ffe3d9c303cac152f4eebfb4542ef9a5a27e83193b247e84e3dfb9a90794a1",
+   "size": 687
+  },
+  "twemoji/2/72x72/1f513.png": {
+   "sha512": "07f32cc3a093f88b79f0f5ad9b94de67a694b06d22082f6e0132ef57d772e4b1",
+   "size": 668
+  },
+  "twemoji/2/72x72/1f514.png": {
+   "sha512": "b7a4c5b6035e798eac72d99dd3f713b4f1439571fa5b3f4b0f2d9cf3e3b22d9d",
+   "size": 743
+  },
+  "twemoji/2/72x72/1f515.png": {
+   "sha512": "6d0159d1130a302ba27c45351c80d2892f448f80fef3af742f1709e17bc6f7c4",
+   "size": 831
+  },
+  "twemoji/2/72x72/1f516.png": {
+   "sha512": "a75eea39b634bf87c8870db63f2b7e3330f7f77c58b50658dff3c79c0597cf85",
+   "size": 738
+  },
+  "twemoji/2/72x72/1f517.png": {
+   "sha512": "54ff22095fc19dc3c20750df41a69f7f53c2089b6c5d1dd9c3a853adff3a74fc",
+   "size": 1000
+  },
+  "twemoji/2/72x72/1f518.png": {
+   "sha512": "b92fa1a0e823c807045e6cfc87fd64de237785555c208cb6589515f7034fdb5c",
+   "size": 946
+  },
+  "twemoji/2/72x72/1f519.png": {
+   "sha512": "0f5b40515cab0861400313b2336b8df1b526fc29bc8cef355da869061789ae9c",
+   "size": 1119
+  },
+  "twemoji/2/72x72/1f51a.png": {
+   "sha512": "752c11d6d2bfe812f123ca009e73ab6a6b1e4f46c9c2ca5591e42c1412e9a464",
+   "size": 1008
+  },
+  "twemoji/2/72x72/1f51b.png": {
+   "sha512": "2b195f2d2382a7ea80f0a88a3871331dbcdc4adc80e77b250324511c450b004a",
+   "size": 1178
+  },
+  "twemoji/2/72x72/1f51c.png": {
+   "sha512": "98e3098a2f0ce867d11cb16615446cbb58c36d7804365cee7b0c6bf7aac87908",
+   "size": 1137
+  },
+  "twemoji/2/72x72/1f51d.png": {
+   "sha512": "285a90a1afcc4a7b9c3f1f5a0dec973bfc7fdb1472a9c2a1fd3c5616b25fc55c",
+   "size": 1024
+  },
+  "twemoji/2/72x72/1f51e.png": {
+   "sha512": "7f323c32c6c14eed2870ef321c0ccb82e0c24982f78c8418b18e9153a79b5998",
+   "size": 1357
+  },
+  "twemoji/2/72x72/1f51f.png": {
+   "sha512": "a270d8c7e0e2d3628dee8a60672a196bc412d4ae4fdc0c096947457947647954",
+   "size": 937
+  },
+  "twemoji/2/72x72/1f520.png": {
+   "sha512": "911297c4ef004f33b051ce47a96200c01b9cc6a787e5da6a13958fdfbc157c4b",
+   "size": 1172
+  },
+  "twemoji/2/72x72/1f521.png": {
+   "sha512": "456dcb53630e0530efeb9e342ed69037e29ae07cfc42f44f4573c6cfaa7ea149",
+   "size": 1111
+  },
+  "twemoji/2/72x72/1f522.png": {
+   "sha512": "de1e6cf0cbfc3c1b94fd28c00b59739a628b9f5212fe62c9211ebf401c74c0d2",
+   "size": 1054
+  },
+  "twemoji/2/72x72/1f523.png": {
+   "sha512": "a442dd24f8b1ec0b64f425f5716449d89ad08eafea56bf8e1e7c8d9aa38907d1",
+   "size": 1117
+  },
+  "twemoji/2/72x72/1f524.png": {
+   "sha512": "f1529dbca202cda7f9deac336ee81769347f290fe0eaf182ec31d71cf0f2fbeb",
+   "size": 928
+  },
+  "twemoji/2/72x72/1f525.png": {
+   "sha512": "549e08458e1ff2f0f05bd922cecfcba479a8188945357b32a6777e56b948aa1f",
+   "size": 1118
+  },
+  "twemoji/2/72x72/1f526.png": {
+   "sha512": "112310c27b3c9bf55dd6dbc3b5cdb7a337a887edda9521f16dcdbcce23f2c9b0",
+   "size": 679
+  },
+  "twemoji/2/72x72/1f527.png": {
+   "sha512": "4b99e61c2ed88f03a7f8f9201d86dc9820fdb3e7b6630280a382e727787e99f7",
+   "size": 790
+  },
+  "twemoji/2/72x72/1f528.png": {
+   "sha512": "c490ef332376f89c1fd47ac19a1b30daf7c82f4654b7268fe685b7b4af11c547",
+   "size": 619
+  },
+  "twemoji/2/72x72/1f529.png": {
+   "sha512": "034ba01655ff6a4b9087ec8dad3d11728afef31fd234d8decb6485b32ab8c6ff",
+   "size": 837
+  },
+  "twemoji/2/72x72/1f52a.png": {
+   "sha512": "b5c4c8fb335f6fdd507f738316afec68b2e6f9b5899a93e45efe512a93ee9289",
+   "size": 752
+  },
+  "twemoji/2/72x72/1f52b.png": {
+   "sha512": "7cf0654befc33a8fc676b844e6c73bfc7807ea9b37c040c3d39d418f5c71b606",
+   "size": 884
+  },
+  "twemoji/2/72x72/1f52c.png": {
+   "sha512": "ecb85f66972901c1e2c977b525d574716d09423cf53ae85e1fc568b2057e457a",
+   "size": 879
+  },
+  "twemoji/2/72x72/1f52d.png": {
+   "sha512": "d94f2bc967e89870c18fec534649018853acae041919a3a803a0a6da7ed9a5d4",
+   "size": 984
+  },
+  "twemoji/2/72x72/1f52e.png": {
+   "sha512": "838ee1d1a731aece671c62c7be2870cc5c1358557f9768ce0343a92b07af55f7",
+   "size": 862
+  },
+  "twemoji/2/72x72/1f52f.png": {
+   "sha512": "a980d57e54986aa4616b9941b730d0bf54c6adef8a196569522c0c6df738446c",
+   "size": 1170
+  },
+  "twemoji/2/72x72/1f530.png": {
+   "sha512": "77febd4043be4631769849369dabe309d4a399450d695eeab04af1ad886f13fa",
+   "size": 495
+  },
+  "twemoji/2/72x72/1f531.png": {
+   "sha512": "85d49da180b088ddfcdc6bc8d9a4f2ecf83968567cd260a7e95d26ca12cd5c92",
+   "size": 902
+  },
+  "twemoji/2/72x72/1f532.png": {
+   "sha512": "e90cf8ce43aa559871f3f57192dc1b57de4b67607fb7cbe90c6095415c40a868",
+   "size": 449
+  },
+  "twemoji/2/72x72/1f533.png": {
+   "sha512": "340f5c1176f643b9e9d6a6d15771b05e8fdd725b6d90c7bb631cd91c32aa7eea",
+   "size": 452
+  },
+  "twemoji/2/72x72/1f534.png": {
+   "sha512": "8f76160073e297965a774a60892a98d04942e1693bf334f8de328fd782b6ee5e",
+   "size": 752
+  },
+  "twemoji/2/72x72/1f535.png": {
+   "sha512": "6ac653135a692c6d4769c3b78edddfbb6efc02e09d17d3fa0a7fb3064b3fde77",
+   "size": 748
+  },
+  "twemoji/2/72x72/1f536.png": {
+   "sha512": "8caef9652ff93f6748641d4621649d65fd35a8b34465beea7023f1af154032ba",
+   "size": 357
+  },
+  "twemoji/2/72x72/1f537.png": {
+   "sha512": "7c9675bd787b65422c20f4b8ee0ff2525d9b30e8db03b65a41b79057b13dbf7b",
+   "size": 357
+  },
+  "twemoji/2/72x72/1f538.png": {
+   "sha512": "5ae70d12d846be38945428a84005ccbd488647bf33ea768213b3b5df31afd187",
+   "size": 302
+  },
+  "twemoji/2/72x72/1f539.png": {
+   "sha512": "25276209ffc9b29d49473d09bcaf23fbae58b09c9a997a041c5d11c2c81a1b3e",
+   "size": 302
+  },
+  "twemoji/2/72x72/1f53a.png": {
+   "sha512": "f83e7ffccf8986fabab72448300b473fa4de9c65f6ac10cc8d7d852464228be4",
+   "size": 558
+  },
+  "twemoji/2/72x72/1f53b.png": {
+   "sha512": "f9d994a4c7b16b135717e9462c36f585a073a6e290361fd35ea6ec6c1cf2c172",
+   "size": 559
+  },
+  "twemoji/2/72x72/1f53c.png": {
+   "sha512": "a307bf72bac72badf8864632b2b082cb4c59b8e4bb018ad7af3d44c5d1b5752f",
+   "size": 490
+  },
+  "twemoji/2/72x72/1f53d.png": {
+   "sha512": "420ea20129e1a313c1433e06e9c9d53db5c7d6ce4177539be3669bfeee3946e6",
+   "size": 514
+  },
+  "twemoji/2/72x72/1f549.png": {
+   "sha512": "913414caa2612f7e9433d73d088b0573e799420a69e779de2235124425eaf833",
+   "size": 1187
+  },
+  "twemoji/2/72x72/1f54a.png": {
+   "sha512": "e1e90881a36891815055021bed271de5713bb535cbe5b8114eb30451f51ad633",
+   "size": 1151
+  },
+  "twemoji/2/72x72/1f54b.png": {
+   "sha512": "84a917f59ba9d5a2ed16d371ef3dd3121703052eb91dac70f19e97cd80cfb494",
+   "size": 878
+  },
+  "twemoji/2/72x72/1f54c.png": {
+   "sha512": "93650569b1ec7fd0ce73c075f0502395ed25c44ec22d400b9d7fbdb24945ac90",
+   "size": 826
+  },
+  "twemoji/2/72x72/1f54d.png": {
+   "sha512": "6d9d6b5c7790295f42ad38139c9b869d51f30107fd7db1d28e4c82fa9ed5f815",
+   "size": 989
+  },
+  "twemoji/2/72x72/1f54e.png": {
+   "sha512": "fa6a036b6d081e8da99b0c3f054991f2469060bf17d4a0dd818577d82b8bdbe5",
+   "size": 1507
+  },
+  "twemoji/2/72x72/1f550.png": {
+   "sha512": "2ba682ff80ba3d3c85dafcae6b19476010e22cf5c3915232c338a603fb852625",
+   "size": 1065
+  },
+  "twemoji/2/72x72/1f551.png": {
+   "sha512": "7855d8f5f44baa888eb57a01abd435ce4caaee9b75e9aea2219d64ecf4c0b55d",
+   "size": 1057
+  },
+  "twemoji/2/72x72/1f552.png": {
+   "sha512": "0f81ff5b134245012778461b823afb4c86112effefb3a865bbb4c2e23edea90a",
+   "size": 1009
+  },
+  "twemoji/2/72x72/1f553.png": {
+   "sha512": "b5a4069b95cd0e7405f79eda06ccaae3b61bc97f637f0083ec6334fa8149a307",
+   "size": 1055
+  },
+  "twemoji/2/72x72/1f554.png": {
+   "sha512": "999e79f63d7538fc764fc7cf963c6c03200826596d274804d550aee3d95eeb98",
+   "size": 1041
+  },
+  "twemoji/2/72x72/1f555.png": {
+   "sha512": "fbed713574ba0765a8cf8beee3cb86c4629a5c38a9038204de2a3d89765d826f",
+   "size": 962
+  },
+  "twemoji/2/72x72/1f556.png": {
+   "sha512": "ca4d6dde1f97088e53a4b43ca55f6853ebcc92dc3d5f52451a379e8f27895da1",
+   "size": 1066
+  },
+  "twemoji/2/72x72/1f557.png": {
+   "sha512": "ac81a6499348565659d3fc4990d8c8be4e76337a282b9541d46430f73c042474",
+   "size": 1046
+  },
+  "twemoji/2/72x72/1f558.png": {
+   "sha512": "c15ca4c8be90cb419441d8acfafdb983b0a466b2055108ed1a1f1bd44ca75946",
+   "size": 1001
+  },
+  "twemoji/2/72x72/1f559.png": {
+   "sha512": "e3df216380ccb68096e3f5451436506c9e217b50133d1be83bc662ac1ab9f55e",
+   "size": 1032
+  },
+  "twemoji/2/72x72/1f55a.png": {
+   "sha512": "bd4c58b1f1f6632901b3c76177e6f18fbe9567c133d19dca02b8bd63f29effe9",
+   "size": 1060
+  },
+  "twemoji/2/72x72/1f55b.png": {
+   "sha512": "ce17f970546a0649e79469f67301837ee48bc679fe25d57d97fde27e02469114",
+   "size": 1025
+  },
+  "twemoji/2/72x72/1f55c.png": {
+   "sha512": "a3a5da653e89247bbd86dd6d6f29388c11fecc670b753e7a1295460de9d05d51",
+   "size": 1043
+  },
+  "twemoji/2/72x72/1f55d.png": {
+   "sha512": "60e49b1b50bbadce1680ca19219748f3ac57c97b403c0ecf76c773e16a5dfd11",
+   "size": 1048
+  },
+  "twemoji/2/72x72/1f55e.png": {
+   "sha512": "74e680a212f89885e392af7741604d13c89344f9bb64d8be675ae5435ec0b795",
+   "size": 1006
+  },
+  "twemoji/2/72x72/1f55f.png": {
+   "sha512": "3aceaacc1dac86d2ca5063c5aa4b7b8f95d6d7421bdf5267a9c56cef1c8f89b1",
+   "size": 1033
+  },
+  "twemoji/2/72x72/1f560.png": {
+   "sha512": "269dc5675ee27cdedd1303b0c81a45f624ceeb40dd6af640e9ab76d3cec25313",
+   "size": 1050
+  },
+  "twemoji/2/72x72/1f561.png": {
+   "sha512": "eb061db482b41a69b74c5655a5c7ceda826cbb0a3a8d6231b2c41c2c3691db1e",
+   "size": 1009
+  },
+  "twemoji/2/72x72/1f562.png": {
+   "sha512": "b6e3dff7fd4205870a3b8ed025b263b4a80985b406714db70a56ab51901a276b",
+   "size": 1063
+  },
+  "twemoji/2/72x72/1f563.png": {
+   "sha512": "d04e97743a2326eb0726a55527452a8037ce34e91c39b7097f9c18ceb3c6cbec",
+   "size": 1040
+  },
+  "twemoji/2/72x72/1f564.png": {
+   "sha512": "048e33d0af81021c14b6c8a16ff5dccd0cac85a75f02c6ed838c044dd0e3122e",
+   "size": 989
+  },
+  "twemoji/2/72x72/1f565.png": {
+   "sha512": "1d3b484fe0534a0a5d2ad6d34d81116d4505a2820e21bf82a74cfedb3c9e439f",
+   "size": 1048
+  },
+  "twemoji/2/72x72/1f566.png": {
+   "sha512": "03b2a1b744bb4221e1e7c6393a3cc82150d0ac15e9e95160b92241e9f386df96",
+   "size": 1078
+  },
+  "twemoji/2/72x72/1f567.png": {
+   "sha512": "0112912f4560bafef6ac9fd5d1bb96563139225fb508d84cf430eba3c910e75c",
+   "size": 956
+  },
+  "twemoji/2/72x72/1f56f.png": {
+   "sha512": "7ac8e29aa6fc0bae08fad82f34a00b653ec1b23f1abf0eae2df2d5579b0ed86b",
+   "size": 802
+  },
+  "twemoji/2/72x72/1f570.png": {
+   "sha512": "00e8d7d6a35b7106e952f46a32b61b71bf3fa70cdace2c15873eac6e257b4683",
+   "size": 978
+  },
+  "twemoji/2/72x72/1f573.png": {
+   "sha512": "ce2bc779b4ff924e17699d3a47d9c885e653fdf4019b5aad962aa51a7d7c524a",
+   "size": 737
+  },
+  "twemoji/2/72x72/1f574.png": {
+   "sha512": "e23e52f643fa4aa3ab3ec082c51ce046d58cf1e9f44d46c2cd73529c21a6e211",
+   "size": 865
+  },
+  "twemoji/2/72x72/1f575.png": {
+   "sha512": "249f26b20b5894b26dcd202a8cae19b844924ee3eb036ee990c6cc4547104e9b",
+   "size": 1103
+  },
+  "twemoji/2/72x72/1f576.png": {
+   "sha512": "8261d72c6714daa66ef04bac8509df44ddd882b78865977b12c6c26883a9f4fb",
+   "size": 650
+  },
+  "twemoji/2/72x72/1f577.png": {
+   "sha512": "42c4ec70eccc6fc14f4aaf4791d2d19706357cfb60c0c6ee8fdf1610642ddf45",
+   "size": 1374
+  },
+  "twemoji/2/72x72/1f578.png": {
+   "sha512": "28be08726e52b50d4f8b7108a2e8a73d48999598a8a170cc2b74c589584a73c9",
+   "size": 1761
+  },
+  "twemoji/2/72x72/1f579.png": {
+   "sha512": "7643c298f8bd7d17ce26934b4887ac92f55a1264503d600c365b99448412a37b",
+   "size": 655
+  },
+  "twemoji/2/72x72/1f57a.png": {
+   "sha512": "0733661c644209f5fb9211a9791b886de6586eb8fc35714428793dc79acb2a9a",
+   "size": 1011
+  },
+  "twemoji/2/72x72/1f587.png": {
+   "sha512": "23b71398a830ad8ec87c394f756aea16997836b01bd98339c6eecee0659681a0",
+   "size": 1578
+  },
+  "twemoji/2/72x72/1f58a.png": {
+   "sha512": "ada5581b3e327e16fea3495208a7bf3c240d3c26469b8101cd9469822fa8901b",
+   "size": 887
+  },
+  "twemoji/2/72x72/1f58b.png": {
+   "sha512": "bfc3966ad0d9eafb6fde2c8679ffb667a310eded1127dde7da5ba5be2ee7a9b9",
+   "size": 771
+  },
+  "twemoji/2/72x72/1f58c.png": {
+   "sha512": "feee26eaf1cb969bfc3965aac3bce72e758ef0fbed47f267077af6873e9e01b6",
+   "size": 800
+  },
+  "twemoji/2/72x72/1f58d.png": {
+   "sha512": "1d675e0b1dc9a3917cbcf934fb6ef7ec786022ba865e657888898d518d1c1258",
+   "size": 808
+  },
+  "twemoji/2/72x72/1f590.png": {
+   "sha512": "17d84549e926682a0ea46eb03dc093d0a2d81f15415b1581b99e0ed314bab38f",
+   "size": 1234
+  },
+  "twemoji/2/72x72/1f595.png": {
+   "sha512": "ad40f0ab50e85f3bd6cee4a821b15c428843cbfbb01559b4bbc99a667affcb3d",
+   "size": 714
+  },
+  "twemoji/2/72x72/1f596.png": {
+   "sha512": "688ea2caf6fd358273173e50787320d43feb93a19b7c9602bac92d56be23753f",
+   "size": 1212
+  },
+  "twemoji/2/72x72/1f5a4.png": {
+   "sha512": "7da0b431b5b8f4cb813483308de20323dd9da94ad716d7de4ea530b5256e6639",
+   "size": 813
+  },
+  "twemoji/2/72x72/1f5a5.png": {
+   "sha512": "0afd4e94698780a7ea23cafe55a770919cc9da4fc9a4a2dad204af5d096d1067",
+   "size": 491
+  },
+  "twemoji/2/72x72/1f5a8.png": {
+   "sha512": "a44eb13b46bf1031465bfa21615a765972961b2cf87d1779917c0903a6c48af0",
+   "size": 692
+  },
+  "twemoji/2/72x72/1f5b1.png": {
+   "sha512": "2d12026dc6c6e28c9175f15ae6d2b2f958fd178781c0207ce743f578aa2f4de6",
+   "size": 814
+  },
+  "twemoji/2/72x72/1f5b2.png": {
+   "sha512": "cb30af9e7eace25b1df88a11e7ff916df0156e90bf758251df30c3489d1b4960",
+   "size": 1253
+  },
+  "twemoji/2/72x72/1f5bc.png": {
+   "sha512": "933928effb39c1efcf37d572358cc7532aa0d762a18617d19120fea86f838422",
+   "size": 716
+  },
+  "twemoji/2/72x72/1f5c2.png": {
+   "sha512": "564dc7352c0f7c564cb95bd3bb52822484b8347d0598b52e96fb9999101c2392",
+   "size": 638
+  },
+  "twemoji/2/72x72/1f5c3.png": {
+   "sha512": "10ede06bcd16f4182f9ee65fbcfbc81cb34202c639ccfbc69b8d6737eeaf5015",
+   "size": 872
+  },
+  "twemoji/2/72x72/1f5c4.png": {
+   "sha512": "3287db69550217c2ae5838798efb3aa977b01b40391fa14b5ee99e5eaf968fb2",
+   "size": 388
+  },
+  "twemoji/2/72x72/1f5d1.png": {
+   "sha512": "c4202ac437de7217290824b990050dc6db74f28cfd3274af8c7b3b072eaa51b2",
+   "size": 1466
+  },
+  "twemoji/2/72x72/1f5d2.png": {
+   "sha512": "edc37c05ca04c06d08477dc4b463bfe05ddbbe23aa3938e923c8eb4686b0dd17",
+   "size": 674
+  },
+  "twemoji/2/72x72/1f5d3.png": {
+   "sha512": "82c7841dd634b4863dc1f87c4507bf553d6bbd6a25b17a8573583aa5b0c9f54b",
+   "size": 628
+  },
+  "twemoji/2/72x72/1f5dc.png": {
+   "sha512": "7c149d34102035864ad90c19c1a1b73c0495512fa77a48d846c7d23c993cf89b",
+   "size": 745
+  },
+  "twemoji/2/72x72/1f5dd.png": {
+   "sha512": "56577ce157db72c98244a47954158f2cccc88a38255da5a4d8cd8ff41c3f5c7e",
+   "size": 1035
+  },
+  "twemoji/2/72x72/1f5de.png": {
+   "sha512": "0e706a98301f24c60636f7bed325b1478675d60f88c8db356b8a946800e5de13",
+   "size": 1137
+  },
+  "twemoji/2/72x72/1f5e1.png": {
+   "sha512": "5b6ce816141a5b14ff69f35f25fcbe95a8ba571b270a438dc5aa3d0dbce56527",
+   "size": 880
+  },
+  "twemoji/2/72x72/1f5e3.png": {
+   "sha512": "9955985da45f4b77b78c7b59dc940cbb34f10e87ebe69bd9e51a59daeb8778db",
+   "size": 904
+  },
+  "twemoji/2/72x72/1f5e8.png": {
+   "sha512": "fc130ede405b13ff993e587bcb17b789b8c5564a8dd5cad99877dfbe5f769bcd",
+   "size": 784
+  },
+  "twemoji/2/72x72/1f5ef.png": {
+   "sha512": "9b02efcc074a94bbb2ce196ffaf1c6563b39d2b6b0a5ba783e8605370cabf0d8",
+   "size": 1422
+  },
+  "twemoji/2/72x72/1f5f3.png": {
+   "sha512": "5dbc69e2f2f234cdb9c94c4554b8476400d0c4c3a4223a75765407f7ea6d45ac",
+   "size": 786
+  },
+  "twemoji/2/72x72/1f5fa.png": {
+   "sha512": "8302158a91adc7ac99f856a796dd1076817d9535260bfc5a6aa39c3ebcb5185a",
+   "size": 1304
+  },
+  "twemoji/2/72x72/1f5fb.png": {
+   "sha512": "a4e3852f9c5bdd347ead6c017183d025713d12fd768af4859fc35292d3b3ac7b",
+   "size": 668
+  },
+  "twemoji/2/72x72/1f5fc.png": {
+   "sha512": "ce1dd9c7d07eddf5eb8870ee3b08de11f01a2610d2dc3e7f7b2caacd88ae6a3c",
+   "size": 855
+  },
+  "twemoji/2/72x72/1f5fd.png": {
+   "sha512": "e9dd034078e334dbe3c63667de337c66541361e413f5ff79442dc6586662b2dd",
+   "size": 1484
+  },
+  "twemoji/2/72x72/1f5fe.png": {
+   "sha512": "2cf5ffbfcb19c124a2cc4b28588b5ec242c123b18b5beccc208cd553d7e072c5",
+   "size": 806
+  },
+  "twemoji/2/72x72/1f5ff.png": {
+   "sha512": "20d114e5e9e2055e4ebfd7e2d32ab602c1194d9f912a652adf4632669033ec0f",
+   "size": 1243
+  },
+  "twemoji/2/72x72/1f600.png": {
+   "sha512": "5c8893d39ef106059b447fe9eeec7d231d6fc92e48c07dba4ccc11bae0742511",
+   "size": 1041
+  },
+  "twemoji/2/72x72/1f601.png": {
+   "sha512": "690476fa2b10e8bb7a03cd48f1ae9ea246afa8c0c1347fc0c40f132064def36a",
+   "size": 1120
+  },
+  "twemoji/2/72x72/1f602.png": {
+   "sha512": "80ec6d3b05b7e48e064600c110d18cd22c72609b6cd3dd51aac1a13f36bdbca1",
+   "size": 1214
+  },
+  "twemoji/2/72x72/1f603.png": {
+   "sha512": "ee91f3332a3363182bea36bbca1d83e11c10e0b1fb1ee5dab8078adcdd9ed018",
+   "size": 1059
+  },
+  "twemoji/2/72x72/1f604.png": {
+   "sha512": "8baf2a1997d297045919b9aec31dfb8831025b2c40d7dad6b3fcac3b26c294fe",
+   "size": 1034
+  },
+  "twemoji/2/72x72/1f605.png": {
+   "sha512": "49189c0cd97378119eab73ad6cccad7f2cb09aba48ff316b1ad9227286454d53",
+   "size": 1139
+  },
+  "twemoji/2/72x72/1f606.png": {
+   "sha512": "07205003e1cc608804f3f991f94e3530a6814bf333e0d2da4b2fea529bbe6866",
+   "size": 1142
+  },
+  "twemoji/2/72x72/1f607.png": {
+   "sha512": "fdc1be8ab8785675211a65763b63505bf0f23fc75745405fc2c4c96488394dbd",
+   "size": 1137
+  },
+  "twemoji/2/72x72/1f608.png": {
+   "sha512": "0b987016916da9d41c7031863bff3d3db51a5c643f021e1ba77c63ccd404fd8c",
+   "size": 1097
+  },
+  "twemoji/2/72x72/1f609.png": {
+   "sha512": "d00b0a8801deacb0a008af4e0d275b1e1057483293649b31ab523d4e8f9bab14",
+   "size": 1096
+  },
+  "twemoji/2/72x72/1f60a.png": {
+   "sha512": "2e695a6056f21207b5f90030ca2436ae32b1d002ce189b55a4f153685e2a52e7",
+   "size": 1025
+  },
+  "twemoji/2/72x72/1f60b.png": {
+   "sha512": "7b0a2a50f7050b563996dffdca133a46d678c51f81f88e1985ebff07c630b0d7",
+   "size": 1023
+  },
+  "twemoji/2/72x72/1f60c.png": {
+   "sha512": "0d9180ce896ff534c2717b1f6de076b4c565fd82592c4934118c49a92c522736",
+   "size": 1005
+  },
+  "twemoji/2/72x72/1f60d.png": {
+   "sha512": "6c0274bea718f5b642697b041f68bff4f094e290a5ecfffeea0904354c4c280b",
+   "size": 1070
+  },
+  "twemoji/2/72x72/1f60e.png": {
+   "sha512": "87cf281ba967061cc3d400adffb8d03c848cdc07161de33b9ed73d05af7e2636",
+   "size": 1025
+  },
+  "twemoji/2/72x72/1f60f.png": {
+   "sha512": "19ba09b65dd3d4ad75fa6f46ba4e23bc9373367bbc9dc717bae67a6e1a6fefc4",
+   "size": 1011
+  },
+  "twemoji/2/72x72/1f610.png": {
+   "sha512": "16abe165744e79096a0aedfe9fa2eddbebca5f70772a3bc5c94d3bc780ef3147",
+   "size": 827
+  },
+  "twemoji/2/72x72/1f611.png": {
+   "sha512": "9fb6ed9177d9a85a7e64590413949fb88f76c939dde56c69659fcf0aad3cdc6a",
+   "size": 801
+  },
+  "twemoji/2/72x72/1f612.png": {
+   "sha512": "bde2cb59dd7cd2920ebe6debb13c23f36cd5e6776d0c8b5763ac39f8a5f05d5c",
+   "size": 1013
+  },
+  "twemoji/2/72x72/1f613.png": {
+   "sha512": "55233b6275e18a4ea54eb3601a3c668ca76627a8ed36071fdb42eadec4889eac",
+   "size": 972
+  },
+  "twemoji/2/72x72/1f614.png": {
+   "sha512": "01d3cb46685896b68a4a3a6c69438f85e4acbc570f7ab2e118fe8719456d7372",
+   "size": 985
+  },
+  "twemoji/2/72x72/1f615.png": {
+   "sha512": "ee2b8196f9d49f7f22576ab37d2e6d7c698fd7349b353401be1815a03bed7d11",
+   "size": 860
+  },
+  "twemoji/2/72x72/1f616.png": {
+   "sha512": "4e5326986f057e9f007cbd36f1e39875367af692a5c63f50f1bde087c000ca60",
+   "size": 1217
+  },
+  "twemoji/2/72x72/1f617.png": {
+   "sha512": "b459aef71d3044250ed1f9318c575eca532c97e6c731809a119c32809099ea85",
+   "size": 901
+  },
+  "twemoji/2/72x72/1f618.png": {
+   "sha512": "d84887676ea7b8255c342fcc66f199194802f862e3538ec1a6a8896b3611af0d",
+   "size": 1106
+  },
+  "twemoji/2/72x72/1f619.png": {
+   "sha512": "8cf3bbae88f0eafff512fcc52114633deb881ad7563147880368289c7e52472a",
+   "size": 926
+  },
+  "twemoji/2/72x72/1f61a.png": {
+   "sha512": "8f242787dc638e51844049230888aa8180bdae62478b030acb0ae3c133d1223b",
+   "size": 1146
+  },
+  "twemoji/2/72x72/1f61b.png": {
+   "sha512": "629bb3833ff2057c842bf02bd28479549dcce06a4dc00ace0253649257c88ee6",
+   "size": 998
+  },
+  "twemoji/2/72x72/1f61c.png": {
+   "sha512": "196579823a5c7eb5fde6230149bfcab30b530c3cd5d3062dceb9f6a7108c9302",
+   "size": 1083
+  },
+  "twemoji/2/72x72/1f61d.png": {
+   "sha512": "e7aa4e8434567c5492844f226a3623f01d8944782f082722668830c82bd34a1d",
+   "size": 1109
+  },
+  "twemoji/2/72x72/1f61e.png": {
+   "sha512": "355467cbd3c6ea02909e5548f8ab77f994507f8ed9abec7261369beb0042993f",
+   "size": 938
+  },
+  "twemoji/2/72x72/1f61f.png": {
+   "sha512": "cffad430ebdd93a2eb6188833a8583a6aecbd491aa1bc2663645b1d74546c2ed",
+   "size": 1009
+  },
+  "twemoji/2/72x72/1f620.png": {
+   "sha512": "dc6abf1571f96a2f3cae7be896ecb1fb0f1f80262bac880b5f7ea380f305a077",
+   "size": 985
+  },
+  "twemoji/2/72x72/1f621.png": {
+   "sha512": "f966123aa4ecaa7297d8be186683a445845fc7be14ad90ec8fbd8712bf946bd7",
+   "size": 999
+  },
+  "twemoji/2/72x72/1f622.png": {
+   "sha512": "5f4869b1d293cc721fe1d038cd188558fc54be603b52012ad38106785610ea2f",
+   "size": 1081
+  },
+  "twemoji/2/72x72/1f623.png": {
+   "sha512": "d161ed9111129942afe870a53871616b79f6ab20083758895d8a6f1ce48d5df7",
+   "size": 1192
+  },
+  "twemoji/2/72x72/1f624.png": {
+   "sha512": "a5c555e829c1715a7720663a1faad0f66dbcc6fd327058431990622bee9c8e66",
+   "size": 1252
+  },
+  "twemoji/2/72x72/1f625.png": {
+   "sha512": "fdd7f9534a2881185fb08d66fe17be423789faca361759d38f942ed4182b5531",
+   "size": 1088
+  },
+  "twemoji/2/72x72/1f626.png": {
+   "sha512": "6c4e9ff10f6a5b43cab393d3962d3b332c502e0d720490ef4d6df6f9e293347b",
+   "size": 886
+  },
+  "twemoji/2/72x72/1f627.png": {
+   "sha512": "166b878b6524b18a6aa653cc45f9ed4a7f27fa6adeb6a05621d844ecc0f3456d",
+   "size": 1025
+  },
+  "twemoji/2/72x72/1f628.png": {
+   "sha512": "ddbc88e54c67f7cd56cba431debb8571c4009cf2f49c4ecc3fb8ba02c0272d7b",
+   "size": 1148
+  },
+  "twemoji/2/72x72/1f629.png": {
+   "sha512": "f6216eb87f48e3b9f916faaadef769ac46d67aea8f838f424829517494a6c5f4",
+   "size": 1226
+  },
+  "twemoji/2/72x72/1f62a.png": {
+   "sha512": "246671566da3f832ca24aa5c1272efd695d1d16fb82103d842be83a5c0b743d5",
+   "size": 1084
+  },
+  "twemoji/2/72x72/1f62b.png": {
+   "sha512": "ccb35725b9c8b1ba5301057b1c73bc0d9019c90c4cbef3a072ca0bd6b065eb2e",
+   "size": 1242
+  },
+  "twemoji/2/72x72/1f62c.png": {
+   "sha512": "f2db4f0a125c83c1f32ed9912e476020a72550cdec1cd235091c489561d4e3cb",
+   "size": 882
+  },
+  "twemoji/2/72x72/1f62d.png": {
+   "sha512": "27a2286cf631cc896ce0ef7e5cdaa64249090216411fce2d42462f44793e855f",
+   "size": 1149
+  },
+  "twemoji/2/72x72/1f62e.png": {
+   "sha512": "357ebd461291c4e84a61e57b83780358fc3840d13aefbbb41cd708a550396ae4",
+   "size": 896
+  },
+  "twemoji/2/72x72/1f62f.png": {
+   "sha512": "7c5f38ffa2516302390f14c683bdddec06bdf7ad5e792dc118db1854f127cb3a",
+   "size": 1011
+  },
+  "twemoji/2/72x72/1f630.png": {
+   "sha512": "29f955744aa057860322da16912a83284eaf4368701efe4c85632e6d98f1d78f",
+   "size": 1178
+  },
+  "twemoji/2/72x72/1f631.png": {
+   "sha512": "eb405807ae00683c2dbcc431bdf7d0ddc73979a27ccae496ecf759cd819ffcfe",
+   "size": 1255
+  },
+  "twemoji/2/72x72/1f632.png": {
+   "sha512": "d477086e6cf3ec0cd32be3aaea9d9b38c1fe19fdf97c5a2b401b8a53af5a79f3",
+   "size": 1113
+  },
+  "twemoji/2/72x72/1f633.png": {
+   "sha512": "d3c4cfd8463cee56279ee632a22bc0795285ebddb0cca261dfa535315d540dc3",
+   "size": 1129
+  },
+  "twemoji/2/72x72/1f634.png": {
+   "sha512": "4d1ad63787609af0190152e40c65bf0b33807c8c3b6d7ecc54ab5d007bf4cb31",
+   "size": 1026
+  },
+  "twemoji/2/72x72/1f635.png": {
+   "sha512": "91385704711aa86621b849dfd5272fdce7f3a1634785c7b7405bcd55d499008c",
+   "size": 1088
+  },
+  "twemoji/2/72x72/1f636.png": {
+   "sha512": "e8bb2be92765276b00d46893db2e8fdec0c74f84254959b967fa812b9c6687ea",
+   "size": 813
+  },
+  "twemoji/2/72x72/1f637.png": {
+   "sha512": "21b26dae768241a7ec818e85f8d2c4bf7a6112f041ba5fce2a378cbfbe571fff",
+   "size": 1039
+  },
+  "twemoji/2/72x72/1f638.png": {
+   "sha512": "201fec922d0337bb511d1b5c5698399c2b156e897bd46e5d4c2bf06f36396180",
+   "size": 1308
+  },
+  "twemoji/2/72x72/1f639.png": {
+   "sha512": "ce214b5ad6b615c82eb543ae01c543d90daefea2a718e1ab6baf3c3f9ca18f5c",
+   "size": 1396
+  },
+  "twemoji/2/72x72/1f63a.png": {
+   "sha512": "a617f67934bc2ed300bc303d56c831d5c34f8e7b2ce05f0c490a7c1dc3bf078f",
+   "size": 1183
+  },
+  "twemoji/2/72x72/1f63b.png": {
+   "sha512": "d549f54259e2d7454a32ef6a9b6f4f6c460f86ab0f90816b06813de46d627d61",
+   "size": 1316
+  },
+  "twemoji/2/72x72/1f63c.png": {
+   "sha512": "3b3c9c20094c5b851617c91af7f20e557315305fc14c4551aa014656913d29bd",
+   "size": 1134
+  },
+  "twemoji/2/72x72/1f63d.png": {
+   "sha512": "7e161eb63ae93c708da42cca30532f14bb2a634db9cb0790a1fcc62c3207f5d2",
+   "size": 1160
+  },
+  "twemoji/2/72x72/1f63e.png": {
+   "sha512": "dda623f2b03ffc2478e0a38b7150f814235a8707a9c20c89a24a5bafdcd7f52d",
+   "size": 1154
+  },
+  "twemoji/2/72x72/1f63f.png": {
+   "sha512": "354d63367cc205fd411584617ab0ef764a9b3b14f26578652bacb189218430c6",
+   "size": 1231
+  },
+  "twemoji/2/72x72/1f640.png": {
+   "sha512": "0e96e8d25229ecaba57cbb877d6aa2a3992f185b243f8d40a842269a4cc2b519",
+   "size": 1359
+  },
+  "twemoji/2/72x72/1f641.png": {
+   "sha512": "8122050594030a7c338c95a1820ce2c154e42865ec7b483748ad5646bc0b295b",
+   "size": 905
+  },
+  "twemoji/2/72x72/1f642.png": {
+   "sha512": "67fc8455086dccc3ae88b5198d43d62c547bf43c9b0af736fe1c4b52937274dd",
+   "size": 888
+  },
+  "twemoji/2/72x72/1f643.png": {
+   "sha512": "d38c2c4c02436f832fe1ca37f40da3149e6840adcc956ac624e31a5ce8ecac09",
+   "size": 918
+  },
+  "twemoji/2/72x72/1f644.png": {
+   "sha512": "b8aa04e2f35d05bcbc0634b11934fc15a84cb75d65a5b569b0606ebc5f41cee1",
+   "size": 939
+  },
+  "twemoji/2/72x72/1f645.png": {
+   "sha512": "b6a7295301a23d7070d15943444ffbe5398f1ac28df979ee5e58bd1e28eb2f1a",
+   "size": 1074
+  },
+  "twemoji/2/72x72/1f646.png": {
+   "sha512": "c82038139916756e8300fda203b3ff7d8a73a2237e6a293f020476f920f9b3f2",
+   "size": 1165
+  },
+  "twemoji/2/72x72/1f647.png": {
+   "sha512": "afe07c67500338ce2fc485840cb565fad1644b1941663dfaace88d04372b163c",
+   "size": 1070
+  },
+  "twemoji/2/72x72/1f648.png": {
+   "sha512": "309bd050f3ef0625c33260b8b0e2525288dcb20915f040f1b4f5b5bdd3921bde",
+   "size": 1447
+  },
+  "twemoji/2/72x72/1f649.png": {
+   "sha512": "5b2aa10b136b14baa73b5e855205b27b811585db703ce48680e23a98582e087b",
+   "size": 1329
+  },
+  "twemoji/2/72x72/1f64a.png": {
+   "sha512": "0302c89e1f22f255de81d7b3f513deb52a19cf361edaf0724db52c3ded1f0b53",
+   "size": 1325
+  },
+  "twemoji/2/72x72/1f64b.png": {
+   "sha512": "f69c669bad3f3ebf5971c553e0f43734c47c51dadefc5bea157a62f73dc61847",
+   "size": 926
+  },
+  "twemoji/2/72x72/1f64c.png": {
+   "sha512": "66fd7dc808a65c4f8d917d01c38abd37bbf1855942e7236c44efe0cde364a3d5",
+   "size": 1183
+  },
+  "twemoji/2/72x72/1f64d.png": {
+   "sha512": "de3e2fec2ba8c51b52133f75cfcb2a60a9b1163c726562a89154853df9e808a8",
+   "size": 865
+  },
+  "twemoji/2/72x72/1f64e.png": {
+   "sha512": "8e97cecdfb6c57cc91094bfd4f0895cece6d52c129e8cc59d2282326aa4e16fd",
+   "size": 870
+  },
+  "twemoji/2/72x72/1f64f.png": {
+   "sha512": "1209baf58ef974a74d76427e030f10d1f8af807c15f652ce84bb93ccd8e392f1",
+   "size": 960
+  },
+  "twemoji/2/72x72/1f680.png": {
+   "sha512": "968ecfb084c01281315bce24ecd84366d53bfb4219e6b9e74765cd47769962aa",
+   "size": 1076
+  },
+  "twemoji/2/72x72/1f681.png": {
+   "sha512": "2ca248936a28fe475b5c9a346f5ae5649d29f8771001099379e60918045f2d7e",
+   "size": 1063
+  },
+  "twemoji/2/72x72/1f682.png": {
+   "sha512": "bc2147b9e4fc4a07e3de042683a92ab91091ad9c1170811c428e9e2960975725",
+   "size": 846
+  },
+  "twemoji/2/72x72/1f683.png": {
+   "sha512": "8b19c5ab284fc59287dfc28ac41ef4643eaa7d52ed7665b8acc4a2743c2f33c8",
+   "size": 484
+  },
+  "twemoji/2/72x72/1f684.png": {
+   "sha512": "d8b48d0e884b202accdf5d2594f852f7c3304eca2e9f61c1043604beb53907d9",
+   "size": 816
+  },
+  "twemoji/2/72x72/1f685.png": {
+   "sha512": "98f57aa3ad8d9a07331f21bed73e4245271169b089293dd254e7c7d1f19e40a1",
+   "size": 645
+  },
+  "twemoji/2/72x72/1f686.png": {
+   "sha512": "117d1b9e1b5fd1c1da0fc984ed8e5e85c08a10a48e6f64108206b5b4f105029e",
+   "size": 1209
+  },
+  "twemoji/2/72x72/1f687.png": {
+   "sha512": "4ba6148a5f904d77a429298770e0192f370640b429f5032666836497ac8aad5c",
+   "size": 1059
+  },
+  "twemoji/2/72x72/1f688.png": {
+   "sha512": "6b5a84b6519aeddeff6e654fa3029a2bb67df4fabf2d70a811d155e43dc26963",
+   "size": 800
+  },
+  "twemoji/2/72x72/1f689.png": {
+   "sha512": "7cc83e8541312c9c9ea30977947216f8a2e0d1001f4b467cbd5c7262fbad7cd9",
+   "size": 1121
+  },
+  "twemoji/2/72x72/1f68a.png": {
+   "sha512": "8b45eab82cc9962598e4c96cdc275c7a86b6a7dae2fdf57a2f92355485144c58",
+   "size": 1011
+  },
+  "twemoji/2/72x72/1f68b.png": {
+   "sha512": "8cb6ccb3e39d348e74d5d5504d2d5a7ccc0b602607dd1724398aab58828d1d71",
+   "size": 749
+  },
+  "twemoji/2/72x72/1f68c.png": {
+   "sha512": "d6adc609eb0813b8dd4fb51f382bd1fa98150f961039dd5f68f7d9bc75181d49",
+   "size": 760
+  },
+  "twemoji/2/72x72/1f68d.png": {
+   "sha512": "32ba8da6198162f4329186d7aee0ea32f023cf05a4d6ba0bf733674b7b131d7d",
+   "size": 720
+  },
+  "twemoji/2/72x72/1f68e.png": {
+   "sha512": "ef1132d5d128fc37dcca9c1e1737e48096ba46082da7fa1609ffaf651914c7db",
+   "size": 779
+  },
+  "twemoji/2/72x72/1f68f.png": {
+   "sha512": "db5d0e08d6e992684af40dcdab3a4cffb189ce94acfb58220dfa81ec74095a58",
+   "size": 507
+  },
+  "twemoji/2/72x72/1f690.png": {
+   "sha512": "00aa923bb10ca48ac43a05cd425cbe1602e6ce7240ed0590efd2cc324c31997c",
+   "size": 811
+  },
+  "twemoji/2/72x72/1f691.png": {
+   "sha512": "393f09ec4e2f8a90048d3a4d577e7af98f63382e575485889a3cf46f98060155",
+   "size": 825
+  },
+  "twemoji/2/72x72/1f692.png": {
+   "sha512": "60cce31e0ea23ed959c70940d7e2da001a02e83c7c38c608e75eb1d90f5448d1",
+   "size": 732
+  },
+  "twemoji/2/72x72/1f693.png": {
+   "sha512": "457223c45931b5a8177c6e859fd4f950462a8602f939266fb54f9537856717e2",
+   "size": 829
+  },
+  "twemoji/2/72x72/1f694.png": {
+   "sha512": "108788c9ece0825b412fb86ce9444bea839fd4d7d2a2bdd100aa7d5f0ddcf8e2",
+   "size": 953
+  },
+  "twemoji/2/72x72/1f695.png": {
+   "sha512": "e66f4a1dd8065028e8eb7b476f6eef5a210b3de3ce89e7a18b2874d0f78898bc",
+   "size": 778
+  },
+  "twemoji/2/72x72/1f696.png": {
+   "sha512": "6ac2cfa5b2fafe0f2e0fd154e777adb758be8c109adf7a2b6da4e43208804140",
+   "size": 909
+  },
+  "twemoji/2/72x72/1f697.png": {
+   "sha512": "b5472dfb89c938667342ae79d4f88c84cb813423b0b2738aff180b00235f518b",
+   "size": 795
+  },
+  "twemoji/2/72x72/1f698.png": {
+   "sha512": "c0e32ec7a8ca203a00f725f2a0d510eb53594fccba734be81b4d5c86d3ebac2d",
+   "size": 1076
+  },
+  "twemoji/2/72x72/1f699.png": {
+   "sha512": "8fff025c5673e2a8e4a9cc6afb7e6b3cbf3d05627ed26aa8b74cdba2f3e9ef55",
+   "size": 779
+  },
+  "twemoji/2/72x72/1f69a.png": {
+   "sha512": "b228ef0672f1a756699d9b376a5ccc281dab7d2ff8f9b7bffed10ea1308e4cf9",
+   "size": 694
+  },
+  "twemoji/2/72x72/1f69b.png": {
+   "sha512": "5779c04782592580d54ac452ba543ec3cd625b99417cb01758b10747b893cc9c",
+   "size": 738
+  },
+  "twemoji/2/72x72/1f69c.png": {
+   "sha512": "6523f0bce7a788c5513b7d1a1413246df49bf2ef8851385af9a43d923bccc39f",
+   "size": 1172
+  },
+  "twemoji/2/72x72/1f69d.png": {
+   "sha512": "57152a9ea299326d360e2a3f6585da08df3e58f361d26e08c8490a7c51e89f16",
+   "size": 677
+  },
+  "twemoji/2/72x72/1f69e.png": {
+   "sha512": "0ec31d373cf36e3994d3ab60e2e126538af0188d92651f97435279a42a45715e",
+   "size": 764
+  },
+  "twemoji/2/72x72/1f69f.png": {
+   "sha512": "c1432b0676753d094c0b87ac854722f24b8eb508398b5d35e5cc59dafc0f658a",
+   "size": 724
+  },
+  "twemoji/2/72x72/1f6a0.png": {
+   "sha512": "7e2f55ce78ce3ca77db5021d171270ed8657fea6dd0a729134cb1af35735d282",
+   "size": 794
+  },
+  "twemoji/2/72x72/1f6a1.png": {
+   "sha512": "ee15a2d7ae97ffb6b9e38eee7260bc3fe3c97ad6871e535c68f82eab72351c94",
+   "size": 730
+  },
+  "twemoji/2/72x72/1f6a2.png": {
+   "sha512": "985ef79a06e68ecd9bb65318a8bc9e61f209ce07d5b81e05157d0ea7cbbde6ff",
+   "size": 604
+  },
+  "twemoji/2/72x72/1f6a3.png": {
+   "sha512": "4076bbf4579ee5b4b10b3f3335b70be61e9c945688391dbd230e11cd8c11d564",
+   "size": 734
+  },
+  "twemoji/2/72x72/1f6a4.png": {
+   "sha512": "a52851eeb7741525b771235ea68a7648e97f4761870c23a3779fae27c542af30",
+   "size": 768
+  },
+  "twemoji/2/72x72/1f6a5.png": {
+   "sha512": "b2a6d2527d898995a7b748c02ea6d32513239bfae028abbfbd33192fd04bcd4b",
+   "size": 670
+  },
+  "twemoji/2/72x72/1f6a6.png": {
+   "sha512": "027a1d819131944b45b1788be7bbece9af659e476dcfdf129996fffa23b723b0",
+   "size": 689
+  },
+  "twemoji/2/72x72/1f6a7.png": {
+   "sha512": "aac743391a4d60719b4513eff22d07d59235ee84372083a911cbe716973873c0",
+   "size": 458
+  },
+  "twemoji/2/72x72/1f6a8.png": {
+   "sha512": "26e620bbc43d83d2b3e181eab305c542f49127c2051b36fdd5f9e42c0558eb2c",
+   "size": 736
+  },
+  "twemoji/2/72x72/1f6a9.png": {
+   "sha512": "485e49f658e2be32d0ca5a880bf36fdb4ff9b8fed8fa497968222d3f86c8572f",
+   "size": 580
+  },
+  "twemoji/2/72x72/1f6aa.png": {
+   "sha512": "46b1f45ffef5dc877b98b814ed3599fde1d45a330dac9edf560305e73f97f855",
+   "size": 685
+  },
+  "twemoji/2/72x72/1f6ab.png": {
+   "sha512": "83d5aad06334a142f88a5581154dd169f688f73a1a199af9ac2d5a381f951e06",
+   "size": 1064
+  },
+  "twemoji/2/72x72/1f6ac.png": {
+   "sha512": "13e2815c60b405c841b440d32fe68474c1f3f8bfa2af9afc17b169d460422000",
+   "size": 751
+  },
+  "twemoji/2/72x72/1f6ad.png": {
+   "sha512": "0bbf1a0eccf69a077c46b18d4329c5aea341d9f91c0f6301462aa77456122a63",
+   "size": 1217
+  },
+  "twemoji/2/72x72/1f6ae.png": {
+   "sha512": "583189c07a8bc92747b8ded18b0a532d6093a8597e9792445ceb21f1f4b1fda6",
+   "size": 695
+  },
+  "twemoji/2/72x72/1f6af.png": {
+   "sha512": "1307c157d0d6d690d2f991f468dd0eb64ecd9e16b9acb0520ca98db613c95367",
+   "size": 1243
+  },
+  "twemoji/2/72x72/1f6b0.png": {
+   "sha512": "212ef0de5013642ad5a1a173bb9c58dc7a0d02a9b7b7be9d0b47c282b22ab532",
+   "size": 625
+  },
+  "twemoji/2/72x72/1f6b1.png": {
+   "sha512": "9e2e3539ca294c022ff000e2656986c15c16ee00a0c60a87ca2292db673c73c8",
+   "size": 1200
+  },
+  "twemoji/2/72x72/1f6b2.png": {
+   "sha512": "5589400c91a87ebdf4943762fb45cb01b357a8628beb6b17c03e5aa820d69b43",
+   "size": 1130
+  },
+  "twemoji/2/72x72/1f6b3.png": {
+   "sha512": "896f467328dcbda6cee6fac706ad8790c4a9cc0b9b5e29e10d8e72da6df65ba9",
+   "size": 1457
+  },
+  "twemoji/2/72x72/1f6b4.png": {
+   "sha512": "f7d1c53f415ddad097b05b31ca7aa2d1507aadbf700f5572653cf02a3900dde0",
+   "size": 1279
+  },
+  "twemoji/2/72x72/1f6b5.png": {
+   "sha512": "7e15103a998d611fa0df9525db7c854fae4492c88957981251c28936afb9c738",
+   "size": 1359
+  },
+  "twemoji/2/72x72/1f6b6.png": {
+   "sha512": "e051dee31e6a602b8441abf174ceec8d8af5f308b4a5bf4816ece1b6d8897f66",
+   "size": 873
+  },
+  "twemoji/2/72x72/1f6b7.png": {
+   "sha512": "dc2ca8b66370a0d864582b48dc8348ccd3eb0e29cae5e8510ade90afff134af3",
+   "size": 1271
+  },
+  "twemoji/2/72x72/1f6b8.png": {
+   "sha512": "a64a1417a219c00267805a086002de2113957703555c9a085e2f53c287ea99e2",
+   "size": 984
+  },
+  "twemoji/2/72x72/1f6b9.png": {
+   "sha512": "00f3d105de086aad6fb88b6850db6a3cc564fd52cc5f2408e48d42b721d670c0",
+   "size": 682
+  },
+  "twemoji/2/72x72/1f6ba.png": {
+   "sha512": "a4c570ef381849ae4f00ada6acd04cc3349061eb91064b12c3553cf4185efe11",
+   "size": 769
+  },
+  "twemoji/2/72x72/1f6bb.png": {
+   "sha512": "c8791cf6a3f8c8b61dc15d990e3e1ba2ea901555fe1f7cb2478746404f9147d1",
+   "size": 914
+  },
+  "twemoji/2/72x72/1f6bc.png": {
+   "sha512": "ee4df24115eb57a388dfeb1de92e4cea1ed8943e635ebf91d275fa505a1dc3ce",
+   "size": 917
+  },
+  "twemoji/2/72x72/1f6bd.png": {
+   "sha512": "8847b00517a60f8400b26718c5ab75a1b779c7023f25baacdb6f512259504e24",
+   "size": 688
+  },
+  "twemoji/2/72x72/1f6be.png": {
+   "sha512": "0a4e41f831157aa335b921f0bf94792cfcb19ef9c44f4166ba35f191b932b58d",
+   "size": 1055
+  },
+  "twemoji/2/72x72/1f6bf.png": {
+   "sha512": "dc83d86fdf8c78cf8e50eda032c3273d24d2ef55bddbcac67ad8ff889ee75b9d",
+   "size": 802
+  },
+  "twemoji/2/72x72/1f6c0.png": {
+   "sha512": "ecb6a29a3df992eddb050a27cfb84c31d9c55de562bd9c448eb3a20085f02ca8",
+   "size": 808
+  },
+  "twemoji/2/72x72/1f6c1.png": {
+   "sha512": "8efbade5dca82a7d5135591bcd31b1a5df6d302e9ddf51a7e24493a2e5b9becf",
+   "size": 735
+  },
+  "twemoji/2/72x72/1f6c2.png": {
+   "sha512": "b4994d02125c45c779a074799e269ae97f278133c14a683e825d92297b6754c4",
+   "size": 878
+  },
+  "twemoji/2/72x72/1f6c3.png": {
+   "sha512": "9d983b867a2e03a80a7cb46011089dd7adfba1a3033abb80c353a15fdb3d1638",
+   "size": 803
+  },
+  "twemoji/2/72x72/1f6c4.png": {
+   "sha512": "536971c8e4302cbbc383280ce58e4417721725cd4b4289f2f399cb3783803e14",
+   "size": 586
+  },
+  "twemoji/2/72x72/1f6c5.png": {
+   "sha512": "751f21adca2319d1f9bb0d9b5a3cec180763dda397014350ae75ceef3e75802c",
+   "size": 737
+  },
+  "twemoji/2/72x72/1f6cb.png": {
+   "sha512": "82835b887ac47ccdc03deaf0fa7a0cbb4bff8b5042fcb7236746544ff353acd0",
+   "size": 846
+  },
+  "twemoji/2/72x72/1f6cc.png": {
+   "sha512": "15537d23b11343ae93fc3a8d273bac844ebada1cb78b52caca85f1158de4f938",
+   "size": 649
+  },
+  "twemoji/2/72x72/1f6cd.png": {
+   "sha512": "fc76e48c00e3fa10114ec41649dd38254c537d33231823237e4148acd94c8343",
+   "size": 807
+  },
+  "twemoji/2/72x72/1f6ce.png": {
+   "sha512": "adb2164505c30c106014f92068a7a33834183b24d4fe871730481e2d9850ccdb",
+   "size": 678
+  },
+  "twemoji/2/72x72/1f6cf.png": {
+   "sha512": "e54213d2b10e983c9159287a9b26c2c9206bcb86c5873e8a03e1527249de891a",
+   "size": 521
+  },
+  "twemoji/2/72x72/1f6d0.png": {
+   "sha512": "956f863a305e03c27573b7bb18c25388cf8673d1463e9b2a355c626c3bc9df78",
+   "size": 1011
+  },
+  "twemoji/2/72x72/1f6d1.png": {
+   "sha512": "21f66ca79f5788f022d1488909828b1a3f6b5bb220536889e1514a547062f582",
+   "size": 446
+  },
+  "twemoji/2/72x72/1f6d2.png": {
+   "sha512": "027df8910760cb293539881b2d2b023c72d59fb2f28ec6702e9b9a4483c987e2",
+   "size": 847
+  },
+  "twemoji/2/72x72/1f6e0.png": {
+   "sha512": "5e2ec0704a91f013e5cc641a2253f54679840bc506086324eb15809ad71d9310",
+   "size": 964
+  },
+  "twemoji/2/72x72/1f6e1.png": {
+   "sha512": "b89c02c69a311cc16b620168639c369c67e4b4bcc3a4e87d4363e90304c180b5",
+   "size": 1074
+  },
+  "twemoji/2/72x72/1f6e2.png": {
+   "sha512": "92027b40938b8e86593630c921287bef977349c662f05dbda6e9bab745667ac9",
+   "size": 217
+  },
+  "twemoji/2/72x72/1f6e3.png": {
+   "sha512": "a826855577652a9a43105b6e0f8d82ab6bcc11d0d3c2650def30f1796f96b60c",
+   "size": 1066
+  },
+  "twemoji/2/72x72/1f6e4.png": {
+   "sha512": "26ad3be90d133579c3cf3a7f21c3d16fdc1d13797072cee8a35bc95ab8882aa9",
+   "size": 1057
+  },
+  "twemoji/2/72x72/1f6e5.png": {
+   "sha512": "10c9f83819cb503f6dbfa457e1895641ebab224bb438a94cddcf87c227df81f9",
+   "size": 564
+  },
+  "twemoji/2/72x72/1f6e9.png": {
+   "sha512": "1567af016d3a9d6923952f7a5e6eba583572021640b645fbde37cae76e78bebd",
+   "size": 1118
+  },
+  "twemoji/2/72x72/1f6eb.png": {
+   "sha512": "7ad7bba252c1991234dd1bcd78ccfed51f8054dd06ee894d8cae2dca8e09c1a6",
+   "size": 934
+  },
+  "twemoji/2/72x72/1f6ec.png": {
+   "sha512": "e3e57bd6d28de35b4696cf15a291ed7a73628b74fd9b9bb72ce163c3556d0529",
+   "size": 911
+  },
+  "twemoji/2/72x72/1f6f0.png": {
+   "sha512": "4df2fedb4ad3eb77449647709d7b140fddf121006666665c046a22f075d47e1a",
+   "size": 1104
+  },
+  "twemoji/2/72x72/1f6f3.png": {
+   "sha512": "bf36bb027a4b7a50fd555d449f926edf86602ef43b8d6bc8d880a1da8c4db00b",
+   "size": 590
+  },
+  "twemoji/2/72x72/1f6f4.png": {
+   "sha512": "bc425f936e4a898acc41aefeec9939f3432160a975f74cfe2bc8f5630c3b7000",
+   "size": 944
+  },
+  "twemoji/2/72x72/1f6f5.png": {
+   "sha512": "03de797f462a4abf0f8662f6591077ce068d219bd75afc3c9fe9997c47c27907",
+   "size": 900
+  },
+  "twemoji/2/72x72/1f6f6.png": {
+   "sha512": "a655cd50a10cca5bb8f302fec3ce5204e7cb35745b2937469050eaeff7ef6daf",
+   "size": 606
+  },
+  "twemoji/2/72x72/1f910.png": {
+   "sha512": "ca0d4df10daf713f2c73fed1f794b2172949e56316a64fddbdb38296fee33776",
+   "size": 979
+  },
+  "twemoji/2/72x72/1f911.png": {
+   "sha512": "d38ca9164f804522f1fecfeac5673b5aad452f0b00960ac62c005f865f14eee9",
+   "size": 1286
+  },
+  "twemoji/2/72x72/1f912.png": {
+   "sha512": "a6388f66ac6b527ab28583513ac4bc1771dfa654c8ad61ae6acf766f920fd2e8",
+   "size": 1130
+  },
+  "twemoji/2/72x72/1f913.png": {
+   "sha512": "0d71149ce16b45c8b8fa71fdc974c8d4b3c5a9f22ec3cfadc643f9487b25d7ac",
+   "size": 1304
+  },
+  "twemoji/2/72x72/1f914.png": {
+   "sha512": "50438c59cc827fafe064eeaa223d636836331f4e0643c0f743ea4d5cc723f3ab",
+   "size": 1086
+  },
+  "twemoji/2/72x72/1f915.png": {
+   "sha512": "5e6f7942107d3d3a5d371d3d26043c973c8b5178e01d6717ea08188e1c1b33f9",
+   "size": 1073
+  },
+  "twemoji/2/72x72/1f916.png": {
+   "sha512": "52402d8e98ca39d993d36de5a5ac3c6aee91b3b470b76c7492c8f9f489a1e41d",
+   "size": 841
+  },
+  "twemoji/2/72x72/1f917.png": {
+   "sha512": "c1eb15b18840b241956ab04d35cd1986a1992535e29d6e991a564f1e186b64b6",
+   "size": 1375
+  },
+  "twemoji/2/72x72/1f918.png": {
+   "sha512": "1c7626e15e3956d19c6e6d5de682e3c7d47da4fa81177a1170a224a7deb81853",
+   "size": 816
+  },
+  "twemoji/2/72x72/1f919.png": {
+   "sha512": "dd810878102787aff21a5140758b4689b2764b772858db8bd6489cfd5c5594a7",
+   "size": 1029
+  },
+  "twemoji/2/72x72/1f91a.png": {
+   "sha512": "0f24a28b187ca96d2c12d3622ad11f1ac6d535e8a679f114351e9e3987fa4059",
+   "size": 694
+  },
+  "twemoji/2/72x72/1f91b.png": {
+   "sha512": "c7716731a370c32ad31b41b20a4366b6db9353ce283f94c04637e46a00674989",
+   "size": 854
+  },
+  "twemoji/2/72x72/1f91c.png": {
+   "sha512": "9c58f99beb9b64e534ef5030f6907233641c39d679ed6224f95ddbcd6af1d6f4",
+   "size": 868
+  },
+  "twemoji/2/72x72/1f91d.png": {
+   "sha512": "5dbc55ea4be32fbd85993836ce09c5fe5a53378221601606c9eb16ab7dec2d89",
+   "size": 1045
+  },
+  "twemoji/2/72x72/1f91e.png": {
+   "sha512": "2a37df644c3b0abce8e9955b23e27f9a82dbf67d7e0c25a21310c707509ea339",
+   "size": 1017
+  },
+  "twemoji/2/72x72/1f920.png": {
+   "sha512": "e263dfcac39b6f504a12d5a4c9a4dd60e31a13af5339d7b1fcf0df43f174fc7e",
+   "size": 1190
+  },
+  "twemoji/2/72x72/1f921.png": {
+   "sha512": "03912f1940e9995856957f92836a51476edfd8546df1be958f646b5a49cd764e",
+   "size": 1124
+  },
+  "twemoji/2/72x72/1f922.png": {
+   "sha512": "24482105e44f5914566ff5346527b32b571d344553542ba96baadc9f2105e6eb",
+   "size": 1059
+  },
+  "twemoji/2/72x72/1f923.png": {
+   "sha512": "b4b85bae5c85b59b8626ee4c0d6f50b3d32bb83f28fab6e8cd3ec82b0927aab4",
+   "size": 1307
+  },
+  "twemoji/2/72x72/1f924.png": {
+   "sha512": "da40ac10dad1aa2ba6f9525637ed6e7319f86689dda85a857daaaf4fe909da9c",
+   "size": 1064
+  },
+  "twemoji/2/72x72/1f925.png": {
+   "sha512": "374a22ac31365a544317429cbe5261ba7b0d7e25692eb0343cf5dd5454b43412",
+   "size": 864
+  },
+  "twemoji/2/72x72/1f926.png": {
+   "sha512": "10eb16bb6d5d67605aaccd45da9d3d750ea8845ddf08fd651bbcd54157b52711",
+   "size": 1018
+  },
+  "twemoji/2/72x72/1f927.png": {
+   "sha512": "14b181975620d894c7d221b83f1fb06eb1b29a56f2abf319960fce9f639d6a42",
+   "size": 1234
+  },
+  "twemoji/2/72x72/1f930.png": {
+   "sha512": "f102e4b3271372493dabcf80ac8ee9bbcb60523859710bb6271e3b7acf845f23",
+   "size": 1052
+  },
+  "twemoji/2/72x72/1f933.png": {
+   "sha512": "c8a9569b8e47589c932ac384472459f572cbd5dfa5e04b0561cdd7b234da5a7c",
+   "size": 776
+  },
+  "twemoji/2/72x72/1f934.png": {
+   "sha512": "50dff9dbdda23e4532587b3439833e13fbe4adc17e1c4e68365b8df8843d997f",
+   "size": 1069
+  },
+  "twemoji/2/72x72/1f935.png": {
+   "sha512": "37f67cef720888de2d777cb48bd5d0e21417a7986f09665b16d1917cbb8a915f",
+   "size": 1020
+  },
+  "twemoji/2/72x72/1f936.png": {
+   "sha512": "dad3be1431801f039856650bc6997005361c813522c0c6fa5acd9ca8013413bb",
+   "size": 994
+  },
+  "twemoji/2/72x72/1f937.png": {
+   "sha512": "5d9473df8cae5507b147ef121a6b097ebcfd3d2b5c42961410d11810cb737e89",
+   "size": 925
+  },
+  "twemoji/2/72x72/1f938.png": {
+   "sha512": "802208175934c9952f64b9f1d2ef8734e0e356cc07d6f6eee4055dac1308913c",
+   "size": 1009
+  },
+  "twemoji/2/72x72/1f939.png": {
+   "sha512": "b7e4fb0a1c9d2c26cd3f70a23b2ac98580856ec62f97594ce226de7443809615",
+   "size": 1164
+  },
+  "twemoji/2/72x72/1f93a.png": {
+   "sha512": "6452209611b7b55b54241e7910d2df3138d7d559de0f76cb97f2717940bb5b9a",
+   "size": 1039
+  },
+  "twemoji/2/72x72/1f93c.png": {
+   "sha512": "fb0317ee23b0cb24e1d8d5858cb56ac5b12d03c23d314676086615c34f9627dc",
+   "size": 1493
+  },
+  "twemoji/2/72x72/1f93d.png": {
+   "sha512": "f6c586c7bf4d98b9ba6e3a483a4c38609d694ead8226dd84ce2a1424992a788a",
+   "size": 932
+  },
+  "twemoji/2/72x72/1f93e.png": {
+   "sha512": "8b792d4fbe957d788d050a119ef603a60f2d5334f165495eb8cc844b36454cba",
+   "size": 996
+  },
+  "twemoji/2/72x72/1f940.png": {
+   "sha512": "9643193655b177c804aa6dcb4e7442801309724fb2902e4b76262085a030ee99",
+   "size": 1092
+  },
+  "twemoji/2/72x72/1f941.png": {
+   "sha512": "cbdbed88f9b9c2fd32248882f3bfc8e2677864e7312ab6ddce506d7aec2d9728",
+   "size": 1356
+  },
+  "twemoji/2/72x72/1f942.png": {
+   "sha512": "b4b778294a3d7b7102f62dd5e56ab43af510d6e749a92aa414d6ebf1edffb49e",
+   "size": 1321
+  },
+  "twemoji/2/72x72/1f943.png": {
+   "sha512": "929347163a9bf44299389931b720d0f86a26115b5eb2c21c272c4128d9ad34d1",
+   "size": 1007
+  },
+  "twemoji/2/72x72/1f944.png": {
+   "sha512": "2f41d16251d11201c9904824753c766facc909663359fc3f075b00606feb61fa",
+   "size": 608
+  },
+  "twemoji/2/72x72/1f945.png": {
+   "sha512": "419c1ad1dd33e4f5798c8234719bb6e1297517db79937dedbff73c520130dc1b",
+   "size": 729
+  },
+  "twemoji/2/72x72/1f947.png": {
+   "sha512": "d2181b75eab94413238090f6d84ccc5095314d98c0d58d4f3e162f6d244d2236",
+   "size": 909
+  },
+  "twemoji/2/72x72/1f948.png": {
+   "sha512": "5aac3eb2ea9638b3b1675949c812cef06c0ddbd927ff077a872d666a6e818f6a",
+   "size": 965
+  },
+  "twemoji/2/72x72/1f949.png": {
+   "sha512": "88b56657e02fe4477a5ceafc46fa68b4c46b8b37850cabfeb716deda1d7411ad",
+   "size": 968
+  },
+  "twemoji/2/72x72/1f94a.png": {
+   "sha512": "0987043aecd2fed5083bd660ef501322f4fae1563d8356488af15b3419f8e465",
+   "size": 842
+  },
+  "twemoji/2/72x72/1f94b.png": {
+   "sha512": "4bdf0c5aab35cce04f9f35c09adc4d29db251801f9d8312bede6995749cd6061",
+   "size": 1239
+  },
+  "twemoji/2/72x72/1f950.png": {
+   "sha512": "7bc94774103bd9401d14a747ea74b18192a8805e061f2788b0ea455f4e338306",
+   "size": 973
+  },
+  "twemoji/2/72x72/1f951.png": {
+   "sha512": "1fc4cb7829334f9c1cde3b969834435532d94a9d1ae02c9a2bf32736f787a1fc",
+   "size": 1322
+  },
+  "twemoji/2/72x72/1f952.png": {
+   "sha512": "29f7d038c49fc477d11ecd185f5354e2d83f69a0d357f6bcde8cd75814e62d66",
+   "size": 1237
+  },
+  "twemoji/2/72x72/1f953.png": {
+   "sha512": "c958e8024e399d75b1b5754728fba413fdd80180b13221f8695c96d3e39a5734",
+   "size": 1316
+  },
+  "twemoji/2/72x72/1f954.png": {
+   "sha512": "3d52297e1b0c19678e1d3a861aabda15526938dc120b2bd39a8111673d2b0b75",
+   "size": 839
+  },
+  "twemoji/2/72x72/1f955.png": {
+   "sha512": "2a7997c88dcf08d0b49c8a22c7459efe083d2115f121ef1310f1b633392eace1",
+   "size": 1029
+  },
+  "twemoji/2/72x72/1f956.png": {
+   "sha512": "0169d411a266cc5c6d830f21aae3308457002e75fccf26fcad184e93c5631351",
+   "size": 875
+  },
+  "twemoji/2/72x72/1f957.png": {
+   "sha512": "014727f33ed4e794f0a4d5303706c36fc5b638ac28fcabe33e4fe45ce72db0c6",
+   "size": 1281
+  },
+  "twemoji/2/72x72/1f958.png": {
+   "sha512": "510cb0f0e5e50e4e9fae7227e01f2a19e96f1e5267df8bcbd93bf1e7eaf37294",
+   "size": 1331
+  },
+  "twemoji/2/72x72/1f959.png": {
+   "sha512": "6539e43c60c349b9a8c0c0cca738dce8978315032583826f247edef4bc18a6d7",
+   "size": 1165
+  },
+  "twemoji/2/72x72/1f95a.png": {
+   "sha512": "f2fc0a002a052672ea4b9fc981760dad0f1b3357ec5ac9d6f4fa6b5694d2a571",
+   "size": 859
+  },
+  "twemoji/2/72x72/1f95b.png": {
+   "sha512": "8562ee68a0b34353efc8326e12897688231c7e03669279d82befe6967441e0ef",
+   "size": 1005
+  },
+  "twemoji/2/72x72/1f95c.png": {
+   "sha512": "adf07ca7b6bcda292499382c7c8c4035accec552cbf8b39b2721ee2124c32e03",
+   "size": 1339
+  },
+  "twemoji/2/72x72/1f95d.png": {
+   "sha512": "80e148a7e9ac575025073a61a5e485789bbc60fd57855e319af535efadfd7796",
+   "size": 1403
+  },
+  "twemoji/2/72x72/1f95e.png": {
+   "sha512": "07b3f0e9ec33966158d8ea45b6907fd4378af5f4631f9af405ed6aa8cb19a5f4",
+   "size": 1264
+  },
+  "twemoji/2/72x72/1f980.png": {
+   "sha512": "67c49e64300c7102d0f1321b87f6223562faf350c0cd51247808458522ab72e8",
+   "size": 1740
+  },
+  "twemoji/2/72x72/1f981.png": {
+   "sha512": "4cc3ae7e3a645153730565239da23d7fa616b271365112ed74ccf992d1248663",
+   "size": 1375
+  },
+  "twemoji/2/72x72/1f982.png": {
+   "sha512": "13d3318646b5e0854cfda0ad1a44594797ea000f6917d46fcc1e990a5b9c2321",
+   "size": 1300
+  },
+  "twemoji/2/72x72/1f983.png": {
+   "sha512": "382bac29c8a62945ccd69af61f9221b47c43b28974d2fa02bbc61e779cd8a552",
+   "size": 1101
+  },
+  "twemoji/2/72x72/1f984.png": {
+   "sha512": "065b1274793d3ad61af082a5692ab40bc5ee8f5580c920a2a5dec36b3135aec1",
+   "size": 1000
+  },
+  "twemoji/2/72x72/1f985.png": {
+   "sha512": "33e39ec607bb2f2132b729386338ee7fd97da8a8f5aaf4746852343c6fa30ed6",
+   "size": 955
+  },
+  "twemoji/2/72x72/1f986.png": {
+   "sha512": "1cedba93852b7522c792944b2b6d76a9f1dc8c31dea5ea3ea85ab0f5ed07d931",
+   "size": 880
+  },
+  "twemoji/2/72x72/1f987.png": {
+   "sha512": "849db2cd202d97170202364d606e58efb99f353bf673df6e7064d880b68b89f5",
+   "size": 1435
+  },
+  "twemoji/2/72x72/1f988.png": {
+   "sha512": "a93af94f11c57c33b2563242259a6612bb4744d5a3969bdb7ae0e97ae9ed7fa9",
+   "size": 1046
+  },
+  "twemoji/2/72x72/1f989.png": {
+   "sha512": "88060203b4fec8f651a0dfc0904e345fd4ade43bd49a3c62a1b2d77ad49fafed",
+   "size": 1222
+  },
+  "twemoji/2/72x72/1f98a.png": {
+   "sha512": "362274b37693148bb91df04d327c537b7ae840e6b76377ebd3855ac37391beed",
+   "size": 1276
+  },
+  "twemoji/2/72x72/1f98b.png": {
+   "sha512": "c8e356c61b1d4eb33490581736f3e45fc38c6aa84f4b1d11351b4caa43273e2b",
+   "size": 1597
+  },
+  "twemoji/2/72x72/1f98c.png": {
+   "sha512": "90a9bb951c5b1adff15bbea767cf7a41189d575e306c1537c6abdead3a040149",
+   "size": 1309
+  },
+  "twemoji/2/72x72/1f98d.png": {
+   "sha512": "bd802dce2d861b575fe193bba302b8b4717fc816ef7d1ab477832b4087af6849",
+   "size": 1219
+  },
+  "twemoji/2/72x72/1f98e.png": {
+   "sha512": "624d20a71589a19df73655578bb674ba43d6b8eecfe7f7fa360cf5cb89c2b7e0",
+   "size": 1322
+  },
+  "twemoji/2/72x72/1f98f.png": {
+   "sha512": "92313f6ec9bc658460f2c1f3de4a00ad1bdc03fe8bf65ca75cef8a1e482692ea",
+   "size": 1105
+  },
+  "twemoji/2/72x72/1f990.png": {
+   "sha512": "6fb0b7898bd78968cea6d3163edabf02ef2417232c868fa44ec9496c14a42eb2",
+   "size": 1276
+  },
+  "twemoji/2/72x72/1f991.png": {
+   "sha512": "1867d0db8adb41c4a1b646e98451c985adb684bfcae6419914930ab111e874df",
+   "size": 1152
+  },
+  "twemoji/2/72x72/1f9c0.png": {
+   "sha512": "ec1e596f8db37980342a73d0a29b47fe4c431284b27f2351b92926911c9ccc8b",
+   "size": 1006
+  },
+  "twemoji/2/72x72/203c.png": {
+   "sha512": "a096d22a40bfa377b3138c9b029064cf07001673c13b52539d011cc51ca94880",
+   "size": 282
+  },
+  "twemoji/2/72x72/2049.png": {
+   "sha512": "448ad87ac0288e3fa7a787541b22009b9e4ffd0163b142418eab3194c37a6695",
+   "size": 808
+  },
+  "twemoji/2/72x72/2122.png": {
+   "sha512": "f05b584a610d482ba6d9c73055f35c13670492d1a8547c739414593f2933a5e7",
+   "size": 953
+  },
+  "twemoji/2/72x72/2139.png": {
+   "sha512": "1c80a150bdc7a751ad433885e77e0e2c87ac992bf2187dd9ed6ef13ff6a30036",
+   "size": 562
+  },
+  "twemoji/2/72x72/2194.png": {
+   "sha512": "d6c33f44912a2675e6f4ad4bdb49f3ca4d828a6c10d93cc9e1e4d65e4c8f8e26",
+   "size": 620
+  },
+  "twemoji/2/72x72/2195.png": {
+   "sha512": "a404cb0a09cec3144f5c26c46c0dcd579b6a03815958f309e150e8fc0d8c6201",
+   "size": 633
+  },
+  "twemoji/2/72x72/2196.png": {
+   "sha512": "34b54667b42b4916238e65130e1a26704d4cf90f1b7a5d81faf7437c8676a0ae",
+   "size": 538
+  },
+  "twemoji/2/72x72/2197.png": {
+   "sha512": "cd7eb65dead4b2da7214a8bffae46f4bfb34da73b9e7b5db7516f2a80915677a",
+   "size": 538
+  },
+  "twemoji/2/72x72/2198.png": {
+   "sha512": "9d69c7ab3016f08382abefb8f9b7b0665e0bf1f9903d83687e131ee05fbf8035",
+   "size": 529
+  },
+  "twemoji/2/72x72/2199.png": {
+   "sha512": "1de696ac02fc75da159d21c97fb9e27c23303527a5fb1ab06e04d3961f1d00bc",
+   "size": 536
+  },
+  "twemoji/2/72x72/21a9.png": {
+   "sha512": "0023a0bcd4c860ec2c1347e0de5dd362b60bb5a235441b5d54018e2543c4d552",
+   "size": 738
+  },
+  "twemoji/2/72x72/21aa.png": {
+   "sha512": "3181298ef6ab6ff5194b4abd293568d218c3397ef758e3c208fe4748c0699643",
+   "size": 722
+  },
+  "twemoji/2/72x72/231a.png": {
+   "sha512": "c7769ea86dee54c36b60dc6c4cb5e1a20f901b6185d9903be33a92fe01b3d3c1",
+   "size": 880
+  },
+  "twemoji/2/72x72/231b.png": {
+   "sha512": "5d012b0493dbb058f9d7cb2caabfc3216df32ad5005a1a8a875a3788b72cc172",
+   "size": 869
+  },
+  "twemoji/2/72x72/2328.png": {
+   "sha512": "8c2f651b96fb99cbc95f222fdf65b5a37ed204e89be7b82ba55404a4e19cb803",
+   "size": 429
+  },
+  "twemoji/2/72x72/23cf.png": {
+   "sha512": "77992f831848563b01f574117beee7974375af720d270d7913360ad287f3c760",
+   "size": 569
+  },
+  "twemoji/2/72x72/23e9.png": {
+   "sha512": "1a37357f1efa1fae860f7368ae70903bf2b6d238bc6e96ba166d33dec58af22d",
+   "size": 641
+  },
+  "twemoji/2/72x72/23ea.png": {
+   "sha512": "6ab4af4729292ab0b6782d55991531cee240540fdca3507daa90ad8816ca9f9f",
+   "size": 661
+  },
+  "twemoji/2/72x72/23eb.png": {
+   "sha512": "52cb29bb068c61b221d15e73c8ef3971a12bd10fc92f9670f850ed02440f00a6",
+   "size": 595
+  },
+  "twemoji/2/72x72/23ec.png": {
+   "sha512": "9dc838263911976748745537c707ffb88148e214f39acfd35173a7a90e6c5d43",
+   "size": 605
+  },
+  "twemoji/2/72x72/23ed.png": {
+   "sha512": "a4cfc37feaa24efd2ca08ed89615ad5220e02b13356a39d94d38b78f6fca0ca0",
+   "size": 656
+  },
+  "twemoji/2/72x72/23ee.png": {
+   "sha512": "efc1fd382700895f4b7072c1f5304aee41049778914efed7acc722f495d10f16",
+   "size": 661
+  },
+  "twemoji/2/72x72/23ef.png": {
+   "sha512": "f2c04bef5299a7b3c77bd163c72f06301916f30343cddc4b323e063314da3a47",
+   "size": 561
+  },
+  "twemoji/2/72x72/23f0.png": {
+   "sha512": "65b1b1ff06e8e843ba76b97b02b96c8bbb20be1b632b301e3b60d1d7cc0a8118",
+   "size": 1224
+  },
+  "twemoji/2/72x72/23f1.png": {
+   "sha512": "7d15e785a57c71a78b5d40dd508f75c24bf5696ed47a7b744974409c2c92e8d7",
+   "size": 978
+  },
+  "twemoji/2/72x72/23f2.png": {
+   "sha512": "6af03d61a3dbeefb843f374d19e01146208c14a72eada1c7b8de769adbf857bc",
+   "size": 1171
+  },
+  "twemoji/2/72x72/23f3.png": {
+   "sha512": "5661745c88d114aec88f0c0c33789a2968b00054ce89842f6f8a3c27360d9ea5",
+   "size": 895
+  },
+  "twemoji/2/72x72/23f8.png": {
+   "sha512": "8b433a40102612b955958892a6965b6af6526dd22f7237f9bc75d61bb9a90c2d",
+   "size": 355
+  },
+  "twemoji/2/72x72/23f9.png": {
+   "sha512": "d7fd3b003f5f6476b2c4e9fbe8bbe35f92757231d4372bdc28d6441a43fd77d9",
+   "size": 348
+  },
+  "twemoji/2/72x72/23fa.png": {
+   "sha512": "a38f70b090643e7b44c21bc4a2730723ab9803af951961647c75b974a7bfb868",
+   "size": 697
+  },
+  "twemoji/2/72x72/24c2.png": {
+   "sha512": "dfec9a9dfa76a7fea46edc85d3f06ab98d009a2e4267ba0526e41adbe6673105",
+   "size": 1212
+  },
+  "twemoji/2/72x72/25aa.png": {
+   "sha512": "86a0f4b2adf777b98b865300c2f43d002ed93139d5532e0a5a74e702ddc1c9e8",
+   "size": 167
+  },
+  "twemoji/2/72x72/25ab.png": {
+   "sha512": "cbd995d70a129113305d9a90d59b52cb17e242d35a8260f4ae73b3d463b7c4eb",
+   "size": 167
+  },
+  "twemoji/2/72x72/25b6.png": {
+   "sha512": "31c45ffffb3d570fc5abdf28637c23cbc2b5a9efa203046e19ece51dc36c13ec",
+   "size": 456
+  },
+  "twemoji/2/72x72/25c0.png": {
+   "sha512": "aa40f730f42a1b7896d08ad432e35efe45a83c288d071e4a87c7939a191c2426",
+   "size": 457
+  },
+  "twemoji/2/72x72/25fb.png": {
+   "sha512": "7134f1f660312c87c26dc3faa691bb3b95af9503c33de26f1b668c401e1b0e9b",
+   "size": 264
+  },
+  "twemoji/2/72x72/25fc.png": {
+   "sha512": "e78f0a0fa9e9c5c26f9049a0de6f9c377a0ad548cc4d4c3558717b4890cb30c7",
+   "size": 264
+  },
+  "twemoji/2/72x72/25fd.png": {
+   "sha512": "1b0f4fdc6baf7418642ba90ada3cdf45d98f8d8db3cc622ccc01bd5d75ff8629",
+   "size": 236
+  },
+  "twemoji/2/72x72/25fe.png": {
+   "sha512": "2e0f1d0a6d6e465f04ce9fe198d4a04a6215bc75f4ea51185a67e74f61a102cf",
+   "size": 236
+  },
+  "twemoji/2/72x72/2600.png": {
+   "sha512": "fdcf1bffe6453a3eaf405744046368aa4157e80a803bc055ee264291500e5b1a",
+   "size": 873
+  },
+  "twemoji/2/72x72/2601.png": {
+   "sha512": "13a9f01acf0a22ad934950412ccb3860ddd44c3ee5aee95ea1f8116095668590",
+   "size": 784
+  },
+  "twemoji/2/72x72/2602.png": {
+   "sha512": "a0128cd80d1d2139e031c13a4b95f7aa0e61a573a746e760879913ac4473af82",
+   "size": 987
+  },
+  "twemoji/2/72x72/2603.png": {
+   "sha512": "f770ab7952a81de24620923a406ba06f0e7e43000864973a64e69d42096171fb",
+   "size": 1048
+  },
+  "twemoji/2/72x72/2604.png": {
+   "sha512": "7652b6332bf33fe1f66a358925bc7f86cdd01ecf2ccd0458f3aa7723f38ff011",
+   "size": 1189
+  },
+  "twemoji/2/72x72/260e.png": {
+   "sha512": "5763465398ae16c5a993a029a662f8ae47abe839281b6d00fe203fa5fc8f8b6b",
+   "size": 1042
+  },
+  "twemoji/2/72x72/2611.png": {
+   "sha512": "ec022aabc85a0de1cdea2d734945082ada8634d42b66472f11e5a789ce387e9b",
+   "size": 668
+  },
+  "twemoji/2/72x72/2614.png": {
+   "sha512": "1c16e3f5c2cae6cc94b1e155861d96a537ea4c41892299a9ddbe7838a9fb4ac1",
+   "size": 1116
+  },
+  "twemoji/2/72x72/2615.png": {
+   "sha512": "cac5eb9578aecf19fe1530f9a509bc4047bcb6e20d04ec44a0183d5bc32b8b7a",
+   "size": 1364
+  },
+  "twemoji/2/72x72/2618.png": {
+   "sha512": "4f10900e4419bc8d4b7b1c117a0a2522efb703f096ae8e6759613f9136490fad",
+   "size": 974
+  },
+  "twemoji/2/72x72/261d.png": {
+   "sha512": "0725f3a13223857abdba9612eb0d6b89e0b5a33d0bb5357ffa38545145df55cb",
+   "size": 897
+  },
+  "twemoji/2/72x72/2620.png": {
+   "sha512": "700a5a0830621f10080aa803ed75b8ce22497f21b1beed29ddf723b4429076f5",
+   "size": 1138
+  },
+  "twemoji/2/72x72/2622.png": {
+   "sha512": "41a297a22ae7f7be0c6f4cfcfd18e2abaa5b90d025fb98cf11aa52ada1a2058b",
+   "size": 1064
+  },
+  "twemoji/2/72x72/2623.png": {
+   "sha512": "7fa82ff4bc35a869debbad345e28b41b24a80388fe52e7f99306757d06da0e5b",
+   "size": 1365
+  },
+  "twemoji/2/72x72/2626.png": {
+   "sha512": "e91a564d410c084d99dd5e5d13adafb1c96fdf9ad545ff5a17a4c224fff58379",
+   "size": 598
+  },
+  "twemoji/2/72x72/262a.png": {
+   "sha512": "d689b74d9ef5bed1f29a67240ed09f122c520df3d8016fd292d982c1c3443ff4",
+   "size": 954
+  },
+  "twemoji/2/72x72/262e.png": {
+   "sha512": "c594ecc615feeb9abd0b42158af7aed807437e9962a9ebbe40de81d3cab73fb5",
+   "size": 1107
+  },
+  "twemoji/2/72x72/262f.png": {
+   "sha512": "17422c0ca9ed639caf840f2be05611217f16a96111e812631b8882a48f463384",
+   "size": 1076
+  },
+  "twemoji/2/72x72/2638.png": {
+   "sha512": "7460d9ce03a5dce31c5acb009d2d4bb45ca6220a7370122e6414753e1e87cd12",
+   "size": 1120
+  },
+  "twemoji/2/72x72/2639.png": {
+   "sha512": "c2f0ddba12d306d8555ef46224cdd126268e90109a1c6aafcdc16b24c803b7d8",
+   "size": 916
+  },
+  "twemoji/2/72x72/263a.png": {
+   "sha512": "4640309aecdc293366a32c9764f69ce0edb7b42979616f9069cb187cb5cd2489",
+   "size": 1111
+  },
+  "twemoji/2/72x72/2640.png": {
+   "sha512": "696bbf3b8ad2b95b70a834103a33c7c94fbb8542db7b9d12f8131a02ce5d4133",
+   "size": 757
+  },
+  "twemoji/2/72x72/2642.png": {
+   "sha512": "917d5eb30ae8d938ff3b4367f77065b5a13ec2037efa1f6ce926b120a20de948",
+   "size": 809
+  },
+  "twemoji/2/72x72/2648.png": {
+   "sha512": "83b3b24db1ceab68dd582a8d92d965e20d536fc1e1ecd78cc75588a545c2e422",
+   "size": 976
+  },
+  "twemoji/2/72x72/2649.png": {
+   "sha512": "52915bf92e4d710f2ef6daec1a24636720356dbeeee0c15acebf53046996f662",
+   "size": 877
+  },
+  "twemoji/2/72x72/264a.png": {
+   "sha512": "e06e1ca942fbdd615e768deab68b8ad095be26f3e1b5c942ecb6be0abcc4d1a5",
+   "size": 641
+  },
+  "twemoji/2/72x72/264b.png": {
+   "sha512": "443ddc35cb22514f05dcd4872607b017e7cd35cbe8ddaee5ee503a11017b41aa",
+   "size": 1020
+  },
+  "twemoji/2/72x72/264c.png": {
+   "sha512": "19105e6ec92c8dc563a118eb17327c8fcd88b9628649e4b276df45541cd2fbb3",
+   "size": 996
+  },
+  "twemoji/2/72x72/264d.png": {
+   "sha512": "1e743cc29f8a92ef00b18b5e3cd3676dbdf68f27093ef00d95f65d673dc7b575",
+   "size": 864
+  },
+  "twemoji/2/72x72/264e.png": {
+   "sha512": "19ff71aa1aed1c07ca9b7115e7647da8227790f3ca9579249ff53d215d859110",
+   "size": 825
+  },
+  "twemoji/2/72x72/264f.png": {
+   "sha512": "6625b3ab4bb91fc94753455ef879864c39ced536770566b445a2ad60e9a89eea",
+   "size": 724
+  },
+  "twemoji/2/72x72/2650.png": {
+   "sha512": "d80843dba94ca0abe1933032626f385e796f067c2cd19e30593f6b68d95d4869",
+   "size": 602
+  },
+  "twemoji/2/72x72/2651.png": {
+   "sha512": "fb201a3325098883b760428b5b8df4ddd7e7b985d18a50f7155a55080005509a",
+   "size": 887
+  },
+  "twemoji/2/72x72/2652.png": {
+   "sha512": "aa48016ba39dfa0ab47b43746c4465d3842a9bc3f46398f69b4827f8334b1da7",
+   "size": 675
+  },
+  "twemoji/2/72x72/2653.png": {
+   "sha512": "746ae442e44d07b2de4430c6b5eac6b424acc1188f1c8f2ef73294ac92329b78",
+   "size": 850
+  },
+  "twemoji/2/72x72/2660.png": {
+   "sha512": "198555295eadd4eaf367088f0a6cf9eee6c42dd87e1b56fd506e33e75df82cdd",
+   "size": 831
+  },
+  "twemoji/2/72x72/2663.png": {
+   "sha512": "68d29cdebad029a45d6b2835b269843c62fe8beff754f9f8e9bf717d73ead980",
+   "size": 838
+  },
+  "twemoji/2/72x72/2665.png": {
+   "sha512": "1940ee6aaa3fa811b2b6b3ded3a1fc11a1790b04500552428e2bd1b0fe70c57d",
+   "size": 791
+  },
+  "twemoji/2/72x72/2666.png": {
+   "sha512": "b3d844e50e458e849c363d4e9da6b7a4cda4e7e24a132bc1e312cafbf78100ba",
+   "size": 645
+  },
+  "twemoji/2/72x72/2668.png": {
+   "sha512": "d115e88c7c91b9cf8b510afde02daf186acfe72c60e8a42e89485b44c4ec70dd",
+   "size": 990
+  },
+  "twemoji/2/72x72/267b.png": {
+   "sha512": "d6e8a650fbe68739736bc9e86d0c1ff7d81a488ecc4923abfb733e7f964e5f15",
+   "size": 1034
+  },
+  "twemoji/2/72x72/267f.png": {
+   "sha512": "6321d04a06527d5ba88a19e0a07c3fb9732d93b2d1732b446dca173bebe8c40a",
+   "size": 1011
+  },
+  "twemoji/2/72x72/2692.png": {
+   "sha512": "188e3454e7e5d9c5cacc577637772498654dc934a71addd2ebd1cc8ea75ff76c",
+   "size": 897
+  },
+  "twemoji/2/72x72/2693.png": {
+   "sha512": "591e584d4652079fec39164687b29469d20d53ea29434c1a9e97210ec56333e9",
+   "size": 948
+  },
+  "twemoji/2/72x72/2694.png": {
+   "sha512": "b0d722542d9d1392ced2d9f55fbfefb6d4e983e5a413a1c6deb92a7a6dd547a5",
+   "size": 899
+  },
+  "twemoji/2/72x72/2695.png": {
+   "sha512": "3ae8f7e84d9e5821175267102896d5bc06cd8c16b9e763ce7c966202e35f7f3e",
+   "size": 993
+  },
+  "twemoji/2/72x72/2696.png": {
+   "sha512": "3661b26f3a858d9a8495461433b3b11035dd8c01e1bce3d5c342572061df59cf",
+   "size": 921
+  },
+  "twemoji/2/72x72/2697.png": {
+   "sha512": "9003d701cdb5307e311d39b107bd523f750ec5f3a5b51ce424d217383ca9a4d3",
+   "size": 945
+  },
+  "twemoji/2/72x72/2699.png": {
+   "sha512": "3c0ffc91b16e9cfa0fa95bbfaa0297060030796a003fa2873503b90de1dde3fb",
+   "size": 926
+  },
+  "twemoji/2/72x72/269b.png": {
+   "sha512": "1074f251eab79d83897f4de4c7baace02b5c4cb936961382ae6925684225b26a",
+   "size": 1028
+  },
+  "twemoji/2/72x72/269c.png": {
+   "sha512": "22690c78eea377b4ffdadd17e8f0d2f94e4c2c3aa06ad3e542035ef1e20c06f9",
+   "size": 1008
+  },
+  "twemoji/2/72x72/26a0.png": {
+   "sha512": "4d4a5e15ec03f1ff1200332d4c18d962140057be8b7b92b01bb7ee359413705e",
+   "size": 841
+  },
+  "twemoji/2/72x72/26a1.png": {
+   "sha512": "3b043ebbd2ad6ddaacc7967dffc721fbeb7cb7b8f69329339ba1e60a64f8cc81",
+   "size": 753
+  },
+  "twemoji/2/72x72/26aa.png": {
+   "sha512": "2cf158985e992657bc72437802aa7a195cde268b8dc82215e81ad96794f8e5dd",
+   "size": 748
+  },
+  "twemoji/2/72x72/26ab.png": {
+   "sha512": "fb285915a2d878953963b8d9dd2f9700b777c26a40bc572291244b74783963c2",
+   "size": 756
+  },
+  "twemoji/2/72x72/26b0.png": {
+   "sha512": "22dcd5eb083bd2b1ac917f5243547e95affa8d94fef0352fe59763d2828864d1",
+   "size": 1149
+  },
+  "twemoji/2/72x72/26b1.png": {
+   "sha512": "99f66114dad1f298802fa9d2010f4a405b81c19f918d4bbe891a411006a08ed4",
+   "size": 893
+  },
+  "twemoji/2/72x72/26bd.png": {
+   "sha512": "35e8cffe91f698b4a68c2d5714e471fd8f463f23620f89a6b382837aade23516",
+   "size": 1417
+  },
+  "twemoji/2/72x72/26be.png": {
+   "sha512": "7bd1576550c04877463497464ed9b3c99afa2476db0ae8a448a49840f9973fb5",
+   "size": 1361
+  },
+  "twemoji/2/72x72/26c4.png": {
+   "sha512": "0c7652ba93e11c03344813140d1befb5147833d6af26a54d37b71f679a72fef4",
+   "size": 929
+  },
+  "twemoji/2/72x72/26c5.png": {
+   "sha512": "2ede653363840557c6bdae3c0ce1bcbaa97ecb769fd92a2e0f17c304d0cf39cb",
+   "size": 880
+  },
+  "twemoji/2/72x72/26c8.png": {
+   "sha512": "c3242f306f214d7ffeabc13a0b1a71bdb0077b20aa806462b386e92bdb4914af",
+   "size": 993
+  },
+  "twemoji/2/72x72/26ce.png": {
+   "sha512": "0076215ba00b5fbbe96b91463773db65be11e443afe147e24f68b5a684491423",
+   "size": 873
+  },
+  "twemoji/2/72x72/26cf.png": {
+   "sha512": "2093524cef760acab7bc89a912ae3e99a291896d472cb92c7574c9e1274196c6",
+   "size": 771
+  },
+  "twemoji/2/72x72/26d1.png": {
+   "sha512": "288d63fe966720503ae03a91684d11f89c8b9822257677b55953455118392ed5",
+   "size": 1146
+  },
+  "twemoji/2/72x72/26d3.png": {
+   "sha512": "3854818e05fb31d6a938113d652e1b3df6aaad7d1b28d8ee03d789fc4d6785b0",
+   "size": 1002
+  },
+  "twemoji/2/72x72/26d4.png": {
+   "sha512": "8625c529e852530fad361c5746b950550c59156964f1b8d0f522d631181ffabf",
+   "size": 798
+  },
+  "twemoji/2/72x72/26e9.png": {
+   "sha512": "66f00f4d6b405dcf8015f0d8f81fd16c314e8dad8d2266fd6eb5da3500725a27",
+   "size": 704
+  },
+  "twemoji/2/72x72/26ea.png": {
+   "sha512": "74956c3e3374f2d939952808b321255422e9e1df663bc5e7181236e349cf51ee",
+   "size": 743
+  },
+  "twemoji/2/72x72/26f0.png": {
+   "sha512": "10fec9ac96b2d8d591fc0b7ca1b1c3fd02d8b587b650931c284030fda3f81620",
+   "size": 806
+  },
+  "twemoji/2/72x72/26f1.png": {
+   "sha512": "1a58ead34f6c533f92572f2fff9c2cdd78155ebbfe98236e83b3a0721171e6d1",
+   "size": 995
+  },
+  "twemoji/2/72x72/26f2.png": {
+   "sha512": "6e42a4d3343a23ab1ea6660ae7cd3b0bd5de2913625409f708cd6a44040c9a29",
+   "size": 1181
+  },
+  "twemoji/2/72x72/26f3.png": {
+   "sha512": "e18c675596d82b2a36c7575ac0dad0f14c3fa9d0ade87e8e90795750554c2ae5",
+   "size": 828
+  },
+  "twemoji/2/72x72/26f4.png": {
+   "sha512": "8b03652f0596289d70421afc1f1975481b15fa5f97c4f8cfe3bf2a18aeaeadf8",
+   "size": 651
+  },
+  "twemoji/2/72x72/26f5.png": {
+   "sha512": "69fc0ed2cf62e8fef0e1d9cd89a3a92b8cbb2317a394be027a1aac70c5a42d9b",
+   "size": 828
+  },
+  "twemoji/2/72x72/26f7.png": {
+   "sha512": "74dc4874a74c4b8e753ada305e442f4b057de657e94f607b95e7906590c09d5e",
+   "size": 1295
+  },
+  "twemoji/2/72x72/26f8.png": {
+   "sha512": "d431fa6a4751a889017dc753689c5c60f4a014a941f43c53a73f48db042dd2ff",
+   "size": 843
+  },
+  "twemoji/2/72x72/26f9.png": {
+   "sha512": "1402ef1edb2b1641bc99a63de3dc66317671e01d271e33fd73ceac041f8a53d0",
+   "size": 1157
+  },
+  "twemoji/2/72x72/26fa.png": {
+   "sha512": "15b6215db4b9807a1be9036bf4b68012f8ec984309b1b269928cf8bf3ccc515e",
+   "size": 889
+  },
+  "twemoji/2/72x72/26fd.png": {
+   "sha512": "90836ee8e7d146c0d9a8247d71bb961592bc7eccb20987039ca6d5f7a810321f",
+   "size": 945
+  },
+  "twemoji/2/72x72/2702.png": {
+   "sha512": "6bb9201c194ff09822a6fae39cf0ce66086601e1c0b814e15ab3f01117c4d276",
+   "size": 1185
+  },
+  "twemoji/2/72x72/2705.png": {
+   "sha512": "00f6392763e160631df6a0662663111663673c75a31ee7eb4b21b42b0c6c9f8b",
+   "size": 591
+  },
+  "twemoji/2/72x72/2708.png": {
+   "sha512": "eef1861f1018bc49eb4a0e912ba040bb748cde4a6ce2b86baac8da7185c1f766",
+   "size": 1121
+  },
+  "twemoji/2/72x72/2709.png": {
+   "sha512": "7cf2915c45290e39f99c6cb92b3f1d405bc3694eb7578f25284d45e6599ea916",
+   "size": 715
+  },
+  "twemoji/2/72x72/270a.png": {
+   "sha512": "00c5292ff0540ed90b0ced9e0d0e08c5c21fa5682bf696c46cb5af7b21dee9cb",
+   "size": 1045
+  },
+  "twemoji/2/72x72/270b.png": {
+   "sha512": "c38fa98201b4417846dcebf97e396fcadd8ed4172a8f49444708a5a44d732de4",
+   "size": 793
+  },
+  "twemoji/2/72x72/270c.png": {
+   "sha512": "06305f3949090b1fca94de50570ba123a3d451120e949fc7b5f7fb850777ee32",
+   "size": 1033
+  },
+  "twemoji/2/72x72/270d.png": {
+   "sha512": "0177bf7bab5571efb1cc2ee9ca9f77cb2ebf5acb9ad83b25819f62f06fe5ab0f",
+   "size": 1157
+  },
+  "twemoji/2/72x72/270f.png": {
+   "sha512": "dece97e53c05c05f7d18103fd16591bdb1f8b14aff6ea100d7245e1a97211080",
+   "size": 708
+  },
+  "twemoji/2/72x72/2712.png": {
+   "sha512": "cbbdf1d59ade1507e8dd6c362700f9d027d7ce9c7146a7919a92847fb491ef52",
+   "size": 773
+  },
+  "twemoji/2/72x72/2714.png": {
+   "sha512": "48a9ec994623e926df19ddd5717d3b43164b8853f88fea3a0e11af5ed87d9023",
+   "size": 428
+  },
+  "twemoji/2/72x72/2716.png": {
+   "sha512": "614a83e86cd1a2d842b204ec57fa0c0b6188c05ddf6793aefcfda09ca50d74f2",
+   "size": 681
+  },
+  "twemoji/2/72x72/271d.png": {
+   "sha512": "40aff010b4f2c8e2b10eb40524d6b01e1bec9ff93bf20467cc7dcc742e2251da",
+   "size": 411
+  },
+  "twemoji/2/72x72/2721.png": {
+   "sha512": "45d535e03b8c5bc1953f43572f60bece291f3a0f564f48e977f66764aeba1e88",
+   "size": 790
+  },
+  "twemoji/2/72x72/2728.png": {
+   "sha512": "161945a0231c99a40d9654cd412055a063b6123eab65dacd17053ffd53ceee7f",
+   "size": 952
+  },
+  "twemoji/2/72x72/2733.png": {
+   "sha512": "9fe52998166bcbfb7892b71cfec2157a7ee678c0cfc06a98de6a47e194cdbcf2",
+   "size": 755
+  },
+  "twemoji/2/72x72/2734.png": {
+   "sha512": "e5b2831f2e4a517f40b7c917211315aa6b316339483dc6da08bbc478b24160dd",
+   "size": 851
+  },
+  "twemoji/2/72x72/2744.png": {
+   "sha512": "7b1fe4776408e8efc6e21c8e7e276831912efdf176da06cf1af93c77eabb7587",
+   "size": 1116
+  },
+  "twemoji/2/72x72/2747.png": {
+   "sha512": "f293ecd50aed5fba790f4a1e67b5f041c9d9cc1e23db5371fa3b8ada3997d665",
+   "size": 870
+  },
+  "twemoji/2/72x72/274c.png": {
+   "sha512": "5b71bbcfb92de76dfeaae2ba4d29c56550d51edb5b17cdd32aa15d1d87e4c045",
+   "size": 592
+  },
+  "twemoji/2/72x72/274e.png": {
+   "sha512": "69a321a3b0ba1b1cf385e180955a5944f320a9ba71c109e1ff71bc7aae99abfd",
+   "size": 699
+  },
+  "twemoji/2/72x72/2753.png": {
+   "sha512": "0c74e5d5318d98213d2b104a9f1a40cff2e271153a0dedb50fbb8f7048a9b39a",
+   "size": 758
+  },
+  "twemoji/2/72x72/2754.png": {
+   "sha512": "35241ea21b80cdd1774d42706c143b4505e481fe7b910c968531461b9f67d047",
+   "size": 754
+  },
+  "twemoji/2/72x72/2755.png": {
+   "sha512": "131cc4bf6218faa45f31789a93854fb6d3a181b6f78bbcbde7a9c937e172d60b",
+   "size": 266
+  },
+  "twemoji/2/72x72/2757.png": {
+   "sha512": "4fdee28646212dfbf63b2a0d49200788cb704f45f0f0cebfc00e2bbf7b7f9e5a",
+   "size": 266
+  },
+  "twemoji/2/72x72/2763.png": {
+   "sha512": "32b24efda84f61d7dae92b246d8f29ae736bdff40b6ede946cace1ff510887ae",
+   "size": 812
+  },
+  "twemoji/2/72x72/2764.png": {
+   "sha512": "b22f32886be9bac1428c27345df4894ad209bd7f2d156a0a76cf6531360914d4",
+   "size": 808
+  },
+  "twemoji/2/72x72/2795.png": {
+   "sha512": "e26546fa4f0f5081272f791bb9d3ce5528f7df86ea9965bdeee1d8dfab1e6095",
+   "size": 310
+  },
+  "twemoji/2/72x72/2796.png": {
+   "sha512": "1e6918561ae9b6fbcfd68e3e7771746f194d7145ddfd1f97045a124e209d105b",
+   "size": 247
+  },
+  "twemoji/2/72x72/2797.png": {
+   "sha512": "66b97c8576075fb148fd29ac1934b707b88f28af1f746b23bb2b89a0daae466b",
+   "size": 441
+  },
+  "twemoji/2/72x72/27a1.png": {
+   "sha512": "47cda543b4b473606790f5a15da4f9e73ad2ed0a155eb9e68bee1b5fa75693d7",
+   "size": 538
+  },
+  "twemoji/2/72x72/27b0.png": {
+   "sha512": "a27994ad3d604235765d86372f9e8e70b75f2ff5a8f0f0014758a4cc615c54c7",
+   "size": 1015
+  },
+  "twemoji/2/72x72/27bf.png": {
+   "sha512": "a22e328ebbe46841a18250d6764abd6ca57ce3dbe2778ef1deb41c1eb9b236ea",
+   "size": 1083
+  },
+  "twemoji/2/72x72/2934.png": {
+   "sha512": "f90369bf011a3957b3fb2da19c8c02c7a7c3aeee5f019f04df3199c7dabe3390",
+   "size": 671
+  },
+  "twemoji/2/72x72/2935.png": {
+   "sha512": "3e7dfed12ee5ac7edcb1aa3af446f489b04ca05e68cc47e7aacddd7ee3186b0a",
+   "size": 673
+  },
+  "twemoji/2/72x72/2b05.png": {
+   "sha512": "95f0b3e36373726956e1ad613bb763bd34cdd9616974439b708237d11a24619a",
+   "size": 604
+  },
+  "twemoji/2/72x72/2b06.png": {
+   "sha512": "fc89fc3ed4c5cd01c82052e282f0d63c4f2b8549cedb44aa7d3a6bad0e2845e0",
+   "size": 595
+  },
+  "twemoji/2/72x72/2b07.png": {
+   "sha512": "947c557c6392c113f7c0d9bd907500f3808945ec5f251ee310fefc4ac00bbcc4",
+   "size": 601
+  },
+  "twemoji/2/72x72/2b1b.png": {
+   "sha512": "d28bf3f49557d4ad4cf09bf3bf97b601d4c2e823f7137ad2cfb3d1703e853b1a",
+   "size": 340
+  },
+  "twemoji/2/72x72/2b1c.png": {
+   "sha512": "a17918a199c017b87d969e162b2a6a1a2c095c0561ee6bc029f80242b2c49baf",
+   "size": 341
+  },
+  "twemoji/2/72x72/2b50.png": {
+   "sha512": "4948bfb77090ddfd52c4375139a28d648322725dde293fac239f1002c6b5ba72",
+   "size": 795
+  },
+  "twemoji/2/72x72/2b55.png": {
+   "sha512": "bd58204e7e75585007227b4f12f6ef24948330ada3ad2ef19f882b3f28252e3a",
+   "size": 1003
+  },
+  "twemoji/2/72x72/3030.png": {
+   "sha512": "8cbcfae4a01dbdc5a50ff3894b9d2561129fe7664158e2172f0b25d901d772d6",
+   "size": 750
+  },
+  "twemoji/2/72x72/303d.png": {
+   "sha512": "7a9d3e5a9e3b1aba506bb2fe433bbdca0265d93d33d61635bf36fee356b404fa",
+   "size": 882
+  },
+  "twemoji/2/72x72/3297.png": {
+   "sha512": "d7004805ffa96db0f2bff247193a035fb6ae8f4432643b42a35de6a43763b438",
+   "size": 1244
+  },
+  "twemoji/2/72x72/3299-b64.png": {
+   "sha512": "6b301e4b1700c4fc8eaee64d134c24e8b6c95f45a8003554ad798d3f6b66d9f7",
+   "size": 1975
+  },
+  "twemoji/2/72x72/3299.b64": {
+   "sha512": "1a8518fa2a89611c554ca32098ee001ed4d14fd6b7f53fc33fccc5bdeba6b63a",
+   "size": 1978
+  },
+  "twemoji/2/72x72/3299.png": {
+   "sha512": "18ad9eb1ea7e152a94e0434236495aa0a51aebca262550089f08358967863f6c",
+   "size": 1462
   }
  },
  "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*)",
@@ -235,15 +4733,16 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1485421199,
+ "modified": 1485526735,
+ "optional": "(twemoji/2/36x36|twemoji/2/72x72)",
  "postmessage_nonce_security": true,
  "sign": [
-  84599000895357806187763159930351371269734891646039440619401515593371311435033,
-  1236448630941909014059881368001214720268456043058927134490445435564394428751
+  67055346213278281503289012483817455134025214960538862743145236733378428919160,
+  62891922913868529168595912347259194254307070878466421797445844973575026503038
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G5JA3iGodwqK2YljjnaQtk4HI39rPxRtAHDuN6j452f/mv4Ud7ylHtGzmKVfVqaoNnAIv+P0HhLMAn5QD7DHWBU="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G5w6gYS9gzRg+vsLL+OrKx9ZEfWdeEqFQkBIR5074pDHUvu79zArQm+JSsdn0lkKP3sVAl98ciBsiSqPVJINXE4="
  },
  "signs_required": 1,
  "title": "Money Network",

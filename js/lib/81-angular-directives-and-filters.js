@@ -526,6 +526,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'old str = ' + str + ' <=> ' + dump_str(str)) ;
                 str = str.replace(/&#10;/g, "\n").replace(/\r\n/g,"\n").replace(/\r/g,"\n") ;
                 str = md.render(str) ;
+                // str = moneyNetworkService.check_twemojis(str) ;
                 if (str.substr(0,3) == '<p>') str = str.substr(3,str.length-8);
                 // console.log(pgm + 'new str = ' + str + ' <=> ' + dump_str(str)) ;
                 message.formatted_message = str ;

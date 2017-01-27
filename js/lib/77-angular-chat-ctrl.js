@@ -783,6 +783,7 @@ angular.module('MoneyNetwork')
                 for (var i=0 ; i<self.messages.length ; i++) {
                     delete self.messages[i].chat_filter ;
                     delete self.messages[i].formatted_message ;
+                    delete self.messages[i].show_feedback ;
                 }
                 if (!spam) self.chat_page_context.infinite_scroll_limit = 5 ;
                 debug('infinite_scroll || public_chat', pgm + 'calling moneyNetworkService.reset_first_and_last_chat') ;
@@ -1442,6 +1443,13 @@ angular.module('MoneyNetwork')
             self.hide_overflow = function (message) {
                 message.overflow = false ;
             };
+
+            // click message. show/hide comment and reaction icons
+            self.click_message = function (message) {
+                var pgm = controller + '.click_message: ' ;
+                message.show_feedback = !message.show_feedback ;
+                console.log(pgm + 'show_feedback = ' + message.show_feedback) ;
+            }; // self.click_message
 
             // infinite scroll
             // startup with infinite_scroll_limit = 5.

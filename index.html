@@ -1035,17 +1035,15 @@
                         <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
 
                             <!-- chat2: show outgoing message -->
-                            <table class="speech" ng-hide="m.edit_chat_message">
+                            <table class="speech" ng-hide="m.edit_chat_message" ng-click="c.click_message(m)">
                                 <tr>
                                     <td>
-
                                     <span ng-click="c.chat_contact(m.contact)" class="media-heading"
                                           alt="Click to continue chat" title="Click to continue chat">
                                         <span ng-bind-html="c.setup.alias">Me</span>
                                         <span ng-class="m.contact|contactGlyphicon"
                                               title="{{m|messageGlyphiconTitle}}"></span>
                                     </span>
-
                                     </td>
                                     <td style="text-align: right; vertical-align: top">
                                     <span class="speech-time"
@@ -1056,40 +1054,60 @@
                                         <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                               ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
                                     </span>
-
-
-
                                     </td>
                                 </tr>
                                 <tr>
-
                                     <td colspan="2">
-
                                         <div ng-class="m|messageOverflowOutbox" data-seq="{{m.message.seq}}">
-
                                         Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
                                         <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
                                              ng-click="c.chat_contact(m.contact)">
                                         <span ng-bind-html="m|formatChatMessage"></span>
-
                                         </div>
-
                                     </td>
-
                                 </tr>
-
                                 <tr ng-show="m.overflow">
                                     <td colspan="2" style="text-align: center" >
                                         <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
                                     </td>
                                 </tr>
-
                                 <tr ng-show="c.show_image(m)">
                                     <td colspan="2">
                                         <img ng-src="{{m.message.message.image}}">
                                     </td>
                                 </tr>
+
+                                <tr ng-show="m.show_feedback">
+                                    <td colspan="2" style="text-align: right">
+                                        <table style="margin: 0 auto">
+                                            <thead>
+                                            <tr>
+                                                <td>Like:</td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f603.png" height="24" width="24" title="Like" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/2764.png" height="24" width="24" title="Love" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f606.png" height="24" width="24" title="Ha ha" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f62e.png" height="24" width="24" title="Wow" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f622.png" height="24" width="24" title="Sad" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f621.png" height="24" width="24" title="Angry" class="grow20pct">
+                                                </td>
+                                            </tr>
+                                            </thead>
+                                        </table>
+                                    </td>
+                                </tr>
+
                             </table>
 
                             <!-- edit outgoing message -->
@@ -1156,7 +1174,7 @@
                         <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
 
                             <!-- chat2: show inbox message -->
-                            <table class="speech">
+                            <table class="speech" ng-click="c.click_message(m)">
                                 <tr>
                                     <td style="text-align: left">
                                     <span ng-click="c.chat_contact(m.contact)" class="media-heading" title="Click to chat">
@@ -1180,36 +1198,61 @@
 
                                     </td>
                                 </tr>
-
-
                                 <tr>
                                     <td colspan="2" style="text-align: left">
-
                                         <div ng-class="m|messageOverflowInbox" data-seq="{{m.message.seq}}">
-
                                         Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
                                         <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
                                              ng-click="c.chat_contact(m.contact)">
                                         <span ng-bind-html="m|formatChatMessage"></span>
-
                                         </div>
-
                                     </td>
                                 </tr>
-
                                 <tr ng-show="m.overflow">
                                     <td colspan="2" style="text-align: center" >
                                         <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
                                     </td>
                                 </tr>
-
                                 <tr ng-show="c.show_image(m)">
                                     <td colspan="2">
-                                        <img ng-src="{{c.get_image_src(m)}}">
+                                        <img ng-src="{{c.get_image_src(m)}}" >
                                     </td>
                                 </tr>
+
+                                <tr ng-show="m.show_feedback">
+                                    <td colspan="2" style="text-align: center">
+                                        <table style="margin: 0 auto">
+                                            <thead>
+                                            <tr>
+                                                <td>Like:</td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f603.png" height="24" width="24" title="Like" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/2764.png" height="24" width="24" title="Love" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f606.png" height="24" width="24" title="Ha ha" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f62e.png" height="24" width="24" title="Wow" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f622.png" height="24" width="24" title="Sad" class="grow20pct">
+                                                </td>
+                                                <td height="30" width="30" style="text-align: center; vertical-align: middle">
+                                                    <img src="public/images/1f621.png" height="24" width="24" title="Angry" class="grow20pct">
+                                                </td>
+                                            </tr>
+                                            </thead>
+                                        </table>
+                                    </td>
+                                </tr>
+
+
                             </table>
+
                         </div>
                     </li>
                 </ul>
@@ -1228,7 +1271,7 @@
             <p>
                 wallet.html - page to manage wallet with traditional, complementare and alternative money
             </p>
-
+            
             Summary:
             <ul style="list-style-type:disc">
                 <li>todo: money overview - sum for each money system</li>
