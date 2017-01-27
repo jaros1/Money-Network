@@ -1451,6 +1451,37 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'show_feedback = ' + message.show_feedback) ;
             }; // self.click_message
 
+            // emojis reaction bar.
+            self.reactions = [
+                { src: "public/images/1f603.png", title: "Like"},
+                { src: "public/images/2764.png",  title: "Love"},
+                { src: "public/images/1f606.png", title: "Ha ha"},
+                { src: "public/images/1f62e.png", title: "Wow"},
+                { src: "public/images/1f622.png", title: "Sad"},
+                { src: "public/images/1f621.png", title: "Angry"}
+            ] ;
+            // one copy for each message
+            self.get_message_reactions = function (message) {
+                if (!message.reactions) message.reactions = JSON.parse(JSON.stringify(self.reactions)) ;
+                return message.reactions ;
+            }; // get_message_reactions
+            self.react = function (message, reaction) {
+                var pgm = controller + '.react: ' ;
+                var old_index, new_index, i ;
+                console.log(pgm + 'reaction = ' + JSON.stringify(reaction)) ;
+                old_index = -1 ;
+                new_index = -1 ;
+                for (i=0 ; i<message.reactions.length ; i++) {
+                    if (message.reactions[i].selected) old_index = i ;
+                    if (message.reactions[i].src == reaction.src) new_index = i;
+                }
+                if (old_index == new_index) message.reactions[old_index].selected = !message.reactions[old_index].selected ;
+                else {
+                    if (old_index != -1) delete message.reactions[old_index].selected ;
+                    message.reactions[new_index].selected = true ;
+                }
+            } ; // react
+
             // infinite scroll
             // startup with infinite_scroll_limit = 5.
             // public_chat = false. No nothing after page startup

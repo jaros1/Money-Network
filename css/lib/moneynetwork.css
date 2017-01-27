@@ -639,4 +639,4 @@ body #file-drop {
 
 /* enlarge reaction on hover */
 .grow20pct { transition: all .2s ease-in-out; }
-.grow20pct:hover { transform: scale(1.3); }
+.grow20pct:hover { transform: scale(1.47); }
