@@ -1481,6 +1481,20 @@ angular.module('MoneyNetwork')
                     message.reactions[new_index].selected = true ;
                 }
             } ; // react
+            self.react2 = function (message, new_index) {
+                var pgm = controller + '.react2: ' ;
+                var old_index, i ;
+                old_index = -1 ;
+                for (i=0 ; i<message.reactions.length ; i++) {
+                    if (message.reactions[i].selected) {
+                        old_index = i ;
+                        break ;
+                    }
+                }
+                if (old_index != -1) delete message.reactions[old_index].selected ;
+                if (new_index != old_index) message.reactions[new_index].selected = true ;
+                console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', old_index = ' + old_index + ', new_index = ' + new_index) ;
+            }; // react2
 
             // infinite scroll
             // startup with infinite_scroll_limit = 5.

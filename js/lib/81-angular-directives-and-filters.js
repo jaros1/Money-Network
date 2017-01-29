@@ -106,6 +106,80 @@ angular.module('MoneyNetwork')
         };
     })
 
+    // empty heart reaction popover directive
+    .directive('messageReact', ['$compile', function($compile) {
+        var pgm = 'messageReact: ' ;
+        var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
+        var standard_reactions = [
+            { src: "public/images/1f603.png", title: "Like"},
+            { src: "public/images/2764.png",  title: "Love"},
+            { src: "public/images/1f606.png", title: "Ha ha"},
+            { src: "public/images/1f62e.png", title: "Wow"},
+            { src: "public/images/1f622.png", title: "Sad"},
+            { src: "public/images/1f621.png", title: "Angry"}
+        ] ;
+
+        var i, content_html, linkFn ;
+        content_html = '<table><tbody><tr>' ;
+        for (i=0; i<standard_reactions.length ; i++) {
+            content_html += '<td class="reaction_td" ng-click="react(m,' + i + ')">' +
+                '<img height="20" width="20" src="' + standard_reactions[i].src + '" title="' + standard_reactions[i].title + '" class="grow20pct">' +
+                '</td>' ;
+        } // for i
+        content_html += '</tr></tbody></table>' ;
+        linkFn = $compile(content_html) ;
+
+        return {
+            restrict: 'E',
+            template: '<img src="{{src}}" height="20" width="20" title="{{title}}">',
+            link: function (scope, el, attrs) {
+                var pgm = 'messageReact: ' ;
+                var message, content, react ;
+                // get params
+                message = scope.$eval(attrs.message) ;
+                react = scope.$eval(attrs.react) ; // callback to chatCtrl
+                // console.log(pgm + 'message = ' + JSON.stringify(message));
+                // console.log(pgm + 'react = ' + react);
+                var set_src_and_title = function (message) {
+                    var pgm = 'messageReact.set_scr_and_title: ';
+                    var old_index, i ;
+                    old_index = -1 ;
+                    if (!message.reactions) message.reactions = JSON.parse(JSON.stringify(standard_reactions)) ;
+                    for (i=1 ; i<message.reactions.length ; i++) {
+                        if (message.reactions[i].selected) {
+                            old_index = i ;
+                            break ;
+                        }
+                    }
+                    if (old_index == -1) {
+                        scope.src = no_reaction.src ;
+                        scope.title = no_reaction.title ;
+                    }
+                    else {
+                        scope.src = message.reactions[old_index].src ;
+                        scope.title = message.reactions[old_index].title ;
+                    }
+                    console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', src = ' + scope.src + ', title = ' + scope.title) ;
+                };
+                set_src_and_title(message);
+                // not working. src and title are not updated
+                var extend_react = function (message2, index2) {
+                    react(message2, index2) ;
+                    set_src_and_title(message2);
+                };
+                scope.react = extend_react ;
+                content = linkFn(scope);
+                // console.log(pgm + 'content = ' + JSON.stringify(content)) ;
+                $(el).popover({
+                    trigger: 'click',
+                    html: true,
+                    content: content,
+                    placement: 'left'
+                });
+            }
+        };
+    }])
+
     .filter('toJSON', [function () {
         // debug: return object as a JSON string
         return function (object) {

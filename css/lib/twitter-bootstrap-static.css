@@ -5006,7 +5006,7 @@ button.btn.btn-mini, input[type="submit"].btn.btn-mini {
 }
 
 .popover-content {
-    padding: 9px 14px;
+    padding: 1px 1px;
 }
 
 .popover .arrow, .popover .arrow:after {

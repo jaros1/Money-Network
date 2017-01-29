@@ -584,6 +584,9 @@ form {
 .glyphicon-remove-msg {
     font-size:1.15em;
 }
+.glyphicon-heart-empty-msg {
+    font-size:1.15em;
+}
 
 /* image drag and drop to chat */
 /* http://wisercoder.com/drag-drop-image-upload-directive-angular-js/ */
@@ -640,3 +643,12 @@ body #file-drop {
 /* enlarge reaction on hover */
 .grow20pct { transition: all .2s ease-in-out; }
 .grow20pct:hover { transform: scale(1.47); }
+
+/* reaction popover */
+.reaction_td {
+    height: 28px;
+    width: 28px;
+    text-align: center;
+    vertical-align: middle;
+}
+
