@@ -107,17 +107,10 @@ angular.module('MoneyNetwork')
     })
 
     // empty heart reaction popover directive
-    .directive('messageReact', ['$compile', function($compile) {
+    .directive('messageReact', ['$compile', 'MoneyNetworkService', function($compile, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
         var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
-        var standard_reactions = [
-            { src: "public/images/1f603.png", title: "Like"},
-            { src: "public/images/2764.png",  title: "Love"},
-            { src: "public/images/1f606.png", title: "Ha ha"},
-            { src: "public/images/1f62e.png", title: "Wow"},
-            { src: "public/images/1f622.png", title: "Sad"},
-            { src: "public/images/1f621.png", title: "Angry"}
-        ] ;
+        var standard_reactions = moneyNetworkService.get_standard_reactions() ;
 
         var i, content_html ;
         content_html = '<table><tbody><tr>' ;
@@ -135,18 +128,21 @@ angular.module('MoneyNetwork')
             scope: true,
             link: function (scope, el, attrs) {
                 var pgm = 'messageReact: ' ;
-                var message, content, react, linkFn ;
+                var message, content, react, linkFn, folder ;
                 // get params
                 message = scope.$eval(attrs.message) ;
                 react = scope.$eval(attrs.react) ; // callback to chatCtrl
+                folder = attrs.folder ;
+                // console.log(pgm + 'message.message.folder = ' + message.message.folder + ', folder = ' + folder);
+                // if (!message.reactions) message.reactions = JSON.parse(JSON.stringify(standard_reactions)) ;
+                if (folder != message.message.folder) return ;
                 // console.log(pgm + 'message = ' + JSON.stringify(message));
                 // console.log(pgm + 'react = ' + react);
                 var set_src_and_title = function (message) {
                     var pgm = 'messageReact.set_scr_and_title: ';
                     var old_index, i ;
                     old_index = -1 ;
-                    if (!message.reactions) message.reactions = JSON.parse(JSON.stringify(standard_reactions)) ;
-                    for (i=1 ; i<message.reactions.length ; i++) {
+                    for (i=0 ; i<message.reactions.length ; i++) {
                         if (message.reactions[i].selected) {
                             old_index = i ;
                             break ;
@@ -160,13 +156,16 @@ angular.module('MoneyNetwork')
                         scope.src = message.reactions[old_index].src ;
                         scope.title = message.reactions[old_index].title ;
                     }
-                    console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', src = ' + scope.src + ', title = ' + scope.title) ;
+                    // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', src = ' + scope.src + ', title = ' + scope.title) ;
                 };
                 set_src_and_title(message);
-                // not working. src and title are not updated
+                // extend react. update chatCtrl and this directive
                 var extend_react = function (message2, index2) {
+                    var pgm = 'messageReact.extend_react: ' ;
+                    // console.log(pgm + 'message2 = ' + JSON.stringify(message2) + ', index2 = ' + index2) ;
                     react(message2, index2) ;
                     set_src_and_title(message2);
+                    $(el).popover('hide');
                 };
                 scope.react = extend_react ;
                 linkFn = $compile(content_html) ;

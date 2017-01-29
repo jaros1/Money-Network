@@ -1053,7 +1053,7 @@
                                         <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
                                         <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                               ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                        <message-react message="{{m}}" react="c.react2"></message-react>
+                                        <message-react message="{{m}}" folder="outbox" react="c.react2"></message-react>
                                     </span>
                                     </td>
                                 </tr>
@@ -1145,7 +1145,7 @@
                         <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
 
                             <!-- chat2: show inbox message -->
-                            <table class="speech" ng-click="c.click_message(m)">
+                            <table class="speech">
                                 <tr>
                                     <td style="text-align: left">
                                     <span ng-click="c.chat_contact(m.contact)" class="media-heading" title="Click to chat">
@@ -1167,6 +1167,7 @@
                                         <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
                                            ng-click="c.enter_password(m)" title="Click to verify"></a>
 
+                                        <message-react message="{{m}}" folder="inbox" react="c.react2"></message-react>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1175,7 +1176,7 @@
                                         Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
                                         <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
-                                             ng-click="c.chat_contact(m.contact);$event.stopPropagation()">
+                                             ng-click="c.chat_contact(m.contact)">
                                         <span ng-bind-html="m|formatChatMessage"></span>
                                         </div>
                                     </td>
@@ -1188,22 +1189,6 @@
                                 <tr ng-show="c.show_image(m)">
                                     <td colspan="2">
                                         <img ng-src="{{c.get_image_src(m)}}" >
-                                    </td>
-                                </tr>
-
-                                <tr ng-show="m.show_feedback">
-                                    <td colspan="2" style="text-align: center">
-                                        <table style="margin: 0 auto">
-                                            <thead>
-                                            <tr>
-                                                <td>Reaction:</td>
-                                                <td ng-repeat="r in c.get_message_reactions(m)" height="30" width="30" style="text-align: center; vertical-align: middle">
-                                                    <img ng-click="c.react(m,r);$event.stopPropagation()" ng-show="r.selected" ng-src="{{r.src}}" ng-title="{{r.title}}">
-                                                    <img ng-click="c.react(m,r);$event.stopPropagation()" ng-hide="r.selected" ng-src="{{r.src}}" height="20" width="20" ng-title="{{r.title}}" class="grow20pct">
-                                                </td>
-                                            </tr>
-                                            </thead>
-                                        </table>
                                     </td>
                                 </tr>
 

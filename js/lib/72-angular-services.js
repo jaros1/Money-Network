@@ -3231,6 +3231,18 @@ angular.module('MoneyNetwork')
             for (key in js_messages_index.local_msg_seq) delete js_messages_index.local_msg_seq[key] ;
         } // clear_messages
 
+        var standard_reactions = [
+            { src: "public/images/1f603.png", title: "Like"},
+            { src: "public/images/2764.png",  title: "Love"},
+            { src: "public/images/1f606.png", title: "Ha ha"},
+            { src: "public/images/1f62e.png", title: "Wow"},
+            { src: "public/images/1f622.png", title: "Sad"},
+            { src: "public/images/1f621.png", title: "Angry"}
+        ] ;
+        function get_standard_reactions () {
+            return standard_reactions ;
+        }
+
         // add message to 1) contact, 2) js_messages and 3) js_messages_index
         // load_contacts:
         // - true: called from ls_load_contacts or load_public_chat
@@ -3240,7 +3252,11 @@ angular.module('MoneyNetwork')
             if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
             if (!contact.messages) contact.messages = [] ;
             if (!load_contacts) contact.messages.push(message) ;
-            var js_messages_row = { contact: contact, message: message} ;
+            var js_messages_row = {
+                contact: contact,
+                message: message,
+                reactions: JSON.parse(JSON.stringify(standard_reactions))
+            } ;
             // add new row to js_messages
             js_messages.push(js_messages_row) ;
             // add indexes to js_messages
@@ -8645,7 +8661,8 @@ angular.module('MoneyNetwork')
             get_user_id: get_user_id,
             event_file_done: event_file_done,
             get_chat_notifications: get_chat_notifications,
-            update_chat_notifications: update_chat_notifications
+            update_chat_notifications: update_chat_notifications,
+            get_standard_reactions: get_standard_reactions
             // check_twemojis: check_twemojis
         };
 
