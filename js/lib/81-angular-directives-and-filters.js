@@ -106,7 +106,7 @@ angular.module('MoneyNetwork')
         };
     })
 
-    // empty heart reaction popover directive
+    // empty heart popover directive with reactions
     .directive('messageReact', ['$compile', 'MoneyNetworkService', function($compile, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
         var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
@@ -159,7 +159,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', src = ' + scope.src + ', title = ' + scope.title) ;
                 };
                 set_src_and_title(message);
-                // extend react. update chatCtrl and this directive
+                // extend react. update chatCtrl and directive
                 var extend_react = function (message2, index2) {
                     var pgm = 'messageReact.extend_react: ' ;
                     // console.log(pgm + 'message2 = ' + JSON.stringify(message2) + ', index2 = ' + index2) ;
@@ -171,14 +171,16 @@ angular.module('MoneyNetwork')
                 linkFn = $compile(content_html) ;
                 content = linkFn(scope);
                 // console.log(pgm + 'content = ' + JSON.stringify(content)) ;
+                // todo: it would be nice if the popover could open on hover and be clickable
                 $(el).popover({
-                    trigger: 'click',
+                    trigger: 'click hover focus',
                     html: true,
                     content: content,
                     placement: 'left'
                 });
             }
         };
+        // end messageReact
     }])
 
     .filter('toJSON', [function () {
@@ -550,6 +552,17 @@ angular.module('MoneyNetwork')
             return twemoji.parse(token[idx].content);
         };
 
+        // https://mathiasbynens.be/notes/javascript-unicode
+        var regexSymbolWithCombiningMarks = /([\0-\u02FF\u0370-\u1DBF\u1E00-\u20CF\u2100-\uD7FF\uDC00-\uFE1F\uFE30-\uFFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF])([\u0300-\u036F\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]+)/g;
+        var countSymbolsIgnoringCombiningMarks = function (string) {
+            // Remove any combining marks, leaving only the symbols they belong to:
+            var stripped = string.replace(regexSymbolWithCombiningMarks, function($0, symbol, combiningMarks) {
+                return symbol;
+            });
+            // Account for astral symbols / surrogates, just like we did before:
+            return punycode.ucs2.decode(stripped).length;
+        };
+
         return function (message) {
             var pgm = 'formatChatMessage: ' ;
             // check cache. maybe already saved as a formatted string
@@ -596,15 +609,17 @@ angular.module('MoneyNetwork')
             }
             if (msgtype == 'contact removed') return 'I removed you as contact' ;
             if (msgtype == 'chat msg') {
-                str = $sanitize(message.message.message.message) ;
+                //str = $sanitize(message.message.message.message) ;
+                str = message.message.message.message ;
                 dump_str = function (str) { return JSON.stringify(str.split ('').map (function (c) { return c.charCodeAt (0); }))} ;
-                // console.log(pgm + 'old str = ' + str + ' <=> ' + dump_str(str)) ;
+                console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', lng = ' + str.length + ', old str = ' + str + ' <=> ' + dump_str(str)) ;
+                console.log(pgm + 'symbol count = ' + countSymbolsIgnoringCombiningMarks(str));
                 str = str.replace(/&#10;/g, "\n").replace(/\r\n/g,"\n").replace(/\r/g,"\n") ;
                 str = md.render(str) ;
                 // str = moneyNetworkService.check_twemojis(str) ;
                 if (str.substr(0,3) == '<p>') str = str.substr(3,str.length-8);
                 // console.log(pgm + 'new str = ' + str + ' <=> ' + dump_str(str)) ;
-                message.formatted_message = str ;
+                message.formatted_message = $sanitize(str) ;
                 return str ;
             }
             if (msgtype == 'verify') {
