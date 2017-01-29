@@ -119,7 +119,7 @@ angular.module('MoneyNetwork')
             { src: "public/images/1f621.png", title: "Angry"}
         ] ;
 
-        var i, content_html, linkFn ;
+        var i, content_html ;
         content_html = '<table><tbody><tr>' ;
         for (i=0; i<standard_reactions.length ; i++) {
             content_html += '<td class="reaction_td" ng-click="react(m,' + i + ')">' +
@@ -127,14 +127,15 @@ angular.module('MoneyNetwork')
                 '</td>' ;
         } // for i
         content_html += '</tr></tbody></table>' ;
-        linkFn = $compile(content_html) ;
+        // linkFn = $compile(content_html) ;
 
         return {
             restrict: 'E',
             template: '<img src="{{src}}" height="20" width="20" title="{{title}}">',
+            scope: true,
             link: function (scope, el, attrs) {
                 var pgm = 'messageReact: ' ;
-                var message, content, react ;
+                var message, content, react, linkFn ;
                 // get params
                 message = scope.$eval(attrs.message) ;
                 react = scope.$eval(attrs.react) ; // callback to chatCtrl
@@ -168,6 +169,7 @@ angular.module('MoneyNetwork')
                     set_src_and_title(message2);
                 };
                 scope.react = extend_react ;
+                linkFn = $compile(content_html) ;
                 content = linkFn(scope);
                 // console.log(pgm + 'content = ' + JSON.stringify(content)) ;
                 $(el).popover({
