@@ -106,7 +106,8 @@ angular.module('MoneyNetwork')
         };
     })
 
-    // empty heart popover directive with reactions
+    // empty heart popover with reactions
+    // https://github.com/jaros1/Zeronet-Money-Network/issues/127
     .directive('messageReact', ['$compile', 'MoneyNetworkService', function($compile, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
         var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
@@ -120,7 +121,6 @@ angular.module('MoneyNetwork')
                 '</td>' ;
         } // for i
         content_html += '</tr></tbody></table>' ;
-        // linkFn = $compile(content_html) ;
 
         return {
             restrict: 'E',
@@ -538,9 +538,10 @@ angular.module('MoneyNetwork')
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
 
-        // markdown-it with emojis light plugin and twitter emojis
+        // markdown-it with emojis light plugin and twitter emojis. Used for "chat msg"
         // https://github.com/markdown-it/markdown-it
         // https://github.com/markdown-it/markdown-it-emoji
+        // https://github.com/twitter/twemoji
         var md = window.markdownit().use(window.markdownitEmoji, {
             gfm: true,
             breaks: true,
@@ -549,18 +550,27 @@ angular.module('MoneyNetwork')
             typographer: true
         });
         md.renderer.rules.emoji = function(token, idx) {
+            // console.log('md.renderer.rules.emoji: token = ' + JSON.stringify(token) + ', idx = ' + JSON.stringify(idx));
             return twemoji.parse(token[idx].content);
         };
+        var punycode = window.punycode ;
 
         // https://mathiasbynens.be/notes/javascript-unicode
+        // find unicode symbols in a JS string
         var regexSymbolWithCombiningMarks = /([\0-\u02FF\u0370-\u1DBF\u1E00-\u20CF\u2100-\uD7FF\uDC00-\uFE1F\uFE30-\uFFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF])([\u0300-\u036F\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]+)/g;
         var countSymbolsIgnoringCombiningMarks = function (string) {
+            var pgm = 'formatChatMessage.countSymbolsIgnoringCombiningMarks: ' ;
             // Remove any combining marks, leaving only the symbols they belong to:
             var stripped = string.replace(regexSymbolWithCombiningMarks, function($0, symbol, combiningMarks) {
                 return symbol;
             });
             // Account for astral symbols / surrogates, just like we did before:
-            return punycode.ucs2.decode(stripped).length;
+            var symbols = punycode.ucs2.decode(stripped) ;
+            var symbols_hex = [] ;
+            for (var i=0 ; i<symbols.length ; i++) symbols_hex.push(symbols[i].toString(16)) ;
+            var lng = symbols.length ;
+            console.log('string = ' + string + ', symbols.hex = ' + JSON.stringify(symbols_hex)) ;
+            return lng;
         };
 
         return function (message) {
@@ -587,7 +597,7 @@ angular.module('MoneyNetwork')
             //}
             //greeting = '' ;
             // check known message types
-            var str, msgtype, search, str_a, md_result, dump_str, last_char ;
+            var str, msgtype, search, str_a, md_result, dump_str, symbols ;
             msgtype = message.message.message.msgtype ;
             // console.log(pgm + 'msgtype = ' + msgtype);
             if (msgtype == 'contact added') {
@@ -611,16 +621,32 @@ angular.module('MoneyNetwork')
             if (msgtype == 'chat msg') {
                 //str = $sanitize(message.message.message.message) ;
                 str = message.message.message.message ;
-                dump_str = function (str) { return JSON.stringify(str.split ('').map (function (c) { return c.charCodeAt (0); }))} ;
-                console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', lng = ' + str.length + ', old str = ' + str + ' <=> ' + dump_str(str)) ;
-                console.log(pgm + 'symbol count = ' + countSymbolsIgnoringCombiningMarks(str));
                 str = str.replace(/&#10;/g, "\n").replace(/\r\n/g,"\n").replace(/\r/g,"\n") ;
                 str = md.render(str) ;
-                // str = moneyNetworkService.check_twemojis(str) ;
+                str = moneyNetworkService.replace_emojis(str) ;
                 if (str.substr(0,3) == '<p>') str = str.substr(3,str.length-8);
-                // console.log(pgm + 'new str = ' + str + ' <=> ' + dump_str(str)) ;
-                message.formatted_message = $sanitize(str) ;
+                str = $sanitize(str) ;
+                message.formatted_message = str ;
                 return str ;
+
+                //
+                //
+                //
+                //symbols = countSymbolsIgnoringCombiningMarks(str) ;
+                //dump_str = function (str) { return JSON.stringify(str.split ('').map (function (c) { return c.charCodeAt (0); }))} ;
+                //console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', lng = ' + str.length +
+                //    ', symbols = ' + symbols + ', old str = ' + str + ' <=> ' + dump_str(str)) ;
+                //str = str.replace(/&#10;/g, "\n").replace(/\r\n/g,"\n").replace(/\r/g,"\n") ;
+                //str = md.render(str) ;
+                //// str = moneyNetworkService.check_twemojis(str) ;
+                //if (str.substr(0,3) == '<p>') str = str.substr(3,str.length-8);
+                //// any not replaced unicode symbols?
+                //symbols = countSymbolsIgnoringCombiningMarks(str) ;
+                //if (str.length != symbols) console.log(pgm + 'unicode symbols in string. str.length = ' + str.length + ', symbols = ' + symbols) ;
+                //
+                //// console.log(pgm + 'new str = ' + str + ' <=> ' + dump_str(str)) ;
+                //message.formatted_message = $sanitize(str) ;
+                //return str ;
             }
             if (msgtype == 'verify') {
                 // contact verification request. Different presentation for inbox/outbox and status for verification (pending or verified)

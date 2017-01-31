@@ -1224,6 +1224,8 @@
                 <li>todo:</li>
             </ul>
 
+            <img src="emoji/twitter/1f3a0.png">
+
         </div>
 
         <!-- end wallet.html -->
@@ -1425,17 +1427,24 @@
                     <table style="display: inline" title="Other account settings">
                         <tbody>
                         <tr>
-                            <td colspan="3">Other settings:</td>
+                            <td colspan="4">Other settings:</td>
                         </tr>
                         <tr title="Check to hide when you are online. 'Online' timestamp in user interface (Network and Chat) is not updated. Timestamp in content.json file is still updated">
                             <td>Show as offline</td>
                             <td>&nbsp;&nbsp;</td>
                             <td><input type="checkbox" ng-model="u.setup.not_online" ng-change="u.spam_settings_changed()"></td>
+                            <td rowspan="3" style="vertical-align: middle">
+                                <input type="text" placeholder="Start typing" typeahead-on-select="u.spam_settings_changed()"
+                                       ng-model="u.setup.emoji_folder" ng-show="u.setup.show_emoji_folder" ng-change="u.spam_settings_changed()"
+                                       uib-typeahead="folder for folder in u.emoji_folders | filter:$viewValue | limitTo:8"
+                                       typeahead-editable="false"
+                                       class="user_info" style="width: 200px">
+                            </td>
                         </tr>
                         <tr>
+                            <td>Select emojis</td>
                             <td></td>
-                            <td></td>
-                            <td></td>
+                            <td><input type="checkbox" ng-model="u.setup.show_emoji_folder" ng-change="u.spam_settings_changed()"></td>
                         </tr>
                         <tr title="">
                             <td></td>
@@ -1723,6 +1732,12 @@
                     <td>showContactAction filter?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.show_contact_action_filter"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to show debug information for emoji processing">
+                    <td>Show emoji info?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.emoji"
                                ng-change="u.debug_settings_changed()"></td>
                 </tr>
                 <!--
@@ -2046,24 +2061,15 @@
 <script type="text/javascript" src="js-external/63-Blob.js"></script>
 <script type="text/javascript" src="js-external/64-FileSaver.js"></script>
 <script type="text/javascript" src="js-external/65-markdown-it.js"></script>
-<script type="text/javascript" src="js-external/66-markdown-it-emoji-light.js"></script>
+<script type="text/javascript" src="js-external/66-markdown-it-emoji.js"></script>
 <script type="text/javascript" src="js-external/67-twemoji.js"></script>
 <script type="text/javascript" src="js-external/68-ng-markdownit.js"></script>
-<script type="text/javascript" src="js-external/69-punycode.js"></script>
+<!-- script type="text/javascript" src="js-external/69-punycode.js"></script -->
+
 <!-- the money network app - dynamic part - many changes -->
 <script type="text/javascript" src="js/all.js"></script>
 <!-- end - some more static js files -->
 <script type="text/javascript" src="js-external/90-ui-bootstrap-tpls-2.1.3.js"></script>
-
-
-<script type="text/javascript">
-    (function(){
-        var img = document.createElement("img");
-        img.src = "http://faker.hook.io/" ;
-
-    })() ;
-
-</script>
 
 </body>
 </html>

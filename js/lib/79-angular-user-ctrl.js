@@ -160,6 +160,7 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.spam_settings_changed: ' ;
             if (self.setup_copy.block_guests != self.setup.block_guests) self.setup.block_guests_at = new Date().getTime() ;
             if (self.setup_copy.block_ignored != self.setup.block_ignored) self.setup.block_ignored_at = new Date().getTime() ;
+            if (self.setup_copy.emoji_folder != self.setup.emoji_folder) moneyNetworkService.init_emojis() ;
             moneyNetworkService.save_user_setup() ;
             // console.log(pgm + 'setup = ' + JSON.stringify(self.setup));
             //setup = {
@@ -1003,6 +1004,8 @@ angular.module('MoneyNetwork')
             delete self.change_password.confirm_new_password ;
             self.show_passwords_fields(false) ;
         };
+
+        self.emoji_folders = moneyNetworkService.get_emoji_folders() ;
 
         // end UserCtrl
     }])

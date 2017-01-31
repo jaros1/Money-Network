@@ -3232,15 +3232,21 @@ angular.module('MoneyNetwork')
         } // clear_messages
 
         var standard_reactions = [
-            { src: "public/images/1f603.png", title: "Like"},
-            { src: "public/images/2764.png",  title: "Love"},
-            { src: "public/images/1f606.png", title: "Ha ha"},
-            { src: "public/images/1f62e.png", title: "Wow"},
-            { src: "public/images/1f622.png", title: "Sad"},
-            { src: "public/images/1f621.png", title: "Angry"}
+            { src: "1f603.png", title: "Like"},
+            { src: "2764.png",  title: "Love"},
+            { src: "1f606.png", title: "Ha ha"},
+            { src: "1f62e.png", title: "Wow"},
+            { src: "1f622.png", title: "Sad"},
+            { src: "1f621.png", title: "Angry"}
         ] ;
         function get_standard_reactions () {
-            return standard_reactions ;
+            var emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+            if (emoji_folder[emoji_folder.length-1] != '/') emoji_folder += '/' ;
+            var reactions = [] ;
+            for (var i=0 ; i<standard_reactions.length ; i++) {
+                reactions.push({ src: emoji_folder + standard_reactions[i].src, title: standard_reactions[i].title}) ;
+            }
+            return reactions ;
         }
 
         // add message to 1) contact, 2) js_messages and 3) js_messages_index
@@ -3255,7 +3261,7 @@ angular.module('MoneyNetwork')
             var js_messages_row = {
                 contact: contact,
                 message: message,
-                reactions: JSON.parse(JSON.stringify(standard_reactions))
+                reactions: get_standard_reactions()
             } ;
             // add new row to js_messages
             js_messages.push(js_messages_row) ;
@@ -7891,6 +7897,7 @@ angular.module('MoneyNetwork')
                 load_avatar() ;
                 load_user_info(create_new_account, guest) ;
                 ls_load_contacts() ;
+                init_emojis() ;
                 local_storage_read_messages() ;
                 recheck_old_decrypt_errors() ;
                 check_image_download_failed() ;
@@ -8562,38 +8569,202 @@ angular.module('MoneyNetwork')
             }); // $timeout callback
         } // check_overflow
 
-        //// twemoji. Use ZeroNet links instead of external https:twemoji.maxcdn.com/2/72x72/ links
-        //var twemojis = MoneyNetworkHelper.get_twemojis() ;
-        //function check_twemojis(str) {
-        //    var pgm = service + '.check_twemojis: ' ;
-        //    var new_url, image ;
-        //    str = str.replace(/https:\/\/twemoji\.maxcdn\.com\/2\/72x72\/[0-9a-f]+\.png/gm, function (match) {
-        //        var pgm = service + '.check_twemojis replace callback: ' ;
-        //        // console.log(pgm + 'match = ' + match) ;
-        //        new_url = 'twemoji/2/72x72/' + match.split('/').pop() ;
-        //        if (!twemojis.hasOwnProperty(new_url)) {
-        //            console.log(pgm + 'Unknown twemojis ' + match) ;
-        //            return match ;
-        //        }
-        //        // could not get optional files and twemojis to work ....
-        //        //if (!twemojis[new_url]) {
-        //        //    // download optional file with twemoji
-        //        //    console.log(pgm + 'downloading twemoji ' + new_url) ;
-        //        //    $timeout(function () {
-        //        //        twemojis[new_url] = new Image();
-        //        //        twemojis[new_url].src = new_url;
-        //        //        twemojis[new_url].onload = (function() {
-        //        //            var pgm = service + '.check_twemojis.$timeout.image.onload: ' ;
-        //        //            console.log(pgm + 'downloaded twemoji ' + new_url) ;
-        //        //            twemojis[new_url] = true ;
-        //        //        });
-        //        //    }) ;
-        //        //}
-        //        twemojis[new_url] = true ;
-        //        return new_url ;
-        //    }) ;
-        //    return str ;
-        //}
+        // select emoji provider. twemoji from maxcdn.com or ZeroNet optional files
+        var emoji_folders = ['https://twemoji.maxcdn.com/2/72x72', 'emoji/twitter', 'emoji/apple', 'emoji/google',
+            'emoji/facebook', 'emoji/messenger', 'emoji/one', 'emoji/samsung', 'emoji/windows'] ;
+        function get_emoji_folders () {
+            return emoji_folders ;
+        }
+
+        var emojis_full_list = MoneyNetworkHelper.get_emojis() ; // content.files_optional
+        var emojis = {} ; // short list of quick lookup
+        function init_emojis () {
+            var pgm = service + '.init_emojis: ' ;
+            var src, emoji_folder, lng, filename, hexcodes, hexcodes_a, i, hexcode, node, max_lng ;
+            for (src in emojis) delete emojis[src] ;
+            if (!user_setup.emoji_folder || ([emoji_folders[0], emoji_folders[1]].indexOf(user_setup.emoji_folder) != -1)) emoji_folder = 'emoji/twitter' ;
+            else emoji_folder = user_setup.emoji_folder ;
+            // console.log(pgm + 'emojis_full_list = ' + JSON.stringify(emojis_full_list)) ;
+            // console.log(pgm + 'emoji_folder = ' + emoji_folder) ;
+            lng = emoji_folder.length ;
+            max_lng = 0 ;
+            for (src in emojis_full_list) {
+                if (src.substr(0,lng) != emoji_folder) continue ;
+                filename = src.split('/').pop().split('.')[0] ;
+                // remove leading 0 from hexcodes. for example 00a9 (copyright emoji)
+                hexcodes = filename ;
+                hexcodes_a = hexcodes.split('_') ;
+                if (hexcodes_a.length > max_lng) max_lng = hexcodes_a.length ;
+                for (i=0 ; i<hexcodes_a.length ; i++) {
+                    hexcode = hexcodes_a[i] ;
+                    while (hexcode.substr(0,1) == '0') hexcode = hexcode.substr(1) ;
+                    hexcodes_a[i] = hexcode ;
+                }
+                hexcodes = hexcodes_a.join('_') ;
+                // symbol scan from end to start. nested emojis objects until first symbol with src
+                node = emojis ;
+                for (i=hexcodes_a.length-1 ; i >= 0 ; i--) {
+                    hexcode = hexcodes_a[i] ;
+                    if (!node[hexcode]) node[hexcode] = {} ;
+                    node = node[hexcode] ;
+                    if (i == 0) node.src = filename ;
+                } // for i
+            } // for key
+            debug('emoji', pgm + 'max_lng = ' + max_lng) ;
+            // console.log(pgm + 'emojis = ' + JSON.stringify(emojis)) ;
+            //emojis = {
+            //    "2049": {"scr": "2049"},
+            //    ...
+            //    "2122": {"scr": "2122"},
+            //    "20e3": {
+            //        "fe0f": {
+            //            "23": {"scr": "0023_fe0f_20e3"},
+            //            "30": {"scr": "0030_fe0f_20e3"},
+            //            "31": {"scr": "0031_fe0f_20e3"},
+            //            "32": {"scr": "0032_fe0f_20e3"},
+            //            "33": {"scr": "0033_fe0f_20e3"},
+            //            "34": {"scr": "0034_fe0f_20e3"},
+            //            "35": {"scr": "0035_fe0f_20e3"},
+            //            "36": {"scr": "0036_fe0f_20e3"},
+            //            "37": {"scr": "0037_fe0f_20e3"},
+            //            "38": {"scr": "0038_fe0f_20e3"},
+            //            "39": {"scr": "0039_fe0f_20e3"},
+            //            "2a": {"scr": "002a_fe0f_20e3"}
+            //        }
+            //    },
+            //    "1f19a": {"scr": "1f19a"},
+            //    "1f1e8": {
+            //        "1f1e6": {"scr": "1f1e6_1f1e8"},
+            //        "1f1e8": {"scr": "1f1e8_1f1e8"},
+            //        "1f1ea": {"scr": "1f1ea_1f1e8"},
+            //        "1f1ee": {"scr": "1f1ee_1f1e8"},
+            //        "1f1f1": {"scr": "1f1f1_1f1e8"},
+            //        "1f1f2": {"scr": "1f1f2_1f1e8"},
+            //        "1f1f3": {"scr": "1f1f3_1f1e8"},
+            //        "1f1f8": {"scr": "1f1f8_1f1e8"},
+            //        "1f1f9": {"scr": "1f1f9_1f1e8"},
+            //        "1f1fb": {"scr": "1f1fb_1f1e8"}
+            //    },
+            // ...
+            //    "303d": {"scr": "303d"}
+            //};
+        } // init_emojis
+
+        // helper. string to unicode symbols
+        // https://mathiasbynens.be/notes/javascript-unicode
+        var punycode = window.punycode ;
+        var regexSymbolWithCombiningMarks = /([\0-\u02FF\u0370-\u1DBF\u1E00-\u20CF\u2100-\uD7FF\uDC00-\uFE1F\uFE30-\uFFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF])([\u0300-\u036F\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]+)/g;
+        function str_to_symbols (string) {
+            var stripped, symbols ;
+            stripped = string.replace(regexSymbolWithCombiningMarks, function($0, symbol, combiningMarks) {
+                return symbol;
+            });
+            // Account for astral symbols / surrogates, just like we did before:
+            symbols = punycode.ucs2.decode(string) ; // keycap-9 combination returned OK
+            // symbols = punycode.ucs2.decode(stripped) ; // keycap-9 combination was destroyed
+            return symbols ;
+        }
+
+
+        // chat messages. extra parse. check url for twemojis and not translated unicode symbols
+        var emoji_alt_prefix = str_to_symbols(' alt="') ;
+        var emoji_alt_postfix = str_to_symbols('" ') ;
+        function replace_emojis (str) {
+            var pgm = service + '.replace_emojis: ' ;
+            var new_url, symbols, symbols_hex, i1, i2, best_i1, best_src, node, in_alt, i3, i4, img_str_start,
+                img_str_end, img_symbols_start, img_symbols_end, img_symbols, symbols_updated ;
+
+            // 1: check urls created by markdown-it twemoji parse.
+            // Only relevant if user as selected other emoji folder than https://twemoji.maxcdn.com/2/72x72
+            if (user_setup.emoji_folder && (user_setup.emoji_folder != emoji_folders[0])) {
+                str = str.replace(/https:\/\/twemoji\.maxcdn\.com\/2\/72x72\/[0-9a-f]+\.png/gm, function (match) {
+                    var pgm = service + '.check_twemojis replace callback: ' ;
+                    // console.log(pgm + 'match = ' + match) ;
+                    new_url = user_setup.emoji_folder + '/' + match.split('/').pop() ;
+                    if (!emojis_full_list.hasOwnProperty(new_url)) {
+                        debug('emoji', pgm + 'Unknown emojis ' + match) ;
+                        emojis_full_list[new_url] = false ;
+                    }
+                    if (!emojis_full_list[new_url]) return match ;
+                    return new_url ;
+                }) ;
+            }
+
+            // 2: check any known but not replaced emoji unicodes in string. scan from end to start. see init_emojis.
+            // ignore emoji symbols in alt: (<img class="emoji" draggable="false" alt="😃"src="emoji/twitter/1f603.png">)
+            symbols = str_to_symbols(str) ;
+            symbols_hex = [] ;
+            for (i2=0 ; i2<symbols.length ; i2++) symbols_hex.push(symbols[i2].toString(16)) ;
+            debug('emoji', pgm + 'str.length = ' + str.length + ', symbols.length = ' + symbols.length +
+                ', str = ' + str + ', symbols = ' + JSON.stringify(symbols) +
+                ', symbols_hex = ' + JSON.stringify(symbols_hex)) ;
+            symbols_updated = false ;
+            for (i2=symbols_hex.length-1 ; i2 >= 0 ; i2--)  {
+                if (!emojis[symbols_hex[i2]]) continue ;
+                // check for unicode combinations
+                i1 = i2 ; node = emojis ; best_i1 = null ; best_src = null ;
+                while ((i1 >= 0) && node[symbols_hex[i1]]) {
+                    // console.log(pgm + '1: i1 = ' + i1 + ', symbol_hex[' + i1 + '] = ' + symbols_hex[i1]) ;
+                    node = node[symbols_hex[i1]] ;
+                    // console.log(pgm + '2: i1 = ' + i1 + ', node = ' + JSON.stringify(node)) ;
+                    if (node.src) {
+                        best_i1 = i1 ;
+                        best_src = node.src ;
+                    }
+                    i1-- ;
+                } // while
+                // console.log(pgm + '3: i1 = ' + i1 + ', symbol_hex[' + i1 + '] = ' + symbols_hex[i1]) ;
+                if (!best_src) {
+                    if (symbols_hex[i2] == 'fe0f') {
+                        // variant selector but no emoji was found ending with this variant selector.
+                        // remove - error in some test cases ...
+                        symbols.splice(i2,1) ;
+                        symbols_hex.splice(i2,1) ;
+                    }
+                    continue ;
+                }
+
+                // ignore if emoji symbol is inside an alt="<symbol>" attribute
+                in_alt = true ;
+                // check alt prefix
+                i3 = best_i1-1 ;
+                i4 = emoji_alt_prefix.length-1 ;
+                while ((i3 >= 0) && (i4 >= 0) && (symbols[i3] == emoji_alt_prefix[i4])) { i3-- ; i4-- }
+                if (i4 >= 0) in_alt = false ;
+                // check alt postfix
+                i3 = i2+1 ;
+                i4 = 0 ;
+                while ((i3 < symbols.length) && (i4 < emoji_alt_postfix.length ) && (symbols[i3] == emoji_alt_postfix[i4])) { i3++ ; i4++ }
+                if (i4 < emoji_alt_postfix.length) in_alt = false
+                debug('emoji', pgm + 'found emoji symbol ' + best_src + ' at pos ' + best_i1 + '..' + i2 + '. in_alt = ' + in_alt) ;
+                if (in_alt) {
+                    // keep - already in a <img class="emoji" draggable="false" alt="<symbol>" src="<src>">
+                    i2 = best_i1 ;
+                    continue ;
+                }
+
+                // replace emoji symbol with <img class="emoji" draggable="false" alt="<symbol>" src="<src>">
+                img_str_start = '<img class="emoji" draggable="false" alt="' ;
+                img_str_end = '" src="' + (user_setup.emoji_folder || emoji_folders[0]) + '/' + best_src + '.png' + '">';
+                debug('emoji', pgm + 'img tag = ' + img_str_start + '<emoji>' + img_str_end) ;
+                img_symbols_start = str_to_symbols(img_str_start) ;
+                img_symbols_end = str_to_symbols(img_str_end) ;
+                img_symbols = [] ;
+                while (img_symbols_start.length) img_symbols.push(img_symbols_start.shift()) ;
+                for (i3=best_i1 ; i3 <= i2 ; i3++) img_symbols.push(symbols[i3]) ; // inside alt - emoji unicode(s)
+                while (img_symbols_end.length) img_symbols.push(img_symbols_end.shift()) ;
+                symbols.splice(best_i1, i2-best_i1+1) ;
+                while (img_symbols.length) symbols.splice(best_i1, 0, img_symbols.pop()) ;
+                symbols_updated = true ;
+                i2 = best_i1 ;
+            } // for i
+            if (symbols_updated) {
+                str = punycode.ucs2.encode(symbols) ;
+                debug('emoji', pgm + 'new str = ' + str) ;
+            }
+
+            return str ;
+        } // replace_emojis
 
         // export MoneyNetworkService API
         return {
@@ -8662,7 +8833,10 @@ angular.module('MoneyNetwork')
             event_file_done: event_file_done,
             get_chat_notifications: get_chat_notifications,
             update_chat_notifications: update_chat_notifications,
-            get_standard_reactions: get_standard_reactions
+            get_standard_reactions: get_standard_reactions,
+            get_emoji_folders: get_emoji_folders,
+            init_emojis: init_emojis,
+            replace_emojis: replace_emojis
             // check_twemojis: check_twemojis
         };
 

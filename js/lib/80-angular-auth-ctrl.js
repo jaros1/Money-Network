@@ -92,6 +92,16 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.login_or_register: ';
             var create_new_account, create_guest_account ;
 
+            // check ZeroFrame status before client log in
+            if (!ZeroFrame.site_info) {
+                ZeroFrame.cmd("wrapperNotification", ['info', 'Please wait. ZeroFrame is loading', 5000]);
+                return ;
+            }
+            if (!ZeroFrame.site_info.cert_user_id) {
+                ZeroFrame.cmd("wrapperNotification", ['info', 'Please select ZeroNet ID before log in', 5000]);
+                return ;
+            }
+
             if (!self.use_login) {
                 // login/register without a password. minimum keysize and using cryptMessage as preferred encryption method
                 self.register = 'Y' ;

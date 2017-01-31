@@ -156,7 +156,7 @@ var MoneyNetworkHelper = (function () {
 
     // initialize array with public avatars from public/images/avatar
     var public_avatars = [] ;
-    // var twemojis = {} ;
+    var emojis = {} ;
     function load_public_avatars () {
         ZeroFrame.cmd("fileGet", ['content.json', false], function (res) {
             var pgm = module + '.load_public_avatars fileGet callback: ';
@@ -166,22 +166,22 @@ var MoneyNetworkHelper = (function () {
                 if (!res.files.hasOwnProperty(key)) continue ;
                 if (key.substr(0,20) == 'public/images/avatar') public_avatars.push(key.substr(20,key.length-20)) ;
             } // for key
-            //if (!res.files_optional) res.files_optional = {} ;
-            //for (key in res.files_optional) {
-            //    if (key.substr(0,8) != 'twemoji/') continue ;
-            //    twemojis[key] = false ;
-            //}
-            // console.log(pgm + 'public_avatars = ' + JSON.stringify(public_avatars));
-            // console.log(pgm + 'twemojis = ' + JSON.stringify(twemojis)) ;
+            if (!res.files_optional) res.files_optional = {} ;
+            for (key in res.files_optional) {
+                if (key.substr(0,6) != 'emoji/') continue ;
+                emojis[key] = true ;
+            }
+             //console.log(pgm + 'public_avatars = ' + JSON.stringify(public_avatars));
+             //console.log(pgm + 'emojis = ' + JSON.stringify(emojis)) ;
         })
     } // load_public_avatars
     load_public_avatars() ;
     function get_public_avatars () {
         return public_avatars ;
     }
-    //function get_twemojis () {
-    //    return twemojis ;
-    //}
+    function get_emojis () {
+        return emojis ;
+    }
 
     // return Last online from contact search array. Only value with typeof = number
     function get_last_online (contact) {
@@ -1221,7 +1221,7 @@ var MoneyNetworkHelper = (function () {
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
-            'issue_112'];
+            'issue_112', 'emoji'];
         for (i = 0; i < debug_keys.length; i++) {
             key = debug_keys[i];
             if (user_setup.debug[key]) debug_value = 'true';
@@ -1275,7 +1275,7 @@ var MoneyNetworkHelper = (function () {
     return {
         // local storage helpers
         get_public_avatars: get_public_avatars,
-        //get_twemojis: get_twemojis,
+        get_emojis: get_emojis,
         get_last_online: get_last_online,
         set_last_online: set_last_online,
         use_login_changed: use_login_changed,
