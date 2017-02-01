@@ -1406,7 +1406,8 @@ module.exports = {
   sweat:            [ ',:(', ',:-(' ],
   sweat_smile:      [ ',:)', ',:-)' ],
   unamused:         [ ':s', ':-S', ':z', ':-Z', ':$', ':-$' ],
-  wink:             [ ';)', ';-)' ]
+  wink:             [ ';)', ';-)' ],
+  keycap_ten:       [ ':10:']
 };
 
 },{}],3:[function(require,module,exports){
