@@ -7959,6 +7959,59 @@ angular.module('MoneyNetwork')
         } // get_my_unique_id
 
 
+        var server_info = {} ;
+        function load_server_info() {
+            var pgm = service + '.load_server_info: ' ;
+            console.log(pgm);
+            if (Object.keys(server_info).length) return ; // already loaded
+            ZeroFrame.cmd("serverInfo", {}, function (new_server_info) {
+                var pgm = service + '.load_server_info serverInfo callback: ';
+                console.log(pgm + 'server_info = ' + JSON.stringify(new_server_info)) ;
+                // localhost
+                //server_info = {
+                //    "ip_external": false,
+                //    "fileserver_ip": "127.0.0.1",
+                //    "tor_enabled": true,
+                //    "plugins": ["AnnounceZero", "CryptMessage", "MergerSite", "Newsfeed", "OptionalManager", "PeerDb", "Sidebar", "Stats", "TranslateSite", "Trayicon", "Zeroname"],
+                //    "fileserver_port": 15441,
+                //    "language": "en",
+                //    "ui_port": 43110,
+                //    "rev": 1851,
+                //    "ui_ip": "127.0.0.1",
+                //    "platform": "linux2",
+                //    "version": "0.5.1",
+                //    "tor_status": "OK (38 onion running)",
+                //    "debug": true
+                //};
+                // proxy server (https://bit.no.com:43110)
+                //server_info = {
+                //    "ip_external": true,
+                //    "fileserver_ip": "*",
+                //    "multiuser": true,
+                //    "tor_enabled": false,
+                //    "plugins": ["AnnounceZero", "CryptMessage", "MergerSite", "Multiuser", "Newsfeed", "OptionalManager", "PeerDb", "Sidebar", "Stats", "TranslateSite", "Trayicon", "Zeroname"],
+                //    "fileserver_port": 15441,
+                //    "language": "en",
+                //    "ui_port": 43111,
+                //    "rev": 1812,
+                //    "ui_ip": "127.0.0.1",
+                //    "platform": "linux2",
+                //    "version": "0.5.1",
+                //    "tor_status": "Error ([Errno 111] Connection refused)",
+                //    "debug": false
+                //};
+                var key ;
+                for (key in server_info) delete server_info[key] ;
+                for (key in new_server_info) server_info[key] = new_server_info[key] ;
+            }) ;
+        } // load_server_info
+        function is_proxy_server () {
+            if (!Object.keys(server_info).length) return false ;
+            if (!server_info.ip_external) return false ;
+            if (server_info.plugins.indexOf('Multiuser') == -1) return false ;
+            // external ip and Multiuser plugin. maybe a proxy server
+            return true ;
+        } // is_proxy_server
 
         // update timestamp in status.json file and modified in content.json.
         // will allow users to communicate with active contacts and ignoring old and inactive contacts
@@ -7988,6 +8041,7 @@ angular.module('MoneyNetwork')
                 pgm + 'My cert_user_id is ' + ZeroFrame.site_info.cert_user_id +
                 ', my auth address is ' + ZeroFrame.site_info.auth_address +
                 ' and my unique id ' + get_my_unique_id()) ;
+            debug('site_info', pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info));
 
             get_data_json(function (data, empty) {
                 var pgm = service + '.i_am_online get_data_json callback: ';
@@ -8836,8 +8890,9 @@ angular.module('MoneyNetwork')
             get_standard_reactions: get_standard_reactions,
             get_emoji_folders: get_emoji_folders,
             init_emojis: init_emojis,
-            replace_emojis: replace_emojis
-            // check_twemojis: check_twemojis
+            replace_emojis: replace_emojis,
+            load_server_info: load_server_info,
+            is_proxy_server: is_proxy_server
         };
 
         // end MoneyNetworkService

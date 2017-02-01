@@ -64,6 +64,7 @@ angular.module('MoneyNetwork')
         MoneyNetworkHelper.ls_bind(function() {
             set_register_yn() ;
             set_use_login() ;
+            moneyNetworkService.load_server_info() ;
             if (ls_was_loading) $rootScope.$apply() ; // workaround. Only needed after page start/reload
         }) ;
 
@@ -90,7 +91,7 @@ angular.module('MoneyNetwork')
         };
         self.login_or_register = function () {
             var pgm = controller + '.login_or_register: ';
-            var create_new_account, create_guest_account ;
+            var create_new_account, create_guest_account, verb, msg ;
 
             // check ZeroFrame status before client log in
             if (!ZeroFrame.site_info) {
@@ -103,11 +104,11 @@ angular.module('MoneyNetwork')
             }
 
             if (!self.use_login) {
-                // login/register without a password. minimum keysize and using cryptMessage as preferred encryption method
+                // login/register without a password and minimum keysize
                 self.register = 'Y' ;
                 self.device_password = '';
                 self.confirm_device_password = '';
-                self.keysize = '256' ;
+                self.keysize = moneyNetworkService.is_proxy_server() ? '1024' : '256' ;
             }
             create_new_account = (self.register != 'N');
             create_guest_account = (self.register == 'G');
@@ -179,11 +180,25 @@ angular.module('MoneyNetwork')
                 else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
             } ; // login_or_register_cb
 
-            // warning before login user has selected a long key for a new account
+
             if ((self.register != 'N') && (self.keysize >= '4096')) {
+                // warning before login user has selected a long key for a new account
                 verb = self.keysize == '4096' ? 'some' : 'long' ;
                 ZeroFrame.cmd("wrapperConfirm", ["Generating a " + self.keysize + " bits key will take " + verb + " time.<br>Continue?", "OK"], function (confirm) {
                     if (confirm) login_or_register_cb() ;
+                })
+            }
+            else if ((self.register != 'N') && (self.keysize == '256') && moneyNetworkService.is_proxy_server()) {
+                // warning using cryptMessage on proxy servers
+                msg = 'Warning. Using CryptMessage 256 bits encryption on a proxy server' +
+                    '<br>Certificate is saved on proxy server (not secure),' +
+                    '<br>certificate will be deleted after a short period' +
+                    '<br>and message encrypted to this certificate will be lost.' +
+                    '<br>Recommend instead using JSEncrypt with 1024 bits key. ' +
+                    '<br>Private key will be saved encrypted in browser (localStorage).' +
+                    '<br>Continue with CryptMessage and 256 bits key?';
+                ZeroFrame.cmd("wrapperConfirm", [msg, "OK"], function (confirm) {
+                    if (confirm) login_or_register_cb();
                 })
             }
             else login_or_register_cb() ;

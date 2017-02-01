@@ -1740,6 +1740,12 @@
                     <td><input type="checkbox" ng-model="u.setup.debug.emoji"
                                ng-change="u.debug_settings_changed()"></td>
                 </tr>
+                <tr title="Click to show ZeroNet site info after client log in">
+                    <td>Show site info?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.site_info"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
                 <!--
                 <tr title="Issue #112. Post fails without timestamp and without error in log">
                     <td>Debug issue #112</td>
