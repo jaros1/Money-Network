@@ -1006,6 +1006,8 @@ angular.module('MoneyNetwork')
         };
 
         self.emoji_folders = moneyNetworkService.get_emoji_folders() ;
+        self.user_reactions = moneyNetworkService.get_user_reactions() ;
+        self.edit_reactions = false ;
 
         // end UserCtrl
     }])

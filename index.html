@@ -1433,18 +1433,11 @@
                             <td>Show as offline</td>
                             <td>&nbsp;&nbsp;</td>
                             <td><input type="checkbox" ng-model="u.setup.not_online" ng-change="u.spam_settings_changed()"></td>
-                            <td rowspan="3" style="vertical-align: middle">
-                                <input type="text" placeholder="Start typing" typeahead-on-select="u.spam_settings_changed()"
-                                       ng-model="u.setup.emoji_folder" ng-show="u.setup.show_emoji_folder" ng-change="u.spam_settings_changed()"
-                                       uib-typeahead="folder for folder in u.emoji_folders | filter:$viewValue | limitTo:8"
-                                       typeahead-editable="false"
-                                       class="user_info" style="width: 200px">
-                            </td>
                         </tr>
                         <tr>
-                            <td>Select emojis</td>
                             <td></td>
-                            <td><input type="checkbox" ng-model="u.setup.show_emoji_folder" ng-change="u.spam_settings_changed()"></td>
+                            <td></td>
+                            <td><input type="checkbox" ng-model="u.setup.todo1" ng-change="u.spam_settings_changed()"></td>
                         </tr>
                         <tr title="">
                             <td></td>
@@ -1592,6 +1585,62 @@
                             </table>
                             </form>
                         </span>
+                    </td>
+                </tr>
+                <tr><td colspan="3">&nbsp;</td></tr>
+                <tr title="Select preferred emoji style (apple, facebook, google, messenger, one, samsung, twitter or windows). Default: get emojis from https://twemoji.maxcdn.com. emoji/xxxxxxx: download used emojis as optional files on ZeroNet">
+                    <td>Emoji style:</td>
+                    <td></td>
+                    <td>
+                        <input type="text" placeholder="Start typing" typeahead-on-select="u.spam_settings_changed()"
+                               ng-model="u.setup.emoji_folder" ng-show="u.setup.show_emoji_folder" ng-change="u.spam_settings_changed()"
+                               uib-typeahead="folder for folder in u.emoji_folders | filter:$viewValue | limitTo:8"
+                               typeahead-editable="false"
+                               class="user_info" style="width: 200px">
+                    </td>
+                </tr>
+                <tr ng-hide="u.edit_reactions" title="Click to customize your reactions." ng-click="u.edit_reactions=true">
+                    <td>Reactions:</td>
+                    <td></td>
+                    <td>
+                        <table>
+                            <tbody>
+                            <tr>
+                                <td class="reaction_td" ng-repeat="r in u.user_reactions">
+                                    <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct">
+                                </td>
+                                <td><a class="icon icon-edit" href=""></a></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr ng-show="u.edit_reactions" title="Update your reactions. Recommends max 6-7 reactions in reaction popover">
+                    <td style="vertical-align: top">Reactions:</td>
+                    <td></td>
+                    <td>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Unicode</th>
+                                <th>&nbsp;</th>
+                                <th>Emoji</th>
+                                <th>&nbsp;</th>
+                                <th>Title</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr ng-repeat="r in u.user_reactions">
+                                <td ng-bind="r.src|reactionUniCode" class="reaction_td"></td>
+                                <td></td>
+                                <td>
+                                    <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct">
+                                </td>
+                                <td></td>
+                                <td ng-bind="r.title"></td>
+                            </tr>
+                            </tbody>
+                        </table>
                     </td>
                 </tr>
                 </tbody>

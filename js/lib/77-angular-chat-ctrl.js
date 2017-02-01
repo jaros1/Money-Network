@@ -1218,9 +1218,9 @@ angular.module('MoneyNetwork')
                 old_value = message.message.message.message;
                 new_value = document.getElementById(textarea_id).value;
                 document.getElementById(textarea_id).value = '' ;
-                console.log(pgm + 'old message = ' + JSON.stringify(message.message));
-                console.log(pgm + 'old value = ' + old_value);
-                console.log(pgm + 'new value = ' + new_value);
+                MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'old message = ' + JSON.stringify(message.message));
+                MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'old value = ' + old_value);
+                MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'new value = ' + new_value);
                 old_image = message.message.message.original_image ;
                 delete message.message.message.original_image ;
                 img_id = chatEditImgId(message) ;

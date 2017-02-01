@@ -3249,6 +3249,17 @@ angular.module('MoneyNetwork')
             return reactions ;
         }
 
+        function get_user_reactions () {
+            if (!user_setup.reactions) return get_standard_reactions() ;
+            var emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+            if (emoji_folder[emoji_folder.length-1] != '/') emoji_folder += '/' ;
+            var reactions = [] ;
+            for (var i=0 ; i<user_setup.reactions.length ; i++) {
+                reactions.push({ src: emoji_folder + user_setup.reactions[i].src, title: user_setup.reactions[i].title}) ;
+            }
+            return reactions ;
+        } // get_user_reactions
+
         // add message to 1) contact, 2) js_messages and 3) js_messages_index
         // load_contacts:
         // - true: called from ls_load_contacts or load_public_chat
@@ -9915,8 +9926,7 @@ angular.module('MoneyNetwork')
                     i2 = best_i1 ;
                     continue ;
                 }
-
-                // ignore if using https://twemoji.maxcdn.com/2/72x72 and emoji is not available online
+                // also ignore if using https://twemoji.maxcdn.com/2/72x72 and emoji is not available online
                 if (!user_setup.emoji_folder || (user_setup.emoji_folder == emoji_folders[0])) {
                     if (missing_twemojis.indexOf(best_src) != -1) {
                         // keep unicode character
@@ -10017,6 +10027,7 @@ angular.module('MoneyNetwork')
             get_chat_notifications: get_chat_notifications,
             update_chat_notifications: update_chat_notifications,
             get_standard_reactions: get_standard_reactions,
+            get_user_reactions: get_user_reactions,
             get_emoji_folders: get_emoji_folders,
             init_emojis: init_emojis,
             replace_emojis: replace_emojis,

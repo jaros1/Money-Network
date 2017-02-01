@@ -111,7 +111,7 @@ angular.module('MoneyNetwork')
     .directive('messageReact', ['$compile', 'MoneyNetworkService', function($compile, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
         var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
-        var standard_reactions = moneyNetworkService.get_standard_reactions() ;
+        var standard_reactions = moneyNetworkService.get_user_reactions() ;
 
         var i, content_html ;
         content_html = '<table><tbody><tr>' ;
@@ -124,7 +124,7 @@ angular.module('MoneyNetwork')
 
         return {
             restrict: 'E',
-            template: '<img src="{{src}}" height="20" width="20" title="{{title}}">',
+            template: '<img ng-src="{{src}}" height="20" width="20" title="{{title}}">',
             scope: true,
             link: function (scope, el, attrs) {
                 var pgm = 'messageReact: ' ;
@@ -930,6 +930,15 @@ angular.module('MoneyNetwork')
             else return 'overflow' ;
         } ;
         // end messageShortChatTime filter
+    }])
+
+    .filter('reactionUniCode', [ function () {
+        // return null or overflow (long texts)
+        return function (src) {
+            if (!src) return src ;
+            return src.split('/').pop().split('.')[0] ;
+        } ;
+        // end eactionUniCode filter
     }])
 
 ;
