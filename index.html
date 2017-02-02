@@ -1599,7 +1599,7 @@
                                class="user_info" style="width: 200px">
                     </td>
                 </tr>
-                <tr ng-hide="u.edit_reactions" title="Click to customize your reactions." ng-click="u.edit_reactions=true">
+                <tr title="Click to customize your reactions." ng-click="u.edit_reactions(true)">
                     <td>Reactions:</td>
                     <td></td>
                     <td>
@@ -1609,35 +1609,53 @@
                                 <td class="reaction_td" ng-repeat="r in u.user_reactions">
                                     <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct">
                                 </td>
-                                <td><a class="icon icon-edit" href=""></a></td>
+                                <td>
+                                    <a ng-hide="u.editing_reactions" class="icon icon-edit" href=""></a>
+                                    <span ng-show="u.editing_reactions" class="glyphicon glyphicon-ok" style="font-size: larger"
+                                          title="Save" ng-click="u.edit_reactions(false); $event.stopPropagation();">
+                                    </span>
+                                </td>
                             </tr>
                             </tbody>
                         </table>
                     </td>
                 </tr>
-                <tr ng-show="u.edit_reactions" title="Update your reactions. Recommends max 6-7 reactions in reaction popover">
-                    <td style="vertical-align: top">Reactions:</td>
-                    <td></td>
-                    <td>
+                <tr ng-show="u.editing_reactions" title="Update your reactions. Recommends max 6-7 reactions in reaction popover. Full emoji list at http://unicode.org/emoji/charts/full-emoji-list.html">
+                    <td colspan="3">
                         <table>
                             <thead>
                             <tr>
-                                <th>Unicode</th>
-                                <th>&nbsp;</th>
-                                <th>Emoji</th>
-                                <th>&nbsp;</th>
-                                <th>Title</th>
+                                <td>Unicode</td>
+                                <td>&nbsp;</td>
+                                <td>Emoji</td>
+                                <td>&nbsp;</td>
+                                <td>Text</td>
+                                <td>&nbsp;</td>
+                                <th></th>
                             </tr>
                             </thead>
                             <tbody>
                             <tr ng-repeat="r in u.user_reactions">
                                 <td ng-bind="r.src|reactionUniCode" class="reaction_td"></td>
-                                <td></td>
-                                <td>
+                                <td><span class="glyphicon glyphicon-arrow-up" style="font-size: larger" title="Move up"></span></td>
+                                <td class="reaction_td">
                                     <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct">
                                 </td>
+                                <td><span class="glyphicon glyphicon-arrow-down" style="font-size: larger" title="Move down"></span></td>
+                                <td><input type="text" ng-model="r.title" style="width: 120px"></td>
                                 <td></td>
-                                <td ng-bind="r.title"></td>
+                                <td>
+                                    <span class="glyphicon glyphicon-remove" style="color: red; font-size: larger" title="Delete"></span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Add new:</td>
+                                <td></td>
+                                <td>3</td>
+                                <td></td>
+                                <td>5</td>
+                                <td></td>
+                                <td>7</td>
                             </tr>
                             </tbody>
                         </table>
@@ -2123,7 +2141,7 @@
 <script type="text/javascript" src="js/all.js"></script>
 <!-- end - some more static js files -->
 <script type="text/javascript" src="js-external/90-ui-bootstrap-tpls-2.1.3.js"></script>
-<script type="text/javascript" src="js-external/91-missing-twemoji.js"></script>
+<script type="text/javascript" src="js-external/91-emoji-info.js"></script>
 
 
 </body>

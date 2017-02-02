@@ -1007,7 +1007,20 @@ angular.module('MoneyNetwork')
 
         self.emoji_folders = moneyNetworkService.get_emoji_folders() ;
         self.user_reactions = moneyNetworkService.get_user_reactions() ;
-        self.edit_reactions = false ;
+        self.editing_reactions = false ;
+        self.edit_reactions = function (edit) {
+            if (edit && !self.setup.reactions) {
+                // first edit. clone standard reactions
+                self.setup.reactions = JSON.parse(JSON.stringify(moneyNetworkService.get_standard_reactions())) ;
+                self.user_reactions = moneyNetworkService.get_user_reactions() ;
+            }
+            self.editing_reactions = edit ;
+            if (!edit) {
+                // save/done
+                moneyNetworkService.save_user_setup() ;
+                MoneyNetworkHelper.load_user_setup() ;
+            }
+        };
 
         // end UserCtrl
     }])
