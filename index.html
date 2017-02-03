@@ -1622,7 +1622,7 @@
                 </tr>
                 <tr ng-show="u.editing_reactions" title="Update your reactions. Recommends max 6-7 reactions in reaction popover. Full emoji list at http://unicode.org/emoji/charts/full-emoji-list.html">
                     <td colspan="3">
-                        <table>
+                        <table border="1">
                             <thead>
                             <tr>
                                 <td>Unicode</td>
@@ -1637,25 +1637,30 @@
                             <tbody>
                             <tr ng-repeat="r in u.user_reactions">
                                 <td ng-bind="r.src|reactionUniCode" class="reaction_td"></td>
-                                <td><span class="glyphicon glyphicon-arrow-up" style="font-size: larger" title="Move up"></span></td>
+                                <td><span class="glyphicon glyphicon-arrow-up" style="font-size: larger"
+                                          title="Move up" ng-click="u.move_reaction_up(r)"></span></td>
                                 <td class="reaction_td">
                                     <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct">
                                 </td>
-                                <td><span class="glyphicon glyphicon-arrow-down" style="font-size: larger" title="Move down"></span></td>
-                                <td><input type="text" ng-model="r.title" style="width: 120px"></td>
+                                <td><span class="glyphicon glyphicon-arrow-down" style="font-size: larger"
+                                          title="Move down" ng-click="u.move_reaction_down(r)"></span></td>
+                                <td><input type="text" ng-model="r.title" style="width: 160px"></td>
                                 <td></td>
                                 <td>
-                                    <span class="glyphicon glyphicon-remove" style="color: red; font-size: larger" title="Delete"></span>
+                                    <span class="glyphicon glyphicon-remove" style="color: red; font-size: larger"
+                                          title="Delete" ng-click="u.delete_reaction(r)"></span>
                                 </td>
                             </tr>
                             <tr>
-                                <td>Add new:</td>
-                                <td></td>
-                                <td>3</td>
-                                <td></td>
-                                <td>5</td>
-                                <td></td>
-                                <td>7</td>
+                                <td colspan="2">Add new:</td>
+                                <td colspan="5">
+                                    <input type="text" placeholder="Start typing"
+                                           ng-model="u.new_reaction"
+                                           typeahead-on-select="u.insert_new_reaction()"
+                                           uib-typeahead="reaction for reaction in u.reaction_list | filter:$viewValue | limitTo:8"
+                                           typeahead-editable="false"
+                                           style="width: 250px">
+                                </td>
                             </tr>
                             </tbody>
                         </table>

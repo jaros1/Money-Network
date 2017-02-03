@@ -160,7 +160,7 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.spam_settings_changed: ' ;
             if (self.setup_copy.block_guests != self.setup.block_guests) self.setup.block_guests_at = new Date().getTime() ;
             if (self.setup_copy.block_ignored != self.setup.block_ignored) self.setup.block_ignored_at = new Date().getTime() ;
-            if (self.setup_copy.emoji_folder != self.setup.emoji_folder) moneyNetworkService.init_emojis() ;
+            if (self.setup_copy.emoji_folder != self.setup.emoji_folder) moneyNetworkService.init_emojis_short_list() ;
             moneyNetworkService.save_user_setup() ;
             // console.log(pgm + 'setup = ' + JSON.stringify(self.setup));
             //setup = {
@@ -1005,15 +1005,19 @@ angular.module('MoneyNetwork')
             self.show_passwords_fields(false) ;
         };
 
+        // show/edit list of reactions
         self.emoji_folders = moneyNetworkService.get_emoji_folders() ;
         self.user_reactions = moneyNetworkService.get_user_reactions() ;
+        self.reaction_list = null ;
         self.editing_reactions = false ;
+        self.new_reaction = null ;
         self.edit_reactions = function (edit) {
             if (edit && !self.setup.reactions) {
                 // first edit. clone standard reactions
                 self.setup.reactions = JSON.parse(JSON.stringify(moneyNetworkService.get_standard_reactions())) ;
                 self.user_reactions = moneyNetworkService.get_user_reactions() ;
             }
+            if (edit && !self.reaction_list) self.reaction_list = moneyNetworkService.get_reaction_list() ;
             self.editing_reactions = edit ;
             if (!edit) {
                 // save/done
@@ -1021,6 +1025,46 @@ angular.module('MoneyNetwork')
                 MoneyNetworkHelper.load_user_setup() ;
             }
         };
+        function find_reaction (reaction) {
+            var i ;
+            for (i=0 ; i<self.user_reactions.length ; i++) if (self.user_reactions[i]["$$hashKey"] == reaction["$$hashKey"]) return i ;
+        }
+        self.move_reaction_up = function (reaction) {
+            var index ;
+            index = find_reaction(reaction) ;
+            self.user_reactions.splice(index,1) ;
+            // console.log('reaction = ' + JSON.stringify(reaction) + ', index = ' + index) ;
+            index = index - 1 ;
+            if (index < 0) self.user_reactions.push(reaction) ;
+            else self.user_reactions.splice(index, 0, reaction) ;
+        };
+        self.move_reaction_down = function (reaction) {
+            var index ;
+            index = find_reaction(reaction) ;
+            self.user_reactions.splice(index,1) ;
+            // console.log('reaction = ' + JSON.stringify(reaction) + ', index = ' + index) ;
+            index = index + 1 ;
+            if (index > self.user_reactions.length) self.user_reactions.unshift(reaction) ;
+            else self.user_reactions.splice(index, 0, reaction) ;
+        };
+        self.delete_reaction = function (reaction) {
+            var index ;
+            index = find_reaction(reaction) ;
+            self.user_reactions.splice(index,1) ;
+        };
+        self.insert_new_reaction = function () {
+            var pgm = controller + '.insert_new_reaction: ' ;
+            var seq, code, name, emoji_folder ;
+            if (!self.new_reaction) return ;
+            seq = parseInt(self.new_reaction.split(':')[0]) ;
+            code = emoji_names[seq-1].code ;
+            name = emoji_names[seq-1].name ;
+            // console.log(pgm + 'insert_new_reaction. seq = ' + seq + ', code = ' + code + ', name = ' + name) ;
+            self.user_reactions.push({unicode: code, title: name}) ;
+            // console.log(pgm + 'self.user_reactions = ' + JSON.stringify(self.user_reactions)) ;
+            self.new_reaction = null ;
+            moneyNetworkService.init_emojis_short_list() ; // add emoji folder
+        }; // insert_new_reaction
 
         // end UserCtrl
     }])

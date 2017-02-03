@@ -8644,16 +8644,14 @@ angular.module('MoneyNetwork')
             for (i=0 ; i<standard_reactions.length ; i++) {
                 standard_reactions[i].src = emoji_folder + standard_reactions[i].unicode + '.png' ;
             }
-            console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions));
-            //delete user_setup.reactions ;
-            //save_user_setup() ;
+            // console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions));
             if (user_setup.reactions) {
                 for (i=0 ; i<user_setup.reactions.length ; i++) {
                     user_setup.reactions[i].src = emoji_folder + '/' + user_setup.reactions[i].unicode + '.png' ;
                 }
-                console.log(pgm + 'user_reactions = ' + JSON.stringify(user_setup.reactions));
+                // console.log(pgm + 'user_reactions = ' + JSON.stringify(user_setup.reactions));
             }
-        } // init_emojis
+        } // init_emojis_short_list
 
         // helper. string to unicode symbols
         // https://mathiasbynens.be/notes/javascript-unicode
@@ -8683,7 +8681,7 @@ angular.module('MoneyNetwork')
                 }) ;
             }
 
-            // 2: check any known but not replaced emoji unicodes in string. scan from end to start. see init_emojis.
+            // 2: check any known but not replaced emoji unicodes in string. scan from end to start. see init_emojis_short_list.
             // ignore emoji symbols in alt: (<img class="emoji" draggable="false" alt="😃"src="emoji/twitter/1f603.png">)
             symbols = punycode.ucs2.decode(str) ;
             symbols_hex = [] ;
@@ -8768,6 +8766,26 @@ angular.module('MoneyNetwork')
             return str ;
         } // replace_emojis
 
+        // get list of emojis to be used in be used in reactions
+        //
+        var reaction_list = [] ;
+        function get_reaction_list () {
+            var i, hex_codes, j, symbols, prefix, postfix ;
+            if (reaction_list.length) return reaction_list ;
+            for (i=0 ; i<emoji_names.length ; i++) {
+                symbols = [] ;
+                //prefix = punycode.ucs2.decode((i+1) + ': ') ;
+                //for (j=0 ; j<prefix.length ; j++) symbols.push(prefix[j]) ;
+                hex_codes = emoji_names[i].code.split('_') ;
+                for (j=0 ; j<hex_codes.length ; j++) symbols.push(parseInt(hex_codes[j], 16)) ;
+                //postfix = punycode.ucs2.decode(' ' + emoji_names[i].name) ;
+                //for (j=0 ; j<postfix.length ; j++) symbols.push(postfix[j]) ;
+                reaction_list.push((i+1) + ': ' + punycode.ucs2.encode(symbols) + ' ' + emoji_names[i].name + ' (' + hex_codes.join(', ') + ')') ;
+            }
+            // console.log('reaction_list = ' + JSON.stringify(reaction_list)) ;
+            return reaction_list ;
+        } // get_reaction_list
+
         // export MoneyNetworkService API
         return {
             get_tags: get_tags,
@@ -8838,8 +8856,9 @@ angular.module('MoneyNetwork')
             get_standard_reactions: get_standard_reactions,
             get_user_reactions: get_user_reactions,
             get_emoji_folders: get_emoji_folders,
-            init_emojis: init_emojis_short_list,
+            init_emojis_short_list: init_emojis_short_list,
             replace_emojis: replace_emojis,
+            get_reaction_list: get_reaction_list,
             load_server_info: load_server_info,
             is_proxy_server: is_proxy_server
         };

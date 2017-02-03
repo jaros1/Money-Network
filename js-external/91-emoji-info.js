@@ -3670,4 +3670,3 @@ var emoji_names = [{"code": "1f600", "name": "grinning face"}, {
     "code": "1f1ff_1f1f2",
     "name": "Zambia"
 }, {"code": "1f1ff_1f1fc", "name": "Zimbabwe"}];
-
