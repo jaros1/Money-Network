@@ -3269,7 +3269,7 @@ angular.module('MoneyNetwork')
             var js_messages_row = {
                 contact: contact,
                 message: message,
-                reactions: get_user_reactions()
+                reactions: JSON.parse(JSON.stringify(get_user_reactions()))
             } ;
             // add new row to js_messages
             js_messages.push(js_messages_row) ;

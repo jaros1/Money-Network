@@ -1053,7 +1053,7 @@
                                         <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
                                         <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                               ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                        <message-react message="{{m}}" folder="outbox" react="c.react2"></message-react>
+                                        <message-react message="{{m}}" folder="outbox" react="c.react"></message-react>
                                     </span>
                                     </td>
                                 </tr>
@@ -1384,7 +1384,7 @@
                 PM: {{u.my_chat_url}}
             </p>
 
-            <p title="Select preferred encryption for ingoing messages. Your JSEncrypt key is {{u.keysize}} bits long. CryptMessage is using 256 bits key">
+            <p title="Select preferred encryption for ingoing messages. Your JSEncrypt key is {{u.keysize}} bits long and is saved encrypted in your browser (localStorage). CryptMessage is using 256 bits key and is saved in your user.json file on your computer (or proxy server).">
                 Preferred encryption:
                 <input type="radio" ng-model="u.setup.encryption" value="1" ng-change="u.debug_settings_changed()">
                 <a href="https://github.com/travist/jsencrypt" target="_blank" rel="noopener noreferrer">JSEncrypt</a>  {{u.keysize}} bits key
@@ -1434,10 +1434,10 @@
                             <td>&nbsp;&nbsp;</td>
                             <td><input type="checkbox" ng-model="u.setup.not_online" ng-change="u.spam_settings_changed()"></td>
                         </tr>
-                        <tr>
+                        <tr title="Check to always send reactions as private messages. You will anonymous and only receiver of your reaction will know your ID">
+                            <td>Private reactions</td>
                             <td></td>
-                            <td></td>
-                            <td><input type="checkbox" ng-model="u.setup.todo1" ng-change="u.spam_settings_changed()"></td>
+                            <td><input type="checkbox" ng-model="u.setup.private_reactions" ng-change="u.spam_settings_changed()"></td>
                         </tr>
                         <tr title="">
                             <td></td>
