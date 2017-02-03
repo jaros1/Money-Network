@@ -1588,7 +1588,7 @@
                     </td>
                 </tr>
                 <tr><td colspan="3">&nbsp;</td></tr>
-                <tr title="Select preferred emoji style (apple, facebook, google, messenger, one, samsung, twitter or windows). Default: get emojis from https://twemoji.maxcdn.com. emoji/xxxxxxx: download used emojis as optional files on ZeroNet">
+                <tr title="Select preferred emoji style (apple, facebook, google, messenger, one, samsung, twitter or windows). Default: get emojis from https://twemoji.maxcdn.com. emoji/xxx: download used emojis as optional files on ZeroNet. Select optional files on ZeroNet if you want to avoid clearnet">
                     <td>Emoji style:</td>
                     <td></td>
                     <td>
@@ -1622,16 +1622,20 @@
                 </tr>
                 <tr ng-show="u.editing_reactions" title="Update your reactions. Recommends max 6-7 reactions in reaction popover. Full emoji list at http://unicode.org/emoji/charts/full-emoji-list.html">
                     <td colspan="3">
-                        <table border="1">
+                        <table>
                             <thead>
+                            <tr>
+                                <td colspan="5">
+                                    Updating your reactions bar. See full emoji list at
+                                    <a href="http://unicode.org/emoji/charts/full-emoji-list.html" target="_blank" rel="noopener noreferrer">unicode</a>
+                                </td>
+                            </tr>
                             <tr>
                                 <td>Unicode</td>
                                 <td>&nbsp;</td>
                                 <td>Emoji</td>
                                 <td>&nbsp;</td>
                                 <td>Text</td>
-                                <td>&nbsp;</td>
-                                <th></th>
                             </tr>
                             </thead>
                             <tbody>
@@ -1640,26 +1644,32 @@
                                 <td><span class="glyphicon glyphicon-arrow-up" style="font-size: larger"
                                           title="Move up" ng-click="u.move_reaction_up(r)"></span></td>
                                 <td class="reaction_td">
-                                    <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct">
+                                    <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct"
+                                         fallback-src="public/images/image_failed.gif">
                                 </td>
                                 <td><span class="glyphicon glyphicon-arrow-down" style="font-size: larger"
                                           title="Move down" ng-click="u.move_reaction_down(r)"></span></td>
-                                <td><input type="text" ng-model="r.title" style="width: 160px"></td>
-                                <td></td>
                                 <td>
+                                    <input type="text" ng-model="r.title" style="width: 160px">
                                     <span class="glyphicon glyphicon-remove" style="color: red; font-size: larger"
                                           title="Delete" ng-click="u.delete_reaction(r)"></span>
                                 </td>
                             </tr>
                             <tr>
                                 <td colspan="2">Add new:</td>
-                                <td colspan="5">
+                                <td colspan="3">
                                     <input type="text" placeholder="Start typing"
                                            ng-model="u.new_reaction"
                                            typeahead-on-select="u.insert_new_reaction()"
                                            uib-typeahead="reaction for reaction in u.reaction_list | filter:$viewValue | limitTo:8"
                                            typeahead-editable="false"
                                            style="width: 250px">
+                                </td>
+                            </tr>
+                            <tr title="Use this checkbox to filter list of emojis. Full supported emojis are emojis supported by apple, facebook, google, messenger, one, samsung, twitter and windows and available online (https://twemoji.maxcdn.com)">
+                                <td colspan="5">
+                                    <input type="checkbox" ng-model="u.full_emoji_support" ng-change="u.toogle_full_emoji_support()">
+                                    Add only full supported emojis?
                                 </td>
                             </tr>
                             </tbody>
@@ -1991,7 +2001,7 @@
                 </p>
 
             <span ng-hide="a.register == 'N'"
-                  title="Select encryption method for your ingoing messages. Recommend 2048 bits keys (JSEncrypt)">
+                  title="Select encryption method for your ingoing messages. CryptMessage private key is saved in your user.json file on your computer (or proxy server). JSEncrypt private key is saved encrypted in your browser (localStorage). Recommend using 2048 bits keys (JSEncrypt). ">
                 Preferred public key encryption:
             <table>
                 <tbody>

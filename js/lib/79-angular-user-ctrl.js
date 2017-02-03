@@ -1011,13 +1011,14 @@ angular.module('MoneyNetwork')
         self.reaction_list = null ;
         self.editing_reactions = false ;
         self.new_reaction = null ;
+        self.full_emoji_support = true ;
         self.edit_reactions = function (edit) {
             if (edit && !self.setup.reactions) {
                 // first edit. clone standard reactions
                 self.setup.reactions = JSON.parse(JSON.stringify(moneyNetworkService.get_standard_reactions())) ;
                 self.user_reactions = moneyNetworkService.get_user_reactions() ;
             }
-            if (edit && !self.reaction_list) self.reaction_list = moneyNetworkService.get_reaction_list() ;
+            if (edit && !self.reaction_list) self.reaction_list = moneyNetworkService.get_reaction_list(self.full_emoji_support) ;
             self.editing_reactions = edit ;
             if (!edit) {
                 // save/done
@@ -1051,6 +1052,9 @@ angular.module('MoneyNetwork')
             var index ;
             index = find_reaction(reaction) ;
             self.user_reactions.splice(index,1) ;
+        };
+        self.toogle_full_emoji_support = function() {
+            self.reaction_list = moneyNetworkService.get_reaction_list(self.full_emoji_support) ;
         };
         self.insert_new_reaction = function () {
             var pgm = controller + '.insert_new_reaction: ' ;

@@ -2663,7 +2663,9 @@ angular.module('MoneyNetwork')
                                 // cleanup my optional files list
                                 delete my_files_optional[z_filename] ;
                                 // cleanup files_optional_cache
-                                delete files_optional_cache[file_path] ;
+                                // delete files_optional_cache[file_path] ;
+                                files_optional_cache[file_path].is_deleted = true ;
+                                files_optional_cache[file_path].size = 2 ;
                                 // ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
                                 write_empty_chat_file(file_path, function () { callback() });
                                 return ;
@@ -2724,8 +2726,9 @@ angular.module('MoneyNetwork')
 
                             if (chat.msg.length == 0) {
                                 debug('public_chat', pgm + 'ok. deleted message ' + message_with_envelope.local_msg_seq + ' and file ' + z_filename) ;
-                                delete my_files_optional[z_filename] ;
-                                delete files_optional_cache[file_path] ;
+                                // delete my_files_optional[z_filename] ;
+                                files_optional_cache[file_path].is_deleted = true ;
+                                files_optional_cache[file_path].size = 2 ;
                                 // ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
                                 write_empty_chat_file(file_path, function () { callback() });
                             }
@@ -2784,7 +2787,9 @@ angular.module('MoneyNetwork')
                                     my_files_optional[new_z_filename] = my_files_optional[z_filename] ;
                                     delete my_files_optional[z_filename] ;
                                     files_optional_cache[new_file_path] = files_optional_cache[file_path] ;
-                                    delete files_optional_cache[file_path] ;
+                                    // delete files_optional_cache[file_path] ;
+                                    files_optional_cache[file_path].is_deleted = true ;
+                                    files_optional_cache[file_path].size = 2 ;
                                     for (j=0 ; j<contact.messages.length ; j++) {
                                         message_with_envelope2 = contact.messages[j] ;
                                         if (message_with_envelope2.z_filename == z_filename) message_with_envelope2.z_filename = new_z_filename ;
@@ -2875,7 +2880,9 @@ angular.module('MoneyNetwork')
                                     // cleanup my optional files list
                                     delete my_files_optional[z_filename] ;
                                     // cleanup files_optional_cache
-                                    delete files_optional_cache[file_path] ;
+                                    // delete files_optional_cache[file_path] ;
+                                    files_optional_cache[file_path].is_deleted = true ;
+                                    files_optional_cache[file_path].size = 2 ;
                                     // ZeroFrame.cmd("fileDelete", file_path, function (res) { callback() });
                                     write_empty_chat_file(file_path, function () { z_update_5_public_chat (true) });
                                     return ;
@@ -2971,7 +2978,9 @@ angular.module('MoneyNetwork')
                                 my_files_optional[new_z_filename] = my_files_optional[z_filename] ;
                                 delete my_files_optional[z_filename] ;
                                 files_optional_cache[new_file_path] = files_optional_cache[file_path] ;
-                                delete files_optional_cache[file_path] ;
+                                // delete files_optional_cache[file_path] ;
+                                files_optional_cache[file_path].is_deleted = true ;
+                                files_optional_cache[file_path].size = 2 ;
                                 for (j=0 ; j<contact.messages.length ; j++) {
                                     message_with_envelope2 = contact.messages[j] ;
                                     if (message_with_envelope2.z_filename == z_filename) message_with_envelope2.z_filename = new_z_filename ;
@@ -8766,13 +8775,22 @@ angular.module('MoneyNetwork')
             return str ;
         } // replace_emojis
 
-        // get list of emojis to be used in be used in reactions
-        //
+        // get list of emojis to be used in be used in reactions (Account page - edit reactions)
         var reaction_list = [] ;
-        function get_reaction_list () {
-            var i, hex_codes, j, symbols, prefix, postfix ;
-            if (reaction_list.length) return reaction_list ;
+        var reaction_list_full_support = null ;
+        function get_reaction_list (full_emoji_support) {
+            var i, code, hex_codes, j, symbols, prefix, postfix ;
+            if (reaction_list.length && (reaction_list_full_support == full_emoji_support)) return reaction_list ;
+            reaction_list.splice(0,reaction_list.length) ;
             for (i=0 ; i<emoji_names.length ; i++) {
+                code = emoji_names[i].code ;
+                if (full_emoji_support) {
+                    // check if emoji is full supported
+                    if (missing_twemojis.indexOf(code) != -1) continue ; // not available at https://twemoji.maxcdn.com
+                    for (j=1 ; j<emoji_folders.length ; j++) {
+                        if (!emoji_folders[j] + '/' + code + '.png') continue ; // not found in optional files for provider
+                    }
+                }
                 symbols = [] ;
                 //prefix = punycode.ucs2.decode((i+1) + ': ') ;
                 //for (j=0 ; j<prefix.length ; j++) symbols.push(prefix[j]) ;
@@ -8783,6 +8801,7 @@ angular.module('MoneyNetwork')
                 reaction_list.push((i+1) + ': ' + punycode.ucs2.encode(symbols) + ' ' + emoji_names[i].name + ' (' + hex_codes.join(', ') + ')') ;
             }
             // console.log('reaction_list = ' + JSON.stringify(reaction_list)) ;
+            reaction_list_full_support = full_emoji_support ;
             return reaction_list ;
         } // get_reaction_list
 

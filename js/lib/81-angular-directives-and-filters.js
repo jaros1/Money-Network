@@ -183,6 +183,18 @@ angular.module('MoneyNetwork')
         // end messageReact
     }])
 
+    // http://stackoverflow.com/questions/16349578/angular-directive-for-a-fallback-image
+    .directive('fallbackSrc', function () {
+        var fallbackSrc = {
+            link: function postLink(scope, iElement, iAttrs) {
+                iElement.bind('error', function() {
+                    angular.element(this).attr("src", iAttrs.fallbackSrc);
+                });
+            }
+        };
+        return fallbackSrc;
+    })
+
     .filter('toJSON', [function () {
         // debug: return object as a JSON string
         return function (object) {
@@ -936,7 +948,7 @@ angular.module('MoneyNetwork')
         // return null or overflow (long texts)
         return function (src) {
             if (!src) return src ;
-            return src.split('/').pop().split('.')[0] ;
+            return src.split('/').pop().split('.')[0].split('_').join(' ') ;
         } ;
         // end eactionUniCode filter
     }])
