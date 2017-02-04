@@ -20,6 +20,11 @@
       "to_table": [
         { "node": "status", "table": "status"}
       ]
+    },
+    "users/.+/like.json": {
+      "to_table": [
+        { "node": "like", "table": "like"}
+      ]
     }
   },
   "tables": {
@@ -92,6 +97,17 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX status_i1 ON status(json_id)"],
+      "schema_changed": 8
+    },
+    "like": {
+      "cols": [
+        ["user_seq", "INTEGER"],
+        ["timestamp", "INTEGER"],
+        ["auth", "TEXT"],
+        ["emoji", "TEXT"],
+        ["json_id", "INTEGER REFERENCES json (json_id)"]
+      ],
+      "indexes": ["CREATE INDEX like_i1 ON like(timestamp)"],
       "schema_changed": 8
     }
   }

@@ -224,7 +224,7 @@ var missing_twemojis = ["0023_fe0f_20e3", "002a_fe0f_20e3", "0030_fe0f_20e3", "0
     "270b_1f3fb", "270b_1f3fc", "270b_1f3fd", "270b_1f3fe", "270b_1f3ff", "270c_1f3fb", "270c_1f3fc", "270c_1f3fd", "270c_1f3fe",
     "270c_1f3ff", "270d_1f3fb", "270d_1f3fc", "270d_1f3fd", "270d_1f3fe", "270d_1f3ff"];
 
-// emoji names
+// emoji names. Full Emoji Data, v4.0 from http://unicode.org/emoji/charts/full-emoji-list.html
 var emoji_names = [{"code": "1f600", "name": "grinning face"}, {
     "code": "1f601",
     "name": "grinning face with smiling eyes"
@@ -3670,3 +3670,15 @@ var emoji_names = [{"code": "1f600", "name": "grinning face"}, {
     "code": "1f1ff_1f1f2",
     "name": "Zambia"
 }, {"code": "1f1ff_1f1fc", "name": "Zimbabwe"}];
+
+// quick lookup. Is a message/comment a reaction?
+var is_emoji = {} ;
+(function() {
+    var i, hex_codes, symbols, j ;
+    for (i=0 ; i<emoji_names.length ; i++) {
+        hex_codes = emoji_names[i].code.split('_') ;
+        symbols = [] ;
+        for (j=0 ; j<hex_codes.length ; j++) symbols.push(parseInt(hex_codes[j], 16)) ;
+        is_emoji[punycode.ucs2.encode(symbols)] = true ;
+    }
+})() ;
