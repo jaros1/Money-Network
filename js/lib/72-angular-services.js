@@ -4850,6 +4850,14 @@ angular.module('MoneyNetwork')
                     // Return true to save contacts and refresh angularJS UI
                     return true ;
                 }
+                if (['error2', 'error3', 'error4'].indexOf(decrypted_message_str) != -1) {
+                    // known errors from cryptMessage decrypt:
+                    // - error2 - certificate check failed - error on dbQuery select - never see that error
+                    // - error3 - decrypt error but no other known ZeroNet certificates were found .... - never see that error
+                    // - error4 - issue 131 - trying to decrypt same cryptMessage again - should be processed in recheck_old_decrypt_errors after client login
+                    debug('lost_message', pgm + 'ignored new incoming message with decrypt error = ' + decrypted_message_str + '. res = ' + JSON.stringify(res)) ;
+                    return false ;
+                }
             }
 
             // console.log(pgm + 'decrypted message = ' + decrypted_message_str) ;
@@ -5477,15 +5485,29 @@ angular.module('MoneyNetwork')
             // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling eciesDecrypt with " + JSON.stringify([res.key, user_id])) ;
             ZeroFrame.cmd("eciesDecrypt", [res.key, user_id], function(password) {
                 var pgm = service + '.process_incoming_cryptmessage eciesDecrypt callback 1: ' ;
-                var pubkey, query ;
+                var pubkey, query, contact, i, message_with_envelope, message ;
                 // console.log(pgm + 'password = ' + password) ;
                 if (!password) {
                     // cryptMessage decrypt error!
-                    debug('lost_message',
-                        pgm + 'password is null. must be mismatch between encryption in message and current private key. ' +
-                        'maybe user has switched zeronet certificate. checking if current user has more than one certificate') ;
+                    debug('lost_message', pgm + 'password is null. must be mismatch between encryption in message and current private key.') ;
+
+                    // issue #131 - Lost message - too many UI notifications
+                    // check if there already has been created an UI notification for this decrypt error
+                    contact = get_contact_by_unique_id(unique_id) ;
+                    for (i=0 ; i<contact.messages.length ; i++) {
+                        message_with_envelope = contact.messages[i] ;
+                        if (message_with_envelope.folder != 'inbox') continue ;
+                        message = message_with_envelope.message ;
+                        if (message.msgtype != 'lost msg2') continue ;
+                        if (message.message_sha256 != res.message_sha256) continue ;
+                        debug('lost_message', pgm + 'Error. issue #131. There has already been created an UI notification for this decrypt error') ;
+                        res.decrypted_message_str = 'error4' ;
+                        cb() ;
+                        return;
+                    }
 
                     // check if user has been using other ZeroNet certificates
+                    debug('lost_message', pgm + 'maybe user has switched zeronet certificate. checking if current user has more than one certificate') ;
                     pubkey = MoneyNetworkHelper.getItem('pubkey') ;
                     query =
                         "select keyvalue.value as cert_user_id, status.timestamp, users.encryption, users.guest " +
@@ -5554,7 +5576,8 @@ angular.module('MoneyNetwork')
                                 folder: 'inbox',
                                 message: lost_message,
                                 sent_at: res.timestamp,
-                                received_at: new Date().getTime()
+                                received_at: new Date().getTime(),
+                                zeronet_msg_id: res.message_sha256 // issue 131 - added zeronet_msg_id to lost msg2 notifications
                             } ;
                             lost_message_with_envelope.ls_msg_size = JSON.stringify(lost_message_with_envelope).length ;
                             contact = get_contact_by_unique_id(unique_id) ;

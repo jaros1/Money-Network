@@ -1280,7 +1280,7 @@ var MoneyNetworkHelper = (function () {
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
-            'issue_112', 'emoji', 'site_info', 'reaction'];
+            'issue_112', 'emoji', 'site_info', 'reaction', 'issue_131'];
         for (i = 0; i < debug_keys.length; i++) {
             key = debug_keys[i];
             if (user_setup.debug[key]) debug_value = 'true';
