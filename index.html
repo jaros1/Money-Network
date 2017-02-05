@@ -1053,7 +1053,7 @@
                                         <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
                                         <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                               ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                        <message-react message="{{m}}" folder="outbox" react="c.react"></message-react>
+                                        <message-react message="m" folder="outbox" react="c.react"></message-react>
                                     </span>
                                     </td>
                                 </tr>
@@ -1167,7 +1167,7 @@
                                         <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
                                            ng-click="c.enter_password(m)" title="Click to verify"></a>
 
-                                        <message-react message="{{m}}" folder="inbox" react="c.react"></message-react>
+                                        <message-react message="m" folder="inbox" react="c.react"></message-react>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1434,7 +1434,7 @@
                             <td>&nbsp;&nbsp;</td>
                             <td><input type="checkbox" ng-model="u.setup.not_online" ng-change="u.spam_settings_changed()"></td>
                         </tr>
-                        <tr title="Check to always send reactions as private messages. You will anonymous and only receiver of your reaction will know your ID">
+                        <tr title="Check to always send reactions as private messages. Your reactions will anonymous and only creator of message will know your ID">
                             <td>Private reactions</td>
                             <td></td>
                             <td><input type="checkbox" ng-model="u.setup.private_reactions" ng-change="u.spam_settings_changed()"></td>
@@ -1820,6 +1820,12 @@
                     <td>Show emoji info?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.emoji"
+                               ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to show debug information for reaction processing">
+                    <td>Show reaction info?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.reaction"
                                ng-change="u.debug_settings_changed()"></td>
                 </tr>
                 <tr title="Click to show ZeroNet site info after client log in">

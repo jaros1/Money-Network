@@ -161,12 +161,7 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data_str) {
                 var pgm = service + '.get_data_json fileGet callback 1: ';
                 // console.log(pgm + 'data = ' + JSON.stringify(data));
-
-                var local_storage_updated, data, row, pubkey, pubkey2, short_avatar, max_user_seq, i,
-                    my_user_i, my_user_seq, new_user_row, guest_id, guest, old_guest_user_seq, old_guest_user_index;
-
-                // keep track of updates.
-                local_storage_updated = false; // write localStorage?
+                var data, empty;
 
                 if (data_str) {
                     data = JSON.parse(data_str);
@@ -236,6 +231,70 @@ angular.module('MoneyNetwork')
                 cb(res) ;
             }) ;
         } // write_status_json
+
+        // wrapper for like.json fileGet and fileWrite (cache like.json file in memory)
+        function update_like_index (like, like_index) {
+            get_user_seq(function (my_user_seq) {
+                var pgm = service + '.update_like_index: ' ;
+                var index, i ;
+                for (index in like_index) delete like_index[index] ;
+                for (i=0 ; i<like.like.length ; i++) {
+                    if (like.like[i].user_seq != my_user_seq) continue ;
+                    index = like.like[i].timestamp + ',' + like.like[i].auth ;
+                    if (like.like[i].count) index += ',a' ; // todo: anonymous reactions
+                    else index += ',p' ; // public reaction
+                    like_index[index] = i ;
+                }
+                // console.log(pgm + 'like = ' + JSON.stringify(like)) ;
+                //console.log(pgm + 'like_index = ' + JSON.stringify(like_index)) ;
+            }) ;
+        }
+        function get_like_json (cb) {
+            // ensure that user_seq has been loaded into z_cache. see update_like_index
+            get_user_seq(function (my_user_seq) {
+                var pgm = service + '.get_like_json: ' ;
+                var user_path ;
+                if (z_cache.like_json && z_cache.like_json_index) {
+                    // like.json file is already in cache
+                    cb(z_cache.like_json, z_cache.like_json_index, false) ;
+                    return ;
+                }
+                // download like.json and add file to cache
+                user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+                ZeroFrame.cmd("fileGet", {inner_path: user_path + '/like.json', required: false}, function (like_str) {
+                    var pgm = service + '.get_like_json fileGet callback 1: ';
+                    // console.log(pgm + 'like = ' + JSON.stringify(like));
+                    var like, empty;
+                    if (like_str) {
+                        like = JSON.parse(like_str);
+                        // zeronet_migrate_like(like);
+                        empty = false ;
+                    }
+                    else {
+                        like = {
+                            version: dbschema_version,
+                            like: []
+                        };
+                        empty = true ;
+                    }
+                    // add like.json to cache
+                    z_cache.like_json = like ;
+                    z_cache.like_json_index = {} ;
+                    update_like_index(z_cache.like_json, z_cache.like_json_index) ;
+                    cb(z_cache.like_json, z_cache.like_json_index, empty) ;
+                }) ;
+            }) ;
+        } // get_like_json
+        function write_like_json (cb) {
+            var pgm = service + '.write_like_json: ' ;
+            var user_path, like, json_raw ;
+            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            like = z_cache.like_json || {} ;
+            json_raw = unescape(encodeURIComponent(JSON.stringify(like, null, "\t")));
+            ZeroFrame.cmd("fileWrite", [user_path + '/like.json', btoa(json_raw)], function (res) {
+                cb(res) ;
+            }) ;
+        } // write_like_json
 
         // optional files format:
         // - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
@@ -1708,6 +1767,78 @@ angular.module('MoneyNetwork')
                         } // for j (contact.messages)
                     } // for i (contacts)
 
+                    // add private reaction messages before encrypt and send (z_update_2a_data_json_encrypt)
+                    var unique_id, sender ;
+                    for (i=0 ; i<ls_contacts.length ; i++) {
+                        contact = ls_contacts[i];
+                        for (j=contact.messages.length-1 ; j >= 0 ; j--) {
+                            message_with_envelope = contact.messages[j] ;
+                            if (!message_with_envelope.reaction_at) continue ;
+                            if (message_with_envelope.z_filename && !user_setup.private_reactions) {
+                                // public reaction to public chat. see like.json and z_update_6_like_json
+                                continue ;
+                            }
+                            if ((message_with_envelope.folder == 'outbox') && user_setup.private_reactions) {
+                                // no action. No one but yourself can see that
+                                // todo: disable reaction in UI
+                                // todo: maybe in like.json as anonymous reaction?
+                                console.log(pgm + 'todo: private reaction to outbox message. disable reaction in UI? maybe in like.json as anonymous reaction?') ;
+                                delete message_with_envelope.reaction_at ;
+                                local_storage_updated = true ;
+                                continue ;
+                            }
+                            message = message_with_envelope.message ;
+                            if (['lost msg', 'lost msg2'].indexOf(message.msgtype) != -1) {
+                                // no action for lost message notifications in UI (dummy messages)
+                                // todo: disable reaction in UI
+                                console.log(pgm + 'todo: disable reaction to lost message notifications') ;
+                                delete message_with_envelope.reaction_at ;
+                                local_storage_updated = true ;
+                                continue ;
+                            }
+                            // private reaction to inbox message
+                            if ((contact.type == 'group') && (message_with_envelope.folder == 'inbox') && user_setup.private_reactions) {
+                                // ingoing group chat message. Find sender of group chat message
+                                unique_id = contact.participants[message.participant-1] ;
+                                sender = get_contact_by_unique_id(unique_id) ;
+                                if (!sender) {
+                                    console.log(pgm + 'private reaction was not sent. Group chat contact with unique id ' + unique_id + ' was not found') ;
+                                    delete message_with_envelope.reaction_at ;
+                                    local_storage_updated = true ;
+                                    continue ;
+                                }
+                            }
+                            else sender = contact ;
+                            if (!sender.pubkey && user_setup.private_reactions) {
+                                console.log(pgm + 'private reaction was not sent. public key was not found for contact with unique id ' + contact.unique_id) ;
+                                delete message_with_envelope.reaction_at ;
+                                local_storage_updated = true ;
+                                continue ;
+                            }
+                            // add private reaction message
+                            message = {
+                                msgtype: 'reaction',
+                                timestamp: message_with_envelope.sent_at,
+                                reaction: message_with_envelope.reaction,
+                                reaction_at: message_with_envelope.reaction_at
+                            } ;
+                            if (!message.reaction) delete message.reaction ;
+                            // validate json
+                            error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send private reaction message');
+                            if (error) {
+                                console.log(pgm + 'System error: ' + error) ;
+                                console.log(pgm + 'message = ' + JSON.stringify(message)) ;
+                                delete message_with_envelope.reaction_at ;
+                                local_storage_updated = true ;
+                                continue ;
+                            }
+                            // OK. add message
+                            add_msg(sender, message);
+                            delete message_with_envelope.reaction_at ;
+                            local_storage_updated = true ;
+                        } // for j (messages)
+                    } // for i (contacts)
+
                     // insert and encrypt new outgoing messages into data.json
                     // using callback technique (not required for JSEncrypt but used in cryptMessage plugin)
                     // will call data cleanup, write and publish when finished encrypting messages
@@ -3003,17 +3134,131 @@ angular.module('MoneyNetwork')
 
             } // if contact
 
-            // 4. optional sign and publish
-            if (!publish) {
-                ZeroFrame.cmd("wrapperNotification", ["info", "No more updates to publish", 5000]);
-                return ;
-            }
-
-            ls_save_contacts(false); // todo: remove when load public messages is implemented. post login utility
-
-            zeronet_site_publish() ;
+            // continue with public reactions (if any)
+            z_update_6_like_json(publish) ;
 
         } // z_update_5_public_chat
+
+
+        // update zeronet step 6. update public reaction file like.json
+        function z_update_6_like_json (publish) {
+            var pgm = service + '.z_update_6_like_json: ' ;
+            var done, new_reactions, i, contact, j, message_with_envelope, user_path ;
+
+            done = function (publish) {
+                ls_save_contacts(false);
+                if (!publish) {
+                    // ZeroFrame.cmd("wrapperNotification", ["info", "No more updates to publish", 5000]);
+                    return ;
+                }
+                zeronet_site_publish() ;
+            } ; // done
+            if (user_setup.private_reactions) return done(publish) ; // reactions are sent as private messages
+
+            // any new public reactions?
+            new_reactions = false ;
+            for (i=0 ; i<ls_contacts.length ; i++) {
+                contact = ls_contacts[i] ;
+                if (contact.type == 'group') continue ;
+                for (j=0 ; j<contact.messages.length ; j++) {
+                    message_with_envelope = contact.messages[j] ;
+                    if (!message_with_envelope.z_filename) continue ;
+                    if (!message_with_envelope.reaction_at) continue ;
+                    new_reactions = true ;
+                    break ;
+                } // for j (messages)
+                if (new_reactions) break ;
+            } // for i (contacts)
+            if (!new_reactions) return done(publish) ;
+
+            // read and update like.json with new reactions
+            get_like_json(function (like, like_index, empty) {
+                var pgm = service + '.z_update_6_like_json get_like_json callback 1: ' ;
+                var error, index, i, contact, j, message_with_envelope, k, like_updated, auth_address, like_index_updated ;
+                error = MoneyNetworkHelper.validate_json (pgm, like, 'like.json', 'Invalid json file') ;
+                if (error) {
+                    console.log(pgm + 'System error. failed to public reaction. like.json is invalid. ' + error) ;
+                    console.log(pgm + 'like = ' + JSON.stringify(like)) ;
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish reaction<br>like.json file is invalid<br>"]);
+                    return done(publish);
+                }
+                like_updated = false ;
+
+                for (i=0 ; i<ls_contacts.length ; i++) {
+                    contact = ls_contacts[i] ;
+                    if (contact.type == 'group') continue ;
+                    for (j=0 ; j<contact.messages.length ; j++) {
+                        message_with_envelope = contact.messages[j] ;
+                        if (!message_with_envelope.z_filename) continue ;
+                        if (!message_with_envelope.reaction_at) continue ;
+                        auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
+                        index = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
+                        if (like_index.hasOwnProperty(index)) {
+                            // old reaction was found in like.json
+                            k = like_index[index] ;
+                            if (message_with_envelope.reaction == like.like[k].emoji) {
+                                // no change
+                                delete message_with_envelope.reaction_at ;
+                                continue ;
+                            }
+                            like.like[k].emoji = message_with_envelope.reaction ;
+                            delete message_with_envelope.reaction_at ;
+                            like_updated = true ;
+                        } // found old like
+                        else if (!message_with_envelope.reaction) {
+                            console.log(pgm + 'old public reaction was not found in like.json file') ;
+                            delete message_with_envelope.reaction_at ;
+                        }
+                        else {
+                            // add new reaction to like.json
+                            like.like.push({
+                                user_seq: z_cache.user_seq,
+                                timestamp: message_with_envelope.sent_at,
+                                auth: auth_address.substr(0,4),
+                                emoji: message_with_envelope.reaction
+                            }) ;
+                            like_index[index] = like.like.length-1 ;
+                            like_updated = true ;
+                        }
+                    } // for j (messages)
+                } // for i (contacts)
+                if (!like_updated) return done(publish) ;
+                like_index_updated = false ;
+                for (i=like.like.length-1 ; i>= 0 ; i--) if (!like.like[i].emoji) {
+                    like.like.splice(i,1) ;
+                    like_index_updated = true ;
+                }
+                if (like_index_updated) update_like_index(like, like_index) ;
+                publish = true ;
+
+                // validate and write like.json
+                error = MoneyNetworkHelper.validate_json (pgm, like, 'like.json', 'Cannot write invalid like.json file') ;
+                if (error) {
+                    console.log(pgm + 'System error. failed to public reaction. Cannot write invalid like.json file. ' + error) ;
+                    console.log(pgm + 'like = ' + JSON.stringify(like)) ;
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish reaction<br>like.json file is invalid<br>"]);
+                    return done(publish);
+                }
+                write_like_json(function(res) {
+                    var pgm = service + '.z_update_6_like_json write_like_json callback 2: ' ;
+
+                    if (res === "ok") {
+                        // data.json ok. check public chat and publish
+                        // debug('public_chat', pgm + 'data.json updated. continue with public chat messages and publish') ;
+                        done(true)  ;
+                    }
+                    else {
+                        ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
+                        console.log(pgm + 'Error. Failed to post: ' + res.error) ;
+                    }
+
+                }) ; // write_like_json callback 2
+
+            }) ; // get_like_json callback 1
+
+            done() ;
+
+        } // z_update_6_like_json
 
 
         // user info. Array with tag, value and privacy.
@@ -3250,10 +3495,14 @@ angular.module('MoneyNetwork')
         ] ;
 
         function get_standard_reactions () {
+            var pgm = service + '.get_standard_reactions: ' ;
+            // console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions)) ;
             return standard_reactions ;
         }
         function get_user_reactions () {
+            var pgm = service + '.get_user_reactions: ' ;
             if (!user_setup.reactions) return standard_reactions ;
+            // console.log(pgm + 'user_setup.reactions = ' + JSON.stringify(user_setup.reactions)) ;
             return user_setup.reactions ;
         } // get_user_reactions
 
@@ -3263,14 +3512,36 @@ angular.module('MoneyNetwork')
         // - false: do not add message to contact.messages array (already there)
         function add_message(contact, message, load_contacts) {
             var pgm = service + '.add_message: ' ;
+            var js_messages_row, symbols, hex_codes, i, unicode, index, title ;
             if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
             if (!contact.messages) contact.messages = [] ;
             if (!load_contacts) contact.messages.push(message) ;
-            var js_messages_row = {
+            js_messages_row = {
                 contact: contact,
                 message: message,
                 reactions: JSON.parse(JSON.stringify(get_user_reactions()))
             } ;
+            if (message.reaction) {
+                // must be message loaded from localStorage. Mark reaction as selected in reactions array
+                symbols = punycode.ucs2.decode(message.reaction) ; // array of integers
+                hex_codes = [] ;
+                for (i=0 ; i<symbols.length ; i++) hex_codes.push(symbols[i].toString(16)) ;
+                unicode = hex_codes.join('_') ;
+                index = -1 ;
+                for (i=0 ; i<js_messages_row.reactions.length ; i++) if (js_messages_row.reactions[i].unicode == unicode) index = i ;
+                // console.log(pgm + 'message.reaction = ' + message.reaction + ', unicode = ' + unicode + ', index = ' + index);
+                if (index == -1) {
+                    // reaction was not found in current user reactions. use full list of emojis as fallback
+                    title = is_emoji[message.reaction] ;
+                    if (title) js_messages_row.reactions.push({
+                        unicode: unicode,
+                        title: title,
+                        selected: true
+                    }) ;
+                }
+                else js_messages_row.reactions[index].selected = true ;
+                // console.log(pgm + 'js_messages_row.reactions = ' + JSON.stringify(js_messages_row.reactions));
+            }
             // add new row to js_messages
             js_messages.push(js_messages_row) ;
             // add indexes to js_messages
@@ -6928,8 +7199,11 @@ angular.module('MoneyNetwork')
                 return ;
             }
 
-            // check for public chat relevant for current chat page
-            check_public_chat() ;
+            // ensure that like.json file has been loaded into memory
+            get_like_json(function (like, like_index, empty) {
+                // check for public chat relevant for current chat page
+                check_public_chat() ;
+            }) ;
 
         } // set_first_and_last_chat
 
@@ -7529,7 +7803,7 @@ angular.module('MoneyNetwork')
                     var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
                         file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                         new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
-                        image, chat2, found_image, byteAmount, chat_bytes, chat_length, error ;
+                        image, byteAmount, chat_bytes, chat_length, error, auth_address, index ;
                     // update cache_status
                     cache_status.is_pending = false;
                     debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
@@ -7721,6 +7995,13 @@ angular.module('MoneyNetwork')
                             sent_at: chat.msg[i].timestamp,
                             z_filename: z_filename
                         };
+                        // lookup reaction for public chat in like.json file
+                        auth_address = folder == 'outbox' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
+                        index = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
+                        if (z_cache.like_json_index.hasOwnProperty(index)) {
+                            j = z_cache.like_json_index[index] ;
+                            message_with_envelope.reaction = z_cache.like_json.like[j].emoji ;
+                        }
                         message_with_envelope.ls_msg_size = 0; // ZeroNet and browser size 0 for all public chat messages
                         debug('public_chat', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope));
                         add_message(contact, message_with_envelope);
@@ -8438,6 +8719,13 @@ angular.module('MoneyNetwork')
             if (!user_setup.encryption) user_setup.encryption = keysize == 256 ? '2' : '1' ;
         }
         function save_user_setup () {
+            var i ;
+            if (user_setup.reactions) {
+                for (i=0 ; i<user_setup.length ; i++) {
+                    delete user_setup[i].src ;
+                    delete user_setup[i]["$$hashKey"] ;
+                }
+            }
             MoneyNetworkHelper.setItem('setup', JSON.stringify(user_setup));
             MoneyNetworkHelper.ls_save();
         }

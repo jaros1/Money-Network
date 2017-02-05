@@ -112,7 +112,6 @@ angular.module('MoneyNetwork')
         var pgm = 'messageReact: ' ;
         var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
         var standard_reactions = moneyNetworkService.get_user_reactions() ;
-
         var i, content_html ;
         content_html = '<table><tbody><tr>' ;
         for (i=0; i<standard_reactions.length ; i++) {
@@ -121,6 +120,11 @@ angular.module('MoneyNetwork')
                 '</td>' ;
         } // for i
         content_html += '</tr></tbody></table>' ;
+
+        var user_setup = moneyNetworkService.get_user_setup() ;
+        var emoji_folders = moneyNetworkService.get_emoji_folders() ;
+        var emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+        if (emoji_folder[emoji_folder.length-1] != '/') emoji_folder += '/' ;
 
         return {
             restrict: 'E',
@@ -153,7 +157,7 @@ angular.module('MoneyNetwork')
                         scope.title = no_reaction.title ;
                     }
                     else {
-                        scope.src = message.reactions[old_index].src ;
+                        scope.src = emoji_folder + message.reactions[old_index].unicode + '.png' ;
                         scope.title = message.reactions[old_index].title ;
                     }
                     // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', src = ' + scope.src + ', title = ' + scope.title) ;

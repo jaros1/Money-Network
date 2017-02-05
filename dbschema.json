@@ -105,6 +105,7 @@
         ["timestamp", "INTEGER"],
         ["auth", "TEXT"],
         ["emoji", "TEXT"],
+        ["count", "INTEGER"],
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX like_i1 ON like(timestamp)"],

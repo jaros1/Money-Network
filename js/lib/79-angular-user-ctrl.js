@@ -1009,19 +1009,29 @@ angular.module('MoneyNetwork')
         self.emoji_folders = moneyNetworkService.get_emoji_folders() ;
         self.user_reactions = moneyNetworkService.get_user_reactions() ;
         self.reaction_list = null ;
-        self.editing_reactions = false ;
+        self.editing_reactions = false ; // open/close edit reactions area
         self.new_reaction = null ;
-        self.full_emoji_support = true ;
+        self.full_emoji_support = true ; // true: only emojis supported by all 8 emoji providers + available online at .....
+
+        // todo: edit reactions on a copy of self.setup.reactions. save to self.setup.reactions without src and $$hashKey
         self.edit_reactions = function (edit) {
-            if (edit && !self.setup.reactions) {
-                // first edit. clone standard reactions
-                self.setup.reactions = JSON.parse(JSON.stringify(moneyNetworkService.get_standard_reactions())) ;
-                self.user_reactions = moneyNetworkService.get_user_reactions() ;
+            var i ;
+            if (edit) {
+                // open edit reactions area
+                if (!self.setup.reactions) JSON.parse(JSON.stringify(moneyNetworkService.get_standard_reactions())) ;
+                self.user_reactions = JSON.parse(JSON.stringify(self.setup.reactions)) ; // work copy
+                if (!self.reaction_list) self.reaction_list = moneyNetworkService.get_reaction_list(self.full_emoji_support) ;
             }
-            if (edit && !self.reaction_list) self.reaction_list = moneyNetworkService.get_reaction_list(self.full_emoji_support) ;
             self.editing_reactions = edit ;
             if (!edit) {
-                // save/done
+                // save/done. close reaction area
+                self.setup.reactions.splice(0,self.setup.reactions.length) ;
+                for (i=0 ; i<self.user_reactions.length ; i++) {
+                    self.setup.reactions.push({
+                        unicode: self.user_reactions[i].unicode,
+                        title: self.user_reactions[i].title
+                    }) ;
+                }
                 moneyNetworkService.save_user_setup() ;
                 MoneyNetworkHelper.load_user_setup() ;
             }

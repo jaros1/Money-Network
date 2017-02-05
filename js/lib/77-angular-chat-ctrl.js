@@ -823,6 +823,11 @@ angular.module('MoneyNetwork')
                     match = false ;
                     reason = 1.3 ;
                 }
+                else if (message.message.message.msgtype == 'reaction') {
+                    // hide private reaction messages
+                    match = false ;
+                    reason = 1.4 ;
+                }
                 else if (!self.contact && !self.group_chat) {
                     // no context - show chat for all contacts. Use green/red filter in top of page
                     if (message.contact.type == 'group') {
@@ -1451,28 +1456,37 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'show_feedback = ' + message.show_feedback) ;
             }; // self.click_message
 
-            //// emojis reaction bar.
-            //self.reactions = [
-            //    { src: "public/images/1f603.png", title: "Like"},
-            //    { src: "public/images/2764.png",  title: "Love"},
-            //    { src: "public/images/1f606.png", title: "Ha ha"},
-            //    { src: "public/images/1f62e.png", title: "Wow"},
-            //    { src: "public/images/1f622.png", title: "Sad"},
-            //    { src: "public/images/1f621.png", title: "Angry"}
-            //] ;
-            //// one copy for each message
-            //self.get_message_reactions = function (message) {
-            //    if (!message.reactions) message.reactions = JSON.parse(JSON.stringify(self.reactions)) ;
-            //    return message.reactions ;
-            //}; // get_message_reactions
-
             self.react = function (message, new_index) {
                 var pgm = controller + '.react: ' ;
-                var old_index, i, symbols, hex_codes, reaction ;
+                var old_index, i, symbols, hex_codes, contact, unique_id ;
                 // console.log(pgm + 'message = ' + JSON.stringify(message) + ', index = ' + new_index) ;
                 if (!message.reactions) {
+                    console.log(pgm + 'error. reactions array was not found for message. see moneyNetworkService.add_message') ;
                     // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq + ', no reactions array') ;
                     return ;
+                }
+                // check. private_reactions and public key (deleted contacts)
+                // todo: add this check to messageReact directive (move code to moneyNetworkService)
+                if (self.setup.private_reactions && (message.message.folder == 'inbox')) {
+                    // must send reaction as a private message. Check that pubkey is available
+                    if (message.contact.type == 'group') {
+                        // ingoing group chat message. info about sender should be in message
+                        console.log(pgm + 'ingoing group chat message. contact.participants = ' + JSON.stringify(message.contact.participants) +
+                            ', message.participant = ' + JSON.stringify(message.message.participant)) ;
+                        unique_id = message.contact.participants[message.message.participant-1] ;
+                        console.log(pgm + 'unique_id = ' + unique_id) ;
+                        contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+                        console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
+                        if (!contact) {
+                            console.log(pgm + 'error. contact (sender of group chat message) was not found') ;
+                            return ;
+                        }
+                    }
+                    else contact = message.contact ;
+                    if (!contact.pubkey) {
+                        console.log(pgm + 'cannot send private reaction message to contact without a public key') ;
+                        return ;
+                    }
                 }
                 // Update UI
                 old_index = -1 ;
@@ -1490,19 +1504,17 @@ angular.module('MoneyNetwork')
                 // - public chat and !user_setup.private_reactions: update like.json file (reaction is public)
                 // - otherwise send a private message with reaction
                 // todo: UI - disable reaction if no contact public key and private reaction is selected
-                symbols = [] ;
-                hex_codes = message.reactions[new_index].unicode.split('_') ;
-                for (i=0 ; i<hex_codes.length ; i++) symbols.push(parseInt(hex_codes[i],16)) ;
-                reaction = punycode.ucs2.encode(symbols) ;
 
                 if (message.reactions[new_index].selected) {
                     hex_codes = message.reactions[new_index].unicode.split('_') ;
+                    symbols = [] ;
                     for (i=0 ; i<hex_codes.length ; i++) symbols.push(parseInt(hex_codes[i],16)) ;
                     message.message.reaction = punycode.ucs2.encode(symbols) ;
                 }
                 else delete message.message.reaction ;
                 message.message.reaction_at = new Date().getTime();
-                moneyNetworkService.ls_save_contacts(true);
+                moneyNetworkService.ls_save_contacts(true); // true: update ZeroNet
+
             }; // react
 
             // infinite scroll

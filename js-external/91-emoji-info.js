@@ -3679,6 +3679,6 @@ var is_emoji = {} ;
         hex_codes = emoji_names[i].code.split('_') ;
         symbols = [] ;
         for (j=0 ; j<hex_codes.length ; j++) symbols.push(parseInt(hex_codes[j], 16)) ;
-        is_emoji[punycode.ucs2.encode(symbols)] = true ;
+        is_emoji[punycode.ucs2.encode(symbols)] = emoji_names[i].name || 'No title' ;
     }
 })() ;

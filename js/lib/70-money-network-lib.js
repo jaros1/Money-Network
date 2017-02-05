@@ -982,6 +982,40 @@ var MoneyNetworkHelper = (function () {
         "required": ['msgtype', 'participants', 'password'],
         "additionalProperties": false
     };
+    json_schemas['reaction'] = {
+        "type": 'object',
+        "title": 'Send private reaction to contact',
+        "description": 'Timestamp is sent_at timestamp for message with reaction. Reaction_at is timestamp for reaction. Reaction is null or missing if old reaction has been removed. sent_at and message_sha256 are used when resending lost messages',
+        "properties": {
+            "msgtype": {"type": 'string', pattern: '^reaction$'},
+            "timestamp": {"type": 'integer'},
+            "reaction": {"type": 'string'},
+            "reaction_at": {"type": 'integer'},
+            "local_msg_seq": {"type": 'integer'},
+            "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
+            "feedback": {
+                "type": 'object',
+                "description": 'Feedback info. Has message been received? Normal chat, type integer, with local_msg_seq. Group chat, type string, with participant, local_msg_seq',
+                "properties": {
+                    "sent": {
+                        "type": 'array',
+                        "items": {"type": ['integer', 'string']},
+                        "minItems": 1
+                    },
+                    "received": {
+                        "type": 'array',
+                        "items": {"type": ['integer', 'string']},
+                        "minItems": 1
+                    }
+                },
+                "additionalProperties": false
+            },
+            "sent_at": {"type": 'integer'},
+            "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'}
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    };
     // two internal lost message notifications in UI. Not sent or received to/from other users
     json_schemas['lost msg'] = {
         "type": 'object',
@@ -1088,6 +1122,31 @@ var MoneyNetworkHelper = (function () {
             }
         },
         "required": ['version', 'status'],
+        "additionalProperties": false
+    } ;
+    json_schemas['like.json'] = {
+        "type": 'object',
+        "title": 'User like.json file with reactions',
+        "description": 'User_seq. Local user id. timestamp and auth is message identification. timestamp should be enough id in most situations. Auth = first 4 characters of auth_address. Emoji is unicode symbol. Count is only used for private anonymous reactions',
+        "properties": {
+            "version": { "type": 'integer' },
+            "like": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "user_seq": { "type": 'integer'},
+                        "timestamp": { "type": 'integer'},
+                        "auth": { "type": 'string', "minLength": 4, "maxLength": 4},
+                        "emoji": { "type": 'string'},
+                        "count": { "type": 'integer'}
+                    },
+                    "required": ['user_seq', 'timestamp', 'auth', 'emoji'],
+                    "additionalProperties": false
+                }
+            }
+        },
+        "required": ['version', 'like'],
         "additionalProperties": false
     } ;
     // optional files:
@@ -1221,7 +1280,7 @@ var MoneyNetworkHelper = (function () {
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
-            'issue_112', 'emoji', 'site_info'];
+            'issue_112', 'emoji', 'site_info', 'reaction'];
         for (i = 0; i < debug_keys.length; i++) {
             key = debug_keys[i];
             if (user_setup.debug[key]) debug_value = 'true';
