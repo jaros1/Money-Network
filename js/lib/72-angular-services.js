@@ -5546,7 +5546,7 @@ angular.module('MoneyNetwork')
                     // 3) a private reaction to a group chat message
                 }
                 else  {
-                    // 4) a private reaction to a private chat message
+                    // 4) a private reaction to a private chat message x
                 }
 
 
