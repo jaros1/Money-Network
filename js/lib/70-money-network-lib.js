@@ -991,6 +991,7 @@ var MoneyNetworkHelper = (function () {
             "timestamp": {"type": 'integer'},
             "reaction": {"type": 'string'},
             "reaction_at": {"type": 'integer'},
+            "reaction_grp": { "type": 'integer', "minimum": 1, "maximum": 4},
             "local_msg_seq": {"type": 'integer'},
             "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "feedback": {
@@ -1013,7 +1014,7 @@ var MoneyNetworkHelper = (function () {
             "sent_at": {"type": 'integer'},
             "message_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'}
         },
-        "required": ['msgtype'],
+        "required": ['msgtype', 'timestamp', 'reaction_at', 'reaction_grp'],
         "additionalProperties": false
     };
     // two internal lost message notifications in UI. Not sent or received to/from other users

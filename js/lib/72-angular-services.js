@@ -1768,7 +1768,12 @@ angular.module('MoneyNetwork')
                     } // for i (contacts)
 
                     // add private reaction messages before encrypt and send (z_update_2a_data_json_encrypt)
-                    var unique_id, sender ;
+                    // can be:
+                    // 1) a private reaction to a public chat message
+                    // 2) a reaction in a group chat to all members in group chat
+                    // 3) a private reaction to a group chat message
+                    // 4) a private reaction to a private chat message
+                    var unique_id, sender, reaction_grp ;
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         contact = ls_contacts[i];
                         for (j=contact.messages.length-1 ; j >= 0 ; j--) {
@@ -1815,12 +1820,17 @@ angular.module('MoneyNetwork')
                                 local_storage_updated = true ;
                                 continue ;
                             }
+                            if (message_with_envelope.z_filename) reaction_grp = 1 ; // 1) a private reaction to a public chat message
+                            else if (contact.type != 'group') reaction_grp = 4 ; // 4) a private reaction to a private chat message
+                            else if (user_setup.private_reactions) reaction_grp = 3 ; // 3) a private reaction to a group chat message
+                            else reaction_grp = 2 ; // 2) a reaction in a group chat to all members in group chat
                             // add private reaction message
                             message = {
                                 msgtype: 'reaction',
                                 timestamp: message_with_envelope.sent_at,
                                 reaction: message_with_envelope.reaction,
-                                reaction_at: message_with_envelope.reaction_at
+                                reaction_at: message_with_envelope.reaction_at,
+                                reaction_grp: reaction_grp
                             } ;
                             if (!message.reaction) delete message.reaction ;
                             // validate json
@@ -3464,7 +3474,20 @@ angular.module('MoneyNetwork')
             });
             add_contact(contact) ;
             return contact ;
-        }
+        } // get_public_contact
+        function get_public_chat_outbox_msg (timestamp) {
+            var pgm = service + '.get_public_chat_outbox_msg: ' ;
+            var public_contact, i ;
+            debug('reaction', pgm + 'received a reaction for public chat message with timestamp ' + timestamp + '. check already loaded public outbox messages') ;
+            public_contact = get_public_contact(true) ;
+            for (i=0 ; i<public_contact.messages.length ; i++) {
+                if (public_contact.messages[i].sent_at == timestamp) {
+                    return public_contact.messages[i] ;
+                }
+            } // for i (messages)
+            return null ;
+        } // get_public_chat_outbox_msg
+
 
         // todo: index js_messages with local_msg_seq
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
@@ -4787,7 +4810,8 @@ angular.module('MoneyNetwork')
             var pgm = service + '.process_incoming_message: ' ;
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256,
                 error, local_msg_seq, message, contact_or_group, found_lost_msg, found_lost_msg2, js_messages_row,
-                placeholders, image_download_failed ;
+                placeholders, image_download_failed, obj_of_reaction, key, key_a, user_path,
+                cache_filename, cache_status, get_and_load_callback;
 
             debug('lost_message', pgm + 'sent_at = ' + sent_at) ;
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
@@ -5428,7 +5452,129 @@ angular.module('MoneyNetwork')
                 }
             }
 
-            // update chat notifications
+            if (decrypted_message.msgtype == 'reaction') {
+                debug('reaction', pgm + 'received a private reaction. decrypted_message = ' + JSON.stringify(decrypted_message)) ;
+                //decrypted_message = {
+                //    "msgtype": "reaction",
+                //    "timestamp": 1485968457030,
+                //    "reaction": "😃",
+                //    "reaction_at": 1486370591351,
+                //    "reaction_grp": 1,
+                //    "local_msg_seq": 60,
+                //    "feedback": {"sent": [29]}
+                //};
+                obj_of_reaction = null ;
+                // reaction_grp:
+                if (decrypted_message.reaction_grp == 1) {
+                    // 1) a private reaction to a public chat message.
+                    //    object of reaction is a public chat outbox message in an optional -chat file
+                    //    message may not yet have been loaded into memory.
+                    //    message may have been deleted.
+                    //    maybe already other anonymous reactions in like.json for this public chat message
+                    obj_of_reaction = get_public_chat_outbox_msg(decrypted_message.timestamp) ;
+                    if (obj_of_reaction) {
+                        debug('reaction', pgm + 'OK. obj_of_reaction = ' + JSON.stringify(obj_of_reaction));
+                    }
+                    else {
+                        // public outbox chat message was not found in memory. check list of optional -chat files
+                        debug('reaction', pgm + 'public chat message with timestamp ' + decrypted_message.timestamp + ' was not found in public chat outbox messages') ;
+                        debug('reaction', pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
+                        // - public chat : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
+                        cache_filename = null ;
+                        for (key in my_files_optional) {
+                            if (!key.match(/-chat/)) continue ;
+                            key_a = key.split('-') ;
+                            if (decrypted_message.timestamp > parseInt(key_a[0])) continue ; // to timestamp
+                            if (decrypted_message.timestamp < parseInt(key_a[1])) continue ; // from timestamp
+                            debug('reaction', pgm + 'object of reaction may be in ' + key) ;
+                            user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
+                            cache_filename = user_path + '/' + key ;
+                            break ;
+                        }
+                        if (cache_filename) {
+                            // maybe OK. timestamp within start and end timestamp for -chat.json file
+                            get_and_load_callback = function () {
+                                get_and_load_chat_file(cache_filename, my_files_optional[key].size, decrypted_message.timestamp, function (status) {
+                                    var pgm = service + '.process_incoming_message get_and_load_chat_file callback 1: ' ;
+                                    var obj_of_reaction ;
+                                    debug('reaction', pgm + 'status = ' + status) ;
+                                    // recheck public chat outbox messages after get_and_load_chat_file operation
+                                    obj_of_reaction = get_public_chat_outbox_msg(decrypted_message.timestamp);
+                                    if (obj_of_reaction) debug('reaction', pgm + 'OK. obj_of_reaction = ' + JSON.stringify(obj_of_reaction));
+                                    else {
+                                        debug('reaction', pgm + 'Error. no public chat file exist with a mesage with timestamp  ' + decrypted_message.timestamp) ;
+                                    }
+                                }); // get_and_load_chat_file callback 1
+                            }; //  get_and_load_callback
+
+                            cache_status = files_optional_cache[cache_filename] ;
+                            if (cache_status) {
+                                // cache status already exists
+                                debug('reaction', pgm + 'cache_status = ' + JSON.stringify(cache_status)) ;
+                                if (cache_status.is_pending) {
+                                    debug('reaction', pgm + 'fileGet request already pending for this file. ' +
+                                        'add get_and_load_callback function to cache_status.callbacks array ' +
+                                        'and wait for previous operation get_and_load_chat_file to finish');
+                                    if (!cache_status.callbacks) cache_status.callbacks = [] ;
+                                    cache_status.callbacks.push(get_and_load_callback) ;
+                                }
+                                else if (!cache_status.timestamps || (cache_status.timestamps.indexOf(decrypted_message.timestamp) == -1)) {
+                                    debug('reaction', pgm + 'error no public chat message with timestamp ' + decrypted_message.timestamp +
+                                        ' in cache_filename ' + cache_filename);
+                                }
+                                else {
+                                    debug('reaction', pgm + 'OK. public chat message with timestamp ' + decrypted_message.timestamp +
+                                        ' is in ' + cache_filename + ' but message has not yet been loaded. read message into memory');
+                                    get_and_load_callback() ;
+                                }
+                            }
+                            else {
+                                // cache status has not yet been created
+                                debug('reaction', pgm + cache_filename + ' was not found in cache. call get_and_load_chat_file with timestamp ' + decrypted_message.timestamp) ;
+                                get_and_load_callback() ;
+                            }
+                        }
+                        else {
+                            debug('reaction', pgm + 'error. no public chat file exist with a message with timestamp  ' + decrypted_message.timestamp) ;
+                        }
+                    }
+                }
+                else if (decrypted_message.reaction_grp == 2) {
+                    // 2) a reaction in a group chat to all members in group chat.
+                }
+                else if (decrypted_message.reaction_grp == 3) {
+                    // 3) a private reaction to a group chat message
+                }
+                else  {
+                    // 4) a private reaction to a private chat message
+                }
+
+
+                //if (contact_or_group.type == 'group') {
+                //    // 2) a reaction in a group chat to all numbers in group chat
+                //    debug('reaction', pgm + '2) a reaction in a group chat to all numbers in group chat') ;
+                //    debug('reaction', pgm + 'group_chat_contact.participants = ' + JSON.stringify(group_chat_contact.participants));
+                //    debug('reaction', pgm + 'contact.unique_id = ' + contact.unique_id) ;
+                //    debug('reaction', pgm + 'contact_or_group.unique_id = ' + contact_or_group.unique_id) ;
+                //    obj_of_reaction = null ;
+                //    for (i=0 ; i<contact_or_group.messages.length ; i++) {
+                //        if (contact_or_group.messages[i].sent_at != decrypted_message.timestamp) continue ;
+                //        obj_of_reaction = contact_or_group.messages[i] ;
+                //        break ;
+                //    }
+                //    if (obj_of_reaction) debug('reaction', 'obj_of_reaction = ' + JSON.stringify(obj_of_reaction)) ;
+                //    else debug('reaction', 'obj_of_reaction was not found. deleted group chat message?') ;
+                //}
+                //else {
+                //    debug('reaction', pgm + 'must be: ');
+                //    debug('reaction', pgm + '1) a private reaction to a public chat message') ;
+                //    debug('reaction', pgm + '3) a private reaction to a group chat message') ;
+                //    debug('reaction', pgm + '4) a private reaction to a private chat message') ;
+                //}
+
+            } // if reaction
+
+                // update chat notifications
             update_chat_notifications() ;
 
             // add more message post processing ...
@@ -7142,36 +7288,42 @@ angular.module('MoneyNetwork')
             };
             chat_page_context.failures = [] ;
 
-            // check for public chat relevant for current chat page. loop until status == done or too many errors
-            chat_page_context.no_processes++ ;
-            check = function () {
-                var pgm = service + '.check_public_chat: ' ;
-                get_public_chat(function (status) {
-                    if (!status) status = 'not updated' ;
-                    debug('public_chat', pgm + 'status = ' + status + ', chat_page_context.failures = ' + chat_page_context.failures.length);
-                    if (chat_page_context.failures.length > 3) {
-                        // too many errors
-                        chat_page_context.no_processes-- ;
-                        return ;
-                    }
-                    else if (status == 'done') {
-                        // no more public chat files
-                        chat_page_context.no_processes-- ;
-                        return ;
-                    }
-                    else if (status == 'updated') {
-                        // chat page updated. update and continue
-                        reset_first_and_last_chat();
-                        $rootScope.$apply() ;
-                        check() ;
-                    }
-                    else {
-                        // no chat page updates but not done
-                        check() ;
-                    }
-                }) ; // get_public_chat callback
-            } ; // check
-            check() ;
+            // ensure that like.json file has been loaded into memory
+            get_like_json(function (like, like_index, empty) {
+
+                // check for public chat relevant for current chat page. loop until status == done or too many errors
+                chat_page_context.no_processes++ ;
+                check = function () {
+                    var pgm = service + '.check_public_chat: ' ;
+                    get_public_chat(function (status) {
+                        if (!status) status = 'not updated' ;
+                        debug('public_chat', pgm + 'status = ' + status + ', chat_page_context.failures = ' + chat_page_context.failures.length);
+                        if (chat_page_context.failures.length > 3) {
+                            // too many errors
+                            chat_page_context.no_processes-- ;
+                            return ;
+                        }
+                        else if (status == 'done') {
+                            // no more public chat files
+                            chat_page_context.no_processes-- ;
+                            return ;
+                        }
+                        else if (status == 'updated') {
+                            // chat page updated. update and continue
+                            reset_first_and_last_chat();
+                            $rootScope.$apply() ;
+                            check() ;
+                        }
+                        else {
+                            // no chat page updates but not done
+                            check() ;
+                        }
+                    }) ; // get_public_chat callback
+                } ; // check
+                check() ;
+
+            }) ; // get_like_json callback
+
 
         } // check_public_chat
 
@@ -7588,7 +7740,7 @@ angular.module('MoneyNetwork')
                             res[i].delete = true ;
                             if (!cache_status) {
                                 debug('public_chat', pgm + 'found public outbox chat file within page context') ;
-                                get_and_load_chat_file(cache_filename, res[i].size, cb2) ;
+                                get_and_load_chat_file(cache_filename, res[i].size, null, cb2) ;
                                 return ;
                             }
                             debug('public_chat', pgm + 'files_optional_cache[' + cache_filename + '] = ' + JSON.stringify(cache_status)) ;
@@ -7602,7 +7754,7 @@ angular.module('MoneyNetwork')
                             }
                             if (chat_page_context.end_of_page) {
                                 debug('public_chat', pgm + 'found not completely loaded public chat outbox file within page context') ;
-                                get_and_load_chat_file(cache_filename, res[i].size, cb2) ;
+                                get_and_load_chat_file(cache_filename, res[i].size, null, cb2) ;
                                 return ;
                             }
                             // any not yet read messages within page context in this file?
@@ -7613,7 +7765,7 @@ angular.module('MoneyNetwork')
                             }
                             for (j=0 ; j<cache_status.timestamps.length ; j++) {
                                 if (cache_status.timestamps[j] < chat_page_context.last_bottom_timestamp) continue ;
-                                get_and_load_chat_file(cache_filename, res[i].size, cb2) ;
+                                get_and_load_chat_file(cache_filename, res[i].size, null, cb2) ;
                                 return ;
                             } // for j (timestamps)
                         } // if
@@ -7732,7 +7884,7 @@ angular.module('MoneyNetwork')
                         cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename;
 
                         debug('public_chat', pgm + 'get and load chat file ' + cache_filename);
-                        get_and_load_chat_file(cache_filename, res[i].size, cb2) ;
+                        get_and_load_chat_file(cache_filename, res[i].size, null, cb2) ;
                     };
                     get_no_peers(cb2) ;
 
@@ -7785,10 +7937,14 @@ angular.module('MoneyNetwork')
 
 
         // get and load chat file. called from  get_public_chat
-        function get_and_load_chat_file(cache_filename, expected_size, cb) {
+        // params:
+        // - cache_filename: inner_path to public chat file
+        // - expected_size: from dbQuery or content.json file - request new download if size has changed
+        // - timestamp: force load public chat message with this timestamp - process_incoming_message - received reaction
+        function get_and_load_chat_file(cache_filename, expected_size, read_timestamp, cb) {
             var pgm = service + '.get_and_load_chat_file: ';
             var my_auth_address ;
-            if (!user_setup.public_chat) {
+            if (!user_setup.public_chat && !read_timestamp) {
                 console.log(pgm + 'error. ignoring get_and_load_chat_file call for ' + cache_filename + '. public chat is disabled');
                 return cb('done') ;
             }
@@ -7797,7 +7953,7 @@ angular.module('MoneyNetwork')
             my_auth_address = ZeroFrame.site_info.auth_address ;
             get_user_seq(function (my_user_seq) {
                 var pgm = service + '.get_and_load_chat_file get_user_seq callback 1: ';
-                var cache_status;
+                var cache_status, cb2;
 
                 // check cache status for optional file
                 cache_status = files_optional_cache[cache_filename];
@@ -7818,8 +7974,16 @@ angular.module('MoneyNetwork')
                     return cb();
                 }
 
+                // extend cb. check processes also waiting for this fileGet operation to finish
+                cb2 = function(status) {
+                    cb(status) ;
+                    // execute any pending callback operations from process_incoming_message (reaction waiting for this fileGet operation to finish)
+                    if (cache_status.hasOwnProperty('callbacks')) while (cache_status.callbacks.length) cache_status.callbacks.shift()() ;
+                    return
+                };
                 // read optional file. can take some time depending of number of peers
                 cache_status.is_pending = true;
+
                 debug('public_chat || issue_112', pgm + 'start download ' + cache_filename) ;
                 ZeroFrame.cmd("fileGet", {inner_path: cache_filename, required: true}, function (chat) {
                     var pgm = service + '.get_and_load_chat_file fileGet callback 2: ';
@@ -7836,7 +8000,7 @@ angular.module('MoneyNetwork')
                         cache_status.download_failed_at.push(new Date().getTime()) ;
                         chat_page_context.failures.push(cache_filename) ;
                         console.log(pgm + 'download failed for ' + cache_filename + ', failures = ' + chat_page_context.failures.length) ;
-                        return cb() ;
+                        return cb2() ;
                     }
                     file_auth_address = cache_filename.split('/')[2] ;
                     file_user_seq = parseInt(cache_filename.split('-')[2]) ;
@@ -7866,7 +8030,7 @@ angular.module('MoneyNetwork')
                             ZeroFrame.cmd("optionalFileDelete", {inner_path: cache_filename}, function () {});
                         }
                         // chat page must call get_publish_chat again even if no messages were read
-                        return cb();
+                        return cb2();
                     }
                     cache_status.size = chat_length;
                     cache_status.is_downloaded = true;
@@ -7880,7 +8044,7 @@ angular.module('MoneyNetwork')
                     if (error) {
                         console.log(pgm + 'Chat file ' + cache_filename + ' is invalid. error = ' + error) ;
                         cache_status.timestamps = [] ;
-                        return cb() ;
+                        return cb2() ;
                     }
 
                     // read chat msg and copy timestamps to cache_status object
@@ -7896,17 +8060,16 @@ angular.module('MoneyNetwork')
                     }
                     if (cache_status.timestamps.length == 0) {
                         debug('public_chat', pgm + 'warning. no unread messages in file ' + cache_filename);
-                        return cb();
+                        return cb2();
                     }
                     // is file still within page chat context?
-                    if (!user_setup.public_chat) {
+                    if (!user_setup.public_chat && !read_timestamp) {
                         debug('public_chat', pgm + 'ignoring get_and_load_chat_file call for ' + cache_filename + '. public chat has been disabled');
-                        cb('done') ;
-                        return
+                        return cb2('done') ;
                     }
-                    if (!file_within_chat_page_context(cache_filename)) {
+                    if (!read_timestamp && !file_within_chat_page_context(cache_filename)) {
                         debug('public_chat', pgm + 'file ' + cache_filename + ' is no longer within page context');
-                        return cb();
+                        return cb2();
                     }
                     // find contact
                     z_filename = cache_filename.split('/')[3] ;
@@ -7934,7 +8097,7 @@ angular.module('MoneyNetwork')
                             // cannot read messages in data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482768400248-1482768400248-1-chat.json
                             debug('public_chat', pgm + 'create unknown contact and retry reading chat file ' + cache_filename) ;
                             // run contact search for this auth_address only
-                            z_contact_search (function () { cb() }, file_auth_address) ;
+                            z_contact_search (function () { cb2() }, file_auth_address) ;
                             return  ;
                         }
                     }
@@ -7943,7 +8106,13 @@ angular.module('MoneyNetwork')
                     renamed_chat_file = false ;
                     for (i = cache_status.timestamps.length - 1; i >= 0; i--) {
                         timestamp = cache_status.timestamps[i];
-                        if (!chat_page_context.end_of_page && (timestamp < chat_page_context.last_bottom_timestamp)) continue;
+                        if (read_timestamp) {
+                            // special get_and_load_chat_file call from process_incoming_message - searching for a specifik message
+                            if (timestamp != read_timestamp) continue ;
+                        }
+                        else {
+                            if (!chat_page_context.end_of_page && (timestamp < chat_page_context.last_bottom_timestamp)) continue;
+                        }
                         j = -1;
                         for (k = 0; k < chat.msg.length; k++) if (chat.msg[k].timestamp == timestamp) j = k;
                         if (j == -1) {
@@ -8021,7 +8190,15 @@ angular.module('MoneyNetwork')
                         // lookup reaction for public chat in like.json file
                         auth_address = folder == 'outbox' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
                         index = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
-                        if (z_cache.like_json_index.hasOwnProperty(index)) {
+
+                        // TypeError: z_cache.like_json_index is undefined[Learn More]  all.js:9538:1
+                        // get_and_load_chat_file/</< https://bit.no.com:43110/moneynetwork.bit/js/all.js:9538:1
+                        // ZeroFrame.prototype.onMessage https://bit.no.com:43110/moneynetwork.bit/js-external/30-ZeroFrame.js:41:17
+                        //     bind/<
+                        if (!z_cache.like_json_index) {
+                            console.log(pgm + 'error. get_and_load_chat_file is called before get_like_json and like.json file has not been loaded into z_cache');
+                        }
+                        else if (z_cache.like_json_index.hasOwnProperty(index)) {
                             j = z_cache.like_json_index[index] ;
                             message_with_envelope.reaction = z_cache.like_json.like[j].emoji ;
                         }
@@ -8032,7 +8209,7 @@ angular.module('MoneyNetwork')
                         page_updated = 'updated';
                     } // for i
                     // callback to chatCtrl, update UI and maybe read more optional files with public chat messages
-                    cb(page_updated);
+                    cb2(page_updated);
 
                 }); // fileGet callback 2
 
