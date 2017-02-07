@@ -529,13 +529,30 @@
 
                                         </td>
                                         <td style="text-align: right; vertical-align: top">
-                                        <span class="speech-time"
-                                              title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
-                                        <span class="speech-time" title="{{m|messageOutSentTitle}}">
-                                            <i class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                            <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
-                                        <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                              ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
+
+                                            <table style="margin-right: 0; margin-left: auto;">
+                                                <tr><td>
+
+                                                    <span class="speech-time"
+                                                          title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
+                                                    <span class="speech-time" title="{{m|messageOutSentTitle}}">
+                                                        <i class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
+                                                        <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
+                                                    <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
+                                                          ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
+                                                    <message-react message="m" folder="outbox" react="c.react"></message-react>
+
+                                                </td></tr>
+                                                <tr><td><table style="margin-right: 0; margin-left: auto;">
+                                                    <tr>
+                                                        <td></td>
+                                                        <td ng-repeat="r in m.message.reactions">
+                                                            <img ng-src="{{r.src}}" height="14" width="14">
+                                                        </td>
+                                                        <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                    </tr>
+                                                </table></td></tr>
+                                            </table>
 
                                         </td>
                                     </tr>
@@ -642,18 +659,36 @@
                                         </span>
                                         </td>
                                         <td style="text-align: right; vertical-align: top">
-                                        <span class="speech-time"
-                                              title="Message size in browser"> {{m.message|formatMsgSize}}</span>
-                                        <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
-                                                class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                        <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                              ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                        <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
-                                              ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
 
-                                            <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
-                                               ng-click="c.enter_password(m)"
-                                               title="Click to verify"></a>
+                                            <table style="margin-right: 0; margin-left: auto;">
+                                                <tr><td>
+
+                                                    <span class="speech-time"
+                                                          title="Message size in browser"> {{m.message|formatMsgSize}}</span>
+                                                    <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
+                                                            class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
+                                                    <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
+                                                          ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
+                                                    <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
+                                                          ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
+
+                                                    <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
+                                                       ng-click="c.enter_password(m)"
+                                                       title="Click to verify"></a>
+                                                    <message-react message="m" folder="inbox" react="c.react"></message-react>
+
+                                                </td></tr>
+                                                <tr><td><table style="margin-right: 0; margin-left: auto;">
+                                                    <tr>
+                                                        <td></td>
+                                                        <td ng-repeat="r in m.message.reactions">
+                                                            <img ng-src="{{r.src}}" height="14" width="14">
+                                                        </td>
+                                                        <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                    </tr>
+                                                </table></td></tr>
+                                            </table>
+
                                         </td>
                                     </tr>
                                     <tr>
@@ -1038,12 +1073,12 @@
                             <table class="speech" ng-hide="m.edit_chat_message">
                                 <tr>
                                     <td>
-                                    <span ng-click="c.chat_contact(m.contact)" class="media-heading"
-                                          alt="Click to continue chat" title="Click to continue chat">
+                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
+                                              alt="Click to continue chat" title="Click to continue chat">
                                         <span ng-bind-html="c.setup.alias">Me</span>
                                         <span ng-class="m.contact|contactGlyphicon"
                                               title="{{m|messageGlyphiconTitle}}"></span>
-                                    </span>
+                                        </span>
                                     </td>
                                     <td style="text-align: right; vertical-align: top">
                                         <table style="margin-right: 0; margin-left: auto;">
@@ -1057,22 +1092,16 @@
                                                       ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
                                                 <message-react message="m" folder="outbox" react="c.react"></message-react>
                                             </td></tr>
-                                            <tr>
-                                                <td>
-                                                    <table style="margin-right: 0; margin-left: auto;">
-                                                        <tr>
-                                                            <td></td>
-                                                            <td ng-repeat="r in m.message.reactions">
-                                                                <img ng-src="{{r.src}}" height="14" width="14">
-                                                            </td>
-                                                            <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
-                                                        </tr>
-                                                    </table>
-                                                </td>
-                                            </tr>
+                                            <tr><td><table style="margin-right: 0; margin-left: auto;">
+                                                <tr>
+                                                    <td></td>
+                                                    <td ng-repeat="r in m.message.reactions">
+                                                        <img ng-src="{{r.src}}" height="14" width="14">
+                                                    </td>
+                                                    <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                </tr>
+                                            </table></td></tr>
                                         </table>
-
-
                                     </td>
                                 </tr>
                                 <tr>
@@ -1172,20 +1201,34 @@
                                     </span>
                                     </td>
                                     <td style="text-align: right; vertical-align: top">
-                                    <span class="speech-time" title="Message size in browser"> {{m.message|formatMsgSize}}</span>
-                                    <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
-                                            class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
 
-                                        <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                              ng-click="c.edit_chat_msg(m)" title="Click to delete message xxxx"></span>
+                                        <table style="margin-right: 0; margin-left: auto;">
+                                            <tr><td>
 
-                                        <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
-                                              ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
+                                                <span class="speech-time" title="Message size in browser"> {{m.message|formatMsgSize}}</span>
+                                                <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
+                                                        class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
+                                                <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
+                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message xxxx"></span>
+                                                <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
+                                                      ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
+                                                <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
+                                                   ng-click="c.enter_password(m)" title="Click to verify"></a>
+                                                <message-react message="m" folder="inbox" react="c.react"></message-react>
 
-                                        <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
-                                           ng-click="c.enter_password(m)" title="Click to verify"></a>
+                                            </td></tr>
+                                            <tr><td><table style="margin-right: 0; margin-left: auto;">
+                                                <tr>
+                                                    <td></td>
+                                                    <td ng-repeat="r in m.message.reactions">
+                                                        <img ng-src="{{r.src}}" height="14" width="14">
+                                                    </td>
+                                                    <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                </tr>
+                                            </table></td></tr>
+                                        </table>
 
-                                        <message-react message="m" folder="inbox" react="c.react"></message-react>
+
                                     </td>
                                 </tr>
                                 <tr>
