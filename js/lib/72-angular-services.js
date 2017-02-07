@@ -241,9 +241,17 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<like.like.length ; i++) {
                     if (like.like[i].user_seq != my_user_seq) continue ;
                     index = like.like[i].timestamp + ',' + like.like[i].auth ;
-                    if (like.like[i].count) index += ',a' ; // todo: anonymous reactions
-                    else index += ',p' ; // public reaction
-                    like_index[index] = i ;
+                    if (like.like[i].count) {
+                        // anonymous reaction - array - many reactions for a message
+                        index += ',a' ;
+                        if (!like_index[index]) like_index[index] = [] ;
+                        like_index[index].push(i) ;
+                    }
+                    else {
+                        // public non anonymous reaction - one reaction for each message and user
+                        index += ',p' ;
+                        like_index[index] = i ;
+                    }
                 }
                 // console.log(pgm + 'like = ' + JSON.stringify(like)) ;
                 //console.log(pgm + 'like_index = ' + JSON.stringify(like_index)) ;
@@ -3153,7 +3161,7 @@ angular.module('MoneyNetwork')
         // update zeronet step 6. update public reaction file like.json
         function z_update_6_like_json (publish) {
             var pgm = service + '.z_update_6_like_json: ' ;
-            var done, new_reactions, i, contact, j, message_with_envelope, user_path ;
+            var done, new_reactions, i, contact, j, message_with_envelope, user_path, key ;
 
             done = function (publish) {
                 ls_save_contacts(false);
@@ -3163,7 +3171,6 @@ angular.module('MoneyNetwork')
                 }
                 zeronet_site_publish() ;
             } ; // done
-            if (user_setup.private_reactions) return done(publish) ; // reactions are sent as private messages
 
             // any new public reactions?
             new_reactions = false ;
@@ -3179,12 +3186,21 @@ angular.module('MoneyNetwork')
                 } // for j (messages)
                 if (new_reactions) break ;
             } // for i (contacts)
-            if (!new_reactions) return done(publish) ;
+            if (!new_reactions) {
+                for (key in ls_reactions) {
+                    if (ls_reactions[key].reaction_at) {
+                        new_reactions = true ;
+                        break ;
+                    }
+                }
+            }
+            if (!new_reactions) return done(publish) ; // no new reactions
 
             // read and update like.json with new reactions
             get_like_json(function (like, like_index, empty) {
                 var pgm = service + '.z_update_6_like_json get_like_json callback 1: ' ;
-                var error, index, i, contact, j, message_with_envelope, k, like_updated, auth_address, like_index_updated ;
+                var error, index, i, contact, j, message_with_envelope, k, like_updated, auth_address,
+                    like_index_updated, key, reaction_info, compare, emoji ;
                 error = MoneyNetworkHelper.validate_json (pgm, like, 'like.json', 'Invalid json file') ;
                 if (error) {
                     console.log(pgm + 'System error. failed to public reaction. like.json is invalid. ' + error) ;
@@ -3193,7 +3209,9 @@ angular.module('MoneyNetwork')
                     return done(publish);
                 }
                 like_updated = false ;
+                like_index_updated = false ;
 
+                // update public non anonymous reactions
                 for (i=0 ; i<ls_contacts.length ; i++) {
                     contact = ls_contacts[i] ;
                     if (contact.type == 'group') continue ;
@@ -3232,8 +3250,57 @@ angular.module('MoneyNetwork')
                         }
                     } // for j (messages)
                 } // for i (contacts)
+
+                // update private anonymous reactions
+                auth_address = ZeroFrame.site_info.auth_address.substr(0,4) ;
+                debug('reaction', pgm + 'ls_reactions = ' + JSON.stringify(ls_reactions));
+                for (key in ls_reactions) {
+                    if (!key.match(/[0-9]{13}/)) continue ; // not a timestamp
+                    reaction_info = ls_reactions[key] ;
+                    if (!reaction_info.reaction_at) continue ; // no change for this message
+                    index = key + ',' + auth_address + ',a' ;
+                    if (!like_index[index]) like_index[index] = [] ;
+                    if (!reaction_info.emojis) reaction_info.emojis = {} ;
+                    debug('reaction', pgm + 'key = ' + key + ', index = ' + index + ', reaction_info = ' + JSON.stringify(reaction_info)) ;
+                    // compare reactions in like.json with reactions in reaction_info (ls_reaction)
+                    compare = {} ;
+                    for (emoji in reaction_info.emojis) {
+                        compare[emoji] = { old_count: 0, new_count: reaction_info.emojis[emoji] }
+                    }
+                    for (i=0 ; i<like_index[index].length ; i++) {
+                        j = like_index[index][i] ;
+                        emoji = like.like[j].emoji ;
+                        if (!compare[emoji]) compare[emoji] = { new_count: 0};
+                        compare[emoji].old_count = like.like[j].count ;
+                        compare[emoji].old_i = j ;
+                    }
+                    debug('reaction', pgm + 'compare = ' + JSON.stringify(compare));
+                    for (emoji in compare) {
+                        if (compare[emoji].old_count == compare[emoji].new_count) continue ;
+                        like_updated = true ;
+                        if (!compare[emoji].old_count) {
+                            // add new row to like.json
+                            like_index[index].push(like.like.length) ;
+                            like.like.push({
+                                user_seq: z_cache.user_seq,
+                                timestamp: parseInt(key),
+                                auth: auth_address,
+                                emoji: emoji,
+                                count: compare[emoji].new_count
+                            }) ;
+                            continue ;
+                        }
+                        if (!compare[emoji].new_count) {
+                            // delete mark old row in like.json array
+                            like.like[compare[emoji].old_i].emoji = null ;
+                            continue ;
+                        }
+                        // simple count update
+                        like.like[compare[emoji].old_i].count = compare[emoji].new_count ;
+                    }
+                } // for key in reactions
+
                 if (!like_updated) return done(publish) ;
-                like_index_updated = false ;
                 for (i=like.like.length-1 ; i>= 0 ; i--) if (!like.like[i].emoji) {
                     like.like.splice(i,1) ;
                     like_index_updated = true ;
@@ -3378,6 +3445,37 @@ angular.module('MoneyNetwork')
             show_privacy_title = show ;
         }
 
+
+        // hash with private reactions
+        var ls_reactions = {} ;
+        function ls_load_reactions () {
+            var new_reactions, key ;
+            new_reactions = MoneyNetworkHelper.getItem('reactions') ;
+            if (new_reactions) new_reactions = JSON.parse(new_reactions) ;
+            else new_reactions = {} ;
+            for (key in ls_reactions) delete ls_reactions[key] ;
+            for (key in new_reactions) ls_reactions[key] = new_reactions[key] ;
+        } // load_reactions
+        function ls_save_reactions (update_zeronet) {
+            var pgm = service + '.save_reactions: ' ;
+            MoneyNetworkHelper.setItem('reactions', JSON.stringify(ls_reactions)) ;
+            if (update_zeronet) {
+                // update localStorage and zeronet
+                $timeout(function () {
+                    MoneyNetworkHelper.ls_save() ;
+                    z_update_1_data_json(pgm) ;
+                })
+            }
+            else {
+                // update only localStorage
+                $timeout(function () {
+                    MoneyNetworkHelper.ls_save() ;
+                })
+            }
+
+        }
+
+
         // array and indexes with contacts from localStorage
         // array for angularUI. hash with indexes for fast access
         var ls_contacts = [] ; // array with contacts
@@ -3488,7 +3586,6 @@ angular.module('MoneyNetwork')
             return null ;
         } // get_public_chat_outbox_msg
 
-
         // todo: index js_messages with local_msg_seq
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
         var js_messages_seq = 0 ; // internal seq to rows in js_messages.
@@ -3535,7 +3632,7 @@ angular.module('MoneyNetwork')
         // - false: do not add message to contact.messages array (already there)
         function add_message(contact, message, load_contacts) {
             var pgm = service + '.add_message: ' ;
-            var js_messages_row, symbols, hex_codes, i, unicode, index, title ;
+            var js_messages_row, i, unicode, index, title ;
             if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
             if (!contact.messages) contact.messages = [] ;
             if (!load_contacts) contact.messages.push(message) ;
@@ -3546,10 +3643,7 @@ angular.module('MoneyNetwork')
             } ;
             if (message.reaction) {
                 // must be message loaded from localStorage. Mark reaction as selected in reactions array
-                symbols = punycode.ucs2.decode(message.reaction) ; // array of integers
-                hex_codes = [] ;
-                for (i=0 ; i<symbols.length ; i++) hex_codes.push(symbols[i].toString(16)) ;
-                unicode = hex_codes.join('_') ;
+                unicode = symbol_to_unicode(message.reaction) ;
                 index = -1 ;
                 for (i=0 ; i<js_messages_row.reactions.length ; i++) if (js_messages_row.reactions[i].unicode == unicode) index = i ;
                 // console.log(pgm + 'message.reaction = ' + message.reaction + ', unicode = ' + unicode + ', index = ' + index);
@@ -4811,7 +4905,7 @@ angular.module('MoneyNetwork')
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256,
                 error, local_msg_seq, message, contact_or_group, found_lost_msg, found_lost_msg2, js_messages_row,
                 placeholders, image_download_failed, obj_of_reaction, key, key_a, user_path,
-                cache_filename, cache_status, get_and_load_callback;
+                cache_filename, cache_status, get_and_load_callback, save_private_reaction;
 
             debug('lost_message', pgm + 'sent_at = ' + sent_at) ;
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
@@ -5464,16 +5558,109 @@ angular.module('MoneyNetwork')
                 //    "feedback": {"sent": [29]}
                 //};
                 obj_of_reaction = null ;
-                // reaction_grp:
-                if (decrypted_message.reaction_grp == 1) {
+                if (decrypted_message.reaction && !is_emoji[decrypted_message.reaction]) {
+                    debug('reaction', pgm + 'ignoring reaction with unknown emoji') ;
+                }
+                else if (decrypted_message.reaction_grp == 1) {
                     // 1) a private reaction to a public chat message.
                     //    object of reaction is a public chat outbox message in an optional -chat file
                     //    message may not yet have been loaded into memory.
                     //    message may have been deleted.
                     //    maybe already other anonymous reactions in like.json for this public chat message
+
+                    save_private_reaction = function (obj_of_reaction) {
+                        var pgm = service + '.process_incoming_message.save_private_reaction: ' ;
+                        var reaction_info, old_reaction, new_reaction, i, unicode, title, user_reactions, emoji_folder ;
+
+                        // 1: save private reaction in localStorage (non anonymous)
+                        debug('reaction', pgm + 'save non anonymous reaction information in localStorage') ;
+                        // reactions to public chat messages in localStorage
+                        // reactions[index] = { reaction_info }
+                        // a) my private reaction to my public chat outbox messages (no one can see this except yourself):
+                        //    index: timestamp,
+                        //    reaction_info: reaction
+                        //    not relevant in this context (receive private reaction from other user)
+                        // b) my private reaction to other users public chat inbox messages:
+                        //    index: timestamp+auth4.
+                        //    reaction_info: reaction
+                        //    not relevant in this context (receive private reaction from other user)
+                        // c) other users private reactions to my public chat outbox messages:
+                        //    index: timestamp,
+                        //    reaction_info: array with user reactions. auth_address, user_seq and reaction
+                        //    must also include a reaction_at timestamp for like.json update with anonymous reaction information
+                        //    relevant here but check also a. index in a and c are identical.
+                        if (!ls_reactions[decrypted_message.timestamp]) ls_reactions[decrypted_message.timestamp] = {} ;
+                        reaction_info = ls_reactions[decrypted_message.timestamp] ;
+                        if (!reaction_info.users) reaction_info.users = {} ;
+                        if (!reaction_info.emojis) reaction_info.emojis = {} ;
+                        old_reaction = reaction_info.users[unique_id] ;
+                        new_reaction = decrypted_message.reaction ;
+                        if (old_reaction == new_reaction) {
+                            debug('reaction', pgm + 'stop. old reaction = new reaction') ;
+                            return ;
+                        }
+                        if (old_reaction) {
+                            if (!reaction_info.emojis[old_reaction]) reaction_info.emojis[old_reaction] = 1 ;
+                            reaction_info.emojis[old_reaction]-- ;
+                            if (reaction_info.emojis[old_reaction] <= 0) delete reaction_info.emojis[old_reaction] ;
+                        }
+                        if (new_reaction) {
+                            if (!reaction_info.emojis[new_reaction]) reaction_info.emojis[new_reaction] = 0 ;
+                            reaction_info.emojis[new_reaction]++ ;
+                            reaction_info.users[unique_id] = new_reaction
+                        }
+                        else delete reaction_info.users[unique_id] ;
+                        reaction_info.reaction_at = new Date().getTime() ;
+                        ls_save_reactions(false) ;
+
+                        // 2: Update UI - add/update emojis reaction information in public chat outbox message
+                        if (!obj_of_reaction.reactions) obj_of_reaction.reactions = [] ;
+                        if (old_reaction) {
+                            unicode = symbol_to_unicode(old_reaction) ;
+                            for (i=obj_of_reaction.reactions.length-1 ; i>= 0 ; i--) {
+                                if (obj_of_reaction.reactions[i].unicode == unicode) {
+                                    obj_of_reaction.reactions[i].count-- ;
+                                    if (obj_of_reaction.reactions[i].count == 0) obj_of_reaction.reactions.splice(i,1) ;
+                                    break ;
+                                }
+                            }
+                        }
+                        if (new_reaction) {
+                            unicode = symbol_to_unicode(new_reaction) ;
+                            for (i=0 ; i<obj_of_reaction.reactions.length ; i++) {
+                                if (obj_of_reaction.reactions[i].unicode == unicode) {
+                                    obj_of_reaction.reactions[i].count++ ;
+                                    unicode = null ;
+                                    break ;
+                                }
+                            }
+                            if (unicode) {
+                                user_reactions = get_user_reactions() ;
+                                title = null ;
+                                for (i=0 ; i<user_reactions.length ; i++) {
+                                    if (user_reactions[i].unicode == unicode) title = user_reactions[i].title ;
+                                }
+                                if (!title) title = is_emoji[new_reaction] ;
+                                emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+                                obj_of_reaction.reactions.push({
+                                    unicode: unicode,
+                                    title: title,
+                                    src: emoji_folder + '/' + unicode + '.png',
+                                    count: 1
+                                }) ;
+                            }
+                        }
+
+                        // 3: save anonymous reaction information in like.json
+                        debug('reaction', pgm + 'save anonymous reaction information in like.json. see like.json and z_update_6_like_json');
+                        new_incoming_receipts++ ; // trigger an update z_update_1_data_json call
+                        // see like.json and z_update_6_like_json
+
+                    };
                     obj_of_reaction = get_public_chat_outbox_msg(decrypted_message.timestamp) ;
                     if (obj_of_reaction) {
                         debug('reaction', pgm + 'OK. obj_of_reaction = ' + JSON.stringify(obj_of_reaction));
+                        save_private_reaction(obj_of_reaction) ;
                     }
                     else {
                         // public outbox chat message was not found in memory. check list of optional -chat files
@@ -5500,7 +5687,10 @@ angular.module('MoneyNetwork')
                                     debug('reaction', pgm + 'status = ' + status) ;
                                     // recheck public chat outbox messages after get_and_load_chat_file operation
                                     obj_of_reaction = get_public_chat_outbox_msg(decrypted_message.timestamp);
-                                    if (obj_of_reaction) debug('reaction', pgm + 'OK. obj_of_reaction = ' + JSON.stringify(obj_of_reaction));
+                                    if (obj_of_reaction) {
+                                        debug('reaction', pgm + 'OK. obj_of_reaction = ' + JSON.stringify(obj_of_reaction));
+                                        save_private_reaction(obj_of_reaction) ;
+                                    }
                                     else {
                                         debug('reaction', pgm + 'Error. no public chat file exist with a mesage with timestamp  ' + decrypted_message.timestamp) ;
                                     }
@@ -7122,6 +7312,11 @@ angular.module('MoneyNetwork')
                     return ;
                 } // if optional file
 
+                if (filename.match(/like\.json$/)) {
+                    console.log(pgm + 'todo: add like.json processing to event_file_done') ;
+                    return ;
+                }
+
                 console.log(pgm + 'unknown json file ' + filename);
 
             }); // end fileGet callback 1
@@ -8385,6 +8580,7 @@ angular.module('MoneyNetwork')
                 load_user_setup(keysize) ;
                 load_avatar() ;
                 load_user_info(create_new_account, guest) ;
+                ls_load_reactions() ;
                 ls_load_contacts() ;
                 init_emojis_short_list() ;
                 local_storage_read_messages() ;
@@ -8410,6 +8606,7 @@ angular.module('MoneyNetwork')
             // clear all JS work data in MoneyNetworkService
             for (key in zeronet_file_locked) delete zeronet_file_locked[key];
             user_info.splice(0, user_info.length);
+            for (key in ls_reactions) delete ls_reactions[key] ;
             clear_contacts() ;
             clear_messages() ;
             watch_receiver_sha256.splice(0, watch_receiver_sha256.length);
@@ -9154,6 +9351,22 @@ angular.module('MoneyNetwork')
         // https://mathiasbynens.be/notes/javascript-unicode
         var punycode = window.punycode ; // exported from 65-markdown-it.js
 
+        // to/from symbol and unicode hex string
+        function symbol_to_unicode(str) {
+            var symbols, symbols_hex, i ;
+            symbols = punycode.ucs2.decode(str) ;
+            symbols_hex = [] ;
+            for (i=0 ; i<symbols.length ; i++) symbols_hex.push(symbols[i].toString(16)) ;
+            return symbols_hex.join('_');
+        } // symbol_to_unicode
+        function unicode_to_symbol (unicode) {
+            var symbols_hex, symbols, i ;
+            symbols_hex = unicode.split('_') ;
+            symbols = [] ;
+            for (i=0 ; i<symbols_hex.length ; i++) symbols.push(parseInt(symbols_hex[i], 16)) ;
+            return punycode.ucs2.encode(symbols);
+        } // unicode_to_symbol
+
         // chat messages. extra parse. check url for twemojis and not translated unicode symbols
         var emoji_alt_prefix = punycode.ucs2.decode(' alt="') ;
         var emoji_alt_postfix = punycode.ucs2.decode('" ') ;
@@ -9279,14 +9492,7 @@ angular.module('MoneyNetwork')
                         if (!emoji_folders[j] + '/' + code + '.png') continue ; // not found in optional files for provider
                     }
                 }
-                symbols = [] ;
-                //prefix = punycode.ucs2.decode((i+1) + ': ') ;
-                //for (j=0 ; j<prefix.length ; j++) symbols.push(prefix[j]) ;
-                hex_codes = emoji_names[i].code.split('_') ;
-                for (j=0 ; j<hex_codes.length ; j++) symbols.push(parseInt(hex_codes[j], 16)) ;
-                //postfix = punycode.ucs2.decode(' ' + emoji_names[i].name) ;
-                //for (j=0 ; j<postfix.length ; j++) symbols.push(postfix[j]) ;
-                reaction_list.push((i+1) + ': ' + punycode.ucs2.encode(symbols) + ' ' + emoji_names[i].name + ' (' + hex_codes.join(', ') + ')') ;
+                reaction_list.push((i+1) + ': ' + unicode_to_symbol(emoji_names[i].code) + ' ' + emoji_names[i].name + ' (' + emoji_names[i].code + ')') ;
             }
             // console.log('reaction_list = ' + JSON.stringify(reaction_list)) ;
             reaction_list_full_support = full_emoji_support ;

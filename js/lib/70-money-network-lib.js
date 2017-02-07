@@ -245,6 +245,7 @@ var MoneyNetworkHelper = (function () {
         contacts: {session: false, userid: true, compress: true, encrypt: true}, // array with contacts. See contacts sub page / contactCtrl
         deleted_sha256: {session: false, userid: true, compress: true, encrypt: true}, // array with sender_sha256 addresses from deleted contacts
         msg_seq: {session: false, userid: true, compress: true, encrypt: true}, // local msg seq. Sequence. Used in contact.messages
+        reactions: {session: false, userid: true, compress: true, encrypt: true}, // private reactions to public chat messages
         // todo: avatar and alias is moved to setup but is still used in js code
         avatar: {session: false, userid: true, compress: true, encrypt: false}, // temporary public avatar image. user should upload a custom avatar image
         alias: {session: false, userid: true, compress: true, encrypt: true}, // user alias. Used in chat page
