@@ -1046,15 +1046,33 @@
                                     </span>
                                     </td>
                                     <td style="text-align: right; vertical-align: top">
-                                    <span class="speech-time"
-                                          title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
-                                    <span class="speech-time" title="{{m|messageOutSentTitle}}"> <i
-                                            class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                        <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
-                                        <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                              ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                        <message-react message="m" folder="outbox" react="c.react"></message-react>
-                                    </span>
+                                        <table style="margin-right: 0; margin-left: auto;">
+                                            <tr><td>
+                                                <span class="speech-time"
+                                                      title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
+                                                <span class="speech-time" title="{{m|messageOutSentTitle}}"> <i
+                                                        class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
+                                                        <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
+                                                <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
+                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
+                                                <message-react message="m" folder="outbox" react="c.react"></message-react>
+                                            </td></tr>
+                                            <tr>
+                                                <td>
+                                                    <table style="margin-right: 0; margin-left: auto;">
+                                                        <tr>
+                                                            <td></td>
+                                                            <td ng-repeat="r in m.message.reactions">
+                                                                <img ng-src="{{r.src}}" height="14" width="14">
+                                                            </td>
+                                                            <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+
                                     </td>
                                 </tr>
                                 <tr>
