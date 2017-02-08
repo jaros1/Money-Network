@@ -546,10 +546,10 @@
                                                 <tr><td><table style="margin-right: 0; margin-left: auto;">
                                                     <tr>
                                                         <td></td>
-                                                        <td ng-repeat="r in m.message.reactions">
+                                                        <td ng-repeat="r in c.get_reactions(m)">
                                                             <img ng-src="{{r.src}}" height="14" width="14">
                                                         </td>
-                                                        <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                        <td ng-show="c.get_reactions(m).length">{{c.get_reactions(m).length}}</td>
                                                     </tr>
                                                 </table></td></tr>
                                             </table>
@@ -681,10 +681,10 @@
                                                 <tr><td><table style="margin-right: 0; margin-left: auto;">
                                                     <tr>
                                                         <td></td>
-                                                        <td ng-repeat="r in m.message.reactions">
+                                                        <td ng-repeat="r in c.get_reactions(m)">
                                                             <img ng-src="{{r.src}}" height="14" width="14">
                                                         </td>
-                                                        <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                        <td ng-show="c.get_reactions(m).length">{{c.get_reactions(m).length}}</td>
                                                     </tr>
                                                 </table></td></tr>
                                             </table>
@@ -1095,10 +1095,10 @@
                                             <tr><td><table style="margin-right: 0; margin-left: auto;">
                                                 <tr>
                                                     <td></td>
-                                                    <td ng-repeat="r in m.message.reactions">
+                                                    <td ng-repeat="r in c.get_reactions(m)">
                                                         <img ng-src="{{r.src}}" height="14" width="14">
                                                     </td>
-                                                    <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                    <td ng-show="c.get_reactions(m).length">{{c.get_reactions(m).length}}</td>
                                                 </tr>
                                             </table></td></tr>
                                         </table>
@@ -1220,10 +1220,10 @@
                                             <tr><td><table style="margin-right: 0; margin-left: auto;">
                                                 <tr>
                                                     <td></td>
-                                                    <td ng-repeat="r in m.message.reactions">
+                                                    <td ng-repeat="r in c.get_reactions(m)">
                                                         <img ng-src="{{r.src}}" height="14" width="14">
                                                     </td>
-                                                    <td ng-show="m.message.reactions.length">{{m.message.reactions.length}}</td>
+                                                    <td ng-show="c.get_reactions(m).length">{{c.get_reactions(m).length}}</td>
                                                 </tr>
                                             </table></td></tr>
                                         </table>

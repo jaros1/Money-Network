@@ -1517,6 +1517,15 @@ angular.module('MoneyNetwork')
 
             }; // react
 
+            self.get_reactions = function (message) {
+                var pgm = controller + '.get_reactions' ;
+                if (message.message.reactions) return message.message.reactions ;
+                console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq) ;
+                message.message.reactions = [] ;
+                $timeout(function () {moneyNetworkService.check_reactions(message)}) ; // lookup reactions
+                return message.message.reactions ;
+            };
+
             // infinite scroll
             // startup with infinite_scroll_limit = 5.
             // public_chat = false. No nothing after page startup

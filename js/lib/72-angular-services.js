@@ -4333,6 +4333,7 @@ angular.module('MoneyNetwork')
                     delete contact.messages[j].message.original_image ;
                     delete contact.messages[j].ls_msg_size ;
                     delete contact.messages[j].seq ;
+                    if (contact.messages[j].reactions && (!contact.messages[j].reactions.length)) delete contact.messages[j].reactions ;
                 }
             }
 
@@ -6178,6 +6179,70 @@ angular.module('MoneyNetwork')
             }); // end dbQuery callback
 
         } // create_unknown_contacts
+
+
+
+        // lookup any reactions for message in chat page. called once for each displayed message in chat page
+        function check_reactions(js_messages_row) {
+            var pgm = service + '.check_reactions: ' ;
+            var message, contact, auth, participant, unique_id, timestamp, query ;
+
+            message = js_messages_row.message ;
+            contact = js_messages_row.contact ;
+
+            // 1 - lookup reactions in like.json table. index is sent_at timestamp + first 4 characters of contact auth address
+            timestamp = message.sent_at ;
+            if (message.folder == 'outbox') auth = ZeroFrame.site_info.auth_address.substr(0,4) ;
+            else if (contact.type != 'group') {
+                if (!contact.auth_address) {
+                    debug('reaction', pgm + 'error? ignoring contact without auth_address. contact = ' + JSON.stringify(contact)) ;
+                    return ;
+                }
+                auth = contact.auth_address.substr(0,4) ;
+            }
+            else {
+                // group chat. find sender of group chat message
+                participant = message.message.participant ;
+                unique_id = contact.participants[participant-1] ;
+                contact = get_contact_by_unique_id(unique_id) ;
+                if (!contact) {
+                    // deleted contact
+                    debug('reaction', pgm + 'group chat. contact with unique id ' + unique_id + ' was not found') ;
+                    return ;
+                }
+                if (!contact.auth_address) {
+                    debug('reaction', pgm + 'error? ignoring contact without auth_address. contact = ' + JSON.stringify(contact)) ;
+                    return ;
+                }
+                auth = contact.auth_address.substr(0,4) ;
+            }
+
+            // ready for emoji lookup in like table
+            debug('reaction', pgm + 'timestamp = ' + timestamp + ', auth = ' + auth) ;
+            query =
+                "select emoji, sum(ifnull(count,1)) as count " +
+                "from like " +
+                "where timestamp = " + timestamp + " " +
+                "and auth = '" + auth + "' " +
+                "group by emoji" ;
+            debug('select', pgm + 'query = ' + query) ;
+            ZeroFrame.cmd("dbQuery", [query], function(res) {
+                var pgm = service + '.check_reactions dbQuery callback: ';
+                console.log(pgm + 'res = ' + JSON.stringify(res));
+                if (res.error) {
+                    console.log(pgm + "Search for reactions failed: " + res.error);
+                    console.log(pgm + 'query = ' + query);
+                    return;
+                }
+                if (res.length == 0) return ;
+                debug('reaction', pgm + 'res = ' + JSON.stringify(res));
+            }) ; // dbQuery callback
+
+            // 2 - check for any reactions only in localStorage reactions hash (private like to outbox messages)
+
+
+
+        } // check_reactions
 
 
         // after login - check for new ingoing messages since last login
@@ -9573,7 +9638,8 @@ angular.module('MoneyNetwork')
             replace_emojis: replace_emojis,
             get_reaction_list: get_reaction_list,
             load_server_info: load_server_info,
-            is_proxy_server: is_proxy_server
+            is_proxy_server: is_proxy_server,
+            check_reactions: check_reactions
         };
 
         // end MoneyNetworkService
