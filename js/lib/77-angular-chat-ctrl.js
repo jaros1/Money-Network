@@ -414,9 +414,59 @@ angular.module('MoneyNetwork')
 
             };
             self.chat_hint_pubkey = function () {
+                var pgm = controller + '.chat_hint_pubkey: ' ;
+                var hint_pubkey, contact ;
                 if (!self.chat_hint_chatting()) return false ;
                 // missing public key for contact?
-                return (self.contact && (self.contact.type != 'group') && !self.contact.pubkey) ;
+                hint_pubkey = (self.contact && (self.contact.type != 'group') && !self.contact.pubkey) ;
+                if (hint_pubkey) {
+                    contact = JSON.parse(JSON.stringify(self.contact)) ;
+                    delete contact.messages ;
+                    console.log(pgm + 'deleted contact? contact = ' + JSON.stringify(contact)) ;
+                    //contact = {
+                    //    "unique_id": "8d07e1d69db580cb7169f752bddff989129a47338d626685c32dad0633a35180",
+                    //    "type": "new",
+                    //    "guest": null,
+                    //    "auth_address": "16SNxdSpUYVLdVQWx6azQjoZXsZJHJUzKN",
+                    //    "cert_user_id": "jrotest8@zeroid.bit",
+                    //    "avatar": "2.png",
+                    //    "search": [{
+                    //        "tag": "Online",
+                    //        "value": null,
+                    //        "privacy": "Search",
+                    //        "debug_info": {},
+                    //        "row": 1,
+                    //        "$$hashKey": "object:702"
+                    //    }, {
+                    //        "tag": "%",
+                    //        "value": "%",
+                    //        "privacy": "Search",
+                    //        "row": 2,
+                    //        "$$hashKey": "object:703"
+                    //    },
+                    //    ... total 15 identical rows
+                    //
+                    //    ,  {
+                    //        "tag": "Online",
+                    //        "value": null,
+                    //        "privacy": "Search",
+                    //        "row": 15,
+                    //        "$$hashKey": "object:716"
+                    //    }, {"tag": "Online", "value": null, "privacy": "Search", "row": 16, "$$hashKey": "object:988"}],
+                    //    "outbox_sender_sha256": {},
+                    //    "inbox_zeronet_msg_id": [],
+                    //    "inbox_last_sender_sha256": null,
+                    //    "inbox_last_sender_sha256_at": 0,
+                    //    "seen_at": 1486615160022,
+                    //    "notifications": 0,
+                    //    "$$hashKey": "object:125",
+                    //    "user_seq": null,
+                    //    "pubkey": null,
+                    //    "pubkey2": "ApTPzNsPcN8XO3cRBwasO5MoX3D5UmYjAAYkIwVqVsvV",
+                    //    "encryption": "1"
+                    //};
+                }
+                return hint_pubkey ;
             };
             self.chat_hint_pushpin = function () {
                 if (self.editing_grp_chat) return false ;
@@ -1419,7 +1469,7 @@ angular.module('MoneyNetwork')
                 self.new_chat_src = '' ;
             } ;
 
-            // add/remove public chat
+            // public chat checkbox changed - add/remove public chat from UI
             self.public_chat_changed = function () {
                 var pgm = controller + '.public_chat_changed: ' ;
                 var i, contact, message, js_message_row, j ;
@@ -1449,13 +1499,14 @@ angular.module('MoneyNetwork')
                 message.overflow = false ;
             };
 
-            // click message. show/hide comment and reaction icons
-            self.click_message = function (message) {
-                var pgm = controller + '.click_message: ' ;
-                message.show_feedback = !message.show_feedback ;
-                console.log(pgm + 'show_feedback = ' + message.show_feedback) ;
-            }; // self.click_message
+            //// click message. show/hide comment and reaction icons
+            //self.click_message = function (message) {
+            //    var pgm = controller + '.click_message: ' ;
+            //    message.show_feedback = !message.show_feedback ;
+            //    console.log(pgm + 'show_feedback = ' + message.show_feedback) ;
+            //}; // self.click_message
 
+            // add/update reaction. update like.json (public reaction) or send a private reaction message to other user
             self.react = function (message, new_index) {
                 var pgm = controller + '.react: ' ;
                 var old_index, i, symbols, hex_codes, contact, unique_id ;
@@ -1513,18 +1564,29 @@ angular.module('MoneyNetwork')
                 }
                 else delete message.message.reaction ;
                 message.message.reaction_at = new Date().getTime();
-                moneyNetworkService.ls_save_contacts(true); // true: update ZeroNet
+                moneyNetworkService.ls_save_contacts(true); // true: update ZeroNet (update like.json or send a private reaction message)
 
             }; // react
 
+
+            // get reactions. from like.json on zeroNet and reactions hash in localStorage
             self.get_reactions = function (message) {
-                var pgm = controller + '.get_reactions' ;
+                var pgm = controller + '.get_reactions: ' ;
                 if (message.message.reactions) return message.message.reactions ;
-                console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq) ;
+                // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq) ;
                 message.message.reactions = [] ;
                 $timeout(function () {moneyNetworkService.check_reactions(message)}) ; // lookup reactions
                 return message.message.reactions ;
-            };
+            }; // get_reactions
+            self.get_reactions_count = function (message) {
+                var pgm = controller + '.get_reactions_count: ' ;
+                var sum, i ;
+                if (!message.message.reactions) return null ;
+                if (!message.message.reactions.length) return null ;
+                sum = 0 ;
+                for (i=0 ; i<message.message.reactions.length ; i++) sum += message.message.reactions[i].count ;
+                return sum ;
+            }; // get_reactions_count
 
             // infinite scroll
             // startup with infinite_scroll_limit = 5.

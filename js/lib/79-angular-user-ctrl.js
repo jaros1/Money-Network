@@ -1018,7 +1018,7 @@ angular.module('MoneyNetwork')
             var i ;
             if (edit) {
                 // open edit reactions area
-                if (!self.setup.reactions) JSON.parse(JSON.stringify(moneyNetworkService.get_standard_reactions())) ;
+                if (!self.setup.reactions) self.setup.reactions = JSON.parse(JSON.stringify(moneyNetworkService.get_standard_reactions())) ;
                 self.user_reactions = JSON.parse(JSON.stringify(self.setup.reactions)) ; // work copy
                 if (!self.reaction_list) self.reaction_list = moneyNetworkService.get_reaction_list(self.full_emoji_support) ;
             }

@@ -387,6 +387,7 @@ var MoneyNetworkHelper = (function () {
             if ((typeof userid == 'undefined') || (userid == null) || (userid == '')) userid = 0;
             else userid = parseInt(userid);
             if (userid == 0) {
+                throw pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found (not logged in)' ;
                 console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found (not logged in)') ;
                 return null;
             }

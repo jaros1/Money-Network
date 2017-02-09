@@ -549,7 +549,7 @@
                                                         <td ng-repeat="r in c.get_reactions(m)">
                                                             <img ng-src="{{r.src}}" height="14" width="14">
                                                         </td>
-                                                        <td ng-show="c.get_reactions(m).length">{{c.get_reactions(m).length}}</td>
+                                                        <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
                                                     </tr>
                                                 </table></td></tr>
                                             </table>
@@ -684,7 +684,7 @@
                                                         <td ng-repeat="r in c.get_reactions(m)">
                                                             <img ng-src="{{r.src}}" height="14" width="14">
                                                         </td>
-                                                        <td ng-show="c.get_reactions(m).length">{{c.get_reactions(m).length}}</td>
+                                                        <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
                                                     </tr>
                                                 </table></td></tr>
                                             </table>
@@ -777,7 +777,7 @@
                     <td rowspan="2" style="vertical-align: top">
                         <span ng-show="!c.editing_grp_chat && (x.type != 'group')">
                         <img ng-src="{{x|findContactAvatar}}" title="Click to chat with contact"
-                             ng-click="c.chat_contact(x)">
+                             ng-click="c.chat_contact(x)" fallback-src="public/images/image_failed.gif">
                         </span>
                         <span ng-show="!c.editing_grp_chat && (x.type == 'group')">
                         <img ng-src="{{x|findContactAvatar}}" title="Click to chat with group"
@@ -1098,7 +1098,7 @@
                                                     <td ng-repeat="r in c.get_reactions(m)">
                                                         <img ng-src="{{r.src}}" height="14" width="14">
                                                     </td>
-                                                    <td ng-show="c.get_reactions(m).length">{{c.get_reactions(m).length}}</td>
+                                                    <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
                                                 </tr>
                                             </table></td></tr>
                                         </table>
@@ -1110,7 +1110,7 @@
                                         Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
                                         <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
                                              title="Click to chat" alt="Click to chat"
-                                             ng-click="c.chat_contact(m.contact)">
+                                             ng-click="c.chat_contact(m.contact)" fallback-src="public/images/image_failed.gif">
                                         <span ng-bind-html="m|formatChatMessage"></span>
                                         </div>
                                     </td>
@@ -1187,7 +1187,7 @@
 
                         <div ng-show="(m.message.folder == 'inbox')" class="media-right">
                             <img ng-src="{{m|findMessageSenderAvatar}}" class="img-circle img-sm" alt="Click to chat"
-                                 title="Click to chat" ng-click="c.chat_contact(m.contact)">
+                                 title="Click to chat" ng-click="c.chat_contact(m.contact)" fallback-src="public/images/image_failed.gif">
                         </div>
                         <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
 
@@ -1223,7 +1223,7 @@
                                                     <td ng-repeat="r in c.get_reactions(m)">
                                                         <img ng-src="{{r.src}}" height="14" width="14">
                                                     </td>
-                                                    <td ng-show="c.get_reactions(m).length">{{c.get_reactions(m).length}}</td>
+                                                    <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
                                                 </tr>
                                             </table></td></tr>
                                         </table>
