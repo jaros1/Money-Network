@@ -4491,7 +4491,7 @@ angular.module('MoneyNetwork')
 
             // check ZeroFrame status. Is ZeroNet ready?
             if (!auth_address) {
-                // only relevant in startup sequence. not relevant for file_done_events
+                // only relevant in startup sequence. not relevant for event_file_done
                 var retry_z_contact_search = function () {
                     z_contact_search (fnc_when_ready, null);
                 };
@@ -5920,7 +5920,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                 if (process_incoming_message(res, unique_id, sent_at)) contacts_updated = true ;
 
-                // same post processing as in file_done_event
+                // same post processing as in event_file_done
                 // any receipts to sent?
                 if (new_outgoing_receipts.length > 0) {
                     // send receipts. will update localStorage and ZeroNet
@@ -6316,14 +6316,17 @@ angular.module('MoneyNetwork')
 
 
         // lookup any reactions for message in chat page. called once for each displayed message in chat page
+        var watch_like_msg_id = {} ; // msg_id "<timestamp>,<auth>" => js_messages_row
+        var watch_like_json = {} ; // auth_address => array with msg id "<timestamp>,<auth>"
         function check_reactions(js_messages_row) {
             var pgm = service + '.check_reactions: ' ;
-            var message_with_envelope, contact, auth, participant, unique_id, timestamp, query ;
+            var message_with_envelope, contact, auth, participant, unique_id, timestamp, query, msg_id ;
 
             message_with_envelope = js_messages_row.message ;
             contact = js_messages_row.contact ;
 
-            // 1 - lookup reactions in like.json table. index is sent_at timestamp + first 4 characters of contact auth address
+            // 1 - lookup reactions in like.json table (anonymous and non anonymous reactions).
+            // index is sent_at timestamp + first 4 characters of contacts auth address
             timestamp = message_with_envelope.sent_at ;
             if (message_with_envelope.folder == 'outbox') auth = ZeroFrame.site_info.auth_address.substr(0,4) ;
             else if (contact.type != 'group') {
@@ -6334,7 +6337,7 @@ angular.module('MoneyNetwork')
                 auth = contact.auth_address.substr(0,4) ;
             }
             else {
-                // group chat. find sender of group chat message
+                // group chat. find sender/creator of group chat message
                 participant = message_with_envelope.participant ;
                 unique_id = contact.participants[participant-1] ;
                 contact = get_contact_by_unique_id(unique_id) ;
@@ -6352,48 +6355,62 @@ angular.module('MoneyNetwork')
                 auth = contact.auth_address.substr(0,4) ;
             }
 
+            // add message to watch_like_msg. monitor incoming like.json files for this message id
+            msg_id = timestamp + ',' + auth ;
+            watch_like_msg_id[msg_id] = js_messages_row ;
+
             // ready for emoji lookup in like table
             // debug('reaction', pgm + 'timestamp = ' + timestamp + ', auth = ' + auth) ;
             query =
-                "select emoji, sum(ifnull(count,1)) as count " +
-                "from like " +
-                "where timestamp = " + timestamp + " " +
-                "and auth = '" + auth + "' " +
-                "group by emoji" ;
+                "select substr(json.directory, 7) as auth_address, like.emoji, like.count " +
+                "from like, json " +
+                "where like.timestamp = " + timestamp + " " +
+                "and like.auth = '" + auth + "' " +
+                "and json.json_id = like.json_id" ;
             debug('select', pgm + 'query = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.check_reactions dbQuery callback: ';
-                var emoji_folder, user_reactions, i, title, unicode, j, sum ;
+                var emoji_folder, user_reactions, i, title, unicode, j, sum, count, emoji ;
                 if (res.error) {
                     console.log(pgm + "Search for reactions failed: " + res.error);
                     console.log(pgm + 'query = ' + query);
                     return;
                 }
+                if (message_with_envelope.reactions.length) message_with_envelope.reactions.splice(0,message_with_envelope.reactions.length) ;
                 if (res.length == 0) return ;
                 debug('reaction', pgm + 'res = ' + JSON.stringify(res));
 
-                emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
-                user_reactions = get_user_reactions() ;
-                message_with_envelope.reactions.splice(0,message_with_envelope.reactions.length) ;
+                // sum for each emoji and update watch_like_json
+                count = {} ;
                 for (i=0 ; i<res.length ; i++) {
-                    title = is_emoji[res[i].emoji] ;
-                    if (!title) {
-                        debug('reaction', pgm + 'ignoring unknown emoji ' + res[i].emoji) ;
+                    emoji = res[i].emoji ;
+                    if (!is_emoji[emoji]) {
+                        debug('reaction', pgm + 'ignoring unknown emoji ' + emoji) ;
                         continue ;
                     }
-                    unicode = symbol_to_unicode(res[i].emoji) ;
+                    if (!count[emoji]) count[emoji] = 0 ;
+                    count[emoji] += (res[i].count || 1) ;
+                    if (!watch_like_json[res[i].auth_address]) watch_like_json[res[i].auth_address] = [] ;
+                    if (watch_like_json[res[i].auth_address].indexOf(msg_id) == -1) watch_like_json[res[i].auth_address].push(msg_id) ;
+                }
+
+                emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+                user_reactions = get_user_reactions() ;
+                sum = 0 ;
+                for (emoji in count) {
+                    title = is_emoji[emoji] ;
+                    unicode = symbol_to_unicode(emoji) ;
                     for (j=0 ; j<user_reactions.length ; j++) if (user_reactions[j].unicode == unicode) title = user_reactions[j].title ;
-                    sum = 0 ;
                     message_with_envelope.reactions.push({
                         unicode: unicode,
                         title: title,
                         src: emoji_folder + '/' + unicode + '.png',
-                        count: res[i].count
+                        count: count[emoji]
                     }) ;
-                    sum += res[i].count ;
+                    sum += count[emoji] ;
                 } // for i (res)
-                message_with_envelope.reactions.sum = sum ;
-                debug('reaction', pgm + 'message.reactions = ' + JSON.stringify(message_with_envelope.reactions));
+                debug('reaction', pgm + 'sum = ' + sum + ', message.reactions = ' + JSON.stringify(message_with_envelope.reactions));
+                $rootScope.$apply() ;
             }) ; // dbQuery callback
 
             // 2 - check for any reactions only in localStorage reactions hash (private like to outbox messages)
@@ -6722,7 +6739,7 @@ angular.module('MoneyNetwork')
                 //};
             }
 
-            // same post processing as in file_done_event
+            // same post processing as in event_file_done
             // any receipts to sent?
             if (new_outgoing_receipts.length > 0) {
                 // send receipts. will update localStorage and ZeroNet
@@ -7534,7 +7551,45 @@ angular.module('MoneyNetwork')
                 } // if optional file
 
                 if (filename.match(/like\.json$/)) {
-                    console.log(pgm + 'todo: add like.json processing to event_file_done') ;
+                    // check watch_like_json hash
+
+                    (function(){
+                        var like, refresh_reactions, i, key, old_keys, j ;
+                        like = res ;
+                        refresh_reactions = {} ;
+
+                        // debug('reaction', pgm + 'watch_like_json[auth_address] = ' + JSON.stringify(watch_like_json[auth_address])) ;
+                        // debug('reaction', pgm + 'like.like = ' + JSON.stringify(like.like)) ;
+                        // old msg_id/keys for reaction for this like.json file
+                        if (watch_like_json[auth_address]) old_keys = JSON.parse(JSON.stringify(watch_like_json[auth_address])) ;
+                        else old_keys = [] ;
+
+                        // scan like.json file. any messages within current chat context to refresh reaction info for?
+                        for (i=0 ; i<like.like.length ; i++) {
+                            key = like.like[i].timestamp + ',' + like.like[i].auth ;
+                            if (!watch_like_msg_id[key] || refresh_reactions[key]) continue ;
+                            // client is watching reactions for this msg_id/key
+                            refresh_reactions[key] = watch_like_msg_id[key] ;
+                            j = old_keys.indexOf(key) ;
+                            if (j != -1) old_keys.splice(j,1) ;
+                        }
+                        // check for reactions removed from like.json file
+                        for (i=0 ; i<old_keys.length ; i++) {
+                            key = old_keys[i] ;
+                            if (!watch_like_msg_id[key] || refresh_reactions[key]) continue ;
+                            // found removed reaction for msg_id/key
+                            refresh_reactions[key] = watch_like_msg_id[key] ;
+                            j = watch_like_json[auth_address].indexOf(key) ;
+                            watch_like_json[auth_address].splice(j,1) ;
+                        }
+                        // refresh reaction info for relevant msg_id/keys
+                        if (Object.keys(refresh_reactions).length) {
+                            debug('reaction', pgm + 'like.json. refresh_reactions.length = ' + Object.keys(refresh_reactions).length +
+                                ', refresh_reactions.keys = ' + JSON.stringify(Object.keys(refresh_reactions))) ;
+                        }
+                        for (key in refresh_reactions) check_reactions(refresh_reactions[key]) ;
+                    })() ;
+
                     return ;
                 }
 
@@ -8847,6 +8902,7 @@ angular.module('MoneyNetwork')
             chat_page_context.end_of_page = true ;
             chat_page_context.failures = [] ;
             clear_files_optional_cache() ;
+            for (key in watch_like_msg_id) delete watch_like_msg_id[key] ;
             if (login_setting_changed) return ;
             // redirect
             a_path = '/auth' ;
