@@ -102,6 +102,10 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("wrapperNotification", ['info', 'Please select ZeroNet ID before log in', 5000]);
                 return ;
             }
+            if (MoneyNetworkHelper.ls_is_loading()) {
+                ZeroFrame.cmd("wrapperNotification", ['info', 'Please wait. Loading localStorage data', 5000]);
+                return ;
+            }
 
             if (!self.use_login) {
                 // login/register without a password and minimum keysize

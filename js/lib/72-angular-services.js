@@ -335,8 +335,10 @@ angular.module('MoneyNetwork')
         var CONTENT_OPTIONAL = '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json|[0-9]{13}-[0-9]+-image.json)' ;
 
         // user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
+        // params:
+        // - cb: optional callback function. post publish processing. used in i_am_online. check pubkey2 takes long time and best done after publish
         var zeronet_site_publish_interval = 0 ;
-        function zeronet_site_publish() {
+        function zeronet_site_publish(cb) {
             var pgm = service + '.zeronet_site_publish: ' ;
             var user_path = "data/users/" + ZeroFrame.site_info.auth_address;
             if (detected_client_log_out(pgm)) return ;
@@ -401,8 +403,9 @@ angular.module('MoneyNetwork')
                                 else zeronet_site_publish_interval = zeronet_site_publish_interval * 2 ;
                                 console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
                                 var retry_zeronet_site_publish = function () {
-                                    zeronet_site_publish(user_seq);
+                                    zeronet_site_publish();
                                 };
+                                if (cb) cb() ;
                                 $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval*1000);
                                 // debug_info() ;
                                 return;
@@ -438,13 +441,12 @@ angular.module('MoneyNetwork')
                                     content_updated = true ;
                                 }
 
-                                // todo 1: check logical deleted optional *-chat.json files
+                                // check logical deleted optional *-chat.json files
                                 // rules.
                                 // - *chat.json files with size 2 = empty json {}
                                 // - should only delete *chat.json files with info_info.peer = 0
                                 // - should only delete "old" *chat.json files
                                 // - max number of logical deleted *chat.json files.
-
                                 // check z_cache.user_seqs. deleted users. optional files from deleted users must be removed.
                                 if (content.files_optional && z_cache.user_seqs) {
                                     // console.log(pgm + 'z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs)) ;
@@ -511,7 +513,10 @@ angular.module('MoneyNetwork')
                                     cache_status.size = content.files_optional[filename].size ;
                                 }
 
-                                if (!content_updated) return ;
+                                if (!content_updated) {
+                                    if (cb) cb() ;
+                                    return ;
+                                }
 
                                 // update content.json. sign and publish in next publish call
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
@@ -526,6 +531,7 @@ angular.module('MoneyNetwork')
                                         return ;
                                     }
                                     // sign and publish in next zeronet_site_publish call
+                                    if (cb) cb() ;
 
                                 }) ; // fileWrite 5
 
@@ -4524,6 +4530,7 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.z_contact_search dbQuery callback 1: ' ;
                 var error ;
+                if (detected_client_log_out(pgm)) return ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                 if (res.error) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
@@ -4608,6 +4615,7 @@ angular.module('MoneyNetwork')
 
                 ZeroFrame.cmd("dbQuery", [query], function(res) {
                     var pgm = service + '.z_contact_search dbQuery callback 2: ';
+                    if (detected_client_log_out(pgm)) return ;
                     // console.log(pgm + 'res = ' + JSON.stringify(res));
                     if (res.error) {
                         ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
@@ -4660,6 +4668,9 @@ angular.module('MoneyNetwork')
                             res[i].other_user_timestamp = new Date().getTime() ;
                         }
                         last_updated = Math.round(res[i].other_user_timestamp / 1000) ;
+                        if (unique_id == "8d07e1d69db580cb7169f752bddff989129a47338d626685c32dad0633a35180") {
+                            console.log(pgm + 'last_updated = ' + last_updated + ', res = ' + JSON.stringify(res[i])) ;
+                        }
                         if (unique_ids.indexOf(res[i].other_unique_id)==-1) unique_ids.push(res[i].other_unique_id) ;
                         if (!res_hash.hasOwnProperty(unique_id)) {
                             res_hash[unique_id] = {
@@ -4945,6 +4956,7 @@ angular.module('MoneyNetwork')
                 error, local_msg_seq, message, contact_or_group, found_lost_msg, found_lost_msg2, js_messages_row,
                 placeholders, image_download_failed, obj_of_reaction, key, key_a, user_path, cache_filename, cache_status,
                 get_and_load_callback, save_private_reaction;
+            if (detected_client_log_out(pgm)) return ;
 
             debug('lost_message', pgm + 'sent_at = ' + sent_at) ;
             debug('inbox && encrypted', pgm + 'res = ' + JSON.stringify(res) + ', unique_id = ' + unique_id);
@@ -6102,6 +6114,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.create_unknown_contacts: ' ;
             if (new_unknown_contacts.length == 0) return ;
             console.log(pgm + 'new_unknown_contacts = ' + JSON.stringify(new_unknown_contacts));
+            if (detected_client_log_out(pgm)) return ;
             //new_unknown_contacts = [{
             //    "res": {
             //        "user_seq": 1,
@@ -6212,6 +6225,7 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd("dbQuery", [contacts_query], function (res) {
                 var pgm = service  + '.create_unknown_contacts dbQuery callback: ';
                 var found_auth_addresses = [], i, unique_id, new_contact, public_avatars, index, j, last_updated ;
+                if (detected_client_log_out(pgm)) return ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 if (res.error) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for new unknown contacts failed: " + res.error, 5000]);
@@ -8907,7 +8921,7 @@ angular.module('MoneyNetwork')
 
             get_data_json(function (data, empty) {
                 var pgm = service + '.i_am_online get_data_json callback: ';
-                var my_user_seq, data_user_seqs, i, pubkey, pubkey2, ls, compare, key, count, in_z_only ;
+                var my_user_seq, data_user_seqs, i, pubkey, pubkey2, ls, compare, key, count, in_both, check_pubkey2_cb ;
                 if (detected_client_log_out(pgm)) return ;
                 pubkey = MoneyNetworkHelper.getItem('pubkey') ;
                 pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
@@ -8956,11 +8970,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'my_user_seq = ' + my_user_seq + ', user_id = ' + user_id) ;
                 //my_user_seq = 1
 
-                console.log(pgm + 'todo: check that pubkey2 are unique');
-                // 6 users in 18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/data.json file
-                // 2 users in localStorage while logged in as cert_user_id is jro@zeroid.bit, my auth address is 18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ and my unique id 3d9fa732880ab3071c40f4982fccdd5ccc6803c9f37c5bd14d5922555c68103a
-                // compare pubkey in localStorage with pubkey in localStorage. Unknown users may be candidate for deletion?
-                // 4 out of 5 of the users only on ZeroNet has been logged in within the last month. No timestamp for the last.
+                // check that pubkey2 values are correct. generated from ZeroNet cert and user_id
                 compare = {} ;
                 for (i=0 ; i<data.users.length ; i++) {
                     compare[data.users[i].pubkey] = { z_pubkey2: data.users[i].pubkey2, z_user_seq: data.users[i].user_seq }
@@ -8974,49 +8984,35 @@ angular.module('MoneyNetwork')
                     compare[pubkey].l_pubkey2 = pubkey2 ;
                     compare[pubkey].l_userid = parseInt(key.split('_')[0]) ;
                 }
-                console.log(pgm + 'compare = ' + JSON.stringify(compare)) ;
-                //compare = {
-                //    "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0pMuMJyynH1BmhMJ6vvd\nQZplIBgiiOQSqwu2SpYKICm+P1gGNHnICQic/Nuqi9t93rxJLfWCsl0+lCtoJLen\nf78xz4XzEcGPBeBFn2TbQqPO9loylNlaOgiqDG5qcSc9n7yEF0xmpReDGATwzECi\nJrpZBImwhUMO48iS08b4IfQaMsbnUVY8hdUeJiQ831kMkNQLtxWaeRiyn8cTbKQ6\nLXCDG7GDaFN6t+x3cv/xBX06+ykuYQ0gNIBySiIz69RYzhvOkqOQggLWPF+NMW1J\nO6VRqvX7Sybwm51v3kGGKWeX4znvGY+GwVCpwiH+b2hbGZHIqFp9ogimGVE0WPgu\nnwIDAQAB\n-----END PUBLIC KEY-----": {
-                //        "z_pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                //        "z_user_seq": 1,
-                //        "l_pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                //        "l_userid": 1
-                //    },
-                //    "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgGpGiqb/UEZ10IWXHZi/LtIS8FVh\n3DiUyToDgO9rg5TEHAzhPRHYf4dxE1vPDtEOGH13NwAKW7wzpB1++Jf/NA5xq75r\nlxC2L6xMdB5FP8vpWgt8N57F7vKJx1FHI9ZLZLYrPm7gq/9Mc55a4isgyZPt3mP5\n+9KBAs/IUSVd2OaPAgMBAAE=\n-----END PUBLIC KEY-----": {
-                //        "z_pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                //        "z_user_seq": 2
-                //    },
-                //    "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgFdzTn7Xgif0klMj5X9cSxMDcF8W\n//aZCT2riiiOTjRWavulKRxi4npi5XgItHU02souRlbUWOSGyjdHZILoLK2C2xlG\n/7DKhjJ4qGgAtYANHTp6uHyr69vZ8J59xNdCXtGVUFaEwNifLWQwr2mzYTA34Rx+\njarXvvaD6FxfQd23AgMBAAE=\n-----END PUBLIC KEY-----": {
-                //        "z_pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                //        "z_user_seq": 3
-                //    },
-                //    "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgGom3NljL5UAsiR6Pz9vXn/qCMhO\nsO4YFo/4gD/fitybCoXeiVVUaJYprNwKph/JncOIoYa21aa8uhgGPlokoYamX77b\nEyml7FKh1HCENUskYSKkLha1Qwp9frJ/HPUcpIClM/mLzUvLVCUyQrq+PQPkvnm/\nVnfZvWWHCImt2A43AgMBAAE=\n-----END PUBLIC KEY-----": {
-                //        "z_pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                //        "z_user_seq": 4
-                //    },
-                //    "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHoJ+Ncpi7GffikJutgqesW08Ui7\n0Gys1gfMg0y90o4XK0F8yf95vOkbNI6YQWnnW/gUBbrnDIZxuDUIYYhyF32/vXft\nmoagChT72kSa7unLSZDBhGUCp1vE+dYfU5UlsjKNktSAFJgRsVrnOlrTefXBhE6U\ntB0PbKPC9K94k6MhAgMBAAE=\n-----END PUBLIC KEY-----": {
-                //        "z_pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                //        "z_user_seq": 5
-                //    },
-                //    "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCAKWZMLFnHOiPZxqGDV27ufodw\nYvpgpiCps+xF2+i45uGEyebxZyglp3jP5N3nLYx61p8Lc/cMU4gF9wuFf6s6GxOa\neD3+33C13pbpAL14xXSl8ML2hu+ei+/eKUjHbC97ZFfx2XXaYpZWza/vnvtO9s/s\nEDX0rEFq/TzG1YZ3swIDAQAB\n-----END PUBLIC KEY-----": {
-                //        "z_pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                //        "z_user_seq": 6
-                //    },
-                //    "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAi1Qz1bb2ubp9zaC+hv9w\ngxkpmfIv5ORSMqWtZa505ZMe7jHG+osWVpskaePayIqUgj1HFuFA9rEDxvksY5HG\nsWNpSLMi2Za2zl9UC/xrfIbpr4+DVkUDaB1C/CLWapp5eArJUsRZigk1uh1Oaveq\nu39Gn15xxiLSDd7MaJfIkTEy2chM9Jc+2FWcJVbK2GlzsBbjtJkSRSS53o+7KLXC\nXZ4vsVNNaMlLcd3bUx/Fy2zSf1EBFG02G2kd4rdp2CBPMa3qEf978fJon2zTwS/a\ncuC9oM7Mg23i580BYotIu2nB0RdRvFQqYTIv+bxRBzFpn52/8p772/LeRc17tKwe\ntRbd3IrR0Ayq3DX1hrGYdXlITFdERkr/aYuVA2qd5O7TW4GpwECO+sS/Ei1Dshrg\nCL6jQ24KDAOiQm6iKxp8CgfRuKQY4sCmdJ2WPa5L180qKAtH2ldoFGsaojDejzeh\nPvNPp8fRi6Ro0GCBbw/cAlQoneb/XgJ5flAm1Mg/50jYm36nXdJz/LpyxJJ0+FG8\nZim8X9QlsMcKEe4bubPP+3YBvOJeBcS78m8ePRIAxcTddwvBTy7mXdSw9rOY0yRt\nxJQgEKsAQ1DE2xNZorcMnIbrCGBX6wQSma5xfc7Vc2EZOdFWEozQS6+h1wNa5Qek\n5SU4W8Fy8eSB91raEQh8LIcCAwEAAQ==\n-----END PUBLIC KEY-----": {
-                //        "l_pubkey2": "Ar/4KPpyLhQ65KJA7pkbE6D4pfFc/HiWcxHEzvcibfPM",
-                //        "l_userid": 5
-                //    }
-                //};
-                // console.log(pgm + 'compare = ' + JSON.stringify(compare));
+                // console.log(pgm + 'compare = ' + JSON.stringify(compare)) ;
                 count = { in_l: 0, in_z: 0, in_both: 0} ;
-                in_z_only = [] ;
+                in_both = [] ;
                 for (pubkey in compare) {
-                    if (compare[pubkey].l_pubkey2 && compare[pubkey].z_pubkey2) count.in_both++ ;
+                    if (compare[pubkey].l_pubkey2 && compare[pubkey].z_pubkey2) {
+                        count.in_both++ ;
+                        in_both.push(compare[pubkey]) ;
+                    }
                     else if (compare[pubkey].l_pubkey2) count.in_l++ ;
                     else count.in_z++ ;
                 }
-                console.log(pgm + 'count = ' + JSON.stringify(count)) ;
-                //count = {"in_l":1,"in_z":5,"in_both":1}
+                // console.log(pgm + 'count = ' + JSON.stringify(count)) ;
+                // check pubkey2. loop for each row in in_both match between localStorage user and ZeroNet user in data.json file
+                // pubkey2 check takes some time. done after publish. see zeronet_site_publish call
+                check_pubkey2_cb = function () {
+                    var rec ;
+                    if (!in_both.length) return ;
+                    rec = in_both.pop() ;
+                    ZeroFrame.cmd("userPublickey", [rec.l_userid], function (pubkey2) {
+                        if ((pubkey2 == rec.l_pubkey2) && (pubkey2 == rec.z_pubkey2)) {
+                            // console.log(pgm + 'pubkey2 is OK. rec = ' + JSON.stringify(rec));
+                            check_pubkey2_cb() ;
+                            return ;
+                        }
+                        rec.control = pubkey2 ;
+                        console.log(pgm + 'Error. pubkey2 is invalid. rec = ' + JSON.stringify(rec)) ;
+                        check_pubkey2_cb() ;
+                    }); // userPublickey
+                };
 
                 // delete any old users in status.json and publish
                 get_status_json(function (status) {
@@ -9036,6 +9032,7 @@ angular.module('MoneyNetwork')
                     }
                     if ((user_setup.not_online) && my_user_seq_found && !status_updated) {
                         // Account setup - user has selected not to update online timestamp
+                        check_pubkey2_cb() ;
                         return ;
                     }
                     // validate status.json before write
@@ -9055,7 +9052,7 @@ angular.module('MoneyNetwork')
                         if (res === "ok") {
                             // update timestamp in status.json and publish
                             // console.log(pgm + 'calling zeronet_site_publish to update timestamp. user_seq = ' + user_seq) ;
-                            zeronet_site_publish() ;
+                            zeronet_site_publish(check_pubkey2_cb) ;
                         }
                         else {
                             ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
