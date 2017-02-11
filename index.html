@@ -1199,7 +1199,6 @@
                                         <span ng-bind-html="m|messageAlias"></span>
                                         <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}"></span>
                                     </span>
-                                    </td>
                                     <td style="text-align: right; vertical-align: top">
 
                                         <table style="margin-right: 0; margin-left: auto;">
@@ -1209,7 +1208,7 @@
                                                 <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
                                                         class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
                                                 <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message xxxx"></span>
+                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
                                                 <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
                                                       ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
                                                 <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
@@ -1966,7 +1965,7 @@
                 <a href="" id="zeronet_cert_changed_link" ng-click="a.zeronet_cert_changed()" style="display: none"></a>
                 is used for communication with other ZeroNet users.
                 An anonymous @moneynetwork.bit ZeroNet ID has been created for you. Use that or your preferred ZeroNet ID.
-                Click on link to change ZeroNet certificate.
+                Click on ZeroNet ID link to change ZeroNet certificate.
                 <br><br>
                 Private data are saved in browser (localStorage).
                 You can use checkbox on this page to enable/disable password protection of your private data.
@@ -2216,6 +2215,7 @@
 <script type="text/javascript" src="js-external/63-Blob.js"></script>
 <script type="text/javascript" src="js-external/64-FileSaver.js"></script>
 <script type="text/javascript" src="js-external/65-markdown-it.js"></script>
+<script type="text/javascript" src="js-external/65-markdown-it-v2.js"></script>
 <script type="text/javascript" src="js-external/66-markdown-it-emoji.js"></script>
 <script type="text/javascript" src="js-external/67-twemoji.js"></script>
 <script type="text/javascript" src="js-external/68-ng-markdownit.js"></script>

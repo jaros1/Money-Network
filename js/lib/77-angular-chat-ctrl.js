@@ -1539,7 +1539,7 @@ angular.module('MoneyNetwork')
                         return ;
                     }
                 }
-                // Update UI
+                // update selected reaction
                 old_index = -1 ;
                 for (i=0 ; i<message.reactions.length ; i++) {
                     if (message.reactions[i].selected) {
@@ -1553,9 +1553,8 @@ angular.module('MoneyNetwork')
 
                 // save reaction:
                 // - public chat and !user_setup.private_reactions: update like.json file (reaction is public)
-                // - otherwise send a private message with reaction
                 // todo: UI - disable reaction if no contact public key and private reaction is selected
-
+                // - otherwise send a private message with reaction. update reactions in localStorage
                 if (message.reactions[new_index].selected) {
                     hex_codes = message.reactions[new_index].unicode.split('_') ;
                     symbols = [] ;
@@ -1563,6 +1562,7 @@ angular.module('MoneyNetwork')
                     message.message.reaction = punycode.ucs2.encode(symbols) ;
                 }
                 else delete message.message.reaction ;
+                // save reaction. in like.json, in reactions in localStorage and/or send a private reaction message
                 message.message.reaction_at = new Date().getTime();
                 moneyNetworkService.ls_save_contacts(true); // true: update ZeroNet (update like.json or send a private reaction message)
 

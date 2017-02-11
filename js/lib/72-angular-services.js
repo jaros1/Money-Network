@@ -1811,31 +1811,19 @@ angular.module('MoneyNetwork')
                         } // for j (contact.messages)
                     } // for i (contacts)
 
-                    // add private reaction messages before encrypt and send (z_update_2a_data_json_encrypt)
-                    // can be:
-                    // 1) a private reaction to a public chat message
-                    // 2) a reaction in a group chat to all members in group chat
-                    // 3) a private reaction to a group chat message
-                    // 4) a private reaction to a private chat message
-                    var unique_id, sender, reaction_grp ;
+                    // create private reaction messages before encrypt and send (z_update_2a_data_json_encrypt)
+                    // and update private reaction hash in localStorage
+                    // can be (reaction_grp):
+                    //  1) a private reaction to a public chat message
+                    //  2) a reaction in a group chat to all members in group chat
+                    //  3) a private reaction to a group chat message
+                    //  4) a private reaction to a private chat message
+                    var unique_id, sender, update_ls_reactions, send_message_reaction_grp, update_like_json ;
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         contact = ls_contacts[i];
                         for (j=contact.messages.length-1 ; j >= 0 ; j--) {
                             message_with_envelope = contact.messages[j] ;
                             if (!message_with_envelope.reaction_at) continue ;
-                            if (message_with_envelope.z_filename && !user_setup.private_reactions) {
-                                // public reaction to public chat. see like.json and z_update_6_like_json
-                                continue ;
-                            }
-                            if ((message_with_envelope.folder == 'outbox') && user_setup.private_reactions) {
-                                // no action. No one but yourself can see that
-                                // todo: disable reaction in UI
-                                // todo: maybe in like.json as anonymous reaction?
-                                console.log(pgm + 'todo: private reaction to outbox message. disable reaction in UI? maybe in like.json as anonymous reaction?') ;
-                                delete message_with_envelope.reaction_at ;
-                                local_storage_updated = true ;
-                                continue ;
-                            }
                             message = message_with_envelope.message ;
                             if (['lost msg', 'lost msg2'].indexOf(message.msgtype) != -1) {
                                 // no action for lost message notifications in UI (dummy messages)
@@ -1845,57 +1833,110 @@ angular.module('MoneyNetwork')
                                 local_storage_updated = true ;
                                 continue ;
                             }
-                            // private reaction to inbox message
-                            if ((contact.type == 'group') && (message_with_envelope.folder == 'inbox') && user_setup.private_reactions) {
-                                // ingoing group chat message. Find sender of group chat message
-                                unique_id = contact.participants[message_with_envelope.participant-1] ;
-                                sender = get_contact_by_unique_id(unique_id) ;
-                                if (!sender) {
-                                    console.log(pgm + 'private reaction was not sent. Group chat contact with unique id ' +
-                                        unique_id + ' was not found. message_with_envelope.participant = ' + message_with_envelope.participant +
-                                        ', contact.participants = ' + JSON.stringify(contact.participants)) ;
+                            // set action flags. one or more actions for each message
+                            update_ls_reactions = false ; // true/false: update reactions hash in localStorage (private non anonymous reactions)
+                            send_message_reaction_grp = 0 ; // 0..4: 0: no message, 1..4: see text above
+                            update_like_json = false ; // true/false: update like.json file. see z_update_6_like_json
+                            if (message_with_envelope.z_filename) {
+                                // public chat
+                                if (!user_setup.private_reactions) {
+                                    // public chat a: public reaction. no message and add non anonymous info to my like.json file
+                                    update_like_json = true ;
+                                }
+                                else if (message_with_envelope.folder == 'outbox') {
+                                    // public chat b: private reaction to public chat outbox message.
+                                    // update info in ls_reactions, no message and add anonymous info to my like.json file
+                                    update_ls_reactions = true ;
+                                    update_like_json = true ;
+                                }
+                                else {
+                                    // public chat c: private reaction to public chat inbox message
+                                    // update info in ls_reactions and send message. other user will update like.json
+                                    update_ls_reactions = true ;
+                                    send_message_reaction_grp = 1 ; // reaction grp 1 - a private reaction to a public chat message
+                                }
+                            }
+                            else if (contact.type == 'group') {
+                                // group chat
+                                if (!user_setup.private_reactions) {
+                                    // group chat a: group reaction to a group chat message.
+                                    update_ls_reactions = true ;
+                                    send_message_reaction_grp = 2 ; // reaction grp 2 - a reaction in a group chat to all members in group chat
+
+                                }
+                                else if (message_with_envelope.folder == 'outbox') {
+                                    // group chat b: private reaction to a group chat outbox message
+                                    // send ANONYMOUS reaction information to group chat members
+                                    update_ls_reactions = true ;
+                                    send_message_reaction_grp = 2 ; // reaction grp 2 - a reaction in a group chat to all members in group chat
+                                }
+                                else {
+                                    // group chat c: private reaction to a group chat inbox message
+                                    // send NON ANONYMOUS reaction information to sender/creator of group chat message
+                                    update_ls_reactions = true ;
+                                    send_message_reaction_grp = 3 ; // reaction grp 3 - a private reaction to a group chat message
+                                }
+                            }
+                            else {
+                                // private chat. always send a private message
+                                update_ls_reactions = true ;
+                                send_message_reaction_grp = 4 ;
+                            }
+
+                            if (update_ls_reactions) debug('reaction', 'todo: update ls_reactions (localStorage)') ;
+
+                            if (send_message_reaction_grp) {
+                                if (send_message_reaction_grp == 3) {
+                                    // private reaction to a group chat inbox message. find sender/creator of message
+                                    unique_id = contact.participants[message_with_envelope.participant-1] ;
+                                    sender = get_contact_by_unique_id(unique_id) ;
+                                    if (!sender) {
+                                        console.log(pgm + 'private reaction was not sent. Group chat contact with unique id ' +
+                                            unique_id + ' was not found. message_with_envelope.participant = ' + message_with_envelope.participant +
+                                            ', contact.participants = ' + JSON.stringify(contact.participants)) ;
+                                        delete message_with_envelope.reaction_at ;
+                                        local_storage_updated = true ;
+                                        continue ;
+                                    }
+                                }
+                                else sender = contact ;
+                                if (!sender.pubkey) {
+                                    console.log(pgm + 'private reaction was not sent. public key was not found for contact with unique id ' + contact.unique_id) ;
                                     delete message_with_envelope.reaction_at ;
                                     local_storage_updated = true ;
                                     continue ;
                                 }
-                            }
-                            else sender = contact ;
-                            if (!sender.pubkey && user_setup.private_reactions) {
-                                console.log(pgm + 'private reaction was not sent. public key was not found for contact with unique id ' + contact.unique_id) ;
+
+                                debug('reaction', pgm + 'send_message_reaction_grp = ' + send_message_reaction_grp +
+                                    ', z_filename = ' + message_with_envelope.z_filename +
+                                    ', contact.type = ' + contact.type +
+                                    ', user_setup.private_reactions = user_setup.private_reactions');
+                                // add private reaction message
+                                message = {
+                                    msgtype: 'reaction',
+                                    timestamp: message_with_envelope.sent_at,
+                                    reaction: message_with_envelope.reaction,
+                                    reaction_at: message_with_envelope.reaction_at,
+                                    reaction_grp: send_message_reaction_grp
+                                } ;
+                                if (!message.reaction) delete message.reaction ;
+                                // validate json
+                                error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send private reaction message');
+                                if (error) {
+                                    console.log(pgm + 'System error: ' + error) ;
+                                    console.log(pgm + 'message = ' + JSON.stringify(message)) ;
+                                    delete message_with_envelope.reaction_at ;
+                                    local_storage_updated = true ;
+                                    continue ;
+                                }
+                                // OK. add message
+                                add_msg(sender, message);
                                 delete message_with_envelope.reaction_at ;
                                 local_storage_updated = true ;
-                                continue ;
                             }
-                            if (message_with_envelope.z_filename) reaction_grp = 1 ; // 1) a private reaction to a public chat message
-                            else if (contact.type != 'group') reaction_grp = 4 ; // 4) a private reaction to a private chat message
-                            else if (user_setup.private_reactions) reaction_grp = 3 ; // 3) a private reaction to a group chat message
-                            else reaction_grp = 2 ; // 2) a reaction in a group chat to all members in group chat
-                            debug('reaction', pgm + 'reaction_grp = ' + reaction_grp +
-                                ', z_filename = ' + message_with_envelope.z_filename +
-                                ', contact.type = ' + contact.type +
-                                ', user_setup.private_reactions = user_setup.private_reactions');
-                            // add private reaction message
-                            message = {
-                                msgtype: 'reaction',
-                                timestamp: message_with_envelope.sent_at,
-                                reaction: message_with_envelope.reaction,
-                                reaction_at: message_with_envelope.reaction_at,
-                                reaction_grp: reaction_grp
-                            } ;
-                            if (!message.reaction) delete message.reaction ;
-                            // validate json
-                            error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send private reaction message');
-                            if (error) {
-                                console.log(pgm + 'System error: ' + error) ;
-                                console.log(pgm + 'message = ' + JSON.stringify(message)) ;
-                                delete message_with_envelope.reaction_at ;
-                                local_storage_updated = true ;
-                                continue ;
-                            }
-                            // OK. add message
-                            add_msg(sender, message);
-                            delete message_with_envelope.reaction_at ;
-                            local_storage_updated = true ;
+
+                            if (!update_like_json) delete  message_with_envelope.reaction_at ;
+
                         } // for j (messages)
                     } // for i (contacts)
 
