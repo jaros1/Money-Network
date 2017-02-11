@@ -1883,7 +1883,9 @@ angular.module('MoneyNetwork')
                                 send_message_reaction_grp = 4 ;
                             }
 
-                            debug('reaction', pgm + 'update_ls_reaction = ' + update_ls_reactions +
+                            debug('reaction', pgm + 'sent_at = ' + message_with_envelope.sent_at +
+                                ', reaction = ' + message_with_envelope.reaction +
+                                ', update_ls_reaction = ' + update_ls_reactions +
                                 ', send_message_reaction_grp = ' + send_message_reaction_grp +
                                 ', update_like_json = ' + update_like_json) ;
 
@@ -3289,7 +3291,8 @@ angular.module('MoneyNetwork')
             get_like_json(function (like, like_index, empty) {
                 var pgm = service + '.z_update_6_like_json get_like_json callback 1: ' ;
                 var error, index, i, contact, j, message_with_envelope, k, like_updated, auth_address,
-                    like_index_updated, key, reaction_info, compare, emoji, refresh_reactions, refresh_key ;
+                    like_index_updated, key, reaction_info, compare, emoji, refresh_reactions, refresh_key,
+                    this_reaction_updated ;
                 error = MoneyNetworkHelper.validate_json (pgm, like, 'like.json', 'Invalid json file') ;
                 if (error) {
                     console.log(pgm + 'System error. failed to public reaction. like.json is invalid. ' + error) ;
@@ -3300,7 +3303,7 @@ angular.module('MoneyNetwork')
                 like_updated = false ;
                 like_index_updated = false ;
 
-                debug('reaction', pgm + 'keep traq of messages with updated reactions. must refresh reactions info after fileWrite and publish. See like.json processing in event_file_done') ;
+                // debug('reaction', pgm + 'keep traq of messages with updated reactions. must refresh reactions info after fileWrite and publish. See like.json processing in event_file_done') ;
                 refresh_reactions = {} ;
 
                 // update public non anonymous reactions
@@ -3309,29 +3312,37 @@ angular.module('MoneyNetwork')
                     if (contact.type == 'group') continue ;
                     for (j=0 ; j<contact.messages.length ; j++) {
                         message_with_envelope = contact.messages[j] ;
+                        if (message_with_envelope.sent_at == 1486789437340) {
+                            debug('reaction', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope));
+                        }
                         if (!message_with_envelope.z_filename) continue ;
                         if (!message_with_envelope.reaction_at) continue ;
                         auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
                         index = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
                         refresh_key = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) ;
+                        debug('reaction', pgm + 'index: ' + index + ': updating non anonymous public reaction') ;
                         if (like_index.hasOwnProperty(index)) {
-                            // old reaction was found in like.json
+                            // old non anonymous reaction was found in like.json
                             k = like_index[index] ;
                             if (message_with_envelope.reaction == like.like[k].emoji) {
                                 // no change
+                                debug('reaction', pgm + 'index: ' + index + ': found in like.json but not changed') ;
                                 delete message_with_envelope.reaction_at ;
                                 continue ;
                             }
+                            debug('reaction', pgm + 'index: ' + index + ': updating like.json. old emoji = ' + like.like[k].emoji + ', new emoji = ' + message_with_envelope.reaction) ;
                             like.like[k].emoji = message_with_envelope.reaction ;
                             delete message_with_envelope.reaction_at ;
                             like_updated = true ;
                             refresh_reactions[refresh_key] = get_message_by_seq(message_with_envelope.seq) ;
+                            if (!refresh_reactions[refresh_key]) debug('reaction', pgm + 'index: ' + index + ': error. js_messages_row with seq ' + message_with_envelope.seq + ' was not found') ;
                         } // found old like
                         else if (!message_with_envelope.reaction) {
-                            console.log(pgm + 'old public reaction was not found in like.json file') ;
+                            debug('reaction', pgm + 'index: ' + index + ': old public reaction was not found in like.json file') ;
                             delete message_with_envelope.reaction_at ;
                         }
                         else {
+                            debug('reaction', pgm + 'index: ' + index + ': added new public emoji reaction ' + message_with_envelope.reaction + ' to like.json') ;
                             // add new reaction to like.json
                             like.like.push({
                                 user_seq: z_cache.user_seq,
@@ -3340,8 +3351,10 @@ angular.module('MoneyNetwork')
                                 emoji: message_with_envelope.reaction
                             }) ;
                             like_index[index] = like.like.length-1 ;
+                            delete message_with_envelope.reaction_at ;
                             like_updated = true ;
                             refresh_reactions[refresh_key] = get_message_by_seq(message_with_envelope.seq) ;
+                            if (!refresh_reactions[refresh_key]) debug('reaction', pgm + 'index: ' + index + ': error. js_messages_row with seq ' + message_with_envelope.seq + ' was not found') ;
                         }
                     } // for j (messages)
                 } // for i (contacts)
@@ -3371,8 +3384,10 @@ angular.module('MoneyNetwork')
                         compare[emoji].old_i = j ;
                     }
                     debug('reaction', pgm + 'compare = ' + JSON.stringify(compare));
+                    this_reaction_updated = false ;
                     for (emoji in compare) {
                         if (compare[emoji].old_count == compare[emoji].new_count) continue ;
+                        this_reaction_updated = true ;
                         like_updated = true ;
                         if (!refresh_reactions[refresh_key]) {
                             // find outbox message with this refresh_key. reaction information must be updated after write and publish
@@ -3409,8 +3424,14 @@ angular.module('MoneyNetwork')
                         // simple count update
                         like.like[compare[emoji].old_i].count = compare[emoji].new_count ;
                     }
+                    if (!this_reaction_updated) {
+                        debug('reaction', pgm + 'warning. no anonymous reaction update was found for key = ' + key +
+                            ', index = ' + index + ', reaction_info = ' + JSON.stringify(reaction_info));
+                    }
+                    delete reaction_info.reaction_at ;
                 } // for key in reactions
 
+                debug('reaction', pgm + 'like_updated = ' + like_updated) ;
                 if (!like_updated) return done(publish) ;
                 for (i=like.like.length-1 ; i>= 0 ; i--) if (!like.like[i].emoji) {
                     like.like.splice(i,1) ;
@@ -3421,10 +3442,12 @@ angular.module('MoneyNetwork')
 
                 // create callback. refresh reaction info for all messages affected by like.json update
                 refresh_reactions_job = function () {
+                    var pgm = service + '.z_update_6_like_json.refresh_reactions_job: ' ;
                     var refresh_key, js_messages_row ;
                     for (refresh_key in refresh_reactions) {
                         js_messages_row = refresh_reactions[refresh_key] ;
                         delete refresh_reactions[refresh_key] ;
+                        debug('reaction', pgm + 'refresh reactions info for ' + refresh_key) ;
                         check_reactions(js_messages_row) ;
                         refresh_reactions_job() ;
                         break ;
@@ -6457,8 +6480,8 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'query = ' + query);
                     return;
                 }
+                if ((res.length == 0) && (message_with_envelope.reactions.length == 0)) return ;
                 if (message_with_envelope.reactions.length) message_with_envelope.reactions.splice(0,message_with_envelope.reactions.length) ;
-                if (res.length == 0) return ;
                 debug('reaction', pgm + 'res = ' + JSON.stringify(res));
 
                 // sum for each emoji and update watch_like_json

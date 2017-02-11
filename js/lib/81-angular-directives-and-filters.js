@@ -290,6 +290,7 @@ angular.module('MoneyNetwork')
             if (!contact) return '' ;
             if (['jpg','png'].indexOf(contact.avatar) != -1) {
                 // contact with uploaded avatar
+                if (!contact.pubkey) return 'public/images/image_failed.gif' ; // deleted contact
                 return 'data/users/' + contact.auth_address + '/avatar.' + contact.avatar ;
             }
             // must be contact with a random assigned avatar or avatarz for public chat
