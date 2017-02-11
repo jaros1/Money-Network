@@ -1883,7 +1883,13 @@ angular.module('MoneyNetwork')
                                 send_message_reaction_grp = 4 ;
                             }
 
-                            if (update_ls_reactions) debug('reaction', 'todo: update ls_reactions (localStorage)') ;
+                            debug('reaction', pgm + 'update_ls_reaction = ' + update_ls_reactions +
+                                ', send_message_reaction_grp = ' + send_message_reaction_grp +
+                                ', update_like_json = ' + update_like_json) ;
+
+                            if (update_ls_reactions) {
+                                debug('reaction', 'todo: update ls_reactions (localStorage)') ;
+                            }
 
                             if (send_message_reaction_grp) {
                                 if (send_message_reaction_grp == 3) {
@@ -3246,13 +3252,13 @@ angular.module('MoneyNetwork')
             var pgm = service + '.z_update_6_like_json: ' ;
             var done, new_reactions, i, contact, j, message_with_envelope, user_path, key ;
 
-            done = function (publish) {
+            done = function (publish, cb) {
                 ls_save_contacts(false);
                 if (!publish) {
                     // ZeroFrame.cmd("wrapperNotification", ["info", "No more updates to publish", 5000]);
                     return ;
                 }
-                zeronet_site_publish() ;
+                zeronet_site_publish(cb) ;
             } ; // done
 
             // any new public reactions?
@@ -3283,7 +3289,7 @@ angular.module('MoneyNetwork')
             get_like_json(function (like, like_index, empty) {
                 var pgm = service + '.z_update_6_like_json get_like_json callback 1: ' ;
                 var error, index, i, contact, j, message_with_envelope, k, like_updated, auth_address,
-                    like_index_updated, key, reaction_info, compare, emoji ;
+                    like_index_updated, key, reaction_info, compare, emoji, refresh_reactions, refresh_key ;
                 error = MoneyNetworkHelper.validate_json (pgm, like, 'like.json', 'Invalid json file') ;
                 if (error) {
                     console.log(pgm + 'System error. failed to public reaction. like.json is invalid. ' + error) ;
@@ -3293,6 +3299,9 @@ angular.module('MoneyNetwork')
                 }
                 like_updated = false ;
                 like_index_updated = false ;
+
+                debug('reaction', pgm + 'keep traq of messages with updated reactions. must refresh reactions info after fileWrite and publish. See like.json processing in event_file_done') ;
+                refresh_reactions = {} ;
 
                 // update public non anonymous reactions
                 for (i=0 ; i<ls_contacts.length ; i++) {
@@ -3304,6 +3313,7 @@ angular.module('MoneyNetwork')
                         if (!message_with_envelope.reaction_at) continue ;
                         auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
                         index = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
+                        refresh_key = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) ;
                         if (like_index.hasOwnProperty(index)) {
                             // old reaction was found in like.json
                             k = like_index[index] ;
@@ -3315,6 +3325,7 @@ angular.module('MoneyNetwork')
                             like.like[k].emoji = message_with_envelope.reaction ;
                             delete message_with_envelope.reaction_at ;
                             like_updated = true ;
+                            refresh_reactions[refresh_key] = get_message_by_seq(message_with_envelope.seq) ;
                         } // found old like
                         else if (!message_with_envelope.reaction) {
                             console.log(pgm + 'old public reaction was not found in like.json file') ;
@@ -3330,6 +3341,7 @@ angular.module('MoneyNetwork')
                             }) ;
                             like_index[index] = like.like.length-1 ;
                             like_updated = true ;
+                            refresh_reactions[refresh_key] = get_message_by_seq(message_with_envelope.seq) ;
                         }
                     } // for j (messages)
                 } // for i (contacts)
@@ -3342,6 +3354,7 @@ angular.module('MoneyNetwork')
                     reaction_info = ls_reactions[key] ;
                     if (!reaction_info.reaction_at) continue ; // no change for this message
                     index = key + ',' + auth_address + ',a' ;
+                    refresh_key = key + ',' + auth_address ;
                     if (!like_index[index]) like_index[index] = [] ;
                     if (!reaction_info.emojis) reaction_info.emojis = {} ;
                     debug('reaction', pgm + 'key = ' + key + ', index = ' + index + ', reaction_info = ' + JSON.stringify(reaction_info)) ;
@@ -3361,6 +3374,21 @@ angular.module('MoneyNetwork')
                     for (emoji in compare) {
                         if (compare[emoji].old_count == compare[emoji].new_count) continue ;
                         like_updated = true ;
+                        if (!refresh_reactions[refresh_key]) {
+                            // find outbox message with this refresh_key. reaction information must be updated after write and publish
+                            for (j=0 ; j<ls_contacts.length ; j++) {
+                                contact = ls_contacts[j] ;
+                                for (k=0 ; k<contact.messages.length ; k++) {
+                                    message_with_envelope = contact.messages[k] ;
+                                    if (message_with_envelope.folder != 'outbox') continue ;
+                                    if ('' + message_with_envelope.sent_at != key) continue ;
+                                    refresh_reactions[refresh_key] = get_message_by_seq(message_with_envelope.seq) ;
+                                    break ;
+                                }
+                                if (refresh_reactions[refresh_key]) break ;
+                            }
+                            if (!refresh_reactions[refresh_key]) debug('reaction', pgm + 'cannot find any outbox message with sent_at timestamp ' + key) ;
+                        }
                         if (!compare[emoji].old_count) {
                             // add new row to like.json
                             like_index[index].push(like.like.length) ;
@@ -3391,6 +3419,18 @@ angular.module('MoneyNetwork')
                 if (like_index_updated) update_like_index(like, like_index) ;
                 publish = true ;
 
+                // create callback. refresh reaction info for all messages affected by like.json update
+                refresh_reactions_job = function () {
+                    var refresh_key, js_messages_row ;
+                    for (refresh_key in refresh_reactions) {
+                        js_messages_row = refresh_reactions[refresh_key] ;
+                        delete refresh_reactions[refresh_key] ;
+                        check_reactions(js_messages_row) ;
+                        refresh_reactions_job() ;
+                        break ;
+                    }
+                } ;
+
                 // validate and write like.json
                 error = MoneyNetworkHelper.validate_json (pgm, like, 'like.json', 'Cannot write invalid like.json file') ;
                 if (error) {
@@ -3405,7 +3445,7 @@ angular.module('MoneyNetwork')
                     if (res === "ok") {
                         // data.json ok. check public chat and publish
                         // debug('public_chat', pgm + 'data.json updated. continue with public chat messages and publish') ;
-                        done(true)  ;
+                        done(true, refresh_reactions_job)  ;
                     }
                     else {
                         ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
