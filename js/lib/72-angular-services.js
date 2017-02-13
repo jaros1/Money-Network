@@ -1913,13 +1913,17 @@ angular.module('MoneyNetwork')
                             if (update_ls_reactions) {
                                 // ls_reactions is an hash with private reactions in localStorage. with
                                 // - my private reactions to ingoing and outgoing chat messages
-                                // - other users private reactions to my chat messages
+                                // - other users private reactions to my chat outbox messages
+                                // reaction_index: <timestamp> (outbox messages) or <timestamp>,<auth> (inbox messages)
                                 reactions_index = message_with_envelope.sent_at ;
                                 if (message_with_envelope.folder == 'inbox') {
                                     if (!message_sender || !message_sender.auth_address) reactions_index = null ;
                                     else reactions_index += ',' + message_sender.auth_address.substr(0,4) ;
                                 }
-                                if (!reactions_index) debug('reaction', pgm + 'error. cannot save private reaction deleted group chat contact');
+                                if (!reactions_index) {
+                                    debug('reaction', pgm + 'error. cannot save private reaction deleted group chat contact');
+                                    update_ls_reactions = false ;
+                                }
                                 else {
                                     if (!ls_reactions[reactions_index]) ls_reactions[reactions_index] = {} ;
                                     reaction_info = ls_reactions[reactions_index] ;
@@ -1931,6 +1935,7 @@ angular.module('MoneyNetwork')
                                     new_reaction = message_with_envelope.reaction ;
                                     if (old_reaction == new_reaction) {
                                         debug('reaction', pgm + 'no update. old reaction = new reaction in ls_reactions.') ;
+                                        update_ls_reactions = false ;
                                     }
                                     else {
                                         if (old_reaction) {
@@ -1944,7 +1949,8 @@ angular.module('MoneyNetwork')
                                             reaction_info.users[unique_id] = new_reaction
                                         }
                                         else delete reaction_info.users[unique_id] ;
-                                        reaction_info.reaction_at = new Date().getTime() ;
+                                        if (!send_message_reaction_grp) reaction_info.reaction_at = new Date().getTime() ;
+                                        local_storage_updated = true ;
                                         debug('reaction', pgm + 'reactions_index = ' + reactions_index + ', new reaction_info = ' + JSON.stringify(reaction_info)) ;
                                     }
                                 }
@@ -1974,7 +1980,7 @@ angular.module('MoneyNetwork')
                                 debug('reaction', pgm + 'send_message_reaction_grp = ' + send_message_reaction_grp +
                                     ', z_filename = ' + message_with_envelope.z_filename +
                                     ', contact.type = ' + contact.type +
-                                    ', user_setup.private_reactions = user_setup.private_reactions');
+                                    ', user_setup.private_reactions = ' + user_setup.private_reactions);
                                 // add private reaction message
                                 message = {
                                     msgtype: 'reaction',
@@ -2702,7 +2708,10 @@ angular.module('MoneyNetwork')
 
             // console.log(pgm + 'localStorage.messages (3) = ' + JSON.stringify(local_storage_messages));
             // console.log(pgm + 'ZeroNet data.msg (3) = ' + JSON.stringify(data.msg));
-            if (local_storage_updated) ls_save_contacts(false) ;
+            if (local_storage_updated) {
+                MoneyNetworkHelper.setItem('reactions', JSON.stringify(ls_reactions)) ; ;
+                ls_save_contacts(false) ;
+            }
 
             available = data_json_max_size - json_raw.length - 100 ;
             if (available < 0) {
@@ -3839,7 +3848,7 @@ angular.module('MoneyNetwork')
         // - false: do not add message to contact.messages array (already there)
         function add_message(contact, message, load_contacts) {
             var pgm = service + '.add_message: ' ;
-            var js_messages_row, i, unicode, index, title ;
+            var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id ;
             if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
             if (!contact.messages) contact.messages = [] ;
             if (!load_contacts) contact.messages.push(message) ;
@@ -3848,8 +3857,26 @@ angular.module('MoneyNetwork')
                 message: message,
                 reactions: JSON.parse(JSON.stringify(get_user_reactions()))
             } ;
+            if (message.z_filename) {
+                // public chat. not saved in localStorage. Check for any reaction stored in ls_reactions hash
+                reactions_index = message.sent_at ;
+                if (reactions_index && (message.folder = 'inbox')) {
+                    if (contact.auth_address) reactions_index += ',' + contact.auth_address.substr(0,4) ;
+                    else reactions_index = null ;
+                }
+                if (reactions_index) {
+                    reaction_info = ls_reactions[reactions_index] ;
+                    if (reaction_info) {
+                        unique_id = get_my_unique_id() ;
+                        if (reaction_info.users.hasOwnProperty(unique_id)) message.reaction = reaction_info.users[unique_id] ;
+                    }
+                }
+                //debug('reaction', pgm + 'message.z_filename = ' + message.z_filename +
+                //    ', reactions_index = ' + reactions_index +
+                //    ', reaction_info = ' + JSON.stringify(reaction_info) + ', message.reaction = ' + message.reaction);
+            }
             if (message.reaction) {
-                // must be message loaded from localStorage. Mark reaction as selected in reactions array
+                // reaction from localStorage. Mark reaction as selected in reactions array
                 unicode = symbol_to_unicode(message.reaction) ;
                 index = -1 ;
                 for (i=0 ; i<js_messages_row.reactions.length ; i++) if (js_messages_row.reactions[i].unicode == unicode) index = i ;
@@ -6493,6 +6520,10 @@ angular.module('MoneyNetwork')
             // 1 - lookup reactions in like.json table (anonymous and non anonymous reactions).
             // index is sent_at timestamp + first 4 characters of contacts auth address
             timestamp = message_with_envelope.sent_at ;
+            if (!timestamp) {
+                debug('reaction', pgm + 'cannot check reactions. sent_at timestamp is missing. message_with_envelope = ' + JSON.stringify(message_with_envelope));
+                return ;
+            }
             if (message_with_envelope.folder == 'outbox') auth = ZeroFrame.site_info.auth_address.substr(0,4) ;
             else if (contact.type != 'group') {
                 if (!contact.auth_address) {
@@ -6525,7 +6556,6 @@ angular.module('MoneyNetwork')
             watch_like_msg_id[msg_id] = js_messages_row ;
 
             // ready for emoji lookup in like table
-            // debug('reaction', pgm + 'timestamp = ' + timestamp + ', auth = ' + auth) ;
             query =
                 "select substr(json.directory, 7) as auth_address, like.emoji, like.count " +
                 "from like, json " +
@@ -6543,7 +6573,7 @@ angular.module('MoneyNetwork')
                 }
                 if ((res.length == 0) && (message_with_envelope.reactions.length == 0)) return ;
                 if (message_with_envelope.reactions.length) message_with_envelope.reactions.splice(0,message_with_envelope.reactions.length) ;
-                debug('reaction', pgm + 'res = ' + JSON.stringify(res));
+                debug('reaction', pgm + 'timestamp = ' + timestamp + ', auth = ' + auth + ', res = ' + JSON.stringify(res));
 
                 // sum for each emoji and update watch_like_json
                 count = {} ;
@@ -7719,7 +7749,7 @@ angular.module('MoneyNetwork')
                     // check watch_like_json hash
 
                     (function(){
-                        var like, refresh_reactions, i, key, old_keys, j ;
+                        var like, refresh_reactions, i, key, old_keys, j, js_messages_row ;
                         like = res ;
                         refresh_reactions = {} ;
 
@@ -7734,7 +7764,12 @@ angular.module('MoneyNetwork')
                             key = like.like[i].timestamp + ',' + like.like[i].auth ;
                             if (like.like[i].timestamp == 1486789437340) {
                                 debug('reaction', pgm + 'like = ' + JSON.stringify(like));
-                                debug('reaction', pgm + 'watch_like_msg_id[' + key + '] = ' + JSON.stringify(watch_like_msg_id[key])) ;
+                                js_messages_row = watch_like_msg_id[key] ;
+                                if (js_messages_row) {
+                                    js_messages_row = JSON.parse(JSON.stringify(js_messages_row)) ;
+                                    delete js_messages_row.contact.messages ;
+                                }
+                                debug('reaction', pgm + 'watch_like_msg_id[' + key + '] = ' + JSON.stringify(js_messages_row)) ;
                             }
                             if (!watch_like_msg_id[key] || refresh_reactions[key]) continue ;
                             // client is watching reactions for this msg_id/key
@@ -7996,7 +8031,7 @@ angular.module('MoneyNetwork')
             // start public chat download?
             if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return ; // group chat
             if ((user_setup.chat_sort != 'Last message') && !chat_page_context.end_of_page) return ; // sort by size and not end of page. public chat with size 0 at end of page
-            if (chat_page_context.no_processes >= 1) {
+            if (chat_page_context.no_processes >= 2) {
                 // do not start more that 1 download process
                 debug('public_chat', pgm + 'stop. already ' + chat_page_context.no_processes + ' check_public_chat process running') ;
                 return ;
