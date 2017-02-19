@@ -1820,13 +1820,14 @@ angular.module('MoneyNetwork')
                     //  4) a private reaction to a private chat message
                     var unique_id, message_receiver, update_ls_reactions, send_message_reaction_grp, update_like_json,
                         reactions_index, message_receiver_clone, message_sender, reaction_info, old_reaction, reaction_at,
-                        new_reaction ;
+                        new_reaction, reaction ;
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         contact = ls_contacts[i];
                         for (j=contact.messages.length-1 ; j >= 0 ; j--) {
                             message_with_envelope = contact.messages[j] ;
                             if (!message_with_envelope.reaction_at) continue ;
                             message = message_with_envelope.message ;
+                            reaction = message_with_envelope.reaction ;
                             reaction_at = message_with_envelope.reaction_at ;
                             if (['lost msg', 'lost msg2'].indexOf(message.msgtype) != -1) {
                                 // no action for lost message notifications in UI (dummy messages)
@@ -1846,22 +1847,51 @@ angular.module('MoneyNetwork')
                                 // public chat
                                 if (message_with_envelope.folder == 'inbox') message_sender = contact ;
                                 if (!user_setup.private_reactions) {
-                                    // public chat a: public reaction. no message and add non anonymous info to my like.json file
+                                    // a: public reaction to public chat. no message and add non anonymous info to my like.json fil
+                                    if (message_with_envelope.folder == 'inbox') {
+                                        // check for old private reaction and send a private cancel reaction message if any
+                                        // test ok: todo: reload page after test to see if ls_reactions has been saved in localStorage
+                                        reactions_index = message_with_envelope.sent_at ;
+                                        if (!message_sender || !message_sender.auth_address) reactions_index = null ;
+                                        else reactions_index += ',' + message_sender.auth_address.substr(0,4) ;
+                                        if (reactions_index) {
+                                            reaction_info = ls_reactions[reactions_index] ;
+                                            unique_id = get_my_unique_id() ;
+                                        }
+                                        else reaction_info = null ;
+                                        if (reaction_info) old_reaction = reaction_info.users[unique_id] ;
+                                        else old_reaction = null ;
+                                        if (old_reaction) {
+                                            // found old private reaction.
+                                            // remove old private reaction from ls_reactions
+                                            delete reaction_info.users[unique_id] ;
+                                            reaction_info.emojis[old_reaction]-- ;
+                                            if (reaction_info.emojis[old_reaction] <= 0) delete reaction_info.emojis[old_reaction] ;
+                                            if (!reaction_info.users.length || !reaction_info.emojis.length) delete ls_reactions[reactions_index] ;
+                                            // sent private private reaction message
+                                            send_message_reaction_grp = 1 ; // reaction grp 1 - a private reaction to a public chat message
+                                            reaction = null ;
+                                        }
+                                    }
                                     update_like_json = true ;
                                 }
                                 else if (message_with_envelope.folder == 'outbox') {
-                                    // public chat b: private reaction to public chat outbox message.
+                                    // b: private reaction to public chat outbox message.
                                     // update info in ls_reactions, no message and add anonymous info to my like.json file
+                                    // todo: should remove any old public chat reaction. See z_update_6_like_json
                                     update_ls_reactions = true ;
                                     update_like_json = true ;
                                 }
                                 else {
-                                    // public chat c: private reaction to public chat inbox message
+                                    // c: private reaction to public chat inbox message
                                     // update info in ls_reactions and send message. other user will update like.json
+                                    // todo: should remove any old public chat reaction
                                     update_ls_reactions = true ;
                                     send_message_reaction_grp = 1 ; // reaction grp 1 - a private reaction to a public chat message
                                     message_receiver = contact ;
                                 }
+
+
                             }
                             else if (contact.type == 'group') {
                                 // group chat
@@ -1904,7 +1934,7 @@ angular.module('MoneyNetwork')
                             message_receiver_clone = JSON.parse(JSON.stringify(message_receiver)) ;
                             if (message_receiver_clone) delete message_receiver_clone.messages ;
                             debug('reaction', pgm + 'sent_at = ' + message_with_envelope.sent_at +
-                                ', reaction = ' + message_with_envelope.reaction +
+                                ', reaction = ' + reaction +
                                 ', update_ls_reaction = ' + update_ls_reactions +
                                 ', send_message_reaction_grp = ' + send_message_reaction_grp +
                                 ', update_like_json = ' + update_like_json +
@@ -1932,7 +1962,7 @@ angular.module('MoneyNetwork')
                                     debug('reaction', pgm + 'reactions_index = ' + reactions_index + ', old reaction_info = ' + JSON.stringify(reaction_info)) ;
                                     unique_id = get_my_unique_id() ;
                                     old_reaction = reaction_info.users[unique_id] ;
-                                    new_reaction = message_with_envelope.reaction ;
+                                    new_reaction = reaction ;
                                     if (old_reaction == new_reaction) {
                                         debug('reaction', pgm + 'no update. old reaction = new reaction in ls_reactions.') ;
                                         update_ls_reactions = false ;
@@ -1985,7 +2015,7 @@ angular.module('MoneyNetwork')
                                 message = {
                                     msgtype: 'reaction',
                                     timestamp: message_with_envelope.sent_at,
-                                    reaction: message_with_envelope.reaction,
+                                    reaction: reaction,
                                     reaction_at: reaction_at,
                                     reaction_grp: send_message_reaction_grp
                                 } ;
@@ -3343,6 +3373,7 @@ angular.module('MoneyNetwork')
                 if (new_reactions) break ;
             } // for i (contacts)
             if (!new_reactions) {
+                // check anonymous public reactions
                 for (key in ls_reactions) {
                     if (ls_reactions[key].reaction_at) {
                         new_reactions = true ;
@@ -3357,7 +3388,7 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.z_update_6_like_json get_like_json callback 1: ' ;
                 var error, index, i, contact, j, message_with_envelope, k, like_updated, auth_address,
                     like_index_updated, key, reaction_info, compare, emoji, refresh_reactions, refresh_key,
-                    this_reaction_updated ;
+                    this_reaction_updated, index_p, index_a ;
                 error = MoneyNetworkHelper.validate_json (pgm, like, 'like.json', 'Invalid json file') ;
                 if (error) {
                     console.log(pgm + 'System error. failed to public reaction. like.json is invalid. ' + error) ;
@@ -3371,7 +3402,7 @@ angular.module('MoneyNetwork')
                 // debug('reaction', pgm + 'keep traq of messages with updated reactions. must refresh reactions info after fileWrite and publish. See like.json processing in event_file_done') ;
                 refresh_reactions = {} ;
 
-                // update public non anonymous reactions
+                // update public reactions (non anonymous). contact.messages,. => like.json
                 for (i=0 ; i<ls_contacts.length ; i++) {
                     contact = ls_contacts[i] ;
                     if (contact.type == 'group') continue ;
@@ -3388,31 +3419,31 @@ angular.module('MoneyNetwork')
                             continue ;
                         }
                         auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
-                        index = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
+                        index_p = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
                         refresh_key = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) ;
-                        debug('reaction', pgm + 'index: ' + index + ': updating non anonymous public reaction') ;
-                        if (like_index.hasOwnProperty(index)) {
+                        debug('reaction', pgm + 'index_p: ' + index_p + ': updating non anonymous public reaction') ;
+                        if (like_index.hasOwnProperty(index_p)) {
                             // old non anonymous reaction was found in like.json
-                            k = like_index[index] ;
+                            k = like_index[index_p] ;
                             if (message_with_envelope.reaction == like.like[k].emoji) {
                                 // no change
-                                debug('reaction', pgm + 'index: ' + index + ': found in like.json but not changed') ;
+                                debug('reaction', pgm + 'index_p: ' + index_p + ': found in like.json but not changed') ;
                                 delete message_with_envelope.reaction_at ;
                                 continue ;
                             }
-                            debug('reaction', pgm + 'index: ' + index + ': updating like.json. old emoji = ' + like.like[k].emoji + ', new emoji = ' + message_with_envelope.reaction) ;
+                            debug('reaction', pgm + 'index_p: ' + index_p + ': updating like.json. old emoji = ' + like.like[k].emoji + ', new emoji = ' + message_with_envelope.reaction) ;
                             like.like[k].emoji = message_with_envelope.reaction ;
                             delete message_with_envelope.reaction_at ;
                             like_updated = true ;
                             refresh_reactions[refresh_key] = get_message_by_seq(message_with_envelope.seq) ;
-                            if (!refresh_reactions[refresh_key]) debug('reaction', pgm + 'index: ' + index + ': error. js_messages_row with seq ' + message_with_envelope.seq + ' was not found') ;
+                            if (!refresh_reactions[refresh_key]) debug('reaction', pgm + 'index_p: ' + index_p + ': error. js_messages_row with seq ' + message_with_envelope.seq + ' was not found') ;
                         } // found old like
                         else if (!message_with_envelope.reaction) {
-                            debug('reaction', pgm + 'index: ' + index + ': old public reaction was not found in like.json file') ;
+                            debug('reaction', pgm + 'index_p: ' + index_p + ': old public reaction was not found in like.json file') ;
                             delete message_with_envelope.reaction_at ;
                         }
                         else {
-                            debug('reaction', pgm + 'index: ' + index + ': added new public emoji reaction ' + message_with_envelope.reaction + ' to like.json') ;
+                            debug('reaction', pgm + 'index_p: ' + index_p + ': added new public emoji reaction ' + message_with_envelope.reaction + ' to like.json') ;
                             // add new reaction to like.json
                             like.like.push({
                                 user_seq: z_cache.user_seq,
@@ -3420,34 +3451,34 @@ angular.module('MoneyNetwork')
                                 auth: auth_address.substr(0,4),
                                 emoji: message_with_envelope.reaction
                             }) ;
-                            like_index[index] = like.like.length-1 ;
+                            like_index[index_p] = like.like.length-1 ;
                             delete message_with_envelope.reaction_at ;
                             like_updated = true ;
                             refresh_reactions[refresh_key] = get_message_by_seq(message_with_envelope.seq) ;
-                            if (!refresh_reactions[refresh_key]) debug('reaction', pgm + 'index: ' + index + ': error. js_messages_row with seq ' + message_with_envelope.seq + ' was not found') ;
+                            if (!refresh_reactions[refresh_key]) debug('reaction', pgm + 'index_p: ' + index_p + ': error. js_messages_row with seq ' + message_with_envelope.seq + ' was not found') ;
                         }
                     } // for j (messages)
                 } // for i (contacts)
 
-                // update private anonymous reactions
+                // update private anonymous reactions (ls_reactions => like.json)
                 auth_address = ZeroFrame.site_info.auth_address.substr(0,4) ;
                 debug('reaction', pgm + 'ls_reactions = ' + JSON.stringify(ls_reactions));
                 for (key in ls_reactions) {
                     if (!key.match(/[0-9]{13}/)) continue ; // not a timestamp
                     reaction_info = ls_reactions[key] ;
                     if (!reaction_info.reaction_at) continue ; // no change for this message
-                    index = key + ',' + auth_address + ',a' ;
+                    index_a = key + ',' + auth_address + ',a' ;
                     refresh_key = key + ',' + auth_address ;
-                    if (!like_index[index]) like_index[index] = [] ;
+                    if (!like_index[index_a]) like_index[index_a] = [] ;
                     if (!reaction_info.emojis) reaction_info.emojis = {} ;
-                    debug('reaction', pgm + 'key = ' + key + ', index = ' + index + ', reaction_info = ' + JSON.stringify(reaction_info)) ;
+                    debug('reaction', pgm + 'key = ' + key + ', index_a = ' + index_a + ', reaction_info = ' + JSON.stringify(reaction_info)) ;
                     // compare reactions in like.json with reactions in reaction_info (ls_reaction)
                     compare = {} ;
                     for (emoji in reaction_info.emojis) {
                         compare[emoji] = { old_count: 0, new_count: reaction_info.emojis[emoji] }
                     }
-                    for (i=0 ; i<like_index[index].length ; i++) {
-                        j = like_index[index][i] ;
+                    for (i=0 ; i<like_index[index_a].length ; i++) {
+                        j = like_index[index_a][i] ;
                         emoji = like.like[j].emoji ;
                         if (!compare[emoji]) compare[emoji] = { new_count: 0};
                         compare[emoji].old_count = like.like[j].count ;
@@ -3476,7 +3507,7 @@ angular.module('MoneyNetwork')
                         }
                         if (!compare[emoji].old_count) {
                             // add new row to like.json
-                            like_index[index].push(like.like.length) ;
+                            like_index[index_a].push(like.like.length) ;
                             like.like.push({
                                 user_seq: z_cache.user_seq,
                                 timestamp: parseInt(key),
@@ -3496,7 +3527,7 @@ angular.module('MoneyNetwork')
                     }
                     if (!this_reaction_updated) {
                         debug('reaction', pgm + 'warning. no anonymous reaction update was found for key = ' + key +
-                            ', index = ' + index + ', reaction_info = ' + JSON.stringify(reaction_info));
+                            ', index_a = ' + index_a + ', reaction_info = ' + JSON.stringify(reaction_info));
                     }
                     delete reaction_info.reaction_at ;
                 } // for key in reactions
@@ -3509,6 +3540,11 @@ angular.module('MoneyNetwork')
                 }
                 if (like_index_updated) update_like_index(like, like_index) ;
                 publish = true ;
+
+                debug('reaction', pgm + 'todo: check for doublet public+private reaction and remove doublets.') ;
+                debug('reaction', pgm + 'refresh_reactions.keys = ' + JSON.stringify(Object.keys(refresh_reactions)));
+                debug('reaction', pgm + 'like = ' + JSON.stringify(like)) ;
+                debug('reaction', pgm + 'like_index = ' + JSON.stringify(like_index)) ;
 
                 // create callback. refresh reaction info for all messages affected by like.json update
                 refresh_reactions_job = function () {
@@ -3860,7 +3896,7 @@ angular.module('MoneyNetwork')
             if (message.z_filename) {
                 // public chat. not saved in localStorage. Check for any reaction stored in ls_reactions hash
                 reactions_index = message.sent_at ;
-                if (reactions_index && (message.folder = 'inbox')) {
+                if (reactions_index && (message.folder == 'inbox')) {
                     if (contact.auth_address) reactions_index += ',' + contact.auth_address.substr(0,4) ;
                     else reactions_index = null ;
                 }
@@ -8666,7 +8702,7 @@ angular.module('MoneyNetwork')
                     var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
                         file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                         new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
-                        image, byteAmount, chat_bytes, chat_length, error, auth_address, index ;
+                        image, byteAmount, chat_bytes, chat_length, error, auth_address, index, break_point ;
                     // update cache_status
                     cache_status.is_pending = false;
                     debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
@@ -8863,6 +8899,9 @@ angular.module('MoneyNetwork')
                             sent_at: chat.msg[i].timestamp,
                             z_filename: z_filename
                         };
+                        if (message_with_envelope.message.message == "Hi SiNaPsE :-)") {
+                            break_point = true ;
+                        }
                         // lookup reaction for public chat in like.json file
                         auth_address = folder == 'outbox' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
                         index = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
@@ -8879,7 +8918,7 @@ angular.module('MoneyNetwork')
                             message_with_envelope.reaction = z_cache.like_json.like[j].emoji ;
                         }
                         message_with_envelope.ls_msg_size = 0; // ZeroNet and browser size 0 for all public chat messages
-                        debug('public_chat', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope));
+                        debug('public_chat', pgm + 'folder = ' + folder + ', message_with_envelope = ' + JSON.stringify(message_with_envelope));
                         add_message(contact, message_with_envelope);
                         cache_status.timestamps.splice(i,1) ;
                         page_updated = 'updated';

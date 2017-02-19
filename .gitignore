@@ -2,4 +2,13 @@
 css/all.css
 data/
 js/all.js
-emoji/
+js/all.js.tar.bz2
+emoji
+!emoji/apple/content.json
+!emoji/facebook/content.json
+!emoji/google/content.json
+!emoji/messenger/content.json
+!emoji/one/content.json
+!emoji/samsung/content.json
+!emoji/twitter/content.json
+!emoji/windows/content.json
