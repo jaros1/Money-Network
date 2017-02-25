@@ -246,7 +246,7 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.z_contact_search(function () {
                     if ($routeParams.unique_id) find_contact();
                     $scope.$apply();
-                }, null) ;
+                }, null, null) ;
             };
             self.zeronet_search_contacts() ;
 
@@ -1572,10 +1572,14 @@ angular.module('MoneyNetwork')
             // get reactions. from like.json on zeroNet and reactions hash in localStorage
             self.get_reactions = function (message) {
                 var pgm = controller + '.get_reactions: ' ;
+                var check_reactions ;
                 if (message.message.reactions) return message.message.reactions ;
                 // console.log(pgm + 'local_msg_seq = ' + message.message.local_msg_seq) ;
                 message.message.reactions = [] ;
-                $timeout(function () {moneyNetworkService.check_reactions(message)}) ; // lookup reactions
+                check_reactions = function () {
+                    moneyNetworkService.check_reactions(message)
+                } ;
+                $timeout(check_reactions) ; // lookup reactions
                 return message.message.reactions ;
             }; // get_reactions
             self.get_reactions_count = function (message) {

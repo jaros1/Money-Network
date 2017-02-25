@@ -13,7 +13,7 @@ angular.module('MoneyNetwork')
         self.contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
         // b) search for new ZeroNet contacts using user info (Search and Hidden keywords)
         self.zeronet_search_contacts = function() {
-            moneyNetworkService.z_contact_search(function () {$scope.$apply()}, null) ;
+            moneyNetworkService.z_contact_search(function () {$scope.$apply()}, null, null) ;
         };
         self.zeronet_search_contacts() ;
 
