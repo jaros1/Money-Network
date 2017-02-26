@@ -2012,7 +2012,7 @@ angular.module('MoneyNetwork')
                                         if (new_reaction) {
                                             if (!reaction_info.emojis[new_reaction]) reaction_info.emojis[new_reaction] = 0 ;
                                             reaction_info.emojis[new_reaction]++ ;
-                                            reaction_info.users[unique_id] = new_reaction
+                                            reaction_info.users[unique_id] = new_reaction ;
                                         }
                                         else delete reaction_info.users[unique_id] ;
 
@@ -6724,16 +6724,25 @@ angular.module('MoneyNetwork')
         // simple reactions array update. all information should already be in message_with_envelope.reaction_info hash
         function check_private_reactions (js_messages_row) {
             var pgm = service + '.check_private_reactions: ' ;
-            var message_with_envelope, emojis, emoji_folder, user_reactions, emoji, title, unicode, sum, j ;
-            debug('reaction', pgm + 'todo:');
+            var message_with_envelope, emojis, emoji_folder, user_reactions, emoji, title, unicode, sum, j, users,
+                unique_id, fixed_old_error ;
             message_with_envelope = js_messages_row.message ;
             message_with_envelope.reactions.splice(0,message_with_envelope.reactions.length) ;
             if (!message_with_envelope.reaction_info) return ;
             emojis = message_with_envelope.reaction_info.emojis ;
+            users = message_with_envelope.reaction_info.users ;
             emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
             user_reactions = get_user_reactions() ;
             sum = 0 ;
+            fixed_old_error = false ;
             for (emoji in emojis) {
+                if (!emojis[emoji]) {
+                    fixed_old_error = true ;
+                    debug('reaction', pgm + 'fixing old error in reaction info. reaction_info = ' + JSON.stringify(message_with_envelope.reaction_info));
+                    emojis[emoji] = 0 ;
+                    for (unique_id in users) if (users[unique_id] == emoji) emojis[emoji]++ ;
+                    if (emojis[emoji] == 0) continue ;
+                }
                 title = is_emoji[emoji] ;
                 unicode = symbol_to_unicode(emoji) ;
                 for (j=0 ; j<user_reactions.length ; j++) if (user_reactions[j].unicode == unicode) title = user_reactions[j].title ;
@@ -6741,10 +6750,11 @@ angular.module('MoneyNetwork')
                     unicode: unicode,
                     title: title,
                     src: emoji_folder + '/' + unicode + '.png',
-                    count: count[emoji]
+                    count: emojis[emoji]
                 }) ;
                 sum += count[emoji] ;
             } // for i (res)
+            if (fixed_old_error) for (emoji in emojis) if (emojis[emoji] == 0) delete emojis[emoji] ;
             debug('reaction', pgm + 'sum = ' + sum + ', message.reactions = ' + JSON.stringify(message_with_envelope.reactions));
             $rootScope.$apply() ;
         } // check_private_reactions
