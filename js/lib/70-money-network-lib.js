@@ -992,6 +992,7 @@ var MoneyNetworkHelper = (function () {
             "msgtype": {"type": 'string', pattern: '^reaction$'},
             "timestamp": {"type": 'integer'},
             "reaction": {"type": 'string'},
+            "count": {"type": 'integer'},
             "reaction_at": {"type": 'integer'},
             "reaction_grp": { "type": 'integer', "minimum": 1, "maximum": 4},
             "local_msg_seq": {"type": 'integer'},
