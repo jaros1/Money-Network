@@ -1522,12 +1522,12 @@ angular.module('MoneyNetwork')
                     // must send reaction as a private message. Check that pubkey is available
                     if (message.contact.type == 'group') {
                         // ingoing group chat message. info about sender should be in message
-                        console.log(pgm + 'ingoing group chat message. contact.participants = ' + JSON.stringify(message.contact.participants) +
-                            ', message.participant = ' + JSON.stringify(message.message.participant)) ;
+                        //console.log(pgm + 'ingoing group chat message. contact.participants = ' + JSON.stringify(message.contact.participants) +
+                        //    ', message.participant = ' + JSON.stringify(message.message.participant)) ;
                         unique_id = message.contact.participants[message.message.participant-1] ;
-                        console.log(pgm + 'unique_id = ' + unique_id) ;
+                        // console.log(pgm + 'unique_id = ' + unique_id) ;
                         contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
-                        console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
+                        // console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
                         if (!contact) {
                             console.log(pgm + 'error. contact (sender of group chat message) was not found') ;
                             return ;
