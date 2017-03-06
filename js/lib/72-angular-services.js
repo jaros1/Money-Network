@@ -751,7 +751,7 @@ angular.module('MoneyNetwork')
                         participant_no = contact3.participants.indexOf(participant) ;
                         if (participant_no == -1) continue ;
                         participant_no++ ;
-                        debug('feedback', pgm + 'found relevant group chat contact = ' + JSON.stringify(contact3)) ;
+                        debug('feedback_info', pgm + 'found relevant group chat contact = ' + JSON.stringify(contact3)) ;
                         // check group chat inbox messages received from this participant
                         for (k=0 ; k<contact3.messages.length ; k++) {
                             message = contact3.messages[k] ;
@@ -1989,7 +1989,11 @@ angular.module('MoneyNetwork')
                             }
 
                             message_receiver_clone = JSON.parse(JSON.stringify(message_receiver2)) ;
-                            if (message_receiver_clone) delete message_receiver_clone.messages ;
+                            if (message_receiver_clone) {
+                                delete message_receiver_clone.messages ;
+                                delete message_receiver_clone.inbox_zeronet_msg_id ;
+                                delete message_receiver_clone.deleted_inbox_messages ;
+                            }
                             debug('reaction', pgm + 'sent_at = ' + message_with_envelope.sent_at +
                                 ', reaction = ' + reaction2 +
                                 ', update_ls_reaction = ' + update_reaction_info +
@@ -7012,13 +7016,16 @@ angular.module('MoneyNetwork')
             //    "reaction_at": null,
             //    "anonymous": {"😃": 1, "❤": 0}
             //};
+            // todo: delete - my_private_inbox_reaction is not used for anything ...
             if ((js_messages_row.contact.type == 'group') && (message_with_envelope.folder == 'inbox')) {
                 // check for private reaction to group chat inbox messages.
                 // reaction is both in users hash and in anonymous hash.
                 my_unique_id = get_my_unique_id() ;
                 my_private_inbox_reaction = users[my_unique_id] ;
-                if (typeof my_private_inbox_reaction == 'string') my_private_inbox_reaction = null ;
-                if (typeof my_private_inbox_reaction == 'object') my_private_inbox_reaction = my_private_inbox_reaction[0] ;
+                if (my_private_inbox_reaction) {
+                    if (typeof my_private_inbox_reaction == 'string') my_private_inbox_reaction = null ;
+                    else if (typeof my_private_inbox_reaction == 'object') my_private_inbox_reaction = my_private_inbox_reaction[0] ;
+                }
                 debug('reaction', pgm + 'sent_at = ' + message_with_envelope.sent_at + ', my_private_inbox_reaction = ' + my_private_inbox_reaction) ;
             }
             for (emoji in emojis) {
