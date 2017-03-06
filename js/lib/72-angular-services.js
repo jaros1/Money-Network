@@ -6366,7 +6366,7 @@ angular.module('MoneyNetwork')
                         if (!obj_of_reaction.reaction_info) obj_of_reaction.reaction_info = { users: {}, emojis: {} } ;
                         reaction_info = obj_of_reaction.reaction_info ;
                         old_reaction = reaction_info.users[unique_id] ;
-                        if (typeof old_reaction == 'object') {
+                        if (old_reaction && (typeof old_reaction == 'object')) {
                             old_private_group_reaction = true ;
                             old_reaction = old_reaction[0] ;
                         }
@@ -6445,30 +6445,80 @@ angular.module('MoneyNetwork')
                 }
                 else  {
                     // 4) a private reaction to a private chat message
+                    //decrypted_message = {
+                    //    "msgtype": "reaction",
+                    //    "timestamp": 1488820598260,
+                    //    "reaction_at": 1488820702199,
+                    //    "reaction_grp": 4,
+                    //    "local_msg_seq": 1988,
+                    //    "feedback": {"sent": [1987]}
+                    //};
+                    (function() {
+                        var obj_of_reaction, i, message, reaction_info, old_reaction, new_reaction, js_messages_row ;
+
+                        // check count. Only allowed for anonymous group reactions
+                        if (decrypted_message.hasOwnProperty('count')) {
+                            debug('reaction', pgm + 'Warning. Ignoring private reaction with count. reaction group 3 is only used for private reactions. decrypted_message = ' + JSON.stringify(decrypted_message)) ;
+                            return ;
+                        }
+                        if (['group', 'public'].indexOf(contact_or_group.type) != -1) {
+                            debug('reaction', pgm + 'Warning. Ignoring private reaction for a ' + contact_or_group.type + ' contact. decrypted_message = ' + JSON.stringify(decrypted_message)) ;
+                            return ;
+                        }
+                        for (i=0 ; i<contact_or_group.messages.length ; i++) {
+                            message = contact_or_group.messages[i] ;
+                            if (message.sent_at != decrypted_message.timestamp) continue ;
+                            obj_of_reaction = message ;
+                            break ;
+                        } // for i
+
+                        // find object or reaction. Must be a private chat message with this contact
+                        if (!obj_of_reaction) {
+                            debug('reaction', pgm + 'no chat message with timestamp ' + decrypted_message.timestamp + ' was found. Deleted chat message?') ;
+                            return ;
+                        }
+                        debug('reaction', pgm + 'obj_of_reaction = ' + JSON.stringify(obj_of_reaction)) ;
+
+                        if (!obj_of_reaction.reaction_info) obj_of_reaction.reaction_info = { users: {}, emojis: {} } ;
+                        reaction_info = obj_of_reaction.reaction_info ;
+                        old_reaction = reaction_info.users[unique_id] ;
+                        if (old_reaction) old_reaction = old_reaction[0] ;
+                        new_reaction = decrypted_message.reaction ;
+                        debug('reaction', pgm + 'reaction_info = ' + JSON.stringify(reaction_info) +
+                            ', old reaction = ' + old_reaction + ', new reaction = ' + new_reaction) ;
+                        if (old_reaction == new_reaction) {
+                            debug('reaction', pgm + 'no update. old reaction = new reaction in reaction_info.') ;
+                            return ;
+                        }
+                        if (old_reaction) {
+                            if (!reaction_info.emojis[old_reaction]) reaction_info.emojis[old_reaction] = 1 ;
+                            reaction_info.emojis[old_reaction]-- ;
+                            if (reaction_info.emojis[old_reaction] <= 0) delete reaction_info.emojis[old_reaction] ;
+                        }
+                        if (new_reaction) {
+                            if (!reaction_info.emojis[new_reaction]) reaction_info.emojis[new_reaction] = 0 ;
+                            reaction_info.emojis[new_reaction]++ ;
+                            reaction_info.users[unique_id] = [new_reaction] ;
+                        }
+                        else delete reaction_info.users[unique_id] ;
+
+                        // 2: update message.reaction array
+                        if (!obj_of_reaction.reactions) obj_of_reaction.reactions = [] ;
+                        js_messages_row = get_message_by_seq(obj_of_reaction.seq) ;
+                        check_private_reactions(js_messages_row, true) ;
+                        debug('reaction', pgm + 'new obj_of_reaction.reaction_info = ' + JSON.stringify(obj_of_reaction.reaction_info)) ;
+                        debug('reaction', pgm + 'new obj_of_reaction.reactions = ' + JSON.stringify(obj_of_reaction.reactions)) ;
+
+
+
+
+
+
+
+
+                    })() ;
+
                 }
-
-
-                //if (contact_or_group.type == 'group') {
-                //    // 2) a reaction in a group chat to all numbers in group chat
-                //    debug('reaction', pgm + '2) a reaction in a group chat to all numbers in group chat') ;
-                //    debug('reaction', pgm + 'group_chat_contact.participants = ' + JSON.stringify(group_chat_contact.participants));
-                //    debug('reaction', pgm + 'contact.unique_id = ' + contact.unique_id) ;
-                //    debug('reaction', pgm + 'contact_or_group.unique_id = ' + contact_or_group.unique_id) ;
-                //    obj_of_reaction = null ;
-                //    for (i=0 ; i<contact_or_group.messages.length ; i++) {
-                //        if (contact_or_group.messages[i].sent_at != decrypted_message.timestamp) continue ;
-                //        obj_of_reaction = contact_or_group.messages[i] ;
-                //        break ;
-                //    }
-                //    if (obj_of_reaction) debug('reaction', 'obj_of_reaction = ' + JSON.stringify(obj_of_reaction)) ;
-                //    else debug('reaction', 'obj_of_reaction was not found. deleted group chat message?') ;
-                //}
-                //else {
-                //    debug('reaction', pgm + 'must be: ');
-                //    debug('reaction', pgm + '1) a private reaction to a public chat message') ;
-                //    debug('reaction', pgm + '3) a private reaction to a group chat message') ;
-                //    debug('reaction', pgm + '4) a private reaction to a private chat message') ;
-                //}
 
             } // if reaction
 
