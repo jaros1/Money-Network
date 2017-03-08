@@ -3672,6 +3672,7 @@ var emoji_names = [{"code": "1f600", "name": "grinning face"}, {
 }, {"code": "1f1ff_1f1fc", "name": "Zimbabwe"}];
 
 // quick lookup. Is a message/comment a reaction?
+// console.log('91-emoji-info.js: initialized is_emoji hash') ;
 var is_emoji = {} ;
 (function() {
     var i, hex_codes, symbols, j ;
