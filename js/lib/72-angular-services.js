@@ -1568,6 +1568,18 @@ angular.module('MoneyNetwork')
                 private: { none: ['a',],  group: ['a','g'],  private: ['a', 'a'] }
             }
         } ;
+        //var grp_reaction_action_table = {
+        //    inbox: {
+        //        none:    { none: [,],     group: [,'g'],     private: [,'p'] },
+        //        group:   { none: [,'g'],  group: [,'g'],     private: ['g0', 'p'] },
+        //        private: { none: ['p0',], group: [,'g'],     private: [,'p'] } // private=>group changed from ['p0','g'] to group: [,'g']. maybe not correct!!
+        //    },
+        //    outbox: {
+        //        none:    { none: [,],     group: [,'g'],     private: [,'a'] },
+        //        group:   { none: [,'g'],  group: [,'g'],     private: ['g0', 'a'] },
+        //        private: { none: ['a',],  group: ['a','g'],  private: ['a', 'a'] }
+        //    }
+        //} ;
 
         // update zeronet step 1. update "data.json" file. update users, search and msg (delete only) arrays
         // params:
@@ -3759,15 +3771,19 @@ angular.module('MoneyNetwork')
                             ', index_a = ' + like_index_a + ', reaction_info = ' + JSON.stringify(reaction_info));
                     }
                     delete reaction_info.reaction_at ;
-                    if (this_reaction_added) {
-                        // delete any old public reaction
-                        like_index_p = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
-                        if (like_index.hasOwnProperty(like_index_p)) {
-                            debug('reaction', pgm + 'deleted old public reaction in like.json');
-                            k = like_index[like_index_p];
-                            like.like[k].emoji = null ;
-                        }
-                    }
+                    //if (this_reaction_added) {
+                    //    // delete any old public reaction. todo: only after reaction from this client. not after reaction from other clients
+                    //    like_index_p = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
+                    //    if (like_index.hasOwnProperty(like_index_p)) {
+                    //        k = like_index[like_index_p];
+                    //        debug('reaction', pgm + 'deleted old public ' + like.like[k].emoji + 'reaction in like.json');
+                    //        like.like[k].emoji = null ;
+                    //        if (refresh_reactions[refresh_key]) {
+                    //            debug('reaction', pgm + 'message_with_envelope.my_private_reaction_at = ' + message_with_envelope.my_private_reaction_at) ;
+                    //        }
+                    //
+                    //    }
+                    //}
                 } // for key in reactions
 
                 debug('reaction', pgm + 'like_updated = ' + like_updated) ;
@@ -5408,6 +5424,39 @@ angular.module('MoneyNetwork')
 
         } // download_json_image_file
 
+
+        function send_anonymous_count_msg (contact, timestamp, reaction_info, reaction) {
+            var pgm = service + '.send_anonymous_count_msg: ' ;
+            var count, unique_id2, message, error ;
+            count = 0 ;
+            for (unique_id2 in reaction_info.users) {
+                if (typeof reaction_info.users[unique_id2] != 'object') continue ;
+                if (reaction_info.users[unique_id2][0] == reaction) count++ ;
+            }
+            message = {
+                msgtype: 'reaction',
+                timestamp: timestamp,
+                reaction: reaction,
+                count: count,
+                reaction_at: new Date().getTime(),
+                reaction_grp: 2
+            } ;
+            // validate json
+            error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send anonymous group reaction');
+            if (error) {
+                console.log(pgm + 'System error: ' + error) ;
+                console.log(pgm + 'message = ' + JSON.stringify(message)) ;
+                return false ;
+            }
+            else {
+                debug('reaction', pgm + 'send anonymous reaction update for reaction ' + reaction + '. message = ' + JSON.stringify(message)) ;
+                add_msg(contact, message);
+                return true ;
+            }
+        } ; // send_anonymous_count_msg
+
+
+
         // array with messages with unknown unique id for contact.
         // must create contact and process message once more
         var new_unknown_contacts = [] ;
@@ -6083,6 +6132,9 @@ angular.module('MoneyNetwork')
                 //    "reaction_grp": 2,
                 //    "local_msg_seq": 4192
                 //};
+
+
+
                 obj_of_reaction = null ;
                 if (decrypted_message.reaction && !is_emoji[decrypted_message.reaction]) {
                     debug('reaction', pgm + 'ignoring reaction with unknown emoji') ;
@@ -6289,7 +6341,7 @@ angular.module('MoneyNetwork')
                         // - d) in message.reaction_info
                         (function(){
                             var reaction_info, old_reaction, new_reaction, unicode, i, user_reactions, title,
-                                emoji_folder, my_unique_id, old_count, new_count, update_count ;
+                                emoji_folder, my_unique_id, old_count, new_count, update_count, old_private_group_reaction ;
 
                             my_unique_id = get_my_unique_id();
                             if (unique_id == my_unique_id) {
@@ -6334,9 +6386,16 @@ angular.module('MoneyNetwork')
                             else {
                                 // update group reaction info
                                 old_reaction = reaction_info.users[unique_id] ;
+                                if (old_reaction && (typeof old_reaction == 'object')) {
+                                    old_private_group_reaction = true ;
+                                    old_reaction = old_reaction[0] ;
+                                }
+                                else old_private_group_reaction = false ;
                                 new_reaction = decrypted_message.reaction ;
-                                debug('reaction', pgm + 'reaction_info = ' + JSON.stringify(reaction_info) + ', old reaction = ' + old_reaction + ', new reaction = ' + new_reaction) ;
-                                if (old_reaction == new_reaction) return ;
+                                debug('reaction', pgm + 'reaction_info = ' + JSON.stringify(reaction_info) +
+                                    ', old reaction = ' + JSON.stringify(old_reaction) + ', old_private_group_reaction = ' + old_private_group_reaction +
+                                    ', new reaction = ' + new_reaction) ;
+                                if ((old_reaction == new_reaction) && !old_private_group_reaction) return ;
                                 // 1: add non anonymous reaction info to message.reaction_info hash
                                 if (old_reaction) {
                                     delete reaction_info.users[unique_id] ;
@@ -6356,6 +6415,12 @@ angular.module('MoneyNetwork')
                             check_private_reactions(js_messages_row, true) ;
                             debug('reaction', pgm + 'new obj_of_reaction.reaction_info = ' + JSON.stringify(obj_of_reaction.reaction_info)) ;
                             debug('reaction', pgm + 'new obj_of_reaction.reactions = ' + JSON.stringify(obj_of_reaction.reactions)) ;
+                            // 3. update anonymous count?
+                            if (old_private_group_reaction) {
+                                debug('reaction', pgm + 'update anonymous count for old private reaction ' + old_reaction) ;
+                                send_anonymous_count_msg(group_chat_contact, decrypted_message.timestamp, obj_of_reaction.reaction_info, old_reaction) ;
+                                new_incoming_receipts++ ;
+                            }
                         })() ;
                     }
                     else {
@@ -6375,7 +6440,7 @@ angular.module('MoneyNetwork')
                     //};
                     (function() {
                         var obj_of_reaction, i, group_chat_contact, j, message, old_reaction, new_reaction,
-                            reaction_info, old_private_group_reaction, new_private_group_reaction, send_msg,
+                            reaction_info, old_private_group_reaction, new_private_group_reaction,
                             js_messages_row, no_msg ;
 
                         // check count. Only allowed for anonymous group reactions
@@ -6423,17 +6488,17 @@ angular.module('MoneyNetwork')
                             debug('reaction', pgm + 'no update. old reaction = new reaction in reaction_info.') ;
                             return ;
                         }
-                        if (old_reaction) {
+                        if (old_reaction && old_private_group_reaction) {
                             if (!reaction_info.emojis[old_reaction]) reaction_info.emojis[old_reaction] = 1 ;
                             reaction_info.emojis[old_reaction]-- ;
                             if (reaction_info.emojis[old_reaction] <= 0) delete reaction_info.emojis[old_reaction] ;
+                            delete reaction_info.users[unique_id] ;
                         }
                         if (new_reaction) {
                             if (!reaction_info.emojis[new_reaction]) reaction_info.emojis[new_reaction] = 0 ;
                             reaction_info.emojis[new_reaction]++ ;
                             reaction_info.users[unique_id] = [new_reaction] ;
                         }
-                        else delete reaction_info.users[unique_id] ;
                         // 2: update message.reaction array
                         if (!obj_of_reaction.reactions) obj_of_reaction.reactions = [] ;
                         js_messages_row = get_message_by_seq(obj_of_reaction.seq) ;
@@ -6443,39 +6508,14 @@ angular.module('MoneyNetwork')
 
                         // send message(s) with anonymous group chat reaction update(s)
                         no_msg = 0 ;
-                        send_msg = function (reaction) {
-                            var count, unique_id2, message, error ;
-                            count = 0 ;
-                            for (unique_id2 in reaction_info.users) {
-                                if (typeof reaction_info.users[unique_id2] != 'object') continue ;
-                                if (reaction_info.users[unique_id2][0] == reaction) count++ ;
-                            }
-                            message = {
-                                msgtype: 'reaction',
-                                timestamp: decrypted_message.timestamp,
-                                reaction: reaction,
-                                count: count,
-                                reaction_at: new Date().getTime(),
-                                reaction_grp: 2
-                            } ;
-                            // validate json
-                            error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send anonymous group reaction');
-                            if (error) {
-                                console.log(pgm + 'System error: ' + error) ;
-                                console.log(pgm + 'message = ' + JSON.stringify(message)) ;
-                            }
-                            else {
-                                debug('reaction', pgm + 'send anonymous reaction update for reaction ' + reaction + '. message = ' + JSON.stringify(message)) ;
-                                add_msg(group_chat_contact, message);
-                                no_msg++ ;
-                            }
-                        } ; // send_msg
                         if (old_reaction == new_reaction) {
-                            if (old_reaction && (old_private_group_reaction || new_private_group_reaction)) send_msg(old_reaction) ;
+                            if (old_reaction && (old_private_group_reaction || new_private_group_reaction)) {
+                                if (send_anonymous_count_msg(group_chat_contact, decrypted_message.timestamp, reaction_info, old_reaction)) no_msg++ ;
+                            }
                         }
                         else {
-                            if (old_reaction && old_private_group_reaction) send_msg(old_reaction);
-                            if (new_reaction && new_private_group_reaction) send_msg(new_reaction);
+                            if (old_reaction && old_private_group_reaction) if (send_anonymous_count_msg(group_chat_contact, decrypted_message.timestamp, reaction_info, old_reaction)) no_msg++;
+                            if (new_reaction && new_private_group_reaction) if (send_anonymous_count_msg(group_chat_contact, decrypted_message.timestamp, reaction_info, new_reaction)) no_msg++;
                         }
                         if (no_msg > 0) {
                             debug('reaction', pgm + no_msg + ' anonymous reaction update message(s) was/were sent') ;
@@ -8700,7 +8740,7 @@ angular.module('MoneyNetwork')
                             for (k=0 ; k<contact.messages.length ; k++) {
                                 message = contact.messages[k] ;
                                 if (message.folder != 'inbox') continue ;
-                                debug('public_chat', pgm + 'message = ' + JSON.stringify(message)) ;
+                                // debug('public_chat', pgm + 'message = ' + JSON.stringify(message)) ;
                                 if (message.z_filename != res[i].filename) continue ;
                                 if (message.deleted_at) continue ;
                                 // found public chat inbox message from this deleted public chat file
