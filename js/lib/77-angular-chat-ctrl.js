@@ -903,19 +903,19 @@ angular.module('MoneyNetwork')
                         }
                     }
                     else if (message.contact.type == 'public') {
-                        // unencrypted public chat
-                        if (message.message.folder == 'outbox') {
-                            // always show
-                            reason = 2.3 ;
-                            match = true ;
-                        }
-                        else {
-                            reason = 2.4 ;
-                            match = self.setup.public_chat ;
-                        }
+                        // public chat outbox message. always show
+                        //if (message.message.folder == 'outbox') {
+                        // always show
+                        reason = 2.3 ;
+                        match = true ;
+                        //}
+                        //else {
+                        //    reason = 2.4 ;
+                        //    match = self.setup.public_chat ;
+                        //}
                     }
                     else {
-                        // private chat
+                        // private chat or public chat inbox messages
                         match = (self.setup.contact_filters[message.contact.type] == 'green');
                         reason = 2.5 ;
                     }

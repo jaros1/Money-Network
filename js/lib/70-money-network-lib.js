@@ -233,6 +233,7 @@ var MoneyNetworkHelper = (function () {
         // user authorization - see client_login
         login: {session: false, userid: false, compress: false, encrypt: false}, // enable/disable local log in. disabled: use password = ''
         key: {session: false, userid: true, compress: true, encrypt: true}, // random password - used for localStorage encryption
+        salt: {session: false, userid: false, compress: false, encrypt: false}, // salt for sha256 hashed passwords
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
         passwords: {session: false, userid: false, compress: false, encrypt: false}, // array with hashed passwords. size = number of accounts
         prvkey: {session: false, userid: true, compress: true, encrypt: true}, // for encrypted user to user communication
@@ -641,8 +642,9 @@ var MoneyNetworkHelper = (function () {
     // support for more than one user account
     function client_login(password, create_new_account, keysize) {
         var pgm = module + '.client_login: ' ;
-        var password_sha256, passwords_s, passwords_a, i, userid, crypt, pubkey, prvkey;
-        password_sha256 = sha256(password);
+        var password_sha256, passwords_s, passwords_a, i, userid, crypt, pubkey, prvkey, salt;
+        salt = getItem('salt') || '' ; // null for old users
+        password_sha256 = sha256(salt + password);
         // passwords: array with hashed passwords. size = number of accounts
         passwords_s = getItem('passwords');
         // console.log(pgm + 'passwords_s = ' + passwords_s) ;
@@ -669,6 +671,12 @@ var MoneyNetworkHelper = (function () {
             // create new account
             if (keysize == 256) keysize = 1024 ; // user has selected cryptMessage. generate a 1024 JSEncrypt key anyway
             else if ([1024,2048,4096,8192].indexOf(keysize) == -1) keysize = 2048 ;
+            if (!passwords_a.length && !salt) {
+                // new empty account. add salt for additional security sha256 security
+                salt = generate_random_password(20) ;
+                setItem('salt', salt) ;
+                password_sha256 = sha256(salt + password);
+            }
             // console.log(pgm + 'create new account. JSEncrypt keysize = ' + keysize);
             userid = passwords_a.length + 1; // sequence = number of user accounts in local storage
             // setup new account

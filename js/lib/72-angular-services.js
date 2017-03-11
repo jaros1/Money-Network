@@ -632,6 +632,7 @@ angular.module('MoneyNetwork')
                         continue ;
                     }
                     message.feedback = now ;
+                    if (message.msgtype == 'reaction') message.deleted_at = now ;
                     // factor = -1. received feedback request for unknown message. lost msg was created in UI. tell contact that message has never been received
                     factor = message.message.msgtype == 'lost msg' ? -1 : 1 ;
                     local_msg_seqs.push(message.participant + ',' + (factor*message.message.local_msg_seq)) ;
@@ -711,6 +712,7 @@ angular.module('MoneyNetwork')
                             continue ;
                         }
                         message.feedback = now ;
+                        if (message.msgtype == 'reaction') message.deleted_at = now ;
                         if (message.sender_sha256 == receiver_sha256) {
                             // current outbox message.receiver_sha256 = inbox message.sender_sha256.
                             // no reason also to add this inbox message to feedback.received
@@ -1930,8 +1932,7 @@ angular.module('MoneyNetwork')
                                     else {
                                         // private reaction.
 
-                                        // todo: remove any old public reaction from like.json
-                                        // old method with like_index and like from z_cache
+                                        // remove any old public reaction from like.json (set my_private_reaction flag)
                                         auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
                                         like_index_p = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
                                         update_like_json = like_index.hasOwnProperty(like_index_p) ;
@@ -2027,6 +2028,7 @@ angular.module('MoneyNetwork')
                                     if (message_receiver_clone.inbox_zeronet_msg_id) message_receiver_clone.inbox_zeronet_msg_id = '...' ;
                                     if (message_receiver_clone.deleted_inbox_messages) message_receiver_clone.deleted_inbox_messages = '...';
                                     if (message_receiver_clone.search) message_receiver_clone.search = '...' ;
+                                    if (message_receiver_clone.outbox_sender_sha256) message_receiver_clone.outbox_sender_sha256 = '...' ;
                                 }
                                 debug('reaction', pgm + 'sent_at = ' + message_with_envelope.sent_at +
                                     ', folder = ' + message_with_envelope.folder +
@@ -2836,6 +2838,7 @@ angular.module('MoneyNetwork')
                             delete outbox_message.zeronet_msg_id ;
                             delete outbox_message.zeronet_msg_size ;
                             outbox_message.cleanup_at =  now ;
+                            if (outbox_message.message.msgtype == 'reaction') outbox_message.deleted_at = new Date().getTime() ;
                             local_storage_updated = true ;
                             data_removed = true ;
                             if (outbox_message.message.image) cleanup_my_image_json(outbox_message.sent_at, false, function (cleanup) {
@@ -4471,13 +4474,19 @@ angular.module('MoneyNetwork')
 
                 // insert copy of messages into chat friendly array
                 for (j=0 ; j<new_contact.messages.length ; j++) {
+                    // fix error. there should not be urls in image.
                     if (new_contact.messages[j].message.image && new_contact.messages[j].message.image.toString().match(/^http/)) {
-                        // fix error. there should not be urls in image.
                         console.log(pgm + 'new_contact.messages[' + j + '] = ' + JSON.stringify(new_contact.messages[j]));
                         delete new_contact.messages[j].message.image ;
                         contacts_updated = true ;
                     }
-                    delete new_contact.messages[j].msgtype ; // no msgtype in envelope
+                    // no msgtype in envelope
+                    delete new_contact.messages[j].msgtype ;
+                    // delete old reactions
+                    if ((new_contact.messages[j].message.msgtype == 'reaction') && (!new_contact.messages[j].deleted_at)) {
+                        if (new_contact.messages[j].folder == 'inbox') new_contact.messages[j].deleted_at = new Date().getTime() ;
+                        else if (new_contact.messages[j].sent_at && !new_contact.messages[j].zeronet_msg_id) new_contact.messages[j].deleted_at = new Date().getTime() ;
+                    }
                     new_contact.messages[j].ls_msg_size = JSON.stringify(new_contact.messages[j]).length ;
                     ls_msg_size_total = ls_msg_size_total + new_contact.messages[j].ls_msg_size ;
                     add_message(new_contact, new_contact.messages[j], true) ;
@@ -5887,9 +5896,6 @@ angular.module('MoneyNetwork')
 
             } // end if cryptMessage with image
 
-
-
-
             if (decrypted_message.msgtype == 'contact added') {
                 // received public & unverified user information from contact
                 // remove any old search words from contact
@@ -6133,7 +6139,7 @@ angular.module('MoneyNetwork')
                 //    "local_msg_seq": 4192
                 //};
 
-
+                // delete received reaction. wait until feedback cycle is complete for reaction inbox message. add add_feedback_info
 
                 obj_of_reaction = null ;
                 if (decrypted_message.reaction && !is_emoji[decrypted_message.reaction]) {
@@ -10268,6 +10274,7 @@ angular.module('MoneyNetwork')
             newer_contacts = [] ;
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact2 = ls_contacts[i] ;
+                if (!contact2.pubkey) continue ;
                 if ((contact2.cert_user_id != contact.cert_user_id) && (contact2.pubkey != contact.pubkey)) continue ;
                 if (contact2.unique_id == contact.unique_id) continue ;
                 last_updated2 = get_last_online(contact2) ;
@@ -10327,6 +10334,7 @@ angular.module('MoneyNetwork')
                     message = contact.messages[j] ;
                     if (message.folder != 'inbox') continue ;
                     if (message.z_filename) continue ;
+                    if (message.message.msgtype == 'reaction') continue ;
                     if (message.sent_at > contact_seen_at) contact_notifications++ ;
                 }
                 notifications+= contact_notifications ;
