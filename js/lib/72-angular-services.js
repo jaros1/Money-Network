@@ -2295,7 +2295,8 @@ angular.module('MoneyNetwork')
 
             var i, contact, encrypt, j, message_with_envelope, message, local_msg_seq, sent_at, key, password,
                 receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend,
-                user_path, image_path, image_e1, image_e1c1, image_json, json_raw, upload_image_json, error ;
+                user_path, image_path, image_e1, image_e1c1, image_json, json_raw, upload_image_json, error,
+                last_online ;
 
             user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
 
@@ -2497,6 +2498,12 @@ angular.module('MoneyNetwork')
                         message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
                         debug('outbox && encrypted', 'new data.msg row = ' + JSON.stringify(data.msg[data.msg.length-1]));
                         // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
+
+                        // group chat. last online = timestamp for last message
+                        if (contact.type == 'group') {
+                            last_online = get_last_online(contact) || 0 ;
+                            if (Math.round(sent_at/1000) > last_online) set_last_online(contact, Math.round(sent_at/1000)) ;
+                        }
 
                         if ((message.msgtype == 'chat msg') && !message.message) {
                             // logical deleted just sent empty chat messages
@@ -4395,6 +4402,13 @@ angular.module('MoneyNetwork')
             // startup. fix old errors. migrate to newer structure, etc
             for (i=0 ; i<new_contacts.length ; i++) {
                 new_contact = new_contacts[i] ;
+
+                // issue #154 - Group chat messages not replicated
+                // change unique id for group chat contacts. sha256(participants) => sha256(password)
+                if ((new_contact.type == 'group') && (new_contact.unique_id == CryptoJS.SHA256(JSON.stringify(new_contact.participants)).toString())) {
+                    new_contact.unique_id = CryptoJS.SHA256(new_contact.password).toString() ;
+                }
+
                 unique_id = new_contact.unique_id ;
                 if (!new_contact.messages) new_contact.messages = [] ;
 
@@ -4471,6 +4485,9 @@ angular.module('MoneyNetwork')
                     new_contact.search[j].row = j+1 ;
                     if (typeof new_contact.search[j].value == 'number') new_contact.search[j].tag = 'Online' ;
                 }
+
+                // issue #??? - debug group contact
+                if (new_contact.type == 'group') console.log(pgm + 'unique_id = ' + new_contact.unique_id + ', participants = ' + JSON.stringify(new_contact.participants) + ', password = ' + new_contact.password) ;
 
                 // insert copy of messages into chat friendly array
                 for (j=0 ; j<new_contact.messages.length ; j++) {
@@ -4893,7 +4910,6 @@ angular.module('MoneyNetwork')
         } // ls_save_contacts
 
 
-
         // update last updated for group chat pseudo contacts
         // return true if any contacts have been updated
         function ls_update_group_last_updated () {
@@ -4904,10 +4920,15 @@ angular.module('MoneyNetwork')
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact = ls_contacts[i] ;
                 if (contact.type != 'group') continue ;
-                // update group contact (last online and no participants)
+                // update group contact (last message and number of participants)
                 if (!contact.search) contact.search = [] ;
                 old_last_online = get_last_online(contact) || 0 ;
                 new_last_online = old_last_online ;
+                for (j=0 ; j<contact.messages.length ; j++) {
+                    if (contact.messages[j].sent_at && (Math.round(contact.messages[j].sent_at / 1000) > new_last_online)) {
+                        new_last_online = Math.round(contact.messages[j].sent_at / 1000) ;
+                    }
+                }
                 no_participants = 0 ;
                 for (j=0 ; j<contact.participants.length ; j++) {
                     unique_id = contact.participants[j] ;
@@ -4918,8 +4939,6 @@ angular.module('MoneyNetwork')
                         continue ;
                     }
                     no_participants++ ;
-                    timestamp = get_last_online(participant) ;
-                    if (timestamp && (timestamp > new_last_online)) new_last_online = timestamp ;
                 } // for j (participants)
                 // set last online
                 if (old_last_online != new_last_online) {
@@ -4946,7 +4965,6 @@ angular.module('MoneyNetwork')
                     }) ;
                     ls_updated = true ;
                 }
-
             } // for i (contacts)
             return ls_updated ;
         } // ls_update_group_last_updated
@@ -5488,7 +5506,7 @@ angular.module('MoneyNetwork')
             var contact, i, my_prvkey, encrypt, password, decrypted_message_str, decrypted_message, sender_sha256,
                 error, local_msg_seq, message, contact_or_group, found_lost_msg, found_lost_msg2, js_messages_row,
                 placeholders, image_download_failed, obj_of_reaction, key, key_a, user_path, cache_filename, cache_status,
-                get_and_load_callback, save_private_reaction;
+                get_and_load_callback, save_private_reaction, last_online, file_name ;
             if (detected_client_log_out(pgm)) return ;
 
             debug('lost_message', pgm + 'sent_at = ' + sent_at) ;
@@ -5826,6 +5844,14 @@ angular.module('MoneyNetwork')
 
             // post processing new incoming messages
 
+            if (!res.key) {
+                // incoming group message. update online timestamp for group contact
+                last_online = get_last_online(contact_or_group) || 0 ;
+                if (Math.round(message.sent_at/1000) > last_online) set_last_online(contact_or_group, Math.round(message.sent_at/1000)) ;
+            }
+
+
+
             // any feedback info?
             if (sent_at) {
                 // process_incoming_message is called from recheck_old_decrypt_errors
@@ -6082,23 +6108,19 @@ angular.module('MoneyNetwork')
                 // received password for a new group chat.
                 // check for unknown participants
                 var my_unique_id = get_my_unique_id();
-                var participant, j ;
-                var last_updated = 0, timestamp ;
+                var participant, j ; // x
+                var last_updated, timestamp ;
+                last_updated = Math.round(message.sent_at/1000) ;
                 for (i=0 ; i<decrypted_message.participants.length ; i++) {
                     if (decrypted_message.participants[i] == my_unique_id) continue ;
                     participant = get_contact_by_unique_id(decrypted_message.participants[i]) ;
                     if (!participant) console.log(pgm + 'warning. could not find participant with unique id ' + decrypted_message.participants[i]) ;
-                    else {
-                        timestamp = MoneyNetworkHelper.get_last_online(participant) ;
-                        if (timestamp > last_updated) last_updated = timestamp ;
-                    }
                 } // for i
                 // find unique id for pseudo group chat contact.
-                var group_chat_unique_id = CryptoJS.SHA256(JSON.stringify(decrypted_message.participants)).toString() ;
+                var group_chat_unique_id = CryptoJS.SHA256(decrypted_message.password).toString() ;
                 console.log(pgm + 'group_chat_unique_id = ' + group_chat_unique_id) ;
                 var group_chat_contact = get_contact_by_unique_id(group_chat_unique_id);
-                if (group_chat_contact) console.log(pgm + 'group_chat_contact = ' + JSON.stringify(group_chat_contact)) ;
-                else console.log(pgm + 'could not find group chat contact with unique id ' + group_chat_unique_id) ;
+                if (group_chat_contact) console.log(pgm + 'warning. group contact already exists. group_chat_contact = ' + JSON.stringify(group_chat_contact)) ;
                 if (!group_chat_contact) {
                     // create pseudo chat group contact
                     var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
@@ -6115,7 +6137,6 @@ angular.module('MoneyNetwork')
                         avatar: avatar
                     };
                     // add search info
-                    if (last_updated) group_chat_contact.search.push({tag: 'Online', value: last_updated, privacy: 'Search', row: 1}) ;
                     group_chat_contact.search.push({
                         tag: 'Group',
                         value: group_chat_contact.participants.length + ' participants',
@@ -6123,9 +6144,20 @@ angular.module('MoneyNetwork')
                         row: group_chat_contact.search.length+1
                     });
                     add_contact(group_chat_contact) ;
-                    watch_receiver_sha256.push(CryptoJS.SHA256(decrypted_message.password).toString()) ;
+                    watch_receiver_sha256.push(group_chat_unique_id) ;
+                    if (res.encryption == 2) {
+                        // group chat password was cryptmessage decrypted in a callback operation
+                        // first group chat message (next row in data.json msg array was ignored)
+                        // reprocess just received data.json file
+                        debug('file_done', pgm + 'received a cryptmessage encrypted group chat password. reprocessing just received data.json file to read first group chat message in new group chat') ;
+                        file_name = 'data/users/' + res.auth_address + '/data.json' ;
+                        $timeout(function () {
+                            event_file_done('file_done', file_name) ;
+                        });
+                    }
                 }
-            }
+                set_last_online(group_chat_contact, last_updated) ;
+            } // group chat
 
             if (decrypted_message.msgtype == 'reaction') {
                 debug('reaction', pgm + 'received a private reaction. decrypted_message = ' + JSON.stringify(decrypted_message)) ;
@@ -8033,6 +8065,11 @@ angular.module('MoneyNetwork')
                             continue ;
                         }
                         // debug('file_done', pgm + 'receive message ' + JSON.stringify(res.msg[i]));
+
+                        // issue #154 - first group chat message is not received correct when using cryptmessage
+                        // expects res array to contain group chat password + first group chat message
+                        debug('inbox && encrypted', pgm + 'res.msg.length = ' + res.msg.length + ', i = ' + i +
+                            ', res.msg[' + i + '] = ' + JSON.stringify(res.msg[i]) + ', res.msg = ' + JSON.stringify(res.msg));
 
                         // find unique id for contact
                         pubkey = null ;
