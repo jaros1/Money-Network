@@ -74,13 +74,13 @@
                     when using Money Network
                     on <a href="https://zeronet.readthedocs.io/en/latest/faq/#how-to-use-zeronet-with-tor"
                           target="_blank" rel="noopener noreferrer">ZeroNet</a>.
-                    You may NOT want to use a public ZeroNet proxy on clearnet.</li>
+                    You should NOT use a public ZeroNet proxy on clearnet.</li>
                 <li>
-                    You may want to make a backup <b>todo:</b> link of your local data. Everything is lost if you clear
-                    browser data or switches to an other browser client. See export option in Account page.
+                    You may want to make a backup. See export option in Account page. Everything is lost if you clear
+                    browser data or switches to an other browser client.
                 </li>
                 <li>
-                    You may want to delete your data <b>todo:</b> link
+                    You may want to delete your data
                     from <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>
                     and browser client when finished used this demo. See delete option in Account page.
                 </li>
@@ -1559,7 +1559,7 @@
                     <td></td>
                     <td>
                         <input type="text" placeholder="Start typing" typeahead-on-select="u.spam_settings_changed()"
-                               ng-model="u.setup.emoji_folder" ng-show="u.setup.show_emoji_folder" ng-change="u.spam_settings_changed()"
+                               ng-model="u.setup.emoji_folder" ng-change="u.spam_settings_changed()"
                                uib-typeahead="folder for folder in u.emoji_folders | filter:$viewValue | limitTo:8"
                                typeahead-editable="false"
                                class="user_info" style="width: 200px">

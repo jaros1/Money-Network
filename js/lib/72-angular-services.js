@@ -8561,10 +8561,13 @@ angular.module('MoneyNetwork')
 
         // reset timestamps and get new timestamp information from chat page.
         function reset_first_and_last_chat () {
-            debug('infinite_scroll', service + '.reset_first_and_last_chat: called') ;
+            var pgm = service + '.reset_first_and_last_chat: ' ;
+            debug('infinite_scroll', pgm + 'called') ;
             chat_page_context.first_top_timestamp = null ;
             chat_page_context.last_bottom_timestamp = null ;
             chat_page_context.end_of_page = true ;
+            debug('infinite_scroll', pgm + 'chat_page_context = ' + JSON.stringify(chat_page_context)) ;
+            debug('infinite_scroll', pgm + 'old_chat_page_context = ' + JSON.stringify(old_chat_page_context)) ;
         }
 
         function check_public_chat () {
@@ -8654,11 +8657,19 @@ angular.module('MoneyNetwork')
                 ', end_of_page = ' + chat_page_context.end_of_page +
                 ', no_processes = ' + chat_page_context.no_processes +
                 ', chat_sort = ' + user_setup.chat_sort);
-
+            debug('infinite_scroll', pgm + 'chat_page_context = ' + JSON.stringify(chat_page_context)) ;
+            debug('infinite_scroll', pgm + 'old_chat_page_context = ' + JSON.stringify(old_chat_page_context)) ;
 
             // start public chat download?
-            if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return ; // group chat
-            if ((user_setup.chat_sort != 'Last message') && !chat_page_context.end_of_page) return ; // sort by size and not end of page. public chat with size 0 at end of page
+            if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) {
+                debug('infinite_scroll', pgm + 'stop. group chat') ;
+                return ;
+            } // group chat
+            if ((user_setup.chat_sort != 'Last message') && !chat_page_context.end_of_page) {
+                // sort by size and not end of page. public chat with size 0 at end of page
+                debug('infinite_scroll', pgm + 'stop. sort by size and not end of page. public chat with size 0 at end of page') ;
+                return ;
+            }
             if (chat_page_context.no_processes >= 2) {
                 // do not start more that 1 download process
                 debug('public_chat', pgm + 'stop. already ' + chat_page_context.no_processes + ' check_public_chat process running') ;
@@ -10498,7 +10509,7 @@ angular.module('MoneyNetwork')
             // console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions));
             if (user_setup.reactions) {
                 for (i=0 ; i<user_setup.reactions.length ; i++) {
-                    user_setup.reactions[i].src = emoji_folder + '/' + user_setup.reactions[i].unicode + '.png' ;
+                    user_setup.reactions[i].src = emoji_folder + user_setup.reactions[i].unicode + '.png' ;
                 }
                 // console.log(pgm + 'user_reactions = ' + JSON.stringify(user_setup.reactions));
             }
@@ -10660,7 +10671,8 @@ angular.module('MoneyNetwork')
         // moneyNetworkService ready.
         // using ls_bind (interface to ZeroNet API localStorage functions may still be loading)
         MoneyNetworkHelper.ls_bind(function () {
-            var login, password, passwords, password_sha256, register, i ;
+            var pgm = service + '.ls_bind callback: ' ;
+            var login, a_path, z_path, redirect_when_ready ;
             login = MoneyNetworkHelper.getItem('login') ;
             if (!login) {
                 login = true ;
@@ -10669,10 +10681,31 @@ angular.module('MoneyNetwork')
             }
             else login = JSON.parse(login) ;
             MoneyNetworkHelper.use_login_changed() ;
-            if (!login) {
-                client_login('') ;
-                ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+            if (login) return ;
+
+            // auth log in
+            client_login('') ;
+            ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+            console.log(pgm + 'check deeplink and redirect') ;
+
+            // auto log + deep link?
+            a_path = $location.search()['redirect'] ;
+            if (a_path) {
+                z_path = "?path=" + a_path ;
+                console.log(pgm + 'a_path = ' + a_path + ', z_path = ' + z_path) ;
+                redirect_when_ready = function () {
+                    if (!ZeroFrame.site_info || !ZeroFrame.site_info.auth_address) {
+                        $timeout(redirect_when_ready,1000) ;
+                        return ;
+                    }
+                    $location.path(a_path).search({}) ;
+                    $location.replace();
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
+                };
+                redirect_when_ready() ;
+                // console.log(pgm + 'login with a deep link: a_path = ' + a_path + ', z_path = ' + z_path) ;
             }
+
         }) ; // ls_bind callback
 
 
