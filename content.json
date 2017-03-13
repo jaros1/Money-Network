@@ -165,12 +165,12 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "8bbfccbe17d28c88026ec3e09fb1efe64d4cb9a045ba1eb64eaeb09b2eb7e75c",
-   "size": 977470
+   "sha512": "7b6e3603a3438a4cdb698dfd2d7b75a5c5fee0b7fcac7195cddddebf913ae949",
+   "size": 978432
   },
   "js/all.js.zip": {
-   "sha512": "07d2eb1fa081f5386a289e3bf99cae27d0ff0c5e45ce99c68995e95636504500",
-   "size": 170961
+   "sha512": "f5688ae05ed6733cd874f7acf26cb6feef2544e822576baf2b6088375a9b5271",
+   "size": 171207
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -289,15 +289,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1489385398,
+ "modified": 1489398043,
  "postmessage_nonce_security": true,
  "sign": [
-  87757450319444683700247407495483751499389296779928024987213319604948872653123,
-  41211483564209288713634782872512323713989912722127110476012264319096260173670
+  14934513651355323599510863302891503447792345012227737683277380875839234845490,
+  95071637153128475555276941722473447631986761416051959433593292161762866625068
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "GznDrTFO2wRGeMNdYva9Hqb2rTTLVoYRiS/tIPBS8/gDs0e/GxUQHSfU7PTQnNeqRElFQvE5ux2g0ui03At6g2U="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HL2qnJJkqhEaX+A8jDgs2x5HsZzzOQ7q+yn5EtpwdLuFcMWinEFi3s1E1zih+a7n9LV7HZ2VQIoFMjB4I41tDkQ="
  },
  "signs_required": 1,
  "title": "Money Network",

@@ -3998,7 +3998,7 @@ angular.module('MoneyNetwork')
         var ls_contacts_index = { //
             unique_id: {}, // from unique_id to contract
             password_sha256: {}, // from group password sha256 value to group contact
-            cert_user_id: {} // from cert_user_id to contact
+            cert_user_id: {} // from cert_user_id to array with contacts
         } ;
         var ls_contacts_deleted_sha256 = {} ; // hash with sender_sha256 addresses for deleted contacts (deleted outbox messages)
 
@@ -4017,11 +4017,12 @@ angular.module('MoneyNetwork')
             ls_contacts_index.unique_id[contact.unique_id] = contact ;
             if (contact.password) password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
             if (password_sha256) ls_contacts_index.password_sha256[password_sha256] = contact ;
-            ls_contacts_index.cert_user_id[contact.cert_user_id] = contact ;
+            if (!ls_contacts_index.cert_user_id[contact.cert_user_id]) ls_contacts_index.cert_user_id[contact.cert_user_id] = [] ;
+            ls_contacts_index.cert_user_id[contact.cert_user_id].push(contact) ;
         }
         function remove_contact (index) {
             var pgm = service + '.remove_contact: ' ;
-            var contact, password_sha256, sender_sha256 ;
+            var contact, password_sha256, sender_sha256, index2 ;
             contact = ls_contacts[index] ;
             ls_contacts.splice(index,1) ;
             delete ls_contacts_index.unique_id[contact.unique_id] ;
@@ -4029,7 +4030,8 @@ angular.module('MoneyNetwork')
                 password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
                 ls_contacts_index.password_sha256[password_sha256] ;
             }
-            delete ls_contacts_index.cert_user_id[contact.cert_user_id] ;
+            index2 = ls_contacts_index.cert_user_id[contact.cert_user_id].indexOf(contact) ;
+            ls_contacts_index.cert_user_id[contact.cert_user_id].splice(index2,1) ;
             // any sender_sha256 addresses to keep? may receive ingoing messages to this sha256 address later
             if (!contact.outbox_sender_sha256) return ;
             for (sender_sha256 in contact.outbox_sender_sha256) {
@@ -4051,7 +4053,7 @@ angular.module('MoneyNetwork')
         function get_contact_by_password_sha256 (password_sha256) {
             return ls_contacts_index.password_sha256[password_sha256] ;
         }
-        function get_contact_by_cert_user_id (cert_user_id) {
+        function get_contacts_by_cert_user_id (cert_user_id) {
             return ls_contacts_index.cert_user_id[cert_user_id] ;
         }
         function get_contact_name (contact) {
@@ -7885,37 +7887,41 @@ angular.module('MoneyNetwork')
 
                     // content.json - check avatar in files. null, jpg or pgn
                     (function() {
-                        var content_json_avatar, public_avatars, avatar_short_path, contact ;
+                        var content_json_avatar, public_avatars, avatar_short_path, contacts, i, contact ;
                         if (res.files['avatar.jpg']) content_json_avatar = 'jpg' ;
                         else if (res.files['avatar.png']) content_json_avatar = 'png' ;
                         else content_json_avatar = null ;
-                        // check contacts
-                        contact = get_contact_by_cert_user_id(res.cert_user_id);
-                        if (!contact) {
-                            debug('file_done', pgm + 'checking avatar. must be a new contact. no contact found with cert_user_id ' + res.cert_user_id);
+                        // check contacts. cert_user_id is not an unique contact id!
+                        contacts = get_contacts_by_cert_user_id(res.cert_user_id);
+                        if (!contacts) {
+                            debug('file_done', pgm + 'checking avatar. must be a new contact. no contacts found with cert_user_id ' + res.cert_user_id);
                             return ;
                         }
-                        if (contact.avatar == content_json_avatar) return ;
+                        for (i=0 ; i<contacts.length ; i++) {
+                            contact = contacts[i] ;
+                            if (contact.avatar == content_json_avatar) continue ;
 
-                        // avatar (maybe) updated
-                        if (content_json_avatar) {
-                            // not null avatar in content.json - uploaded avatar.
-                            contact.avatar = avatar_short_path;
-                        }
-                        else {
-                            // null avatar in content.json
-                            if (['jpg', 'png'].indexOf(contact.avatar) != -1) {
-                                // previosly uploaded avatar has been deleted. Assign random avatar to contact.
-                                public_avatars = MoneyNetworkHelper.get_public_avatars();
-                                index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
-                                avatar_short_path = public_avatars[index];
-                                contact.avatar = avatar_short_path;
+                            // avatar (maybe) updated
+                            if (content_json_avatar) {
+                                // not null avatar in content.json - uploaded avatar.
+                                // todo: UI is not updated. $rootScope.$apply() does not help neither ....
+                                debug('file_done', pgm + 'found new uploaded ' + content_json_avatar + ' avatar') ;
+                                contact.avatar = content_json_avatar;
                             }
                             else {
-                                // OK. Contact has already an random assigned public avatar
-                                return ;
+                                // null avatar in content.json
+                                if (['jpg', 'png'].indexOf(contact.avatar) != -1) {
+                                    // previosly uploaded avatar has been deleted. Assign random avatar to contact.
+                                    public_avatars = MoneyNetworkHelper.get_public_avatars();
+                                    index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png (zero) is used for public contact
+                                    avatar_short_path = public_avatars[index];
+                                    contact.avatar = avatar_short_path;
+                                }
+                                else {
+                                    // OK. Contact has already an random assigned public avatar
+                                }
                             }
-                        }
+                        } // for i (contacts)
 
                     })() ;
 
@@ -10684,7 +10690,6 @@ angular.module('MoneyNetwork')
             get_contacts: get_contacts,
             get_contact_by_unique_id: get_contact_by_unique_id,
             get_contact_by_password_sha256: get_contact_by_password_sha256,
-            get_contact_by_cert_user_id: get_contact_by_cert_user_id,
             get_contact_name: get_contact_name,
             get_last_online: get_last_online,
             add_contact: add_contact,

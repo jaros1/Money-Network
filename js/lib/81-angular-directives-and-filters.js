@@ -287,14 +287,19 @@ angular.module('MoneyNetwork')
     .filter('findContactAvatar', [function () {
         // find contact avatar - used in must cases
         return function (contact) {
+            var src ;
             if (!contact) return '' ;
             if (['jpg','png'].indexOf(contact.avatar) != -1) {
                 // contact with uploaded avatar
-                if (!contact.pubkey) return 'public/images/image_failed.gif' ; // deleted contact
-                return 'data/users/' + contact.auth_address + '/avatar.' + contact.avatar ;
+                if (!contact.pubkey) src = 'public/images/image_failed.gif' ; // deleted contact
+                else src = 'data/users/' + contact.auth_address + '/avatar.' + contact.avatar ;
             }
-            // must be contact with a random assigned avatar or avatarz for public chat
-            return 'public/images/avatar' + contact.avatar ;
+            else {
+                // must be contact with a random assigned avatar or avatarz for public chat
+                src = 'public/images/avatar' + contact.avatar ;
+            }
+            // if (contact.unique_id == '5a64e36240ab72da3815423b3ae223f243c5a3d780902a5f2d23a2f6c46886cd') console.log('findContactAvatarFilter: avatar = ' + contact.avatar + ', src = ' + src) ;
+            return src ;
         } ;
         // end findContactAvatar filter
     }])

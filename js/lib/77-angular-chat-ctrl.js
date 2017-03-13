@@ -1099,7 +1099,7 @@ angular.module('MoneyNetwork')
             self.confirmed_send_chat = null ;
             self.send_chat_msg = function () {
                 var pgm = controller + '.send_chat_msg: ';
-                var i, j, contact, password, my_unique_id, message, error, warning;
+                var i, j, contact, my_unique_id, message, error, warning;
 
                 // check image attachment
                 if (self.new_chat_src && !moneyNetworkService.get_image_ext_from_base64uri(self.new_chat_src)) {
@@ -1128,7 +1128,7 @@ angular.module('MoneyNetwork')
                             message = {
                                 msgtype: 'group chat',
                                 participants: contact.participants,
-                                password: password
+                                password: contact.password
                             };
                             debug('outbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
                             // validate json
