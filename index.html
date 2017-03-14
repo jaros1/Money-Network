@@ -91,7 +91,7 @@
             </ul>
 
             Contact info: I am not using ZeroMail.
-            Please send a private chat message in here <a href="/moneynetwork.bit/?path=/chat2/jro@zeroid.bit" target="_top" rel="noopener noreferrer">jro@zeroid.bit</a>
+            Send a <a href="/moneynetwork.bit/?path=/chat2/jro@zeroid.bit" target="_top" rel="noopener noreferrer">PM ✉</a>
             , use "@jro" in ZeroMe or create a GitHub issue with question or issue.
 
         </div>
@@ -118,8 +118,15 @@
                 <li>todo:</li>
             </ul>
 
-
-            <div markdown-it="m.test3"></div>
+            Money links:
+            <ul style="list-style-type:disc">
+                <li><a href="http://charleseisenstein.net/" target="_blank" rel="noopener noreferrer">Charles Eisenstein</a>'s
+                    <a href="http://charleseisenstein.net/project/sacred-economics/" target="_blank" rel="noopener noreferrer">Sacret Economics</a></li>
+                <li><a href="http://www.lietaer.com/" target="_blank" rel="noopener noreferrer">Bernard Lietaer</a></li>
+                <li><a href="https://chomsky.info/" target="_blank" rel="noopener noreferrer">Noam Chomsky</a></li>
+                <li><a href="http://robertreich.org/" target="_blank" rel="noopener noreferrer">Robert Reich</a>'s
+                    <a href="http://inequalityforall.com/" target="_blank" rel="noopener noreferrer">Inequality for All</a></li>
+            </ul>
 
 
         </div>
@@ -1358,7 +1365,7 @@
 
             <p title="Select preferred encryption for ingoing messages. Your JSEncrypt key is {{u.keysize}} bits long and is saved encrypted in your browser (localStorage). CryptMessage is using 256 bits key and is saved in your user.json file on your computer (or proxy server).">
                 Preferred encryption:
-                <input type="radio" ng-model="u.setup.encryption" value="1" ng-change="u.debug_settings_changed()">
+                <input type="radio" ng-model="u.setup.encryption" value="1" ng-change="u.debug_settings_changed()" ng-disabled="u.keysize_disabled">
                 <a href="https://github.com/travist/jsencrypt" target="_blank" rel="noopener noreferrer">JSEncrypt</a>{{u.keysize}} bits key
                 <input type="radio" ng-model="u.setup.encryption" value="2" ng-change="u.debug_settings_changed()">
                 <a href="https://zeronet.readthedocs.io/en/latest/site_development/zeroframe_api_reference/#plugin-cryptmessage"
@@ -1827,24 +1834,30 @@
                 </a>
                 <a href="" id="zeronet_cert_changed_link" ng-click="a.zeronet_cert_changed()" style="display: none"></a>
                 is used for communication with other ZeroNet users.
-                An anonymous @moneynetwork.bit ZeroNet ID has been created for you. Use that or your preferred ZeroNet ID.
+                Use an anonymous @moneynetwork.bit ZeroNet ID or use your preferred ZeroNet ID provider.
                 Click on ZeroNet ID link to change ZeroNet certificate.
-                <br><br>
-                Private data are saved in browser (localStorage).
-                You can use checkbox on this page to enable/disable password protection of your private data.
-                Recommend that you password protect your private data.
+                Send me a <a href="/moneynetwork.bit/?path=/chat2/jro@zeroid.bit" target="_top" rel="noopener noreferrer">PM ✉</a>
+                if your preferred ZeroNet ID povider is not on the list.
             </p>
 
             <p>
-                Use password to symmetric encrypt your private data?
-                <input type="checkbox" ng-model="a.use_login" ng-change="a.use_login_changed()">&nbsp;&nbsp;&nbsp;
-                <span ng-hide="a.use_login">
-                    <input ng-hide="a.is_logged_in()" type="submit" value="Log in" ng-click="a.login_or_register()">
-                    <input ng-show="a.is_logged_in()" type="submit" value="Log out" ng-click="a.logout()">
+                Private data <input type="checkbox" ng-model="a.use_private_data" ng-change="a.use_private_data_changed()"> are
+                <span ng-hide="a.use_private_data">not</span>
+                saved
+                <span ng-show="a.use_private_data">
+                    <input type="checkbox" ng-model="a.use_login" ng-change="a.use_login_changed()">
+                    <span ng-hide="a.use_login">un</span>encrypted
                 </span>
+                in your browser (localStorage).
+                Recommend that you save private data encrypted in your browser.
             </p>
 
-            <div ng-show="a.use_login" style="width: 100%">
+            <span ng-hide="a.use_private_data && a.use_login">
+                <input ng-hide="a.is_logged_in()" type="submit" value="Log in" ng-click="a.login_or_register()">
+                <input ng-show="a.is_logged_in()" type="submit" value="Log out" ng-click="a.logout()">
+            </span>
+
+            <div ng-show="a.use_private_data && a.use_login" style="width: 100%">
 
                 <form ng-hide="a.is_logged_in()" name="device_login_form" ng-submit="a.login_or_register()">
                     <table>

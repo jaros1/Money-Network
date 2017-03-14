@@ -36,36 +36,68 @@ var MoneyNetworkHelper = (function () {
     var session_storage = {} ;
 
     // localStorage javascript copy is loaded from ZeroFrame API. Initialized asyn. Takes a moment before JS local_storage copy is ready
+    var ls_use_private_data = true ;
     var local_storage = { loading: true } ;
     var local_storage_functions = [] ; // functions waiting for localStorage to be ready. see authCtrl.set_register_yn
     function ls_bind(f) {
         if (local_storage.loading) local_storage_functions.push(f);
         else f() ;
     } // ls_bind
-    ZeroFrame.cmd("wrapperGetLocalStorage", [], function (res) {
-        var pgm = module + '.wrapperGetLocalStorage callback (1): ';
-        // console.log(pgm + 'typeof res =' + typeof res) ;
-        // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-        if (!res) res = [{}] ;
-        res = res[0];
-        // moving values received from ZeroFrame API to JS copy of local storage
-        // console.log(pgm + 'old local_storage = ' + JSON.stringify(local_storage)) ;
-        // console.log(pgm + 'moving values received from ZeroFrame API to JS local_storage copy');
+
+    function ls_load() {
         var key ;
-        for (key in local_storage) if (!res.hasOwnProperty(key)) delete local_storage[key] ;
-        for (key in res) local_storage[key] = res[key] ;
-        // console.log(pgm + 'local_storage = ' + JSON.stringify(local_storage));
-        // execute any function waiting for localStorage to be ready
-        if (!local_storage_functions.length) return ;
-        for (var i=0 ; i<local_storage_functions.length ; i++) {
-            var f = local_storage_functions[i] ;
-            f();
-        }
-        local_storage_functions.length = 0 ;
-    }) ;
+        for (var key in local_storage) delete local_storage[key] ;
+        if (!ls_use_private_data) return ;
+        local_storage.loading = true ;
+        ZeroFrame.cmd("wrapperGetLocalStorage", [], function (res) {
+            var pgm = module + '.wrapperGetLocalStorage callback (1): ';
+            // console.log(pgm + 'typeof res =' + typeof res) ;
+            // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+            if (!res) res = [{}] ;
+            res = res[0];
+            // moving values received from ZeroFrame API to JS copy of local storage
+            // console.log(pgm + 'old local_storage = ' + JSON.stringify(local_storage)) ;
+            // console.log(pgm + 'moving values received from ZeroFrame API to JS local_storage copy');
+            var key ;
+            for (key in local_storage) if (!res.hasOwnProperty(key)) delete local_storage[key] ;
+            for (key in res) local_storage[key] = res[key] ;
+            // console.log(pgm + 'local_storage = ' + JSON.stringify(local_storage));
+            // execute any function waiting for localStorage to be ready
+            if (!local_storage_functions.length) return ;
+            for (var i=0 ; i<local_storage_functions.length ; i++) {
+                var f = local_storage_functions[i] ;
+                f();
+            }
+            local_storage_functions.length = 0 ;
+        }) ;
+
+    }
+    ls_load() ;
+
     function ls_is_loading() {
         return local_storage.loading ;
     }
+
+
+    // save private data in localStorage? checkbox option in Log in page. normally private data is saved in localStorage
+    // simple enable/disable ZeroNet API localStorage operations
+    function ls_get_private_data () {
+        return ls_use_private_data ;
+    }
+    function ls_set_private_data (private_data) {
+        if (ls_use_private_data && private_data) return ;
+        if (!ls_use_private_data && !private_data) return ;
+        ls_use_private_data = private_data ;
+        if (ls_use_private_data) {
+            // private data enabled. load localStorage data with ZeroNet API (again)
+            ls_load() ;
+        }
+        else {
+            // private data disabled. clear any old localStorage data in memory
+            ls_clear() ;
+        }
+    } // ls_set_private_data
+
 
     function ls_get () {
         return local_storage ;
@@ -74,6 +106,7 @@ var MoneyNetworkHelper = (function () {
     // write JS copy of local storage back to ZeroFrame API
     function ls_save() {
         var pgm = module + '.ls_save: ' ;
+        if (!ls_use_private_data) return ;
         // console.log(pgm + 'calling wrapperSetLocalStorage');
 
         ZeroFrame.cmd("wrapperSetLocalStorage", [local_storage], function () {
@@ -1354,6 +1387,8 @@ var MoneyNetworkHelper = (function () {
         getItemSize: getItemSize,
         setItem: setItem,
         removeItem: removeItem,
+        ls_get_private_data: ls_get_private_data,
+        ls_set_private_data: ls_set_private_data,
         ls_get: ls_get,
         ls_bind: ls_bind,
         ls_is_loading: ls_is_loading,

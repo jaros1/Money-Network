@@ -5001,7 +5001,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'user_info = ' + JSON.stringify(user_info));
                 // console.log(pgm + 'my_search_query = ' + my_search_query);
                 // ZeroFrame.cmd("wrapperNotification", ["info", error, 3000]);
-                fnc_when_ready(no_contacts);
+                if (fnc_when_ready) fnc_when_ready(no_contacts);
                 return  ;
             }
 
@@ -5051,7 +5051,7 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
                     console.log(pgm + "Search for new contacts failed: " + res.error) ;
                     console.log(pgm + 'query = ' + query) ;
-                    fnc_when_ready(no_contacts);
+                    if (fnc_when_ready) fnc_when_ready(no_contacts);
                     return ;
                 }
                 if (res.length == 0) {
@@ -5137,13 +5137,13 @@ angular.module('MoneyNetwork')
                         ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
                         console.log(pgm + "Search for new contacts failed: " + res.error) ;
                         console.log(pgm + 'query = ' + query) ;
-                        fnc_when_ready(no_contacts);
+                        if (fnc_when_ready) fnc_when_ready(no_contacts);
                         return;
                     }
                     if (res.length == 0) {
                         // current user not in data.users array. must be an user without any search words in user_info
                         ZeroFrame.cmd("wrapperNotification", ["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
-                        fnc_when_ready(no_contacts);
+                        if (fnc_when_ready) fnc_when_ready(no_contacts);
                         return;
                     }
                     if (detected_client_log_out(pgm)) return ;

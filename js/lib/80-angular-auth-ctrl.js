@@ -22,6 +22,12 @@ angular.module('MoneyNetwork')
             else no_users = JSON.parse(passwords).length ;
             self.register = (no_users == 0) ? 'Y' : 'N';
         }
+
+        // startup. Set use_private_data
+        self.use_private_data = MoneyNetworkHelper.ls_get_private_data() ;
+        self.use_private_data_changed = function () {
+            MoneyNetworkHelper.ls_set_private_data(self.use_private_data) ;
+        };
         // startup. Set use_login
         self.use_login = true ;
         function set_use_login() {
@@ -55,11 +61,11 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("wrapperNotification", ['done',
                     'Password log in was disabled. No data was moved.<br>' +
                     'Note that private data from password protected<br>' +
-                    'account still is in localStorage', 10000]);
+                    'account(s) still is in localStorage', 10000]);
             }
         } ;
 
-        // call when localStorage is ready (ZeroFrame's localStorage API is a little slow)
+        // callback when localStorage is ready (ZeroFrame's localStorage API is a little slow)
         var ls_was_loading = MoneyNetworkHelper.ls_is_loading();
         MoneyNetworkHelper.ls_bind(function() {
             set_register_yn() ;
@@ -102,12 +108,19 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("wrapperNotification", ['info', 'Please select ZeroNet ID before log in', 5000]);
                 return ;
             }
-            if (MoneyNetworkHelper.ls_is_loading()) {
+            if (self.use_private_data && MoneyNetworkHelper.ls_is_loading()) {
                 ZeroFrame.cmd("wrapperNotification", ['info', 'Please wait. Loading localStorage data', 5000]);
                 return ;
             }
 
-            if (!self.use_login) {
+            if (!self.use_private_data) {
+                // login/register without saving any data in localStorage as Guest and using cryptMessage
+                self.register = 'G' ;
+                self.device_password = '';
+                self.confirm_device_password = '';
+                self.keysize = '256' ;
+            }
+            else if (!self.use_login) {
                 // login/register without a password and minimum keysize
                 self.register = 'Y' ;
                 self.device_password = '';

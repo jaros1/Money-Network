@@ -16,7 +16,8 @@ angular.module('MoneyNetwork')
         // search for new ZeroNet contacts and add avatars for new contacts
         var contacts = moneyNetworkService.get_contacts(); // array with contacts from localStorage
         self.zeronet_search_contacts = function () {
-            moneyNetworkService.z_contact_search(function () { $scope.$apply() }, null, null);
+            moneyNetworkService.z_contact_search(null, null, null);
+            // moneyNetworkService.z_contact_search(function () { $scope.$apply() }, null, null);
         };
         self.zeronet_search_contacts();
 
@@ -269,6 +270,7 @@ angular.module('MoneyNetwork')
             encrypt.setPublicKey(MoneyNetworkHelper.getItem('pubkey'));
             self.keysize = encrypt.key.n.bitLength() ;
         })() ;
+        self.keysize_disabled = !MoneyNetworkHelper.ls_get_private_data() ;
 
         // deep chat link
         self.my_chat_url = $location.protocol() + '://' + $location.host() + ':' + $location.port() + '/moneynetwork.bit/?path=/chat2/' + ZeroFrame.site_info.cert_user_id ;
@@ -773,12 +775,14 @@ angular.module('MoneyNetwork')
             // callbacks:
 
             step_7_notification_and_redirect = function () {
+                var pgm = controller + '.import.step_7_notification_and_redirect: ' ;
                 var text, a_path, z_path ;
                 text = 'MoneyNetwork data has been imported from file. Please log in';
                 ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
                 // redirect
                 a_path = '/auth';
                 z_path = "?path=" + a_path;
+                console.log(pgm + 'redirect') ;
                 $location.path(a_path);
                 $location.replace();
                 ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
@@ -788,11 +792,13 @@ angular.module('MoneyNetwork')
             step_6_ls_write = function (data) {
                 var pgm = controller + '.import.step_6_ls_write: ' ;
                 var ls, key ;
+                console.log(pgm + 'client_logout') ;
                 moneyNetworkService.client_logout() ;
                 ls = MoneyNetworkHelper.ls_get() ;
                 for (key in ls) delete ls[key] ;
                 for (key in data.ls) ls[key] = data.ls[key] ;
                 MoneyNetworkHelper.ls_save() ;
+                console.log(pgm + 'ls overwritten and saved') ;
                 step_7_notification_and_redirect() ;
             }; // step_6_ls_write
 
