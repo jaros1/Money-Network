@@ -216,59 +216,6 @@ angular.module('MoneyNetwork')
         // end messageReact
     }])
 
-
-    .directive('hoverPopover', ['$timeout', '$rootScope', function ($timeout, $rootScope) {
-        return {
-            restrict: 'A',
-            require: 'ngModel',
-            scope:{
-                ngModel: '='
-            },
-            controller: function ($scope, $element) {
-                $scope.attachEvents = function (element) {
-                    $('.popover').on('mouseenter', function () {
-                        $rootScope.insidePopover = true;
-                    });
-                    $('.popover').on('mouseleave', function () {
-                        $rootScope.insidePopover = false;
-                        $(element).popover('hide');
-                    });
-                    $('.popover').on('mouseclick', function () {
-                        $rootScope.insidePopover = false;
-                        $(element).popover('hide');
-                    });
-                };
-            },
-            link: function (scope, element, attrs) {
-                scope.$watch(function () { return scope.ngModel }, function () {
-                    $rootScope.insidePopover = false;
-                    $(element).popover({
-                        content: "<div>\n" +
-                        "  <a href=" + (scope.ngModel && scope.ngModel != null ? scope.ngModel.Prop1 : '') + " target=\"_blank\" class=\"title\" align=\"center\"><i class=\"icon icon-document icon-left\"></i>Link1</a>\n" +
-                        "  <a href=" + (scope.ngModel && scope.ngModel != null ? scope.ngModel.Prop2 : '') + " target=\"_self\" class=\"button primary-button\">Link3</a>" +
-                        "</div>",
-                        placement: 'top',
-                        html: true
-                    });
-                    $(element).bind('mouseenter', function (e) {
-                        $timeout(function () {
-                            if (!$rootScope.insidePopover) {
-                                $(element).popover('show');
-                                scope.attachEvents(element);
-                            }
-                        }, 50);
-                    });
-                    $(element).bind('mouseleave', function (e) {
-                        $timeout(function () {
-                            if (!$rootScope.insidePopover)
-                                $(element).popover('hide');
-                        }, 50);
-                    });
-                });
-            }
-        };
-    }])
-
     // http://stackoverflow.com/questions/16349578/angular-directive-for-a-fallback-image
     .directive('fallbackSrc', function () {
         var fallbackSrc = {

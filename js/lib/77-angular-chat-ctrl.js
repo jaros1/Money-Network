@@ -634,6 +634,23 @@ angular.module('MoneyNetwork')
                 }) ;
             };
 
+            self.show_contact_mute_add = function () {
+                if (!self.contact) return false ;
+                if (self.contact.type == 'group') return false ;
+                return !self.contact.muted_at ;
+            };
+            self.contact_mute_add = function () {
+                moneyNetworkService.contact_mute_add(self.contact);
+            };
+            self.show_contact_mute_remove = function () {
+                if (!self.contact) return false ;
+                if (self.contact.type == 'group') return false ;
+                return self.contact.muted_at ;
+            };
+            self.contact_mute_remove = function () {
+                moneyNetworkService.contact_mute_remove(self.contact);
+            };
+
             self.show_group_delete = function () {
                 if (self.editing_grp_chat) return false ;
                 return true ;

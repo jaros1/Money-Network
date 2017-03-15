@@ -92,7 +92,7 @@
 
             Contact info: I am not using ZeroMail.
             Send a <a href="/moneynetwork.bit/?path=/chat2/jro@zeroid.bit" target="_top" rel="noopener noreferrer">PM ✉</a>
-            , use "@jro" in ZeroMe or create a GitHub issue with question or issue.
+            , use "@jro:" in ZeroMe or create a <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_top" rel="noopener noreferrer">GitHub</a> issue with question or issue.
 
         </div>
 
@@ -342,6 +342,8 @@
                                                ng-click="c.contact_verify(x)"/>
                                         <input ng-show="c.show_contact_delete()" type="button" value="Delete"
                                                ng-click="c.contact_delete()"/>
+                                        <input ng-show="c.show_contact_mute_add()" type="button" value="Mute" ng-click="c.contact_mute_add()"/>
+                                        <input ng-show="c.show_contact_mute_remove()" type="button" value="Unmute" ng-click="c.contact_mute_remove()"/>
                                         <input ng-show="c.show_delete_user1" type="button" value="Admin"
                                                ng-click="c.delete_user1()"/>
                                     </td>
@@ -870,6 +872,8 @@
                                            ng-click="c.contact_verify()"/>
                                     <input ng-show="c.show_contact_delete()" type="button" value="Delete"
                                            ng-click="c.contact_delete()"/>
+                                    <input ng-show="c.show_contact_mute_add()" type="button" value="Mute" ng-click="c.contact_mute_add()"/>
+                                    <input ng-show="c.show_contact_mute_remove()" type="button" value="Unmute" ng-click="c.contact_mute_remove()"/>
                                     <input ng-show="c.show_delete_user1" type="button" value="Admin"
                                            ng-click="c.delete_user1()"/>
                                 </td>

@@ -10134,6 +10134,27 @@ angular.module('MoneyNetwork')
             }
         } // contact_delete
 
+        function contact_mute_add (contact) {
+            var pgm = service + '.contact_mute_add: '
+            ZeroFrame.cmd("muteAdd", [contact.auth_address, contact.cert_user_id,'Spammer'], function (res) {
+                // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                if (res == 'ok') {
+                    contact.muted_at = new Date().getTime() ;
+                    ls_save_contacts(false) ;
+                }
+            })
+        } // contact_mute_add
+        function contact_mute_remove (contact) {
+            var pgm = service + '.contact_mute_remove: ';
+            ZeroFrame.cmd("muteRemove", [contact.auth_address], function (res) {
+                // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                if (res == 'ok') {
+                    delete contact.muted_at ;
+                    ls_save_contacts(false) ;
+                }
+            })
+        } // contact_mute_remove
+
         // get file extension from image_base64uri string (image upload)
         // allowed extensions are jpg, png, gif and tif. Avatars are for now only using jpg and png
         function get_image_ext_from_base64uri (image_base64uri) {
@@ -10748,6 +10769,8 @@ angular.module('MoneyNetwork')
             contact_unplonk: contact_unplonk,
             contact_verify: contact_verify,
             contact_delete: contact_delete,
+            contact_mute_add: contact_mute_add,
+            contact_mute_remove: contact_mute_remove,
             next_local_msg_seq: next_local_msg_seq,
             get_max_image_size: get_max_image_size,
             get_image_ext_from_base64uri: get_image_ext_from_base64uri,
