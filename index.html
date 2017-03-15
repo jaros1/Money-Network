@@ -1849,7 +1849,7 @@
                     <span ng-hide="a.use_login">un</span>encrypted
                 </span>
                 in your browser (localStorage).
-                Recommend that you save private data encrypted in your browser.
+                <span ng-hide="a.use_private_data && a.use_login">Recommend that you save private data encrypted in your browser.</span>
             </p>
 
             <span ng-hide="a.use_private_data && a.use_login">

@@ -108,7 +108,7 @@ angular.module('MoneyNetwork')
 
     // empty heart popover with reactions
     // https://github.com/jaros1/Zeronet-Money-Network/issues/127
-    .directive('messageReact', ['$compile', 'MoneyNetworkService', function($compile, moneyNetworkService) {
+    .directive('messageReact', ['$compile', '$timeout', '$rootScope', 'MoneyNetworkService', function($compile, $timeout, $rootScope, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
         var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
         var standard_reactions = moneyNetworkService.get_user_reactions() ;
@@ -130,7 +130,22 @@ angular.module('MoneyNetwork')
             restrict: 'E',
             template: '<img ng-src="{{src}}" height="20" width="20" title="{{title}}">',
             scope: true,
-            link: function (scope, el, attrs) {
+            controller: function ($scope, $element) {
+                $scope.attachEvents = function (element) {
+                    $('.popover').on('mouseenter', function () {
+                        $rootScope.insidePopover = true;
+                    });
+                    $('.popover').on('mouseleave', function () {
+                        $rootScope.insidePopover = false;
+                        $(element).popover('hide');
+                    });
+                    $('.popover').on('mouseclick', function () {
+                        $rootScope.insidePopover = false;
+                        $(element).popover('hide');
+                    });
+                };
+            },
+            link: function (scope, element, attrs) {
                 var pgm = 'messageReact: ' ;
                 var message, content, react, linkFn, folder ;
                 // get params
@@ -169,22 +184,89 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'message2 = ' + JSON.stringify(message2) + ', index2 = ' + index2) ;
                     react(message2, index2) ;
                     set_src_and_title(message2);
-                    $(el).popover('hide');
+                    $(element).popover('hide');
                 };
                 scope.react = extend_react ;
                 linkFn = $compile(content_html) ;
                 content = linkFn(scope);
                 // console.log(pgm + 'content = ' + JSON.stringify(content)) ;
                 // todo: it would be nice if the popover could open on hover and be clickable
-                $(el).popover({
-                    trigger: 'click hover focus',
+                $rootScope.insidePopover = false;
+                $(element).popover({
                     html: true,
                     content: content,
                     placement: 'left'
                 });
+                $(element).bind('mouseenter', function (e) {
+                    $timeout(function () {
+                        if (!$rootScope.insidePopover) {
+                            $(element).popover('show');
+                            scope.attachEvents(element);
+                        }
+                    }, 50);
+                });
+                $(element).bind('mouseleave', function (e) {
+                    $timeout(function () {
+                        if (!$rootScope.insidePopover)
+                            $(element).popover('hide');
+                    }, 50);
+                });
             }
         };
         // end messageReact
+    }])
+
+
+    .directive('hoverPopover', ['$timeout', '$rootScope', function ($timeout, $rootScope) {
+        return {
+            restrict: 'A',
+            require: 'ngModel',
+            scope:{
+                ngModel: '='
+            },
+            controller: function ($scope, $element) {
+                $scope.attachEvents = function (element) {
+                    $('.popover').on('mouseenter', function () {
+                        $rootScope.insidePopover = true;
+                    });
+                    $('.popover').on('mouseleave', function () {
+                        $rootScope.insidePopover = false;
+                        $(element).popover('hide');
+                    });
+                    $('.popover').on('mouseclick', function () {
+                        $rootScope.insidePopover = false;
+                        $(element).popover('hide');
+                    });
+                };
+            },
+            link: function (scope, element, attrs) {
+                scope.$watch(function () { return scope.ngModel }, function () {
+                    $rootScope.insidePopover = false;
+                    $(element).popover({
+                        content: "<div>\n" +
+                        "  <a href=" + (scope.ngModel && scope.ngModel != null ? scope.ngModel.Prop1 : '') + " target=\"_blank\" class=\"title\" align=\"center\"><i class=\"icon icon-document icon-left\"></i>Link1</a>\n" +
+                        "  <a href=" + (scope.ngModel && scope.ngModel != null ? scope.ngModel.Prop2 : '') + " target=\"_self\" class=\"button primary-button\">Link3</a>" +
+                        "</div>",
+                        placement: 'top',
+                        html: true
+                    });
+                    $(element).bind('mouseenter', function (e) {
+                        $timeout(function () {
+                            if (!$rootScope.insidePopover) {
+                                $(element).popover('show');
+                                scope.attachEvents(element);
+                            }
+                        }, 50);
+                    });
+                    $(element).bind('mouseleave', function (e) {
+                        $timeout(function () {
+                            if (!$rootScope.insidePopover)
+                                $(element).popover('hide');
+                        }, 50);
+                    });
+                });
+            }
+        };
     }])
 
     // http://stackoverflow.com/questions/16349578/angular-directive-for-a-fallback-image
