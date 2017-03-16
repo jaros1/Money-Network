@@ -1,5 +1,6 @@
 {
  "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "cloneable": true,
  "description": "Complementary & alternative money demo",
  "domain": "moneynetwork.bit",
  "favicon": "favicon.ico",
@@ -15,6 +16,10 @@
   "css/all.css": {
    "sha512": "67273a29722400aba43e88acdb6b21854e6ccc2514cb2f1d8ba9f5f4e9d83f95",
    "size": 402877
+  },
+  "data-default/users/content-default.json": {
+   "sha512": "3bbc8c28ae8d50c7c04409edb47153e3d02ad470ed14fde839c8e8dd8dbe1ff4",
+   "size": 741
   },
   "dbschema.json": {
    "sha512": "5e203fc5bf23f59f8aaa6b4385e654049ae44c4974e8fd36fb55f9126908622a",
@@ -289,15 +294,15 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1489652691,
+ "modified": 1489655854,
  "postmessage_nonce_security": true,
  "sign": [
-  107712412368562281934724511042562953193580176208272270818466897854350876224779,
-  1519820612415056406263160597211014771946093117850658039976657819121560186493
+  61486039902809598407987109952266730604380071210292983339207668384152462823702,
+  31991901673896992043743791460797704421241501446683798571058388826792170045056
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G2JAYAwjSq64hQhChlBcZdnOgK2cPcFsHLHxrVPKDD/ipRv2RhwpVsz0jeY3HYeFLRIJH1fwx9FpRuhxS/x7pGE="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HFMAKu1qPdVAoALPff5EsKt7pmyf1E17vX+HJ0QW2mV2fIg9OiABnZpG0dPo52LM1lb57O+Z9i6oT8RmiILrUWE="
  },
  "signs_required": 1,
  "title": "Money Network",
