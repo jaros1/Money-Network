@@ -4774,7 +4774,8 @@ angular.module('MoneyNetwork')
             var pgm = service + '.ls_save_contacts: ' ;
 
             // any logical deleted inbox messages to be physical deleted?
-            var i, contact, j, message, auth_address, local_msg_seq, key, sender_sha256 ;
+            var i, contact, j, message, auth_address, local_msg_seq, key, sender_sha256, reactions_index, save_reactions ;
+            save_reactions = false ;
             for (i=0 ; i<ls_contacts.length ; i++)  {
                 contact = ls_contacts[i] ;
                 if (contact.type == 'public') continue ; // my outgoing public chat messages
@@ -4785,8 +4786,12 @@ angular.module('MoneyNetwork')
                     if (!message.deleted_at) continue ;
                     if (message.folder == 'inbox') {
                         if (message.z_filename) {
-                            // physical delete inbox message (public chat)
-                            console.log(pgm + 'todo: physical delete inbox message (public chat)');
+                            // mark public chat inbox message as deleted
+                            console.log(pgm + 'marking public chat inbox message as deleted');
+                            reactions_index = message.sent_at + ',' + contact.auth_address.substr(0,4);
+                            if (!ls_reactions[reactions_index]) ls_reactions[reactions_index] = {} ;
+                            ls_reactions[reactions_index].deleted_at = message.deleted_at ;
+                            save_reactions = true ;
                         }
                         else {
                             // physical delete inbox message (private or group chat)
@@ -4839,6 +4844,7 @@ angular.module('MoneyNetwork')
                     contact.messages.splice(j,1);
                 } // for j (contact.messages)
             } // for i (contacts)
+            if (save_reactions) ls_save_reactions(false) ;
 
             // cleanup contacts before save (remove work variables)
             var local_storage_contacts_clone = JSON.parse(JSON.stringify(ls_contacts));
@@ -9305,7 +9311,8 @@ angular.module('MoneyNetwork')
                     var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
                         file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                         new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
-                        image, byteAmount, chat_bytes, chat_length, error, auth_address, index, break_point ;
+                        image, byteAmount, chat_bytes, chat_length, error, auth_address, index, break_point,
+                        reactions_index, reactions_info ;
                     // update cache_status
                     cache_status.is_pending = false;
                     debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
@@ -9430,8 +9437,18 @@ angular.module('MoneyNetwork')
                     renamed_chat_file = false ;
                     for (i = cache_status.timestamps.length - 1; i >= 0; i--) {
                         timestamp = cache_status.timestamps[i];
+                        if (folder == 'inbox') {
+                            // deleted public chat inbox message?
+                            reactions_index = timestamp + ',' + contact.auth_address.substr(0,4) ;
+                            reactions_info = ls_reactions[reactions_index] ;
+                            if (reactions_info && reactions_info.deleted_at) {
+                                debug('public_chat', pgm + 'skipping ignoring deleted public chat inbox message with reactions_index ' + reactions_index) ;
+                                cache_status.timestamps.splice(i, 1);
+                                continue;
+                            }
+                        }
                         if (read_timestamp) {
-                            // special get_and_load_chat_file call from process_incoming_message - searching for a specifik message
+                            // special get_and_load_chat_file call from process_incoming_message - searching for a specific message
                             if (timestamp != read_timestamp) continue ;
                         }
                         else {

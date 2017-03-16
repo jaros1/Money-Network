@@ -77,7 +77,10 @@ angular.module('MoneyNetwork')
         // focus
         if (!self.is_logged_in()) {
             var set_focus = function () {
-                document.getElementById('auth_password').focus()
+                var id ;
+                if (self.is_logged_in()) return ;
+                id = document.getElementById('auth_password') ;
+                if (id) id.focus() ;
             };
             $timeout(set_focus);
         }
