@@ -4149,71 +4149,88 @@ angular.module('MoneyNetwork')
         // - true: called from ls_load_contacts or load_public_chat
         // - false: do not add message to contact.messages array (already there)
         function add_message(contact, message, load_contacts) {
-            var pgm = service + '.add_message: ' ;
-            var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id ;
-            if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
-            if (!contact.messages) contact.messages = [] ;
-            if (!load_contacts) contact.messages.push(message) ;
-            js_messages_row = {
-                contact: contact,
-                message: message,
-                reactions: JSON.parse(JSON.stringify(get_user_reactions()))
-            } ;
-            if (message.z_filename) {
-                // public chat. not saved in localStorage. Check for any reaction stored in ls_reactions hash
-                reactions_index = message.sent_at ;
-                if (reactions_index && (message.folder == 'inbox')) {
-                    if (contact.auth_address) reactions_index += ',' + contact.auth_address.substr(0,4) ;
-                    else reactions_index = null ;
-                }
-                if (reactions_index) {
-                    reaction_info = ls_reactions[reactions_index] ;
-                    if (reaction_info) {
-                        unique_id = get_my_unique_id() ;
-                        if (reaction_info.users.hasOwnProperty(unique_id)) message.reaction = reaction_info.users[unique_id] ;
+            // read like.json file with public reactions
+            get_like_json(function (like, like_index, empty) {
+                var pgm = service + '.add_message: ' ;
+                var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id, auth_address,
+                    like_index_p, k ;
+                if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
+                if (!contact.messages) contact.messages = [] ;
+                if (!load_contacts) contact.messages.push(message) ;
+                js_messages_row = {
+                    contact: contact,
+                    message: message,
+                    reactions: JSON.parse(JSON.stringify(get_user_reactions()))
+                } ;
+                if (message.z_filename) {
+                    // public chat. not saved in localStorage.
+                    // Check for any private reaction stored in ls_reactions hash
+                    reactions_index = message.sent_at ;
+                    if (reactions_index && (message.folder == 'inbox')) {
+                        if (contact.auth_address) reactions_index += ',' + contact.auth_address.substr(0,4) ;
+                        else reactions_index = null ;
                     }
+                    if (reactions_index) {
+                        reaction_info = ls_reactions[reactions_index] ;
+                        if (reaction_info) {
+                            unique_id = get_my_unique_id() ;
+                            if (reaction_info.users.hasOwnProperty(unique_id)) {
+                                // found private reaction
+                                message.reaction = reaction_info.users[unique_id] ;
+                            }
+                        }
+                    }
+                    // check for any public reaction stored in like.json file
+                    auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
+                    like_index_p = message.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
+                    if (like_index.hasOwnProperty(like_index_p)) {
+                        // found public reaction
+                        k = like_index[like_index_p] ;
+                        message.reaction = like.like[k].emoji ;
+                    }
+                    //debug('reaction', pgm + 'message.z_filename = ' + message.z_filename +
+                    //    ', reactions_index = ' + reactions_index +
+                    //    ', reaction_info = ' + JSON.stringify(reaction_info) + ', message.reaction = ' + message.reaction);
                 }
-                //debug('reaction', pgm + 'message.z_filename = ' + message.z_filename +
-                //    ', reactions_index = ' + reactions_index +
-                //    ', reaction_info = ' + JSON.stringify(reaction_info) + ', message.reaction = ' + message.reaction);
-            }
-            if (message.reaction) {
-                // reaction from localStorage. Mark reaction as selected in reactions array
-                unicode = symbol_to_unicode(message.reaction) ;
-                index = -1 ;
-                for (i=0 ; i<js_messages_row.reactions.length ; i++) if (js_messages_row.reactions[i].unicode == unicode) index = i ;
-                // console.log(pgm + 'message.reaction = ' + message.reaction + ', unicode = ' + unicode + ', index = ' + index);
-                if (index == -1) {
-                    // reaction was not found in current user reactions. use full list of emojis as fallback
-                    title = is_emoji[message.reaction] ;
-                    if (title) js_messages_row.reactions.push({
-                        unicode: unicode,
-                        title: title,
-                        selected: true
-                    }) ;
+                if (message.reaction) {
+                    // reaction from localStorage. Mark reaction as selected in reactions array
+                    unicode = symbol_to_unicode(message.reaction) ;
+                    index = -1 ;
+                    for (i=0 ; i<js_messages_row.reactions.length ; i++) if (js_messages_row.reactions[i].unicode == unicode) index = i ;
+                    // console.log(pgm + 'message.reaction = ' + message.reaction + ', unicode = ' + unicode + ', index = ' + index);
+                    if (index == -1) {
+                        // reaction was not found in current user reactions. use full list of emojis as fallback
+                        title = is_emoji[message.reaction] ;
+                        if (title) js_messages_row.reactions.push({
+                            unicode: unicode,
+                            title: title,
+                            selected: true
+                        }) ;
+                    }
+                    else js_messages_row.reactions[index].selected = true ;
+                    // console.log(pgm + 'js_messages_row.reactions = ' + JSON.stringify(js_messages_row.reactions));
                 }
-                else js_messages_row.reactions[index].selected = true ;
-                // console.log(pgm + 'js_messages_row.reactions = ' + JSON.stringify(js_messages_row.reactions));
-            }
-            // add new row to js_messages
-            js_messages.push(js_messages_row) ;
-            // add indexes to js_messages
-            // seq index
-            js_messages_seq++ ;
-            message.seq = js_messages_seq ;
-            js_messages_index.seq[message.seq] = js_messages_row ;
-            // sender_sha256 index
-            if (message.sender_sha256) {
-                js_messages_index.sender_sha256[message.sender_sha256] = js_messages_row ;
-                // console.log(pgm + 'inserted sender_sha256 address ' + message.sender_sha256 + ' into js_messages sender_sha256 index') ;
-            }
-            // local_msg_seq index
-            if (message.local_msg_seq) {
-                js_messages_index.local_msg_seq[message.local_msg_seq] = js_messages_row ;
-                // console.log(pgm + 'inserted local_msg_seq address ' + message.local_msg_seq + ' into js_messages local_msg_seq index') ;
-            }
-            if (load_contacts) check_overflow() ;
-            // if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
+                // add new row to js_messages
+                js_messages.push(js_messages_row) ;
+                // add indexes to js_messages
+                // seq index
+                js_messages_seq++ ;
+                message.seq = js_messages_seq ;
+                js_messages_index.seq[message.seq] = js_messages_row ;
+                // sender_sha256 index
+                if (message.sender_sha256) {
+                    js_messages_index.sender_sha256[message.sender_sha256] = js_messages_row ;
+                    // console.log(pgm + 'inserted sender_sha256 address ' + message.sender_sha256 + ' into js_messages sender_sha256 index') ;
+                }
+                // local_msg_seq index
+                if (message.local_msg_seq) {
+                    js_messages_index.local_msg_seq[message.local_msg_seq] = js_messages_row ;
+                    // console.log(pgm + 'inserted local_msg_seq address ' + message.local_msg_seq + ' into js_messages local_msg_seq index') ;
+                }
+                if (load_contacts) check_overflow() ;
+                // if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
+
+            }) ; // get_like_json callback 1
         } // add_message
 
         function remove_message (js_messages_row) {
