@@ -221,6 +221,228 @@
         <!-- end network.html -->
     </script>
 
+    <script type="text/ng-template" id="messageTree">
+
+        <span ng-show="c.set_first_and_last_chat($first,$last,m)"></span>
+
+        <div ng-show="(m.message.folder == 'outbox')" class="media-left">
+            <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Click to continue chat"
+                 title="Click to continue chat" ng-click="c.chat_contact(m.contact)">
+        </div>
+        <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
+
+            <!-- chat2: show outgoing message -->
+            <table class="speech" ng-hide="m.edit_chat_message">
+                <tr>
+                    <td>
+                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
+                                              alt="Click to continue chat" title="Click to continue chat">
+                                            <span ng-bind-html="c.setup.alias">Me</span>
+                                            <span ng-class="m.contact|contactGlyphicon"
+                                                  title="{{m|messageGlyphiconTitle}}"></span>
+                                        </span>
+                    </td>
+                    <td style="text-align: right; vertical-align: top">
+                        <table style="margin-right: 0; margin-left: auto;">
+                            <tr><td>
+                                                <span class="speech-time"
+                                                      title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
+                                                <span class="speech-time" title="{{m|messageOutSentTitle}}">
+                                                    <i class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
+                                <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
+                                                <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
+                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
+                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment">
+                                <message-react message="m" folder="outbox" react="c.react"></message-react>
+                            </td></tr>
+                            <tr><td><table style="margin-right: 0; margin-left: auto;">
+                                <tr>
+                                    <td></td>
+                                    <td ng-repeat="r in c.get_reactions(m)">
+                                        <img ng-src="{{r.src}}" height="14" width="14">
+                                    </td>
+                                    <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
+                                </tr>
+                            </table></td></tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <div ng-class="m|messageOverflowOutbox" data-seq="{{m.message.seq}}">
+                            Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
+                            <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
+                                 title="Click to chat" alt="Click to chat"
+                                 ng-click="c.chat_contact(m.contact)" fallback-src="public/images/image_failed.gif">
+                            <span ng-bind-html="m|formatChatMessage"></span>
+                        </div>
+                    </td>
+                </tr>
+                <tr ng-show="m.overflow">
+                    <td colspan="2" style="text-align: center" >
+                        <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
+                    </td>
+                </tr>
+                <tr ng-show="c.show_image(m)">
+                    <td colspan="2">
+                        <img ng-src="{{m.message.message.image}}">
+                    </td>
+                </tr>
+
+            </table>
+
+            <!-- edit outgoing message -->
+            <form name="{{m|chatEditFormName}}" ng-show="m.edit_chat_message" class="css-form" novalidate>
+
+                <table class="speech" style="width: 100%">
+                    <tbody style="display: table; width: inherit;">
+                    <tr>
+                        <td style="white-space: nowrap;"><a href="#" class="media-heading"
+                                                            ng-bind-html="c.setup.alias">Me</a></td>
+                        <td style="text-align: right; vertical-align: top; width: 99%">
+                            <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="width: 99%">
+                                            <textarea class="autosize postfield new_chat_msg" id="{{m|chatEditTextAreaId}}"
+                                                      rows="1" required ng-keyup="c.handleTextAreaHeight($event)">
+                                            </textarea>
+                        </td>
+                    </tr>
+                    <tr ng-show="c.show_image(m)">
+                        <td colspan="2">
+                            <div style="position: relative; display: inline-block;">
+                                            <span ng-click="c.edit_chat_message_remove_image(m)"
+                                                  class="glyphicon glyphicon-remove"
+                                                  style="position: absolute; right: 0;"></span>
+                                <img id="{{m|chatEditImgId}}">
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="width: 99%; text-align: right">
+
+                            <div class="image-upload">
+                                <label for="{{m|chatFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
+                                <input id="{{m|chatFileInputId}}" type="file"
+                                       accept=".png, .jpg, .jpeg, .gif, .tif"
+                                       custom-on-change="c.uploadImage"/>
+                            </div>
+
+                            <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
+                            <button type="submit" ng-click="c.delete_edit_chat_msg(m)">Delete</button>
+                            <button type="submit" ng-click="c.save_chat_msg(m)" ng-disabled="{{m|chatEditFormDisabled}}">Send</button>
+                        </td>
+                    </tr>
+
+                    </tbody>
+                </table>
+
+            </form>
+        </div>
+
+        <div ng-show="(m.message.folder == 'inbox')" class="media-right">
+            <img ng-src="{{m|findMessageSenderAvatar}}" class="img-circle img-sm" alt="Click to chat"
+                 title="Click to chat" ng-click="c.chat_contact(m.contact)" fallback-src="public/images/image_failed.gif">
+        </div>
+        <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
+
+            <!-- chat2: show inbox message -->
+            <table class="speech">
+                <tr>
+                    <td style="text-align: left">
+                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
+                                              alt="Click to chat" title="Click to chat">
+                                            <span ng-bind-html="m|messageAlias"></span>
+                                            <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}"></span>
+                                        </span>
+                    </td>
+                    <td style="text-align: right; vertical-align: top">
+                        <table style="margin-right: 0; margin-left: auto;">
+                            <tr><td>
+                                <span class="speech-time" title="Message size in browser"> {{m.message|formatMsgSize}}</span>
+                                                <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
+                                                        class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
+                                                <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
+                                                      ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
+                                                <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
+                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
+                                <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
+                                   ng-click="c.enter_password(m)" title="Click to verify"></a>
+                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment" ng-click="c.show_comment(m)">
+                                <message-react message="m" folder="inbox" react="c.react"></message-react>
+                            </td></tr>
+                            <tr><td><table style="margin-right: 0; margin-left: auto;">
+                                <tr>
+                                    <td></td>
+                                    <td ng-repeat="r in c.get_reactions(m)">
+                                        <img ng-src="{{r.src}}" height="14" width="14">
+                                    </td>
+                                    <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
+                                </tr>
+                            </table></td></tr>
+                        </table>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align: left">
+                        <div ng-class="m|messageOverflowInbox" data-seq="{{m.message.seq}}">Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
+                            <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
+                                 title="Click to chat" alt="Click to chat"
+                                 ng-click="c.chat_contact(m.contact)">
+                            <span ng-bind-html="m|formatChatMessage"></span>
+                        </div>
+                    </td>
+                </tr>
+                <tr ng-show="m.overflow">
+                    <td colspan="2" style="text-align: center" >
+                        <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
+                    </td>
+                </tr>
+                <tr ng-show="c.show_image(m)">
+                    <td colspan="2">
+                        <img ng-src="{{c.get_image_src(m)}}" >
+                    </td>
+                </tr>
+                <tr ng-show="m.show_comment">
+                    <td colspan="2" style="width: 99%">
+                                        <textarea class="autosize postfield new_chat_msg" ng-model="m.comment"
+                                                  rows="1" required ng-keyup="c.handleTextAreaHeight($event)"
+                                                  placeholder="Enter comment">
+                                        </textarea>
+                    </td>
+                </tr>
+                <tr ng-show="m.show_comment && m.comment_src">
+                    <td colspan="2" style="width: 99%">
+                        <img ng-src="{{m.comment_src}}">
+                    </td>
+                </tr>
+                <tr ng-show="m.show_comment">
+                    <td colspan="2" style="width: 99%; text-align: right">
+                        <div class="image-upload">
+                            <label for="{{m|commentFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
+                            <input id="{{m|commentFileInputId}}" type="file"
+                                   accept=".png, .jpg, .jpeg, .gif, .tif"
+                                   custom-on-change="c.uploadImage"/>
+                        </div>
+                        <button type="submit" ng-click="c.create_comment(m)">Send</button>
+                    </td>
+                </tr>
+
+
+            </table>
+
+        </div>
+
+        <ul ng-if="m.messages">
+            <li ng-repeat="m in m.messages" ng-include="'messageTree'">
+            </li>
+        </ul>
+        <!-- end messageTree -->
+    </script>
+
     <script type="text/ng-template" id="chat.html">
 
         <div class="bodyfull">
@@ -466,232 +688,9 @@
                             </div>
                         </li>
 
-                        <li ng-repeat="m in c.messages|filter:c.chat_filter|orderBy:c.chat_order_by:true|limitTo: c.chat_page_context.infinite_scroll_limit"
-                            class="mar-btm">
-                            <span ng-show="c.set_first_and_last_chat($first,$last,m)"></span>
-
-                            <div ng-show="(m.message.folder == 'outbox')" class="media-left">
-                                <img ng-src="{{c.avatar.src}}" class="img-circle img-sm"
-                                     alt="Click to continue chat" title="Click to continue chat"
-                                     ng-click="c.chat_contact(m.contact)">
-                            </div>
-                            <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
-
-                                <!-- chat: show outgoing message -->
-                                <table class="speech" ng-hide="m.edit_chat_message">
-                                    <tr>
-                                        <td>
-
-                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
-                                              title="Click to continue chat">
-                                            <span ng-bind-html="c.setup.alias">Me</span>
-                                            <span ng-class="m.contact|contactGlyphicon" title="{{m|messageGlyphiconTitle}}"></span>
-                                        </span>
-
-                                        </td>
-                                        <td style="text-align: right; vertical-align: top">
-
-                                            <table style="margin-right: 0; margin-left: auto;">
-                                                <tr>
-                                                    <td>
-
-                                                        <span class="speech-time"
-                                                              title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
-                                                        <span class="speech-time" title="{{m|messageOutSentTitle}}">
-                                                            <i class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                                        <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)"
-                                                           ng-click="c.edit_chat_msg(m)"></a>
-                                                        <span class="glyphicon glyphicon-remove glyphicon-remove-msg"
-                                                              ng-show="c.show_remove_icon(m)"
-                                                              ng-click="c.edit_chat_msg(m)"
-                                                              title="Click to delete message"></span>
-                                                        <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment">
-                                                        <message-react message="m" folder="outbox" react="c.react"></message-react>
-
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>
-                                                        <table style="margin-right: 0; margin-left: auto;">
-                                                            <tr>
-                                                                <td></td>
-                                                                <td ng-repeat="r in c.get_reactions(m)">
-                                                                    <img ng-src="{{r.src}}" height="14" width="14">
-                                                                </td>
-                                                                <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
-                                                            </tr>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            </table>
-
-                                        </td>
-                                    </tr>
-                                    <tr>
-
-                                        <td colspan="2">
-
-                                            <div ng-class="m|messageOverflowOutbox" data-seq="{{m.message.seq}}">
-
-                                                Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
-                                                <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
-                                                     title="Click to chat" alt="Click to chat"
-                                                     ng-click="c.chat_contact(m.contact)">
-                                                <span ng-bind-html="m|formatChatMessage"></span>
-
-                                            </div>
-
-                                        </td>
-
-                                    </tr>
-                                    <tr ng-show="m.overflow">
-                                        <td colspan="2" style="text-align: center">
-                                            <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
-                                        </td>
-                                    </tr>
-                                    <tr ng-show="c.show_image(m)">
-                                        <td colspan="2">
-                                            <img ng-src="{{m.message.message.image}}">
-                                        </td>
-                                    </tr>
-                                </table>
-
-                                <!-- edit outgoing message -->
-                                <form name="{{m|chatEditFormName}}" ng-show="m.edit_chat_message" class="css-form" novalidate>
-
-                                    <table class="speech" style="width: 100%">
-                                        <tr>
-                                            <td style="white-space: nowrap;"><a href="#" class="media-heading"
-                                                                                ng-bind-html="c.setup.alias">Me</a></td>
-                                            <td style="text-align: right; vertical-align: top; width: 99%">
-                                                <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="2" style="width: 99%">
-                                                <textarea class="autosize postfield new_chat_msg" id="{{m|chatEditTextAreaId}}"
-                                                          rows="1" required ng-keyup="c.handleTextAreaHeight($event)">
-                                                </textarea>
-                                            </td>
-                                        </tr>
-                                        <tr ng-show="c.show_image(m)">
-                                            <td colspan="2">
-                                                <div style="position: relative; display: inline-block;">
-                                                    <span ng-click="c.edit_chat_message_remove_image(m)"
-                                                          class="glyphicon glyphicon-remove"
-                                                          style="position: absolute; right: 0;"></span>
-                                                    <img id="{{m|chatEditImgId}}">
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="2" style="width: 99%; text-align: right">
-
-                                                <div class="image-upload">
-                                                    <label for="{{m|chatFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
-                                                    <input id="{{m|chatFileInputId}}" type="file"
-                                                           accept=".png, .jpg, .jpeg, .gif, .tif"/>
-                                                </div>
-
-                                                <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
-                                                <button type="submit" ng-click="c.delete_edit_chat_msg(m)">Delete</button>
-                                                <button type="submit" ng-click="c.save_chat_msg(m)"
-                                                        ng-disabled="{{m|chatEditFormDisabled}}">Send</button>
-                                            </td>
-                                        </tr>
-                                    </table>
-
-                                </form>
-                            </div>
-
-                            <div ng-show="(m.message.folder == 'inbox')" class="media-right">
-                                <img ng-src="{{m.contact|findContactAvatar}}" class="img-circle img-sm"
-                                     alt="Click to chat"
-                                     title="Click to chat" ng-click="c.chat_contact(m.contact)">
-                            </div>
-                            <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
-
-                                <!-- chat: show inbox message -->
-                                <table class="speech">
-                                    <tr>
-                                        <td style="text-align: left">
-                                            <span ng-click="c.chat_contact(m.contact)" class="media-heading" title="Click to chat">
-                                                <span ng-bind-html="m|messageAlias"></span>
-                                                <span ng-class="m|messageGlyphicon"
-                                                      title="{{m|messageGlyphiconTitle}}"></span>
-                                            </span>
-                                        </td>
-                                        <td style="text-align: right; vertical-align: top">
-
-                                            <table style="margin-right: 0; margin-left: auto;">
-                                                <tr>
-                                                    <td>
-                                                        <span class="speech-time"
-                                                              title="Message size in browser"> {{m.message|formatMsgSize}}</span>
-                                                        <span class="speech-time"
-                                                              title="{{m.message.sent_at|date:'short'}}"> <i
-                                                                class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                                        <span class="glyphicon glyphicon-bullhorn"
-                                                              ng-show="c.show_bullhorn_icon(m)"
-                                                              ng-click="c.edit_chat_msg(m, true)"
-                                                              title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
-                                                        <span class="glyphicon glyphicon-remove glyphicon-remove-msg"
-                                                              ng-show="c.show_remove_icon(m)"
-                                                              ng-click="c.edit_chat_msg(m)"
-                                                              title="Click to delete message"></span>
-                                                        <a ng-show="c.show_verify_icon(m)" class="icon icon-verify"
-                                                           href=""
-                                                           ng-click="c.enter_password(m)"
-                                                           title="Click to verify"></a>
-                                                        <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment">
-                                                        <message-react message="m" folder="inbox" react="c.react"></message-react>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>
-                                                        <table style="margin-right: 0; margin-left: auto;">
-                                                            <tr>
-                                                                <td></td>
-                                                                <td ng-repeat="r in c.get_reactions(m)">
-                                                                    <img ng-src="{{r.src}}" height="14" width="14">
-                                                                </td>
-                                                                <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
-                                                            </tr>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            </table>
-
-                                        </td>
-                                    </tr>
-                                    <tr>
-
-                                        <td colspan="2" style="text-align: left">
-                                            <div ng-class="m|messageOverflowInbox" data-seq="{{m.message.seq}}">
-                                                Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
-                                                <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
-                                                     title="Click to chat" alt="Click to chat"
-                                                     ng-click="c.chat_contact(m.contact)">
-                                                <span ng-bind-html="m|formatChatMessage"></span>
-                                            </div>
-                                        </td>
-
-                                    </tr>
-
-                                    <tr ng-show="m.overflow">
-                                        <td colspan="2" style="text-align: center">
-                                            <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
-                                        </td>
-                                    </tr>
-
-                                    <tr ng-show="c.show_image(m)">
-                                        <td colspan="2">
-                                            <img ng-src="{{c.get_image_src(m)}}">
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
+                        <li ng-repeat="m in c.messages|filter:c.chat_filter|orderBy:c.chat_order_by:true|limitTo: c.chat_page_context.infinite_scroll_limit" class="mar-btm" ng-include="'messageTree'">
                         </li>
+
                     </ul>
 
                 </div>
@@ -1010,221 +1009,9 @@
                         </div>
                     </li>
 
-                    <li ng-repeat="m in c.messages|filter:c.chat_filter|orderBy:c.chat_order_by:true|limitTo: c.chat_page_context.infinite_scroll_limit" class="mar-btm">
-
-                        <span ng-show="c.set_first_and_last_chat($first,$last,m)"></span>
-
-                        <div ng-show="(m.message.folder == 'outbox')" class="media-left">
-                            <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Click to continue chat"
-                                 title="Click to continue chat" ng-click="c.chat_contact(m.contact)">
-                        </div>
-                        <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
-
-                            <!-- chat2: show outgoing message -->
-                            <table class="speech" ng-hide="m.edit_chat_message">
-                                <tr>
-                                    <td>
-                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
-                                              alt="Click to continue chat" title="Click to continue chat">
-                                            <span ng-bind-html="c.setup.alias">Me</span>
-                                            <span ng-class="m.contact|contactGlyphicon"
-                                                  title="{{m|messageGlyphiconTitle}}"></span>
-                                        </span>
-                                    </td>
-                                    <td style="text-align: right; vertical-align: top">
-                                        <table style="margin-right: 0; margin-left: auto;">
-                                            <tr><td>
-                                                <span class="speech-time"
-                                                      title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
-                                                <span class="speech-time" title="{{m|messageOutSentTitle}}"> <i
-                                                        class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                                        <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
-                                                <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment">
-                                                <message-react message="m" folder="outbox" react="c.react"></message-react>
-                                            </td></tr>
-                                            <tr><td><table style="margin-right: 0; margin-left: auto;">
-                                                <tr>
-                                                    <td></td>
-                                                    <td ng-repeat="r in c.get_reactions(m)">
-                                                        <img ng-src="{{r.src}}" height="14" width="14">
-                                                    </td>
-                                                    <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
-                                                </tr>
-                                            </table></td></tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td colspan="2">
-                                        <div ng-class="m|messageOverflowOutbox" data-seq="{{m.message.seq}}">
-                                        Hello <span ng-bind-html="m|formatChatMessageAlias"></span>
-                                        <img ng-src="{{m.contact|findContactAvatar}}" height="18" width="18"
-                                             title="Click to chat" alt="Click to chat"
-                                             ng-click="c.chat_contact(m.contact)" fallback-src="public/images/image_failed.gif">
-                                        <span ng-bind-html="m|formatChatMessage"></span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr ng-show="m.overflow">
-                                    <td colspan="2" style="text-align: center" >
-                                        <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
-                                    </td>
-                                </tr>
-                                <tr ng-show="c.show_image(m)">
-                                    <td colspan="2">
-                                        <img ng-src="{{m.message.message.image}}">
-                                    </td>
-                                </tr>
-
-                            </table>
-
-                            <!-- edit outgoing message -->
-                            <form name="{{m|chatEditFormName}}" ng-show="m.edit_chat_message" class="css-form" novalidate>
-
-                                <table class="speech" style="width: 100%">
-                                    <tbody style="display: table; width: inherit;">
-                                    <tr>
-                                        <td style="white-space: nowrap;"><a href="#" class="media-heading"
-                                                                            ng-bind-html="c.setup.alias">Me</a></td>
-                                        <td style="text-align: right; vertical-align: top; width: 99%">
-                                            <span class="speech-time"><i class="fa fa-clock-o fa-fw"></i>Now</span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="2" style="width: 99%">
-                                            <textarea class="autosize postfield new_chat_msg" id="{{m|chatEditTextAreaId}}"
-                                                      rows="1" required ng-keyup="c.handleTextAreaHeight($event)">
-                                            </textarea>
-                                        </td>
-                                    </tr>
-                                    <tr ng-show="c.show_image(m)">
-                                        <td colspan="2">
-                                            <div style="position: relative; display: inline-block;">
-                                            <span ng-click="c.edit_chat_message_remove_image(m)"
-                                                  class="glyphicon glyphicon-remove"
-                                                  style="position: absolute; right: 0;"></span>
-                                                <img id="{{m|chatEditImgId}}">
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="2" style="width: 99%; text-align: right">
-
-                                            <div class="image-upload">
-                                                <label for="{{m|chatFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
-                                                <input id="{{m|chatFileInputId}}" type="file"
-                                                       accept=".png, .jpg, .jpeg, .gif, .tif"
-                                                       custom-on-change="c.uploadImage"/>
-                                            </div>
-
-                                            <button type="submit" ng-click="c.cancel_edit_chat_msg(m)">Cancel</button>
-                                            <button type="submit" ng-click="c.delete_edit_chat_msg(m)">Delete</button>
-                                            <button type="submit" ng-click="c.save_chat_msg(m)" ng-disabled="{{m|chatEditFormDisabled}}">Send</button>
-                                        </td>
-                                    </tr>
-
-                                    </tbody>
-                                </table>
-
-                            </form>
-                        </div>
-
-                        <div ng-show="(m.message.folder == 'inbox')" class="media-right">
-                            <img ng-src="{{m|findMessageSenderAvatar}}" class="img-circle img-sm" alt="Click to chat"
-                                 title="Click to chat" ng-click="c.chat_contact(m.contact)" fallback-src="public/images/image_failed.gif">
-                        </div>
-                        <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
-
-                            <!-- chat2: show inbox message -->
-                            <table class="speech">
-                                <tr>
-                                    <td style="text-align: left">
-                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
-                                              alt="Click to chat" title="Click to chat">
-                                            <span ng-bind-html="m|messageAlias"></span>
-                                            <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}"></span>
-                                        </span>
-                                    </td>
-                                    <td style="text-align: right; vertical-align: top">
-                                        <table style="margin-right: 0; margin-left: auto;">
-                                            <tr><td>
-                                                <span class="speech-time" title="Message size in browser"> {{m.message|formatMsgSize}}</span>
-                                                <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
-                                                        class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                                <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
-                                                      ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
-                                                <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                                <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
-                                                   ng-click="c.enter_password(m)" title="Click to verify"></a>
-                                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment" ng-click="c.show_comment(m)">
-                                                <message-react message="m" folder="inbox" react="c.react"></message-react>
-                                            </td></tr>
-                                            <tr><td><table style="margin-right: 0; margin-left: auto;">
-                                                <tr>
-                                                    <td></td>
-                                                    <td ng-repeat="r in c.get_reactions(m)">
-                                                        <img ng-src="{{r.src}}" height="14" width="14">
-                                                    </td>
-                                                    <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
-                                                </tr>
-                                            </table></td></tr>
-                                        </table>
-
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td colspan="2" style="text-align: left">
-                                        <div ng-class="m|messageOverflowInbox" data-seq="{{m.message.seq}}">Hi <span ng-bind-html="m|formatChatMessageAlias"></span>
-                                            <img ng-src="{{m|findMessageReceiverAvatar}}" height="18" width="18"
-                                                 title="Click to chat" alt="Click to chat"
-                                                 ng-click="c.chat_contact(m.contact)">
-                                            <span ng-bind-html="m|formatChatMessage"></span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr ng-show="m.overflow">
-                                    <td colspan="2" style="text-align: center" >
-                                        <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
-                                    </td>
-                                </tr>
-                                <tr ng-show="c.show_image(m)">
-                                    <td colspan="2">
-                                        <img ng-src="{{c.get_image_src(m)}}" >
-                                    </td>
-                                </tr>
-                                <tr ng-show="m.show_comment">
-                                    <td colspan="2" style="width: 99%">
-                                        <textarea class="autosize postfield new_chat_msg" ng-model="m.comment"
-                                                  rows="1" required ng-keyup="c.handleTextAreaHeight($event)"
-                                                  placeholder="Enter comment">
-                                        </textarea>
-                                    </td>
-                                </tr>
-                                <tr ng-show="m.show_comment && m.comment_src">
-                                    <td colspan="2" style="width: 99%">
-                                        <img ng-src="{{m.comment_src}}">
-                                    </td>
-                                </tr>
-                                <tr ng-show="m.show_comment">
-                                    <td colspan="2" style="width: 99%; text-align: right">
-                                        <div class="image-upload">
-                                            <label for="{{m|commentFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
-                                            <input id="{{m|commentFileInputId}}" type="file"
-                                                   accept=".png, .jpg, .jpeg, .gif, .tif"
-                                                   custom-on-change="c.uploadImage"/>
-                                        </div>
-                                        <button type="submit" ng-click="c.create_comment(m)">Send</button>
-                                    </td>
-                                </tr>
-
-
-                            </table>
-
-                        </div>
+                    <li ng-repeat="m in c.messages|filter:c.chat_filter|orderBy:c.chat_order_by:true|limitTo: c.chat_page_context.infinite_scroll_limit" class="mar-btm" ng-include="'messageTree'">
                     </li>
+
                 </ul>
 
             </div><!-- end infinite-scroll div -->

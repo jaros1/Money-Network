@@ -4104,15 +4104,16 @@ angular.module('MoneyNetwork')
             return null ;
         } // get_public_chat_outbox_msg
 
-        // todo: index js_messages with local_msg_seq
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
         var js_messages_seq = 0 ; // internal seq to rows in js_messages.
         var js_messages = [] ; // array with { :contact => contact, :message => message } - one row for each message
         var js_messages_index = { //
             seq: {}, // // from seq to row in js_message. always present and link between js_message_row and message objects
             sender_sha256: {}, // from sender_sha256 to row in js_messages
-            local_msg_seq: {} // from local_msg_seq in message to row in js_messages
+            local_msg_seq: {}, // from local_msg_seq in message to row in js_messages
+            parent: {}         // from parent ("<sent_at>,<auth4>") to row in js_messages
         } ;
+        var js_orphan_messages = {} ; // from parent ("<sent_at>,<auth4>") to an array of orphan comments
 
         function clear_messages () {
             var key ;
@@ -4121,6 +4122,8 @@ angular.module('MoneyNetwork')
             for (key in js_messages_index.seq) delete js_messages_index.seq[key] ;
             for (key in js_messages_index.sender_sha256) delete js_messages_index.sender_sha256[key] ;
             for (key in js_messages_index.local_msg_seq) delete js_messages_index.local_msg_seq[key] ;
+            for (key in js_messages_index.parent) delete js_messages_index.parent[key] ;
+            for (key in js_orphan_messages) delete js_orphan_messages[key] ;
         } // clear_messages
 
         var standard_reactions = [
@@ -4153,7 +4156,7 @@ angular.module('MoneyNetwork')
             get_like_json(function (like, like_index, empty) {
                 var pgm = service + '.add_message: ' ;
                 var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id, auth_address,
-                    like_index_p, k ;
+                    like_index_p, k, auth4, sender, parent, js_parent_messages_row ;
                 if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
                 if (!contact.messages) contact.messages = [] ;
                 if (!load_contacts) contact.messages.push(message) ;
@@ -4210,9 +4213,32 @@ angular.module('MoneyNetwork')
                     else js_messages_row.reactions[index].selected = true ;
                     // console.log(pgm + 'js_messages_row.reactions = ' + JSON.stringify(js_messages_row.reactions));
                 }
-                // add new row to js_messages
-                js_messages.push(js_messages_row) ;
-                // add indexes to js_messages
+
+                //// save js_messages_row in 1) js_messages, 2) under an existing row in js_messages or 3) as an orphan js_messages_row
+                if (!message.message.parent) {
+                    // 1) normal message
+                    js_messages.push(js_messages_row) ;
+                }
+                else {
+                    // 2) or 3) comment
+                    console.log(pgm + 'loading comment = ' + JSON.stringify(message)) ;
+                    // has parent message been loaded?
+                    js_parent_messages_row = js_messages_index.parent[message.message.parent] ;
+                    if (js_parent_messages_row) {
+                        // 2) under a existing row in js_messages
+                        console.log(pgm + 'parent row has already been loaded. inserting new js_messages_row under existing parent (three structure)') ;
+                        if (!js_parent_messages_row.messages) js_parent_messages_row.messages = [] ;
+                        js_parent_messages_row.messages.push(js_messages_row) ;
+                    }
+                    else {
+                        // 3) as a orphan js_messages_row
+                        console.log(pgm + 'parent row has not yet been loaded. saving new js_messages_row in js_orphan_messages and wait for parent row to be loaded') ;
+                         if (!js_orphan_messages[message.message.parent]) js_orphan_messages[message.message.parent] = [] ;
+                         js_orphan_messages[message.message.parent].push(js_messages_row) ;
+                    }
+                }
+
+                // add indexes to js_messages_row
                 // seq index
                 js_messages_seq++ ;
                 message.seq = js_messages_seq ;
@@ -4227,6 +4253,20 @@ angular.module('MoneyNetwork')
                     js_messages_index.local_msg_seq[message.local_msg_seq] = js_messages_row ;
                     // console.log(pgm + 'inserted local_msg_seq address ' + message.local_msg_seq + ' into js_messages local_msg_seq index') ;
                 }
+                // parent index. "<sent_at>,<auth4>". special unique id used for comments
+                if (message.folder == 'outbox') auth4 = ZeroFrame.site_info.auth_address.substr(0, 4) ;
+                else if (contact.type != 'group') auth4 = contact.auth_address.substr(0,4) ; // public chat inbox or private chat inbox message from contact
+                else {
+                    // group chat. find sender from contact.participants and message.participant
+                    unique_id = contact.participants[message.participant-1] ;
+                    sender = get_contact_by_unique_id(unique_id) ;
+                    console.log(pgm + 'parent index for group chat. message.participant = ' + message.participant +
+                        ', contact.participants = ' + JSON.stringify(contact.participants) + ', unique_id = ' + unique_id + ', sender = ' + (sender ? true : false)) ;
+                    if (sender) auth4 = sender.auth_address.substr(0,4) ;
+                }
+                if (auth4) parent = message.sent_at + ',' + auth4 ;
+                if (parent) js_messages_index.parent[parent] = js_messages_row ;
+                else console.log(pgm + 'error. could not create parent index for ' + JSON.stringify(message)) ;
                 if (load_contacts) check_overflow() ;
                 // if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
 
