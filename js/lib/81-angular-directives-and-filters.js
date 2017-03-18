@@ -111,12 +111,12 @@ angular.module('MoneyNetwork')
     .directive('messageReact', ['$compile', '$timeout', '$rootScope', 'MoneyNetworkService', function($compile, $timeout, $rootScope, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
         var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
-        var standard_reactions = moneyNetworkService.get_user_reactions() ;
+        var user_reactions = moneyNetworkService.get_user_reactions() ;
         var i, content_html ;
         content_html = '<table><tbody><tr>' ;
-        for (i=0; i<standard_reactions.length ; i++) {
+        for (i=0; i<user_reactions.length ; i++) {
             content_html += '<td class="reaction_td" ng-click="react(m,' + i + ')">' +
-                '<img height="20" width="20" src="' + standard_reactions[i].src + '" title="' + standard_reactions[i].title + '" class="grow20pct">' +
+                '<img height="20" width="20" src="' + user_reactions[i].src + '" title="' + user_reactions[i].title + '" class="grow20pct">' +
                 '</td>' ;
         } // for i
         content_html += '</tr></tbody></table>' ;
@@ -842,9 +842,8 @@ angular.module('MoneyNetwork')
     }])
 
     .filter('chatFileInputId', [function () {
-        // return part of cert_user_id before @
+        // image element id when editing an old outgoing message
         return function (message) {
-            // find receiver
             var hash_key = message['$$hashKey'] ;
             var object_id = hash_key.split(':')[1] ;
             var id = 'edit_chat_file_input_id_' + object_id ;
@@ -852,6 +851,18 @@ angular.module('MoneyNetwork')
         } ;
         // end chatEditImgId filter
     }])
+
+    .filter('commentFileInputId', [function () {
+        // image element id when editing an old outgoing message
+        return function (message) {
+            var hash_key = message['$$hashKey'] ;
+            var object_id = hash_key.split(':')[1] ;
+            var id = 'new_chat_com_file_input_id_' + object_id ;
+            return id ;
+        } ;
+        // end commentFileInputId filter
+    }])
+
     .filter('chatEditFormDisabled', [function () {
         // return part of cert_user_id before @
         return function (message) {
@@ -984,13 +995,26 @@ angular.module('MoneyNetwork')
     }])
 
     .filter('reactionUniCode', [ function () {
-        // return null or overflow (long texts)
+        // return uni code from emoji url. used in edit reactions (Account page)
         return function (src) {
             if (!src) return src ;
             return src.split('/').pop().split('.')[0].split('_').join(' ') ;
         } ;
-        // end eactionUniCode filter
+        // end reactionUniCode filter
+    }])
+
+    .filter('reactionURL', [ 'MoneyNetworkService', function (moneyNetworkService) {
+        // return full url for reaction unicode. add current emoji folder
+        var user_setup, emoji_folder, emoji_folders ;
+        user_setup = moneyNetworkService.get_user_setup() ;
+        emoji_folders = moneyNetworkService.get_emoji_folders() ;
+        emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+        return function (unicode) {
+            if (!unicode) return null ;
+            return emoji_folder + '/' + unicode + '.png' ;
+        } ;
+        // end reactionURL filter
     }])
 
 ;
-// angularJS app end
+// angularJS app end 'MoneyNetworkService', function (moneyNetworkService)

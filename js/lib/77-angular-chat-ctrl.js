@@ -1450,16 +1450,19 @@ angular.module('MoneyNetwork')
             }; // imageDropped
 
             // input file browse image - todo: refactor
+            var new_chat_com_regexp = new RegExp('^new_chat_com_file_input_id_[0-9]+$') ;
             self.uploadImage = function(event){
                 var pgm = controller + '.uploadImage: ' ;
                 // what is the target for file upload? new_chat_src in top of page or edit chat message img scr
-                var input_file_id = event.target.id ; // file-input, file-input2 or edit_chat_file_input_id_115
+                var input_file_id = event.target.id ; // file-input, file-input2, edit_chat_file_input_id_115
                 // console.log(pgm + 'input_file_id = ' + input_file_id);
+
 
                 // https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
                 var reader  = new FileReader();
                 reader.addEventListener("load", function () {
                     var image_base64uri = reader.result ;
+                    var obj_id, hashkey, i, message ;
                     // console.log(pgm + 'reader.result = ' + image_base64uri);
                     var ext = moneyNetworkService.get_image_ext_from_base64uri(image_base64uri);
                     if (!ext) {
@@ -1477,10 +1480,26 @@ angular.module('MoneyNetwork')
                         self.new_chat_src = image_base64uri ;
                         $scope.$apply() ;
                     }
+                    else if (input_file_id.match(new_chat_com_regexp)) {
+                        // image upload in new chat comment form. id = new_chat_com_file_input_id_<n>
+                        input_file_id_array = input_file_id.split('_');
+                        obj_id = input_file_id_array[input_file_id_array.length-1] ;
+                        console.log(pgm + 'new comment image. input_file_id = ' + input_file_id + ', obj_id = ' + obj_id) ;
+                        hashkey = 'object:' + obj_id ;
+                        for (i=0 ; i<self.messages.length ; i++) {
+                            if (self.messages[i]['$$hashKey'] != hashkey) continue ;
+                            message = self.messages[i] ;
+                            message.comment_src = image_base64uri ;
+                            $scope.$apply() ;
+                            break ;
+                        }
+                        // console.log(pgm + 'message = ' + JSON.stringify(message)) ;
+                    }
                     else {
                         // image upload in edit outgoing message (messages ng-repeat section)
                         // now var id = 'edit_chat_file_input_id_' + object_id ;
                         // copy to id = 'edit_chat_msg_img_id_' + object_id ;
+                        console.log(pgm + 'input_file_id = ' + input_file_id) ;
                         var input_file_id_array = input_file_id.split('_');
                         var edit_chat_msg_img_id = 'edit_chat_msg_img_id_' + input_file_id_array[input_file_id_array.length-1] ;
                         console.log(pgm + 'edit_chat_msg_img_id = ' + edit_chat_msg_img_id) ;
@@ -1619,6 +1638,82 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<message.message.reactions.length ; i++) sum += message.message.reactions[i].count ;
                 return sum ;
             }; // get_reactions_count
+
+
+            // comments
+            self.show_comment = function (message) {
+                message.show_comment = !message.show_comment ;
+            };
+            self.create_comment = function (message) {
+                var pgm = controller + '.create_comment: ' ;
+                var contact, auth_address, parent, comment, error, my_unique_id, message_with_envelope, i ;
+                MoneyNetworkHelper.debug('outbox && unencrypted', 'message.comment = ' + message.comment + ', message.comment_src = ' + (message.comment_src ? true : false)) ;
+
+                // create chat comment within the correct context.
+                // a) public chat, group chat or privat chat
+                // b) remember parent message id (timestamp + first 4 characters of auth_address)
+
+                // check image attachment
+                if (message.comment_src && !moneyNetworkService.get_image_ext_from_base64uri(message.comment_src)) {
+                    ZeroFrame.cmd(
+                        "wrapperNotification", ["error", "Ups. Something is wrong here.<br>" +
+                        "Only png, jpg, jpeg, gif and tif images can be used in chat<br>" +
+                        "Sending chat comment without image", 5000]);
+                    message.comment_src='';
+                }
+                if (!message.comment && !message.comment_src) return ;
+
+                // contact = contact from parent message. public chat, group chat or private chat depending on
+                if (message.message.z_filename) contact = null ; // public chat
+                else contact = message.contact ; // private or group chat
+
+                // create new message / comment
+                auth_address = contact ? contact.auth_address : ZeroFrame.site_info.auth_address  ;
+                parent = message.message.sent_at + ',' + auth_address.substr(0,4) ;
+                comment = {
+                    msgtype: 'chat msg',
+                    message: message.comment || ' ',
+                    image: message.comment_src,
+                    parent: parent
+                } ;
+                if (!comment.image) delete comment.image ;
+                // validate json
+                error = MoneyNetworkHelper.validate_json(pgm, comment, comment.msgtype, 'Could not send chat message');
+                if (error) {
+                    ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                    console.log(pgm + 'comment = ' + JSON.stringify(comment)) ;
+                    return;
+                }
+                MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'comment = ' + JSON.stringify(comment));
+                // send message
+                moneyNetworkService.add_msg(contact, comment);
+                if (contact && (contact.type == 'group') && comment.image) {
+                    // sending a group chat message with an image.
+                    // expects one receipt for each participant in chat group except me
+                    // remove image chat message from zeronet (data.json) when all image receipts have been received
+                    // see process_incoming_message - post processing of image receipts
+                    // see z_update_data_json - data.json too big - xxxxxx
+                    my_unique_id = moneyNetworkService.get_my_unique_id() ;
+                    message_with_envelope = contact.messages[contact.messages.length-1] ;
+                    message_with_envelope.image_receipts = [] ;
+                    for (i=0 ; i<contact.participants.length ; i++) {
+                        if (contact.participants[i] == my_unique_id) continue ;
+                        message_with_envelope.image_receipts.push(contact.participants[i]) ;
+                    }
+                    debug('outbox && unencrypted', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                }
+
+                // ready for next comment
+                message.show_comment = false ;
+                delete message.comment ;
+                delete message.comment_src ;
+
+                // sent/save new comment
+                if (contact) contact.seen_at = new Date().getTime() ;
+                moneyNetworkService.update_chat_notifications() ;
+                moneyNetworkService.ls_save_contacts(true);
+            }; // create_comment
+
 
             // infinite scroll
             // startup with infinite_scroll_limit = 5.
