@@ -252,7 +252,7 @@
                                 <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
                                                 <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                                       ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment">
+                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment" ng-click="c.show_comment(m)">
                                 <message-react message="m" folder="outbox" react="c.react"></message-react>
                             </td></tr>
                             <tr><td><table style="margin-right: 0; margin-left: auto;">
@@ -286,6 +286,41 @@
                 <tr ng-show="c.show_image(m)">
                     <td colspan="2">
                         <img ng-src="{{m.message.message.image}}">
+                    </td>
+                </tr>
+                <tr ng-show="m.show_comment">
+                    <td colspan="2" style="width: 99%">
+                                        <textarea class="autosize postfield new_chat_msg" ng-model="m.comment"
+                                                  rows="1" required ng-keyup="c.handleTextAreaHeight($event)"
+                                                  placeholder="Enter comment">
+                                        </textarea>
+                    </td>
+                </tr>
+                <tr ng-show="m.show_comment && m.comment_src">
+                    <td colspan="2" style="width: 99%">
+                        <img ng-src="{{m.comment_src}}">
+                    </td>
+                </tr>
+                <tr ng-show="m.show_comment">
+                    <td colspan="2" style="width: 99%; text-align: right">
+                        <div class="image-upload">
+                            <label for="{{m|commentFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
+                            <input id="{{m|commentFileInputId}}" type="file"
+                                   accept=".png, .jpg, .jpeg, .gif, .tif"
+                                   custom-on-change="c.uploadImage"/>
+                        </div>
+                        <button type="submit" ng-click="c.create_comment(m)">Send</button>
+                    </td>
+                </tr>
+                <tr ng-show="m.messages"><td colspan="2">&nbsp;</td></tr>
+                <tr ng-show="m.messages">
+                    <td colspan="2" style="width: 99%; text-align: right">
+                        <div>
+                            <ul ng-if="m.messages">
+                                <li ng-repeat="m in m.messages" ng-include="'messageTree'">
+                                </li>
+                            </ul>
+                        </div>
                     </td>
                 </tr>
 
@@ -430,16 +465,21 @@
                         <button type="submit" ng-click="c.create_comment(m)">Send</button>
                     </td>
                 </tr>
-
-
+                <tr ng-show="m.messages"><td colspan="2">&nbsp;</td></tr>
+                <tr ng-show="m.messages">
+                    <td colspan="2" style="width: 99%; text-align: right">
+                        <div>
+                            <ul ng-if="m.messages">
+                                <li ng-repeat="m in m.messages" ng-include="'messageTree'">
+                                </li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
             </table>
 
         </div>
 
-        <ul ng-if="m.messages">
-            <li ng-repeat="m in m.messages" ng-include="'messageTree'">
-            </li>
-        </ul>
         <!-- end messageTree -->
     </script>
 
@@ -1917,7 +1957,7 @@
   js/all.js.tar.bz2 is small and distributed fast but tar.bz2 is not yet supported by all clients
  -->
 <script type="text/javascript" src="js/all.js"></script>
-<!-- script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<script type="text/javascript" src="js/all.js.zip/all.js"></script>
 
 <!-- end - some more static js files -->
 <script type="text/javascript" src="js-external/90-ui-bootstrap-tpls-2.1.3.js"></script>

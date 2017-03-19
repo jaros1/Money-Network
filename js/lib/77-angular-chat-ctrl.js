@@ -1647,7 +1647,7 @@ angular.module('MoneyNetwork')
             };
             self.create_comment = function (message) {
                 var pgm = controller + '.create_comment: ' ;
-                var contact, auth_address, parent, comment, error, my_unique_id, message_with_envelope, i ;
+                var contact, auth4, parent, unique_id, sender, comment, error, my_unique_id, message_with_envelope, i ;
                 MoneyNetworkHelper.debug('outbox && unencrypted', 'message.comment = ' + message.comment + ', message.comment_src = ' + (message.comment_src ? true : false)) ;
 
                 // create chat comment within the correct context.
@@ -1664,13 +1664,24 @@ angular.module('MoneyNetwork')
                 }
                 if (!message.comment && !message.comment_src) return ;
 
-                // contact = contact from parent message. public chat, group chat or private chat depending on
-                if (message.message.z_filename) contact = null ; // public chat
-                else contact = message.contact ; // private or group chat
+                // parent index. "<sent_at>,<auth4>". special unique id used for comments and reference to parent message
+                if (message.message.folder == 'outbox') auth4 = ZeroFrame.site_info.auth_address.substr(0, 4) ;
+                else if (message.contact.type != 'group') auth4 = message.contact.auth_address.substr(0,4) ; // public chat inbox or private chat inbox message from contact
+                else {
+                    // group chat inbox message. find sender from contact.participants and message.participant
+                    unique_id = message.contact.participants[message.message.participant-1] ;
+                    sender = get_contact_by_unique_id(unique_id) ;
+                    console.log(pgm + 'parent index for group chat. message.participant = ' + message.message.participant +
+                        ', contact.participants = ' + JSON.stringify(message.contact.participants) + ', unique_id = ' + unique_id + ', sender = ' + (sender ? true : false)) ;
+                    if (sender) auth4 = sender.auth_address.substr(0,4) ;
+                }
+                if (auth4) parent = message.message.sent_at + ',' + auth4 ;
+                if (!parent) {
+                    console.log(pgm + 'error. could not create parent index for ' + JSON.stringify(message.message)) ;
+                    return ;
+                }
 
-                // create new message / comment
-                auth_address = contact ? contact.auth_address : ZeroFrame.site_info.auth_address  ;
-                parent = message.message.sent_at + ',' + auth_address.substr(0,4) ;
+                // create comment
                 comment = {
                     msgtype: 'chat msg',
                     message: message.comment || ' ',
@@ -1687,6 +1698,8 @@ angular.module('MoneyNetwork')
                 }
                 MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'comment = ' + JSON.stringify(comment));
                 // send message
+                if (message.message.z_filename) contact = null ; // public chat
+                else contact = message.contact ; // private or group chat
                 moneyNetworkService.add_msg(contact, comment, false);
                 if (contact && (contact.type == 'group') && comment.image) {
                     // sending a group chat message with an image.

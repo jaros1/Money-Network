@@ -4265,7 +4265,10 @@ angular.module('MoneyNetwork')
                     if (sender) auth4 = sender.auth_address.substr(0,4) ;
                 }
                 if (auth4) parent = message.sent_at + ',' + auth4 ;
-                if (parent) js_messages_index.parent[parent] = js_messages_row ;
+                if (parent) {
+                    js_messages_index.parent[parent] = js_messages_row ;
+                    if (message.sent_at == 1489761071622) console.log(pgm + 'parent = ' + parent + ', message = ' + JSON.stringify(message)) ;
+                }
                 else console.log(pgm + 'error. could not create parent index for ' + JSON.stringify(message)) ;
                 if (load_contacts) check_overflow() ;
                 // if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
@@ -4554,6 +4557,11 @@ angular.module('MoneyNetwork')
                     if (new_contact.messages[j].message.image && new_contact.messages[j].message.image.toString().match(/^http/)) {
                         console.log(pgm + 'new_contact.messages[' + j + '] = ' + JSON.stringify(new_contact.messages[j]));
                         delete new_contact.messages[j].message.image ;
+                        contacts_updated = true ;
+                    }
+                    // fix comment with invalid parent
+                    if (new_contact.messages[j].sent_at == 1489913094588) {
+                        delete new_contact.messages[j].parent ;
                         contacts_updated = true ;
                     }
                     // no msgtype in envelope
