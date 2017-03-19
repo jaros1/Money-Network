@@ -1211,6 +1211,7 @@ var MoneyNetworkHelper = (function () {
                         "timestamp": { "type": 'integer' },
                         "message": { "type": 'string'},
                         "image": { "type": 'string'},
+                        "parent": { "type": 'string', "pattern": '^[0-9]{13},1[0-9a-zA-Z]{3}$'},
                         "storage": {
                             "type": 'object',
                             "description": 'encryption/compression flags for string fields in message. Only c1=LZString.compress is used in public chat files',

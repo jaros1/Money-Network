@@ -3496,6 +3496,7 @@ angular.module('MoneyNetwork')
                                     new_msg.image = MoneyNetworkHelper.compress1(message.image) ;
                                 }
                             }
+                            if (message.parent) new_msg.parent = message.parent ; // comment or nested comment
                             chat.msg.push(new_msg) ;
                             debug('public_chat', pgm + 'added new message to ' + z_filename + '. new_msg = ' + JSON.stringify(new_msg)) ;
 
@@ -4147,6 +4148,46 @@ angular.module('MoneyNetwork')
             return user_setup.reactions ;
         } // get_user_reactions
 
+        // validate child parent context.
+        function is_child_parent (child, parent) {
+            var pgm = service + '.is_child_parent: ' ;
+            var ok ;
+            var public_child_message = (child.message.z_filename || (child.contact.type == 'public')) ;
+            var public_parent_message = (parent.message.z_filename || (parent.contact.type == 'public')) ;
+            if (public_child_message && public_parent_message) return true ; // public chat. no restrictions
+            if (public_child_message || public_parent_message) {
+                console.log(pgm + 'invalid child parent relation. mixed public private chat. ' +
+                    'public_child_message = ' + public_child_message + ', public_parent_message = ' + public_parent_message) ;
+                // invalid child parent relation. mixed public private chat. child.z_filename = false, parent.z_filename = true
+                console.log(pgm + 'child = ' + JSON.stringify(child)) ;
+                //child = {
+                //    "contact": {
+                //        "unique_id": "591935b15b1c88e2d5f6be0a054604fcf36f0585a6f51098fa3803826fff278c",
+                //        "cert_user_id": "591935b15b1c8@moneynetwork",
+                //        "type": "public",
+                //        "search": [{"tag": "World", "value": "World", "privacy": "Search", "row": 1}],
+                //        "messages": [...],
+                //        "avatar": "z.png",
+                //        "alias": "World"
+                //    },
+                //    "message": {
+                //        "folder": "outbox",
+                //        "message": {"msgtype": "chat msg", "message": "test", "parent": "1489336737531,17ZG"},
+                //        "created_at": 1489937759848
+                //    }
+                //};
+                delete child.message.message.parent ;
+                return false ;
+            } // mixed public/private. not allowed
+            // private or group chat. contact must be identical for child and parent
+            ok = (child.contact.unique_id == parent.contact.unique_id) ;
+            if (!ok) {
+                console.log(pgm + 'invalid child parent relation. invalid child parent contact. ' +
+                    'child.unique_id = ' + child.contact.unique_id + ', parent.unique_id = ' + parent.contact.unique_id) ;
+            }
+            return ok ;
+        } // is_child_parent
+
         // add message to 1) contact, 2) js_messages and 3) js_messages_index
         // load_contacts:
         // - true: called from ls_load_contacts or load_public_chat
@@ -4156,7 +4197,7 @@ angular.module('MoneyNetwork')
             get_like_json(function (like, like_index, empty) {
                 var pgm = service + '.add_message: ' ;
                 var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id, auth_address,
-                    like_index_p, k, auth4, sender, parent, js_parent_messages_row ;
+                    like_index_p, k, auth4, sender, parent, js_parent_messages_row, storage, js_child_messages_row ;
                 if (!contact && !user_info.block_public) contact = get_public_contact(true) ;
                 if (!contact.messages) contact.messages = [] ;
                 if (!load_contacts) contact.messages.push(message) ;
@@ -4167,6 +4208,7 @@ angular.module('MoneyNetwork')
                 } ;
                 if (message.z_filename) {
                     // public chat. not saved in localStorage.
+                    // load message reactions from ls_reactions (private localStorage) or like.json (public ZeroNet)
                     // Check for any private reaction stored in ls_reactions hash
                     reactions_index = message.sent_at ;
                     if (reactions_index && (message.folder == 'inbox')) {
@@ -4214,9 +4256,10 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'js_messages_row.reactions = ' + JSON.stringify(js_messages_row.reactions));
                 }
 
-                //// save js_messages_row in 1) js_messages, 2) under an existing row in js_messages or 3) as an orphan js_messages_row
+                // save js_messages_row in 1) js_messages, 2) under an existing row in js_messages or 3) as an orphan in js_orphan_messages
                 if (!message.message.parent) {
                     // 1) normal message
+                    storage = 1 ;
                     js_messages.push(js_messages_row) ;
                 }
                 else {
@@ -4226,15 +4269,26 @@ angular.module('MoneyNetwork')
                     js_parent_messages_row = js_messages_index.parent[message.message.parent] ;
                     if (js_parent_messages_row) {
                         // 2) under a existing row in js_messages
-                        console.log(pgm + 'parent row has already been loaded. inserting new js_messages_row under existing parent (three structure)') ;
-                        if (!js_parent_messages_row.messages) js_parent_messages_row.messages = [] ;
-                        js_parent_messages_row.messages.push(js_messages_row) ;
+                        if (is_child_parent(js_messages_row, js_parent_messages_row)) {
+                            storage = 2 ;
+                            console.log(pgm + 'parent row has already been loaded. inserting new js_messages_row under existing parent (three structure)') ;
+                            if (!js_parent_messages_row.messages) js_parent_messages_row.messages = [] ;
+                            js_parent_messages_row.messages.push(js_messages_row) ;
+                        }
+                        else {
+                            // error. invalid child parent relation. ignoring parent and inserting comment as a normal message
+                            console.log(pgm + 'deleting invalid parent from message ' + JSON.stringify(message)) ;
+                            storage = 1 ;
+                            delete message.message.parent ;
+                            js_messages.push(js_messages_row) ;
+                        }
                     }
                     else {
                         // 3) as a orphan js_messages_row
+                        storage = 3 ;
                         console.log(pgm + 'parent row has not yet been loaded. saving new js_messages_row in js_orphan_messages and wait for parent row to be loaded') ;
-                         if (!js_orphan_messages[message.message.parent]) js_orphan_messages[message.message.parent] = [] ;
-                         js_orphan_messages[message.message.parent].push(js_messages_row) ;
+                        if (!js_orphan_messages[message.message.parent]) js_orphan_messages[message.message.parent] = [] ;
+                        js_orphan_messages[message.message.parent].push(js_messages_row) ;
                     }
                 }
 
@@ -4267,7 +4321,24 @@ angular.module('MoneyNetwork')
                 if (auth4) parent = message.sent_at + ',' + auth4 ;
                 if (parent) {
                     js_messages_index.parent[parent] = js_messages_row ;
-                    if (message.sent_at == 1489761071622) console.log(pgm + 'parent = ' + parent + ', message = ' + JSON.stringify(message)) ;
+                    if (storage != 3) {
+                        // any orphan comments waiting for this new message (parent) ?
+                        if (js_orphan_messages[parent]) {
+                            console.log(pgm + 'loading ' + js_orphan_messages[parent].length + ' old orphan comment(s)');
+                            if (!js_messages_row.messages) js_messages_row.messages = [] ;
+                            while (js_orphan_messages[parent].length) {
+                                js_child_messages_row = js_orphan_messages[parent].shift() ;
+                                if (is_child_parent(js_child_messages_row, js_messages_row)) js_messages_row.messages.push(js_child_messages_row) ;
+                                else {
+                                    // error. invalid child parent relation. ignoring parent and inserting comment as a normal message
+                                    console.log(pgm + 'deleting invalid parent from message ' + JSON.stringify(js_child_messages_row.message)) ;
+                                    delete js_child_messages_row.message.message.parent ;
+                                    js_messages.push(js_child_messages_row) ;
+                                }
+                            }
+                            delete js_orphan_messages[parent] ;
+                        }
+                    }
                 }
                 else console.log(pgm + 'error. could not create parent index for ' + JSON.stringify(message)) ;
                 if (load_contacts) check_overflow() ;
@@ -5922,8 +5993,6 @@ angular.module('MoneyNetwork')
                 last_online = get_last_online(contact_or_group) || 0 ;
                 if (Math.round(message.sent_at/1000) > last_online) set_last_online(contact_or_group, Math.round(message.sent_at/1000)) ;
             }
-
-
 
             // any feedback info?
             if (sent_at) {
@@ -9585,6 +9654,7 @@ angular.module('MoneyNetwork')
                             if (get_image_ext_from_base64uri(image)) message.image = image;
                             else debug('public_chat', pgm + 'ignoring image with unknown extension in file ' + cache_filename) ;
                         }
+                        if (chat.msg[i].parent) message.parent = chat.msg[i].parent ; // comment or nested comment
                         local_msg_seq = next_local_msg_seq();
                         message_with_envelope = {
                             local_msg_seq: local_msg_seq,
@@ -9593,9 +9663,6 @@ angular.module('MoneyNetwork')
                             sent_at: chat.msg[i].timestamp,
                             z_filename: z_filename
                         };
-                        if (message_with_envelope.message.message == "Hi SiNaPsE :-)") {
-                            break_point = true ;
-                        }
                         //// todo: remove reaction initialization? See add_message
                         //// lookup reaction for public chat in like.json file
                         //auth_address = folder == 'outbox' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
