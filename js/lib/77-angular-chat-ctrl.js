@@ -1240,7 +1240,7 @@ angular.module('MoneyNetwork')
                         ', message.message.message.message = ' + message.message.message.message +
                         ', document.getElementById(textarea_id).value = ' + document.getElementById(textarea_id).value) ;
                     img_id = chatEditImgId(message) ;
-                    console.log(pgm + 'img_id = ' + img_id);
+                    // console.log(pgm + 'img_id = ' + img_id);
                     if (message.message.message.image) {
                         message.message.message.original_image = message.message.message.image ;
                         document.getElementById(img_id).src = message.message.message.image ;
@@ -1254,6 +1254,7 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'id = ' + id + ', value = ' + elem.value) ;
                             elem.focus() ;
                             console.log(pgm + 'focus_textarea end') ;
+                            $scope.$apply() ;
                         }
                         else console.log(pgm + 'textarea element with id ' + id + ' was not found in page') ;
                     };

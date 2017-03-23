@@ -229,7 +229,7 @@
             <img ng-src="{{c.avatar.src}}" class="img-circle img-sm" alt="Click to continue chat"
                  title="Click to continue chat" ng-click="c.chat_contact(m.contact)">
         </div>
-        <div ng-show="(m.message.folder == 'outbox')" class="media-body pad-hor">
+        <div ng-if="(m.message.folder == 'outbox')" class="media-body pad-hor">
 
             <!-- chat2: show outgoing message -->
             <table class="speech" ng-hide="m.edit_chat_message">
@@ -381,7 +381,7 @@
             <img ng-src="{{m|findMessageSenderAvatar}}" class="img-circle img-sm" alt="Click to chat"
                  title="Click to chat" ng-click="c.chat_contact(m.contact)" fallback-src="public/images/image_failed.gif">
         </div>
-        <div ng-show="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
+        <div ng-if="(m.message.folder == 'inbox')" class="media-body pad-hor speech-right">
 
             <!-- chat2: show inbox message -->
             <table class="speech">
@@ -1957,7 +1957,7 @@
   js/all.js.tar.bz2 is small and distributed fast but tar.bz2 is not yet supported by all clients
  -->
 <script type="text/javascript" src="js/all.js"></script>
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!-- script type="text/javascript" src="js/all.js.zip/all.js"></script>
 
 <!-- end - some more static js files -->
 <script type="text/javascript" src="js-external/90-ui-bootstrap-tpls-2.1.3.js"></script>
