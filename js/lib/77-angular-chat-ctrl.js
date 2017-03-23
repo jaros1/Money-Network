@@ -1228,25 +1228,33 @@ angular.module('MoneyNetwork')
             self.changed_chat_msg = "";
             self.edit_chat_msg = function (message, spam) {
                 var pgm = controller + '.edit_chat_msg: ';
-                var textarea_id, img_id, focus_textarea, apply ;
+                var textarea_id, img_id, focus_textarea, update_zeronet ;
                 // console.log(pgm + 'message.message = ' + JSON.stringify(message.message));
                 if ((message.message.folder == 'outbox') && (message.message.message.msgtype == 'chat msg')) {
-                    // edit previously sent chat message. must send changed chat msg to contact
+                    // edit previously sent chat message. open edit/delete message dialog
                     message.edit_chat_message = true;
                     // angularJS cheat - ng-bind is too slow - using id for get/set textarea value. Maybe also a problem with handleTextAreaHeight?
                     textarea_id = chatEditTextAreaId(message);
                     document.getElementById(textarea_id).value = message.message.message.message;
+                    console.log(pgm + 'textarea_id = ' + textarea_id +
+                        ', message.message.message.message = ' + message.message.message.message +
+                        ', document.getElementById(textarea_id).value = ' + document.getElementById(textarea_id).value) ;
                     img_id = chatEditImgId(message) ;
-                    // console.log(pgm + 'img_id = ' + img_id);
+                    console.log(pgm + 'img_id = ' + img_id);
                     if (message.message.message.image) {
                         message.message.message.original_image = message.message.message.image ;
                         document.getElementById(img_id).src = message.message.message.image ;
                     }
                     // focus to edit chat message textarea field
                     focus_textarea = function () {
+                        console.log(pgm + 'focus_textarea start') ;
                         var id = textarea_id + '' ;
                         var elem = document.getElementById(id) ;
-                        if (elem) document.getElementById(id).focus() ;
+                        if (elem) {
+                            console.log(pgm + 'id = ' + id + ', value = ' + elem.value) ;
+                            elem.focus() ;
+                            console.log(pgm + 'focus_textarea end') ;
+                        }
                         else console.log(pgm + 'textarea element with id ' + id + ' was not found in page') ;
                     };
                     $timeout(focus_textarea);
@@ -1266,13 +1274,16 @@ angular.module('MoneyNetwork')
                         // move contact to ignored list and hide ignored list
                         message.contact.type = 'ignore' ;
                         if (self.setup.contact_filters.ignore == 'green') self.toggle_filter('ignore', spam) ;
+                        update_zeronet = false ;
                     }
-                    else message.message.deleted_at = new Date().getTime(); // logical delete. todo: how to delete ingoing public chat?
+                    else {
+                        // message.message.deleted_at = new Date().getTime();
+                        update_zeronet = moneyNetworkService.recursive_delete_message(message) ;
+                    } // logical delete.
                     // if (apply) $scope.$apply();
                     // update localStorage and optional zeronet
-                    var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;
+                    // var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;
                     moneyNetworkService.ls_save_contacts(update_zeronet); // physical delete
-                    //}); // wrapperConfirm
                 }
             }; // edit_chat_msg
             self.edit_chat_message_remove_image = function (message) {
@@ -1292,15 +1303,16 @@ angular.module('MoneyNetwork')
                     delete message.message.message.original_image ;
                 }
                 var img_id = chatEditImgId(message) ;
-                document.getElementById(img_id).src = null ;
+                delete document.getElementById(img_id).src ;
             }; // cancel_edit_chat_msg
             self.save_chat_msg = function (message) {
                 var pgm = controller + '.save_chat_msg: ';
                 // angularJS cheat - ng-bind is too slow - using id for get/set textarea value.
-                var textarea_id, old_value, new_value, old_image, new_image, img_id, new_message ;
+                var textarea_id, old_value, new_value, old_image, new_image, img_id, new_message, parent ;
                 textarea_id = chatEditTextAreaId(message);
                 old_value = message.message.message.message;
                 new_value = document.getElementById(textarea_id).value;
+                parent = message.message.message.parent ;
                 document.getElementById(textarea_id).value = '' ;
                 MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'old message = ' + JSON.stringify(message.message));
                 MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'old value = ' + old_value);
@@ -1315,8 +1327,10 @@ angular.module('MoneyNetwork')
                 if ((!new_value || (old_value == new_value)) && (old_image == new_image)) return;
                 if (message.contact.type == 'public') {
                     // delete old message
-                    message.message.deleted_at = new Date().getTime() ;
-                    message.chat_filter = false ;
+                    moneyNetworkService.recursive_delete_message(message) ;
+                    //message.message.deleted_at = new Date().getTime() ;
+                    //message.chat_filter = false ;
+
                     // create new message
                     // send chat message to contact
                     new_message = {
@@ -1324,6 +1338,7 @@ angular.module('MoneyNetwork')
                         message: new_value
                     };
                     if (new_image) new_message.image = new_image ;
+                    if (parent) new_message.parent = parent ;
                     MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'new_message = ' + JSON.stringify(new_message));
                     // validate json
                     error = MoneyNetworkHelper.validate_json(pgm, new_message, new_message.msgtype, 'Could not send chat message');
@@ -1347,6 +1362,7 @@ angular.module('MoneyNetwork')
                 // add image.
                 // unchanged image will be replaced with a "x" in communication. See z_update_data_json and process_incoming_message
                 if (new_image) changed_message.image = new_image ;
+                if (parent) changed_message.parent = parent ;
                 console.log(pgm + 'changed_message = ' + JSON.stringify(changed_message));
                 // validate json
                 var error = MoneyNetworkHelper.validate_json(pgm, changed_message, changed_message.msgtype, 'Could not send changed chat message');
@@ -1360,8 +1376,9 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.add_msg(message.contact, changed_message, false);
                 // delete old message
                 console.log(pgm + 'todo: keep old message in some kind of edit history?');
-                message.message.deleted_at = new Date().getTime() ;
-                message.chat_filter = false ;
+                //message.message.deleted_at = new Date().getTime() ;
+                //message.chat_filter = false ;
+                moneyNetworkService.recursive_delete_message(message) ;
                 // save localStorage and update ZeroNet
                 moneyNetworkService.ls_save_contacts(true) ;
             }; // save_chat_msg
@@ -1378,12 +1395,13 @@ angular.module('MoneyNetwork')
                 }
                 if ((message.contact.type == 'public') || (message.message.z_filename)) {
                     // public unencrypted chat. just delete
-                    delete message.edit_chat_message;
-                    message.message.deleted_at = new Date().getTime(); // logical delete
-                    message.chat_filter = false ;
+                    //delete message.edit_chat_message;
+                    //message.message.deleted_at = new Date().getTime(); // logical delete
+                    //message.chat_filter = false ;
                     debug('public_chat', pgm + 'deleted public outbox message ' + JSON.stringify(message.message)) ;
                     // save localStorage and update ZeroNet
-                    update_zeronet = (message.contact.type == 'public') ; // my outgoing public chat
+                    //update_zeronet = (message.contact.type == 'public') ; // my outgoing public chat
+                    update_zeronet = moneyNetworkService.recursive_delete_message(message) ;
                     moneyNetworkService.ls_save_contacts(update_zeronet); // physical delete
                     return ;
                 }
@@ -1392,29 +1410,30 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'msg_text.length = ' + msg_text.length);
                 ZeroFrame.cmd("wrapperConfirm", ['Delete "' + msg_text + '" message?', "Delete"], function (confirmed) {
                     if (!confirmed) return;
-                    // console.log(pgm + 'deleting message ' + JSON.stringify(message));
-                    delete message.message.message.original_image ;
-                    // outbox: send delete chat message. note empty chat message
-                    var delete_message = {
-                        msgtype: 'chat msg',
-                        old_local_msg_seq: message.message.local_msg_seq
-                    };
-                    // console.log(pgm + 'delete_message = ' + JSON.stringify(delete_message));
-                    // validate json
-                    var error = MoneyNetworkHelper.validate_json(pgm, delete_message, delete_message.msgtype, 'Could not send delete chat message');
-                    if (error) {
-                        ZeroFrame.cmd("wrapperNotification", ["Error", error]);
-                        return;
-                    }
-                    // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
-                    // send message
-                    moneyNetworkService.add_msg(message.contact, delete_message, false);
-                    self.messages[self.messages.length-1].chat_filter = false ;
-                    // delete old message
-                    delete message.edit_chat_message;
-                    message.message.deleted_at = new Date().getTime(); // logical delete
-                    message.chat_filter = false ;
-                    delete message.message.image;
+                    moneyNetworkService.recursive_delete_message(message) ;
+                    //// console.log(pgm + 'deleting message ' + JSON.stringify(message));
+                    //delete message.message.message.original_image ;
+                    //// outbox: send delete chat message. note empty chat message
+                    //var delete_message = {
+                    //    msgtype: 'chat msg',
+                    //    old_local_msg_seq: message.message.local_msg_seq
+                    //};
+                    //// console.log(pgm + 'delete_message = ' + JSON.stringify(delete_message));
+                    //// validate json
+                    //var error = MoneyNetworkHelper.validate_json(pgm, delete_message, delete_message.msgtype, 'Could not send delete chat message');
+                    //if (error) {
+                    //    ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                    //    return;
+                    //}
+                    //// console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
+                    //// send message
+                    //moneyNetworkService.add_msg(message.contact, delete_message, false);
+                    //self.messages[self.messages.length-1].chat_filter = false ;
+                    //// delete old message
+                    //delete message.edit_chat_message;
+                    //message.message.deleted_at = new Date().getTime(); // logical delete
+                    //message.chat_filter = false ;
+                    //delete message.message.image;
                     // save localStorage and update ZeroNet
                     moneyNetworkService.ls_save_contacts(true);
                     // new empty chat message (delete message) will be logical delete marked in z_update_data_json and physical deleted in next ls_save_contacts call
