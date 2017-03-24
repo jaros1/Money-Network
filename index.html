@@ -259,7 +259,7 @@
                                 <tr>
                                     <td></td>
                                     <td ng-repeat="r in c.get_reactions(m)">
-                                        <img ng-src="{{r.src}}" height="14" width="14">
+                                        <react-info-img message="m" reaction="r"></react-info-img>
                                     </td>
                                     <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
                                 </tr>
@@ -412,7 +412,7 @@
                                 <tr>
                                     <td></td>
                                     <td ng-repeat="r in c.get_reactions(m)">
-                                        <img ng-src="{{r.src}}" height="14" width="14">
+                                        <react-info-img message="m" reaction="r"></react-info-img>
                                     </td>
                                     <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
                                 </tr>
@@ -1957,7 +1957,7 @@
   js/all.js.tar.bz2 is small and distributed fast but tar.bz2 is not yet supported by all clients
  -->
 <script type="text/javascript" src="js/all.js"></script>
-<!-- script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<script type="text/javascript" src="js/all.js.zip/all.js"></script>
 
 <!-- end - some more static js files -->
 <script type="text/javascript" src="js-external/90-ui-bootstrap-tpls-2.1.3.js"></script>

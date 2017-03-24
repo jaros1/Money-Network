@@ -106,7 +106,7 @@ angular.module('MoneyNetwork')
         };
     })
 
-    // empty heart popover with reactions
+    // empty heart popover with reactions (mouseover + click)
     // https://github.com/jaros1/Zeronet-Money-Network/issues/127
     .directive('messageReact', ['$compile', '$timeout', '$rootScope', 'MoneyNetworkService', function($compile, $timeout, $rootScope, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
@@ -215,6 +215,84 @@ angular.module('MoneyNetwork')
         };
         // end messageReact
     }])
+
+    // reaction information image - popover with more reaction info - click with full reaction info
+    // https://github.com/jaros1/Zeronet-Money-Network/issues/164
+    // parameters: message and reaction
+    .directive('reactInfoImg', ['$compile', '$timeout', '$rootScope', 'MoneyNetworkService', 'contactAliasFilter', function($compile, $timeout, $rootScope, moneyNetworkService, contactAlias) {
+        var pgm = 'reactInfoImg: ' ;
+        var my_unique_id, setup ;
+        my_unique_id = moneyNetworkService.get_my_unique_id() ;
+        setup = moneyNetworkService.get_user_setup() ;
+        return {
+            restrict: 'E',
+            template: '<img ng-src="{{src}}" height="14" width="14">',
+            scope: true,
+            link: function (scope, element, attrs) {
+                var pgm = 'messageReact: ' ;
+                var message, reaction, content, unicode, emoji ;
+                // get params
+                message = scope.$eval(attrs.message) ;
+                console.log(pgm + 'message.message = ' + JSON.stringify(message.message)) ;
+                reaction = scope.$eval(attrs.reaction) ;
+                unicode = reaction.unicode ;
+                emoji = moneyNetworkService.unicode_to_symbol(unicode) ;
+                scope.src = reaction.src ;
+                content = function () {
+                    var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous ;
+                    html = '<table><thead><tr><th>' + reaction.title + '</th></thead><tbody>' ;
+                    reaction_info = message.message.reaction_info ;
+                    if (message.message.z_filename) {
+                        // public reaction. reaction_info from check_public_reaction select.
+                        if (reaction_info && reaction_info.length) {
+                            for (i=0 ; i<reaction_info.length ; i++) {
+                                if (reaction_info[i].emoji != emoji) continue ;
+                                if (reaction_info[i].count) {
+                                    anonymous = reaction_info[i].count ;
+                                    continue ;
+                                }
+                                unique_id = CryptoJS.SHA256(reaction_info[i].auth_address + '/'  + reaction_info[i].pubkey).toString();
+                                if (unique_id == my_unique_id) alias = setup.alias ;
+                                else {
+                                    contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+                                    alias = contactAlias(contact) ;
+                                }
+                                html += '<tr><td>' + alias + '</td></tr>' ;
+                            } // for i
+                            if (anonymous) html += '<tr><td>' + anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '') + '</td></tr>' ;
+                        }
+                    }
+                    else {
+                        // private reaction. message_with_envelope.reaction_info hash
+                        if (reaction_info.users) {
+                            for (unique_id in reaction_info.users) {
+                                if (reaction_info.users[unique_id] != emoji) continue ;
+                                if (unique_id == my_unique_id) alias = setup.alias || 'Me' ;
+                                else {
+                                    contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+                                    alias = contactAlias(contact) ;
+                                }
+                                html += '<tr><td>' + alias + '</td></tr>' ;
+                            } // for
+                        }
+                    }
+                    html += '</tbody></table>' ;
+                    // console.log(pgm + html) ;
+                    linkFn = $compile(html) ;
+                    return linkFn(scope);
+                };
+                $(element).popover({
+                    html: true,
+                    content: content,
+                    placement: 'left',
+                    trigger: 'hover'
+                });
+
+            }
+        };
+        // end reactInfoImg
+    }])
+
 
     // http://stackoverflow.com/questions/16349578/angular-directive-for-a-fallback-image
     .directive('fallbackSrc', function () {

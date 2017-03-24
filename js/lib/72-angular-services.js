@@ -7331,11 +7331,15 @@ angular.module('MoneyNetwork')
 
             // ready for emoji lookup in like table
             query =
-                "select substr(json.directory, 7) as auth_address, like.emoji, like.count " +
-                "from like, json " +
+                "select substr(like_json.directory, 7) as auth_address, users.pubkey, like.emoji, like.count " +
+                "from like, json as like_json, json as data_json, users " +
                 "where like.timestamp = " + timestamp + " " +
                 "and like.auth = '" + auth + "' " +
-                "and json.json_id = like.json_id" ;
+                "and like_json.json_id = like.json_id " +
+                "and data_json.directory = like_json.directory " +
+                "and data_json.file_name = 'data.json' " +
+                "and users.json_id = data_json.json_id " +
+                "and users.user_seq = like.user_seq" ;
             debug('select', pgm + 'query = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.check_public_reactions dbQuery callback: ';
@@ -7345,6 +7349,7 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'query = ' + query);
                     return;
                 }
+                message_with_envelope.reaction_info = res ;
                 if ((res.length == 0) && (message_with_envelope.reactions.length == 0)) return ;
                 if (message_with_envelope.reactions.length) message_with_envelope.reactions.splice(0,message_with_envelope.reactions.length) ;
                 debug('reaction', pgm + 'timestamp = ' + timestamp + ', auth = ' + auth + ', res = ' + JSON.stringify(res));
@@ -11039,7 +11044,8 @@ angular.module('MoneyNetwork')
             get_reaction_list: get_reaction_list,
             load_server_info: load_server_info,
             is_proxy_server: is_proxy_server,
-            check_reactions: check_reactions
+            check_reactions: check_reactions,
+            unicode_to_symbol: unicode_to_symbol
         };
 
         // end MoneyNetworkService

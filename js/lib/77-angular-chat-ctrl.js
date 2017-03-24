@@ -1660,7 +1660,7 @@ angular.module('MoneyNetwork')
                 return sum ;
             }; // get_reactions_count
 
-
+            
             // comments
             self.show_comment = function (message) {
                 message.show_comment = !message.show_comment ;
