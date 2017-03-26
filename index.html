@@ -261,7 +261,7 @@
                                     <td ng-repeat="r in c.get_reactions(m)">
                                         <react-info-img message="m" reaction="r"></react-info-img>
                                     </td>
-                                    <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
+                                    <td><react-info-count message="m" count="c.get_reactions_count(m)"></react-info-count></td>
                                 </tr>
                             </table></td></tr>
                         </table>
@@ -414,7 +414,7 @@
                                     <td ng-repeat="r in c.get_reactions(m)">
                                         <react-info-img message="m" reaction="r"></react-info-img>
                                     </td>
-                                    <td ng-show="c.get_reactions_count(m)">{{c.get_reactions_count(m)}}</td>
+                                    <td><react-info-count message="m" count="c.get_reactions_count(m)"></react-info-count></td>
                                 </tr>
                             </table></td></tr>
                         </table>

@@ -216,10 +216,10 @@ angular.module('MoneyNetwork')
         // end messageReact
     }])
 
-    // reaction information image - popover with more reaction info - click with full reaction info
+    // reaction information image - popover with more reaction info - todo: click with full reaction info
     // https://github.com/jaros1/Zeronet-Money-Network/issues/164
     // parameters: message and reaction
-    .directive('reactInfoImg', ['$compile', '$timeout', '$rootScope', 'MoneyNetworkService', 'contactAliasFilter', function($compile, $timeout, $rootScope, moneyNetworkService, contactAlias) {
+    .directive('reactInfoImg', ['$compile', 'MoneyNetworkService', 'contactAliasFilter', function($compile, moneyNetworkService, contactAlias) {
         var pgm = 'reactInfoImg: ' ;
         var my_unique_id, setup ;
         my_unique_id = moneyNetworkService.get_my_unique_id() ;
@@ -229,21 +229,22 @@ angular.module('MoneyNetwork')
             template: '<img ng-src="{{src}}" height="14" width="14">',
             scope: true,
             link: function (scope, element, attrs) {
-                var pgm = 'messageReact: ' ;
+                var pgm = 'reactInfoImg.link: ' ;
                 var message, reaction, content, unicode, emoji ;
                 // get params
                 message = scope.$eval(attrs.message) ;
-                console.log(pgm + 'message.message = ' + JSON.stringify(message.message)) ;
+                // console.log(pgm + 'message.message = ' + JSON.stringify(message.message)) ;
                 reaction = scope.$eval(attrs.reaction) ;
                 unicode = reaction.unicode ;
                 emoji = moneyNetworkService.unicode_to_symbol(unicode) ;
                 scope.src = reaction.src ;
                 content = function () {
-                    var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous ;
+                    var pgm = 'reactInfoImg.link.content: ' ;
+                    var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous, my_private_inbox_reaction ;
                     html = '<table><thead><tr><th>' + reaction.title + '</th></thead><tbody>' ;
                     reaction_info = message.message.reaction_info ;
                     if (message.message.z_filename) {
-                        // public reaction. reaction_info from check_public_reaction select.
+                        // public chat. reaction_info from check_public_reaction select.
                         if (reaction_info && reaction_info.length) {
                             for (i=0 ; i<reaction_info.length ; i++) {
                                 if (reaction_info[i].emoji != emoji) continue ;
@@ -263,10 +264,24 @@ angular.module('MoneyNetwork')
                         }
                     }
                     else {
-                        // private reaction. message_with_envelope.reaction_info hash
+                        // private og group chat. message_with_envelope.reaction_info hash
+                        // console.log(pgm + 'reactions = ' + JSON.stringify(message.message.reactions)) ;
+                        // console.log(pgm + 'reaction_info = ' + JSON.stringify(reaction_info)) ;
+                        // reaction_info = {"users": {}, "emojis": {"❤": 1, "😮": 1}, "anonymous": {"❤": 1, "😮": 1}};
                         if (reaction_info.users) {
+                            if ((message.contact.type == 'group') && (message.message.folder == 'inbox')) {
+                                // check for private reaction to group chat inbox messages.
+                                // reaction is both in users hash and in anonymous hash.
+                                my_private_inbox_reaction = reaction_info.users[my_unique_id] ;
+                                if (my_private_inbox_reaction) {
+                                    if (typeof my_private_inbox_reaction == 'string') my_private_inbox_reaction = null ;
+                                    else if (typeof my_private_inbox_reaction == 'object') my_private_inbox_reaction = my_private_inbox_reaction[0] ;
+                                }
+                                // debug('reaction', pgm + 'sent_at = ' + message.message.sent_at + ', my_private_inbox_reaction = ' + my_private_inbox_reaction) ;
+                            }
                             for (unique_id in reaction_info.users) {
                                 if (reaction_info.users[unique_id] != emoji) continue ;
+                                if ((unique_id == my_unique_id) & (emoji == my_private_inbox_reaction)) continue ; // also in anonymous reactions
                                 if (unique_id == my_unique_id) alias = setup.alias || 'Me' ;
                                 else {
                                     contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
@@ -274,6 +289,9 @@ angular.module('MoneyNetwork')
                                 }
                                 html += '<tr><td>' + alias + '</td></tr>' ;
                             } // for
+                        }
+                        if (reaction_info.anonymous && (anonymous=reaction_info.anonymous[emoji])) {
+                            html += '<tr><td>' + anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '') + '</td></tr>' ;
                         }
                     }
                     html += '</tbody></table>' ;
@@ -292,6 +310,136 @@ angular.module('MoneyNetwork')
         };
         // end reactInfoImg
     }])
+
+    // reaction information count - popover with more reaction info - todo: click with full reaction info
+    // https://github.com/jaros1/Zeronet-Money-Network/issues/164
+    // parameters: message
+    .directive('reactInfoCount', ['$compile', 'MoneyNetworkService', 'contactAliasFilter', function($compile, moneyNetworkService, contactAlias) {
+        var pgm = 'reactInfoCount: ' ;
+        var my_unique_id, setup ;
+        my_unique_id = moneyNetworkService.get_my_unique_id() ;
+        setup = moneyNetworkService.get_user_setup() ;
+        return {
+            restrict: 'E',
+            template: '<span>{{count}}</span>',
+            replace: 'true',
+            scope: true,
+            link: function (scope, element, attrs) {
+                var pgm = 'reactInfoCount.link: ' ;
+                var message, content, count, get_params ;
+
+                message = scope.$eval(attrs.message) ;
+                count = scope.$eval(attrs.count) ;
+                scope.count = count ;
+                // console.log(pgm + 'count = ' + count + '. message.message.reactions = ' + JSON.stringify(message.message.reactions)) ;
+
+                scope.$watch(attrs.count, function(c) {
+                    var pgm = 'reactInfoCount.link.watch.count: ' ;
+                    count = c;
+                    if (!count) count = '' ;
+                    scope.count = count ;
+                    element.text(count) ;
+                    // console.log(pgm + 'count = ' + count) ;
+                });
+                scope.$watch(attrs.message, function(m) {
+                    var pgm = 'reactInfoCount.link.watch.message: ' ;
+                    if (message) return ;
+                    message = m;
+                    // console.log(pgm + 'message = ' + JSON.stringify(message)) ;
+                });
+
+                content = function () {
+                    var pgm = 'reactInfoCount.link.content: ' ;
+                    var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous, my_private_inbox_reaction, emoji ;
+                    html = '<table><tbody>' ;
+                    reaction_info = message.message.reaction_info ;
+                    if (message.message.z_filename) {
+                        // public chat. reaction_info from check_public_reaction select.
+                        if (reaction_info && reaction_info.length) {
+                            anonymous = 0 ;
+                            for (i=0 ; i<reaction_info.length ; i++) {
+                                if (reaction_info[i].count) {
+                                    anonymous += reaction_info[i].count ;
+                                    continue ;
+                                }
+                                unique_id = CryptoJS.SHA256(reaction_info[i].auth_address + '/'  + reaction_info[i].pubkey).toString();
+                                if (unique_id == my_unique_id) alias = setup.alias ;
+                                else {
+                                    contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+                                    alias = contactAlias(contact) ;
+                                }
+                                html += '<tr><td>' + alias + '</td></tr>' ;
+                            } // for i
+                            if (anonymous) html += '<tr><td>' + anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '') + '</td></tr>' ;
+                        }
+                    }
+                    else {
+                        // private og group chat. message_with_envelope.reaction_info hash
+                        // console.log(pgm + 'reactions = ' + JSON.stringify(message.message.reactions)) ;
+                        //reactions = [{
+                        //    "unicode": "1f603",
+                        //    "title": "Like",
+                        //    "src": "https://twemoji.maxcdn.com/2/72x72/1f603.png",
+                        //    "count": 1,
+                        //    "$$hashKey": "object:2333"
+                        //}, {
+                        //    "unicode": "2764",
+                        //    "title": "Love",
+                        //    "src": "https://twemoji.maxcdn.com/2/72x72/2764.png",
+                        //    "count": 1,
+                        //    "$$hashKey": "object:2334"
+                        //}];
+                        // console.log(pgm + 'reaction_info = ' + JSON.stringify(reaction_info)) ;
+                        //reaction_info = {
+                        //    "users": {"3d9fa732880ab3071c40f4982fccdd5ccc6803c9f37c5bd14d5922555c68103a": ["😃"]},
+                        //    "emojis": {"😃": 1, "❤": 1},
+                        //    "reaction_at": null,
+                        //    "anonymous": {"😃": 1, "❤": 1}
+                        //};
+                        if (reaction_info.users) {
+                            if ((message.contact.type == 'group') && (message.message.folder == 'inbox')) {
+                                // check for private reaction to group chat inbox messages.
+                                // reaction is both in users hash and in anonymous hash.
+                                my_private_inbox_reaction = reaction_info.users[my_unique_id] ;
+                                if (my_private_inbox_reaction) {
+                                    if (typeof my_private_inbox_reaction == 'string') my_private_inbox_reaction = null ;
+                                    else if (typeof my_private_inbox_reaction == 'object') my_private_inbox_reaction = true ;
+                                }
+                                // debug('reaction', pgm + 'sent_at = ' + message.message.sent_at + ', my_private_inbox_reaction = ' + my_private_inbox_reaction) ;
+                            }
+                            for (unique_id in reaction_info.users) {
+                                if ((unique_id == my_unique_id) & my_private_inbox_reaction) continue ; // also in anonymous reactions
+                                if (unique_id == my_unique_id) alias = setup.alias || 'Me' ;
+                                else {
+                                    contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
+                                    alias = contactAlias(contact) ;
+                                }
+                                html += '<tr><td>' + alias + '</td></tr>' ;
+                            } // for
+                        }
+                        if (reaction_info.anonymous) {
+                            anonymous = 0 ;
+                            for (emoji in reaction_info.anonymous) anonymous += reaction_info.anonymous[emoji] ;
+                            if (anonymous) html += '<tr><td>' + anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '') + '</td></tr>' ;
+                        }
+                    }
+                    html += '</tbody></table>' ;
+                    // console.log(pgm + html) ;
+                    linkFn = $compile(html) ;
+                    return linkFn(scope);
+                };
+                $(element).popover({
+                    html: true,
+                    content: content,
+                    placement: 'left',
+                    trigger: 'hover'
+                });
+
+            }
+        };
+        // end reactInfoCount
+    }])
+
 
 
     // http://stackoverflow.com/questions/16349578/angular-directive-for-a-fallback-image
