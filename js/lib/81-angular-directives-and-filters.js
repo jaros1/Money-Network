@@ -226,11 +226,11 @@ angular.module('MoneyNetwork')
         setup = moneyNetworkService.get_user_setup() ;
         return {
             restrict: 'E',
-            template: '<img ng-src="{{src}}" height="14" width="14">',
+            template: '<img ng-src="{{src}}" height="14" width="14" ng-click="full_react_info()">',
             scope: true,
             link: function (scope, element, attrs) {
                 var pgm = 'reactInfoImg.link: ' ;
-                var message, reaction, content, unicode, emoji ;
+                var message, reaction, content, unicode, emoji, full_react_info ;
                 // get params
                 message = scope.$eval(attrs.message) ;
                 // console.log(pgm + 'message.message = ' + JSON.stringify(message.message)) ;
@@ -238,6 +238,10 @@ angular.module('MoneyNetwork')
                 unicode = reaction.unicode ;
                 emoji = moneyNetworkService.unicode_to_symbol(unicode) ;
                 scope.src = reaction.src ;
+                full_react_info = function () {
+                    moneyNetworkService.full_react_info(message, reaction) ;
+                };
+                scope.full_react_info = full_react_info ;
                 content = function () {
                     var pgm = 'reactInfoImg.link.content: ' ;
                     var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous, my_private_inbox_reaction ;
@@ -321,7 +325,7 @@ angular.module('MoneyNetwork')
         setup = moneyNetworkService.get_user_setup() ;
         return {
             restrict: 'E',
-            template: '<span>{{count}}</span>',
+            template: '<span ng-click="full_react_info()">{{count}}</span>',
             replace: 'true',
             scope: true,
             link: function (scope, element, attrs) {
@@ -347,6 +351,11 @@ angular.module('MoneyNetwork')
                     message = m;
                     // console.log(pgm + 'message = ' + JSON.stringify(message)) ;
                 });
+
+                full_react_info = function () {
+                    moneyNetworkService.full_react_info(message, null) ;
+                };
+                scope.full_react_info = full_react_info ;
 
                 content = function () {
                     var pgm = 'reactInfoCount.link.content: ' ;
