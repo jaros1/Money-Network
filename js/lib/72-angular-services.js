@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
 
-    .factory('MoneyNetworkService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'ngDialog',
-                             function($timeout, $rootScope, $window, $location, date, ngDialog)
+    .factory('MoneyNetworkService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter',
+                             function($timeout, $rootScope, $window, $location, date)
     {
         var service = 'MoneyNetworkService' ;
         console.log(service + ' loaded') ;
@@ -10924,14 +10924,6 @@ angular.module('MoneyNetwork')
             return reaction_list ;
         } // get_reaction_list
 
-        // modal dialog with full reaction information (click on reaction info)
-        function full_react_info (message, reaction) {
-            var pgm = service + '.full_react_info: ' ;
-            console.log(pgm + 'message.message = ' + JSON.stringify(message.message) + ', reaction = ' + JSON.stringify(reaction)) ;
-            ngDialog.open({ template: 'fullReactInfo', className: 'ngdialog-theme-default' });
-        } // full_react_info
-
-
         // moneyNetworkService ready.
         // using ls_bind (interface to ZeroNet API localStorage functions may still be loading)
         MoneyNetworkHelper.ls_bind(function () {
@@ -11052,8 +11044,7 @@ angular.module('MoneyNetwork')
             load_server_info: load_server_info,
             is_proxy_server: is_proxy_server,
             check_reactions: check_reactions,
-            unicode_to_symbol: unicode_to_symbol,
-            full_react_info: full_react_info
+            unicode_to_symbol: unicode_to_symbol
         };
 
         // end MoneyNetworkService

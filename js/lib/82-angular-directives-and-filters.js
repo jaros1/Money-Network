@@ -216,10 +216,10 @@ angular.module('MoneyNetwork')
         // end messageReact
     }])
 
-    // reaction information image - popover with more reaction info - todo: click with full reaction info
+    // reaction information image - popover with more reaction info - click with full reaction info
     // https://github.com/jaros1/Zeronet-Money-Network/issues/164
     // parameters: message and reaction
-    .directive('reactInfoImg', ['$compile', 'MoneyNetworkService', 'contactAliasFilter', function($compile, moneyNetworkService, contactAlias) {
+    .directive('reactInfoImg', ['$compile', 'MoneyNetworkService', 'contactAliasFilter', 'ngDialog', function($compile, moneyNetworkService, contactAlias, ngDialog) {
         var pgm = 'reactInfoImg: ' ;
         var my_unique_id, setup ;
         my_unique_id = moneyNetworkService.get_my_unique_id() ;
@@ -239,7 +239,16 @@ angular.module('MoneyNetwork')
                 emoji = moneyNetworkService.unicode_to_symbol(unicode) ;
                 scope.src = reaction.src ;
                 full_react_info = function () {
-                    moneyNetworkService.full_react_info(message, reaction) ;
+                    // click with full reaction info (modal dialog box)
+                    scope.message = message ;
+                    scope.reaction = reaction ;
+                    ngDialog.open({
+                        template: 'fullReactInfo',
+                        className: 'ngdialog-theme-default',
+                        controller: 'ReactInfoCtrl',
+                        controllerAs: 'c',
+                        scope: scope
+                    });
                 };
                 scope.full_react_info = full_react_info ;
                 content = function () {
@@ -315,10 +324,10 @@ angular.module('MoneyNetwork')
         // end reactInfoImg
     }])
 
-    // reaction information count - popover with more reaction info - todo: click with full reaction info
+    // reaction information count - popover with more reaction info - click with full reaction info
     // https://github.com/jaros1/Zeronet-Money-Network/issues/164
     // parameters: message
-    .directive('reactInfoCount', ['$compile', 'MoneyNetworkService', 'contactAliasFilter', function($compile, moneyNetworkService, contactAlias) {
+    .directive('reactInfoCount', ['$compile', 'MoneyNetworkService', 'contactAliasFilter', 'ngDialog', function($compile, moneyNetworkService, contactAlias, ngDialog) {
         var pgm = 'reactInfoCount: ' ;
         var my_unique_id, setup ;
         my_unique_id = moneyNetworkService.get_my_unique_id() ;
@@ -353,7 +362,16 @@ angular.module('MoneyNetwork')
                 });
 
                 full_react_info = function () {
-                    moneyNetworkService.full_react_info(message, null) ;
+                    // click with full reaction info (modal dialog box)
+                    scope.message = message ;
+                    scope.reaction = null ;
+                    ngDialog.open({
+                        template: 'fullReactInfo',
+                        className: 'ngdialog-theme-default',
+                        controller: 'ReactInfoCtrl',
+                        controllerAs: 'c',
+                        scope: scope
+                    });
                 };
                 scope.full_react_info = full_react_info ;
 

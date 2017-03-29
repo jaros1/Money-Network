@@ -222,7 +222,23 @@
     </script>
 
     <script type="text/ng-template" id="fullReactInfo">
-       <div>hejsan</div>
+       <div class="dialog-contents">
+           <p>
+               <span ng-repeat="e in c.emojis">
+                   <input type="radio" ng-model="c.emoji" value="{{e.emoji}}" ng-change="c.emoji_changed()">
+                   <img ng-show="e.src" ng-src="{{e.src}}" height="20" width="20" alt="e.emoji" title="e.title">
+                   <span ng-hide="e.src" ng-bind="e.emoji"></span>
+                   {{e.count}}
+               </span>
+           </p>
+           <p>
+               <span ng-repeat="r in c.reactions">
+                   <img ng-src="{{r.src}}" class="img-circle img-sm">
+                   <a ng-show="r.contact" href="" ng-bind="r.alias" ng-click="c.chat_contact(r.contact)"></a>
+                   <span ng-hide="r.contact" ng-bind="r.alias"></span>
+               </span>
+           </p>
+       </div>
     </script>
 
     <script type="text/ng-template" id="messageTree">
@@ -239,12 +255,12 @@
             <table class="speech" ng-hide="m.edit_chat_message">
                 <tr>
                     <td>
-                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
-                                              alt="Click to continue chat" title="Click to continue chat">
-                                            <span ng-bind-html="c.setup.alias">Me</span>
-                                            <span ng-class="m.contact|contactGlyphicon"
-                                                  title="{{m|messageGlyphiconTitle}}"></span>
-                                        </span>
+                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
+                              alt="Click to continue chat" title="Click to continue chat">
+                            <span ng-bind-html="c.setup.alias">Me</span>
+                            <span ng-class="m.contact|contactGlyphicon"
+                                  title="{{m|messageGlyphiconTitle}}"></span>
+                        </span>
                     </td>
                     <td style="text-align: right; vertical-align: top">
                         <table style="margin-right: 0; margin-left: auto;">
@@ -391,11 +407,11 @@
             <table class="speech">
                 <tr>
                     <td style="text-align: left">
-                                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
-                                              alt="Click to chat" title="Click to chat">
-                                            <span ng-bind-html="m|messageAlias"></span>
-                                            <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}"></span>
-                                        </span>
+                        <span ng-click="c.chat_contact(m.contact)" class="media-heading"
+                              alt="Click to chat" title="Click to chat">
+                            <span ng-bind-html="m|messageAlias"></span>
+                            <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}"></span>
+                        </span>
                     </td>
                     <td style="text-align: right; vertical-align: top">
                         <table style="margin-right: 0; margin-left: auto;">
@@ -1961,7 +1977,7 @@
   js/all.js.tar.bz2 is small and distributed fast but tar.bz2 is not yet supported by all clients
  -->
 <script type="text/javascript" src="js/all.js"></script>
-<!-- script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<script type="text/javascript" src="js/all.js.zip/all.js"></script>
 
 <!-- end - some more static js files -->
 <script type="text/javascript" src="js-external/90-ui-bootstrap-tpls-2.1.3.js"></script>
