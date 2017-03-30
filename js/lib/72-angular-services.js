@@ -11044,7 +11044,8 @@ angular.module('MoneyNetwork')
             load_server_info: load_server_info,
             is_proxy_server: is_proxy_server,
             check_reactions: check_reactions,
-            unicode_to_symbol: unicode_to_symbol
+            unicode_to_symbol: unicode_to_symbol,
+            symbol_to_unicode: symbol_to_unicode
         };
 
         // end MoneyNetworkService

@@ -659,3 +659,20 @@ body #file-drop {
     vertical-align: middle;
 }
 
+/* reaction details */
+.reactcontainer {
+    position: relative;
+    left: 0;
+    top: 0;
+}
+.reactavatar {
+    position: relative;
+    top: 0;
+    left: 0;
+}
+.reactcornerimage {
+    border: 0;
+    position: absolute;
+    right: 0;
+    top: -80%
+}

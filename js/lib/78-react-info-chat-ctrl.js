@@ -14,8 +14,8 @@ angular.module('MoneyNetwork')
         // reaction if null if click on total number of reactions in reaction info
         var message = $scope.message;
         var reaction = $scope.reaction;
-        debug('reaction', controller + ': message = ' + JSON.stringify(message));
-        debug('reaction', controller + ': reaction = ' + JSON.stringify(reaction));
+        // debug('reaction', controller + ': message = ' + JSON.stringify(message));
+        // debug('reaction', controller + ': reaction = ' + JSON.stringify(reaction));
 
         // radio group in top of dialog box - all + radio group for each emoji in reaction info
         self.emojis = [];
@@ -55,17 +55,21 @@ angular.module('MoneyNetwork')
             });
             if (reaction) self.emoji = moneyNetworkService.unicode_to_symbol(reaction.unicode);
         })();
-        debug('reaction', controller + ': emjois = ' + JSON.stringify(self.emojis));
+        // debug('reaction', controller + ': emjois = ' + JSON.stringify(self.emojis));
 
         // full list of user reactions. From message.message.reaction_info (localStorage) or from like.json file (ZeroNet)
         self.reactions = [];
         (function () {
             var pgm = controller + '.anonymous function 2: ';
-            var reaction_info, i, anonymous, unique_id, contact, alias, my_unique_id, setup, emoji, src, avatar;
+            var reaction_info, i, anonymous, unique_id, contact, alias, my_unique_id, setup, emoji, avatar, my_avatar,
+                emoji_folders, emoji_folder, src;
             reaction_info = message.message.reaction_info;
             my_unique_id = moneyNetworkService.get_my_unique_id();
             setup = moneyNetworkService.get_user_setup();
-            avatar = moneyNetworkService.get_avatar();
+            my_avatar = moneyNetworkService.get_avatar();
+            emoji_folders = moneyNetworkService.get_emoji_folders() ;
+            emoji_folder = setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+
             if (message.message.z_filename) {
                 // public chat. reaction_info from check_public_reaction select.
                 if (reaction_info && reaction_info.length) {
@@ -73,34 +77,36 @@ angular.module('MoneyNetwork')
                         unique_id = null ;
                         contact = null;
                         alias = 'Unknown' ;
-                        src = 'public/images/image_failed.gif' ;
+                        avatar = 'public/images/image_failed.gif' ;
                         if (reaction_info[i].count) {
                             anonymous = reaction_info[i].count;
                             unique_id = null;
                             alias = anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '');
-                            src = 'public/images/avatarz.png' ; // anonymous reaction = Z logo
+                            avatar = 'public/images/avatarz.png' ; // anonymous reaction = Z logo
                         }
                         else {
                             unique_id = CryptoJS.SHA256(reaction_info[i].auth_address + '/' + reaction_info[i].pubkey).toString();
                             if (unique_id == my_unique_id) {
                                 alias = setup.alias;
-                                src = avatar.src;
+                                avatar = my_avatar.src;
                             }
                             else {
                                 contact = moneyNetworkService.get_contact_by_unique_id(unique_id);
                                 if (!contact) console.log(pgm + 'could not find contact with unique id ' + unique_id);
                                 else {
                                     alias = moneyNetworkService.get_contact_name(contact);
-                                    src = findContactAvatar(contact) ;
+                                    avatar = findContactAvatar(contact) ;
                                 }
                             }
                         }
+                        src = emoji_folder + '/' + moneyNetworkService.symbol_to_unicode(reaction_info[i].emoji) + '.png';
                         self.reactions.push({
                             unique_id: unique_id,
                             contact: contact,
                             alias: alias,
-                            src: src,
-                            emoji: reaction_info[i].emoji
+                            avatar: avatar,
+                            emoji: reaction_info[i].emoji,
+                            src: src
                         });
                     } // for i
                 }
@@ -108,36 +114,39 @@ angular.module('MoneyNetwork')
             else {
                 // private og group chat. message_with_envelope.reaction_info hash
                 // console.log(pgm + 'reactions = ' + JSON.stringify(message.message.reactions)) ;
-                console.log(pgm + 'reaction_info = ' + JSON.stringify(reaction_info));
+                debug('reaction', pgm + 'reaction_info = ' + JSON.stringify(reaction_info));
                 // reaction_info = {"users": {}, "emojis": {"❤": 1, "😮": 1}, "anonymous": {"❤": 1, "😮": 1}};
                 if (reaction_info.users) {
                     for (unique_id in reaction_info.users) {
                         contact = null;
                         alias = 'Unknown' ;
-                        src = 'public/images/image_failed.gif' ;
-                        emoji = reaction_info.users[my_unique_id];
+                        avatar = 'public/images/image_failed.gif' ;
+                        emoji = reaction_info.users[unique_id];
+                        // debug('reaction', pgm + 'unique_id = ' + unique_id + ', emoji = ' + JSON.stringify(emoji)) ;
                         if (unique_id == my_unique_id) {
                             if ((message.contact.type == 'group') &&
                                 (message.message.folder == 'inbox') &&
                                 (typeof emoji == 'object')) continue; // also in anonymous reactions
                             alias = setup.alias || 'Me';
-                            src = avatar.src ;
+                            avatar = my_avatar.src ;
                         }
                         else {
                             contact = moneyNetworkService.get_contact_by_unique_id(unique_id);
                             if (!contact) console.log(pgm + 'could not find contact with unique id ' + unique_id);
                             else {
                                 alias = moneyNetworkService.get_contact_name(contact);
-                                src = findContactAvatar(contact) ;
+                                avatar = findContactAvatar(contact) ;
                             }
                         }
-                        if (typeof emoji == 'object') emoji = emoji[0];
+                        if (emoji && (typeof emoji == 'object')) emoji = emoji[0]; // private reaction
+                        src = emoji_folder + '/' + moneyNetworkService.symbol_to_unicode(emoji) + '.png' ;
                         self.reactions.push({
                             unique_id: unique_id,
                             contact: contact,
                             alias: alias,
-                            src: src,
-                            emoji: emoji
+                            avatar: avatar,
+                            emoji: emoji,
+                            src: src
                         });
                     } // for
                 }
@@ -145,18 +154,25 @@ angular.module('MoneyNetwork')
                     for (emoji in reaction_info.anonymous) {
                         anonymous = reaction_info.anonymous[emoji];
                         alias = anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '');
+                        src = emoji_folder + '/' + moneyNetworkService.symbol_to_unicode(emoji) + '.png';
                         self.reactions.push({
                             unique_id: null,
                             contact: null,
                             alias: alias,
-                            src: 'public/images/avatarz.png', // anonymous reaction = Z logo
-                            emoji: emoji
+                            avatar: 'public/images/avatarz.png', // anonymous reaction = Z logo
+                            emoji: emoji,
+                            src: src
                         });
                     }
                 }
             }
         })();
-        debug('reaction', controller + ': reactions = ' + JSON.stringify(self.reactions));
+        // debug('reaction', controller + ': reactions = ' + JSON.stringify(self.reactions));
+
+        self.filter_reactions = function (reaction, index, reactions) {
+            var pgm = controller + '.filter_reactions: ';
+            return ((self.emoji == 'All') || (reaction.emoji == self.emoji)) ;
+        }; // filter_reactions
 
         self.chat_contact = function (contact) {
             var pgm = controller + '.chat_contact: ' ;
