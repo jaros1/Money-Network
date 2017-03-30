@@ -253,8 +253,11 @@ angular.module('MoneyNetwork')
                 scope.full_react_info = full_react_info ;
                 content = function () {
                     var pgm = 'reactInfoImg.link.content: ' ;
-                    var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous, my_private_inbox_reaction ;
+                    var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous, my_private_inbox_reaction,
+                        max_rows, rows, other ;
                     html = '<table><thead><tr><th>' + reaction.title + '</th></thead><tbody>' ;
+                    max_rows = 10 ;
+                    rows = [] ;
                     reaction_info = message.message.reaction_info ;
                     if (message.message.z_filename) {
                         // public chat. reaction_info from check_public_reaction select.
@@ -271,9 +274,9 @@ angular.module('MoneyNetwork')
                                     contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
                                     alias = contactAlias(contact) ;
                                 }
-                                html += '<tr><td>' + alias + '</td></tr>' ;
+                                rows.push(alias) ;
                             } // for i
-                            if (anonymous) html += '<tr><td>' + anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '') + '</td></tr>' ;
+                            if (anonymous) rows.unshift(anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '')) ;
                         }
                     }
                     else {
@@ -300,13 +303,20 @@ angular.module('MoneyNetwork')
                                     contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
                                     alias = contactAlias(contact) ;
                                 }
-                                html += '<tr><td>' + alias + '</td></tr>' ;
+                                rows.push(alias) ;
                             } // for
                         }
                         if (reaction_info.anonymous && (anonymous=reaction_info.anonymous[emoji])) {
-                            html += '<tr><td>' + anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '') + '</td></tr>' ;
+                            rows.unshift(anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '')) ;
                         }
                     }
+                    // truncate long table
+                    if (rows.length > max_rows) {
+                        other = rows.length - (max_rows-1) ;
+                        rows.length = max_rows-1 ;
+                        rows.push(other + ' ' + reaction.title + ' reactions') ;
+                    }
+                    for (i=0 ; i<rows.length ; i++) html += '<tr><td>' + rows[i] + '</td></tr>' ;
                     html += '</tbody></table>' ;
                     // console.log(pgm + html) ;
                     linkFn = $compile(html) ;
@@ -377,7 +387,10 @@ angular.module('MoneyNetwork')
 
                 content = function () {
                     var pgm = 'reactInfoCount.link.content: ' ;
-                    var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous, my_private_inbox_reaction, emoji ;
+                    var html, reaction_info, unique_id, linkFn, contact, alias, i, anonymous, my_private_inbox_reaction,
+                        emoji, max_rows, rows, other ;
+                    max_rows = 10 ;
+                    rows = [] ;
                     html = '<table><tbody>' ;
                     reaction_info = message.message.reaction_info ;
                     if (message.message.z_filename) {
@@ -395,34 +408,16 @@ angular.module('MoneyNetwork')
                                     contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
                                     alias = contactAlias(contact) ;
                                 }
+                                rows.push(alias) ;
                                 html += '<tr><td>' + alias + '</td></tr>' ;
                             } // for i
-                            if (anonymous) html += '<tr><td>' + anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '') + '</td></tr>' ;
+                            if (anonymous) rows.unshift(anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '')) ;
                         }
                     }
                     else {
                         // private og group chat. message_with_envelope.reaction_info hash
                         // console.log(pgm + 'reactions = ' + JSON.stringify(message.message.reactions)) ;
-                        //reactions = [{
-                        //    "unicode": "1f603",
-                        //    "title": "Like",
-                        //    "src": "https://twemoji.maxcdn.com/2/72x72/1f603.png",
-                        //    "count": 1,
-                        //    "$$hashKey": "object:2333"
-                        //}, {
-                        //    "unicode": "2764",
-                        //    "title": "Love",
-                        //    "src": "https://twemoji.maxcdn.com/2/72x72/2764.png",
-                        //    "count": 1,
-                        //    "$$hashKey": "object:2334"
-                        //}];
                         // console.log(pgm + 'reaction_info = ' + JSON.stringify(reaction_info)) ;
-                        //reaction_info = {
-                        //    "users": {"3d9fa732880ab3071c40f4982fccdd5ccc6803c9f37c5bd14d5922555c68103a": ["😃"]},
-                        //    "emojis": {"😃": 1, "❤": 1},
-                        //    "reaction_at": null,
-                        //    "anonymous": {"😃": 1, "❤": 1}
-                        //};
                         if (reaction_info.users) {
                             if ((message.contact.type == 'group') && (message.message.folder == 'inbox')) {
                                 // check for private reaction to group chat inbox messages.
@@ -441,15 +436,22 @@ angular.module('MoneyNetwork')
                                     contact = moneyNetworkService.get_contact_by_unique_id(unique_id) ;
                                     alias = contactAlias(contact) ;
                                 }
-                                html += '<tr><td>' + alias + '</td></tr>' ;
+                                rows.push(alias);
                             } // for
                         }
                         if (reaction_info.anonymous) {
                             anonymous = 0 ;
                             for (emoji in reaction_info.anonymous) anonymous += reaction_info.anonymous[emoji] ;
-                            if (anonymous) html += '<tr><td>' + anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '') + '</td></tr>' ;
+                            if (anonymous) rows.unshift(anonymous + ' anonymous reaction' + (anonymous > 1 ? 's' : '')) ;
                         }
                     }
+                    // truncate long table
+                    if (rows.length > max_rows) {
+                        other = rows.length - (max_rows-1) ;
+                        rows.length = max_rows-1 ;
+                        rows.push(other + ' other reactions') ;
+                    }
+                    for (i=0 ; i<rows.length ; i++) html += '<tr><td>' + rows[i] + '</td></tr>' ;
                     html += '</tbody></table>' ;
                     // console.log(pgm + html) ;
                     linkFn = $compile(html) ;

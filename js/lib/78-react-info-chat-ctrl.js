@@ -174,6 +174,29 @@ angular.module('MoneyNetwork')
             return ((self.emoji == 'All') || (reaction.emoji == self.emoji)) ;
         }; // filter_reactions
 
+        self.infinite_scroll_limit = 20 ;
+        function add_test_data () {
+            var pgm = controller + '.add_test_data: ';
+            var reaction ;
+            while (self.reactions.length < self.infinite_scroll_limit) {
+                reaction = {
+                    unique_id: null,
+                    contact: null,
+                    alias: MoneyNetworkHelper.generate_random_password(10),
+                    avatar: self.reactions[0].avatar,
+                    src: self.reactions[0].src
+                } ;
+                self.reactions.push(reaction) ;
+            } // while
+        } ;
+        // add_test_data() ;
+        self.get_more_reactions = function () {
+            var pgm = controller + '.get_more_reactions: ' ;
+            self.infinite_scroll_limit += 20 ;
+            debug('reaction || infinite_scroll', pgm + 'infinite_scroll_limit = ' + self.infinite_scroll_limit) ;
+            // add_test_data() ;
+        }; // get_more_reactions
+
         self.chat_contact = function (contact) {
             var pgm = controller + '.chat_contact: ' ;
             var a_path, z_path ;
