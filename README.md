@@ -24,11 +24,16 @@ Todo:
 - http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
 - https://bit.no.com:43110/moneynetwork.bit/ (proxy)
 - https://zeronet.korso.win/moneynetwork.bit/ (proxy)
-- https://proxy1.zn.kindlyfire.me/moneynetwork.bit/ (proxy)
-- https://onlyzero.net/moneynetwork.bit/ (proxy)
-- https://www.zerogate.tk/moneynetwork.bit/ (proxy)
-- https://zeronet.iikb.org/moneynetwork.bit/ (proxy)
-- https://zero.btnova.org/moneynetwork.bit/ (proxy)
+- https://proxy1.zn.kindlyfire.me/moneynetwork.bit/ (proxy *)
+- https://onlyzero.net/moneynetwork.bit/ (proxy *)
+- https://www.zerogate.tk/moneynetwork.bit/ (proxy *)
+- https://zeronet.iikb.org/moneynetwork.bit/ (proxy *)
+- https://zero.btnova.org/moneynetwork.bit/ (proxy *)
+- https://fuckcf.cf/moneynetwork.bit (proxy)
+- https://zeronet.maxweiss.io/moneynetwork.bit (proxy)
+- https://bit.surf:43110/moneynetwork.bit/ (proxy)
+- https://proxy.th3nd.com/moneynetwork.bit
+- Proxy * = not available at last test 15 april 2017
 
 This demo should be safe to check out on a ZeroNet proxy server. 
 You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server.

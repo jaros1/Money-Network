@@ -222,7 +222,7 @@
     </script>
 
     <script type="text/ng-template" id="fullReactInfo">
-       <div class="dialog-contents">
+       <div class="dialog-content">
            <p>
                <span ng-repeat="e in c.emojis">
                    <input type="radio" ng-model="c.emoji" value="{{e.emoji}}" ng-change="c.emoji_changed()">
@@ -232,7 +232,7 @@
                </span>
            </p>
            <p>
-               <div infinite-scroll="c.get_more_reactions()" infinite-scroll-container='".dialog-contents"'>
+               <div infinite-scroll="c.get_more_reactions()" infinite-scroll-container='".dialog-content"'>
                    <span ng-repeat="r in c.reactions|filter:c.filter_reactions|limitTo: c.infinite_scroll_limit">
                        <span class="reactcontainer">
                            <img ng-src="{{r.avatar}}" class="img-circle img-sm reactavatar">

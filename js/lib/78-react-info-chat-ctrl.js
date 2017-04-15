@@ -188,7 +188,7 @@ angular.module('MoneyNetwork')
                 } ;
                 self.reactions.push(reaction) ;
             } // while
-        } ;
+        }
         // add_test_data() ;
         self.get_more_reactions = function () {
             var pgm = controller + '.get_more_reactions: ' ;
