@@ -14,10 +14,9 @@ Spare time project, work in progress, no money in here yet. For now just a chat 
 Implemented:
 - End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags and public chat are stored in clear on ZeroNet. 
 - Contact list: Categories: new, guest, unverified, verified and ignored.
-- Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat, markdown, emojis and reactions
+- Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat, markdown, emojis, reactions and comments
 
 Todo:
-- Chat. More social network like. Add comments.
 - Wallet, Money API and interface to external money systems. One ZeroNet plugin site for each money system. Starting with a BitCoin interface.
 
 ## Demo
