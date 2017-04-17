@@ -1,4 +1,4 @@
-# Zeronet-Money-Network
+# Money-Network
 Demo with complementary and alternative money. Implemented in ZeroFrame and AngularJS. Focus on privacy, encryption, max data on client and min data on server. 
 
 Alternative and complementary money systems can in greater or less extent, replace or support the current monetary system and 
@@ -14,11 +14,11 @@ Spare time project, work in progress, no money in here yet. For now just a chat 
 Implemented:
 - End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags and public chat are stored in clear on ZeroNet. 
 - Contact list: Categories: new, guest, unverified, verified and ignored.
-- Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat.
+- Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat, markdown, emojis and reactions
 
 Todo:
-- Chat. More social network like UI. Add reactions, comments, follow and unfollow public chat.
-- Wallet, Money API and interface to external money systems.  
+- Chat. More social network like. Add comments.
+- Wallet, Money API and interface to external money systems. One ZeroNet plugin site for each money system. Starting with a BitCoin interface.
 
 ## Demo
 - http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
