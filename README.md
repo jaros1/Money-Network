@@ -32,6 +32,7 @@ Todo:
 - https://zeronet.maxweiss.io/moneynetwork.bit (proxy)
 - https://bit.surf:43110/moneynetwork.bit/ (proxy)
 - https://proxy.th3nd.com/moneynetwork.bit
+- https://zn.maly.io/moneynetwork.bit
 - Proxy * = not available at last test 15 april 2017
 
 This demo should be safe to check out on a ZeroNet proxy server. 
