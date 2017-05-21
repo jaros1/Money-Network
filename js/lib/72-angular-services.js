@@ -158,54 +158,105 @@ angular.module('MoneyNetwork')
             return MoneyNetworkHelper.generate_random_password(200);
         }
 
+        function get_default_user_hub () {
+            var default_user_hub, default_hubs, hub ;
+            var default_user_hub = '182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe' ;
+            default_hubs = ZeroFrame.site_info.content.settings.default_hubs ;
+            if (!default_hubs) return default_user_hub ;
+            for (hub in default_hubs) {
+                if (default_hubs[hub].title.match(/user hub/i)) return hub ;
+            }
+            return default_user_hub ;
+        } // get_default_user_hub3
+        function get_my_user_hub (cb) {
+            var pgm = service + '.get_my_hub: ' ;
+            var query ;
+            if (z_cache.my_user_hub) return cb(z_cache.my_user_hub) ;
+
+            // Use content.modified timestamp as sort condition if multiple user data hubs
+            query =
+                "select substr(data_json.directory, 1, instr(data_json.directory,'/')-1) as hub " +
+                "from json as data_json, json as content_json, keyvalue " +
+                "where data_json.directory like '%/data/users/" + ZeroFrame.site_info.auth_address + "' " +
+                "and data_json.file_name = 'data.json' " +
+                "and content_json.directory = data_json.directory " +
+                "and content_json.file_name = 'content.json' " +
+                "and keyvalue.json_id = content_json.json_id " +
+                "and keyvalue.key = 'modified' " +
+                "order by keyvalue.key desc" ;
+            debug('select', pgm + 'query 17 (MS OK) = ' + query);
+            ZeroFrame.cmd("dbQuery", [query], function (res) {
+                var pgm = service + '.get_my_hub dbQuery callback 1: ' ;
+                if (detected_client_log_out(pgm)) return ;
+                if (res.error) {
+                    console.log(pgm + "user data hub lookup failed: " + res.error);
+                    console.log(pgm + 'query = ' + query);
+                    z_cache.my_user_hub = get_default_user_hub() ;
+                    cb(z_cache.my_user_hub) ;
+                    return;
+                }
+                if (res.length == 0) z_cache.my_user_hub = get_default_user_hub() ;
+                else z_cache.my_user_hub = res[0].hub ;
+                cb(z_cache.my_user_hub) ;
+            }) ; // dbQuery callback 1
+
+        } // get_my_user_hub
+
         // wrapper for data.json fileGet and fileWrite (cache data.json file in memory)
         function get_data_json (cb) {
             var pgm = service + '.get_data_json: ' ;
-            var user_path ;
+            if (detected_client_log_out(pgm)) return ;
             if (z_cache.data_json) {
                 // data.json file is already in cache
                 if (detected_client_log_out(pgm)) return ;
                 cb(z_cache.data_json, false) ;
                 return ;
             }
-            // download data.json and add file to cache
-            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            console.log(pgm + 'user_path = ' + user_path) ;
-            ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data_str) {
-                var pgm = service + '.get_data_json fileGet callback 1: ';
-                console.log(pgm + 'data_str = ' + JSON.stringify(data_str));
-                var data, empty;
+            // find user data hub (if any)
+            get_my_user_hub (function (hub) {
+                var user_path ;
+                // download data.json and add file to cache
                 if (detected_client_log_out(pgm)) return ;
-                if (data_str) {
-                    data = JSON.parse(data_str);
-                    zeronet_migrate_data(data);
-                    empty = false ;
-                }
-                else {
-                    data = {
-                        version: dbschema_version,
-                        users: [],
-                        search: [],
-                        msg: []
-                    };
-                    empty = true ;
-                }
-                // add data.json to cache
-                z_cache.data_json = data ;
-                cb(z_cache.data_json, empty) ;
-            }) ;
+                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                console.log(pgm + 'user_path = ' + user_path) ;
+                ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data_str) {
+                    var pgm = service + '.get_data_json fileGet callback 1: ';
+                    var data, empty;
+                    if (detected_client_log_out(pgm)) return ;
+                    if (data_str) {
+                        data = JSON.parse(data_str);
+                        zeronet_migrate_data(data);
+                        empty = false ;
+                    }
+                    else {
+                        data = {
+                            version: dbschema_version,
+                            users: [],
+                            search: [],
+                            msg: []
+                        };
+                        empty = true ;
+                    }
+                    // add data.json to cache
+                    z_cache.data_json = data ;
+                    cb(z_cache.data_json, empty) ;
+                }) ; // fileGet callback 2
+            }) ; // get_my_user_hub callback 1
         } // get_data_json
         function write_data_json (cb) {
             var pgm = service + '.write_data_json: ' ;
-            var user_path, data, json_raw ;
             if (detected_client_log_out(pgm)) return ;
-            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            data = z_cache.data_json || {} ;
-            json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
-            ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
-                if (detected_client_log_out(pgm)) return ;
-                cb(res) ;
-            }) ;
+            // find user data hub
+            get_my_user_hub (function (hub) {
+                var user_path, data, json_raw ;
+                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                data = z_cache.data_json || {} ;
+                json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
+                ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
+                    if (detected_client_log_out(pgm)) return ;
+                    cb(res) ;
+                }) ; // fileWrite callback 2
+            }) ; // get_my_user_hub callback 1
         } // write_data_json
 
         // wrapper for status.json fileGet and fileWrite (cache status.json file in memory)
@@ -1684,7 +1735,7 @@ angular.module('MoneyNetwork')
                     "where json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
                     "and json.file_name = 'content.json' " +
                     "and files.json_id = json.json_id" ;
-                debug('select', pgm + 'query = ' + query);
+                debug('select', pgm + 'query 1 = ' + query);
 
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = service + '.z_update_1_data_json dbQuery callback 2: ';
@@ -3169,7 +3220,7 @@ angular.module('MoneyNetwork')
                 "and json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
                 "and ( files_optional.filename = '" + sent_at + '-image.json' + "'" +  // old format without <user_seq> in filename
                 "   or files_optional.filename = '" + sent_at + '-' + z_cache.user_seq + '-image.json' + "' )" ; // new format with <user_seq> in filename
-            debug('select', pgm + 'query = ' + query) ;
+            debug('select', pgm + 'query 2 = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.cleanup_my_image_json dbQuery callback 1: ';
                 if (res.error) {
@@ -4837,6 +4888,7 @@ angular.module('MoneyNetwork')
                 return ;
             }
 
+            // Merger Site OK. Have added hub to select. Using user data from last updated hub. Checking for conflicting user encryption information
             var query =
                 "select" +
                 "  substr(data_json.directory, 1, instr(data_json.directory,'/')-1) as hub," +
@@ -4858,7 +4910,7 @@ angular.module('MoneyNetwork')
                 "and status_json.file_name = 'status.json' " +
                 "and status.json_id = status_json.json_id " +
                 "and status.user_seq = users.user_seq" ;
-            debug('select', pgm + 'query = ' + query);
+            debug('select', pgm + 'query 3 (MS OK) = ' + query);
 
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.ls_load_contacts dbQuery callback 1: ';
@@ -4877,6 +4929,7 @@ angular.module('MoneyNetwork')
                 for (var i = 0; i < res.length; i++) {
                     if (!res_hash.hasOwnProperty(res[i].auth_address)) res_hash[res[i].auth_address] = [];
                     res_hash[res[i].auth_address].push({
+                        hub: res[i].hub,
                         user_seq: res[i].user_seq,
                         pubkey: res[i].pubkey,
                         pubkey2: res[i].pubkey2,
@@ -4887,7 +4940,8 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'res_hash = ' + JSON.stringify(res_hash));
 
                 // control. check that pubkey in contacts are identical with pubkeys from this query
-                var auth_address, unique_id, found_user_seq, found_pubkey, found_pubkey2, found_encryption, found_last_updated;
+                var auth_address, unique_id, found_hub, found_user_seq, found_pubkey, found_pubkey2, found_encryption,
+                    found_last_updated, conflicting_information;
                 // delete contact helper. keep or delete contact without public key?
                 var delete_contact = function (contact, i) {
                     var msg, last_updated, j, no_msg;
@@ -4915,12 +4969,34 @@ angular.module('MoneyNetwork')
                         delete_contact(contact, i);
                         continue;
                     }
+                    // contact info found on more that one hub? Use hub with last updated status timestamp
+                    // contact may have selected to hide online status (not update status timestamp)
+                    found_hub = null ;
                     found_user_seq = null;
                     found_pubkey = null;
+                    found_pubkey2 = null;
+                    found_encryption = null ;
                     found_last_updated = null;
+                    conflicting_information = [] ;
                     for (j = 0; j < res_hash[auth_address].length; j++) {
                         unique_id = CryptoJS.SHA256(auth_address + '/' + res_hash[auth_address][j].pubkey).toString();
-                        if (contact.unique_id == unique_id) {
+                        if ((contact.unique_id == unique_id) && found_hub) {
+                            if (found_pubkey != res_hash[auth_address][j].pubkey) conflicting_information.push('pubkey') ;
+                            if (found_pubkey2 != res_hash[auth_address][j].pubkey2) conflicting_information.push('pubkey2') ;
+                            if (found_encryption != res_hash[auth_address][j].encryption) conflicting_information.push('encryption') ;
+                            if (conflicting_information.length) {
+                                console.log(pgm + 'warning: contact with unique id ' + unique_id +
+                                    ' found on more that one user data hub with conflicting ' + conflicting_information.join(', ') + ' encryption information') ;
+                                console.log(pgm + 'Hubs: ' + found_hub + ', ' + res_hash[auth_address][j].hub) ;
+                                if (conflicting_information.indexOf('pubkey') != -1) console.log(pgm + 'pubkeys: ' + found_pubkey + ', ' + res_hash[auth_address][j].pubkey) ;
+                                if (conflicting_information.indexOf('pubkey2') != -1) console.log(pgm + 'pubkeys2: ' + found_pubkey2 + ', ' + res_hash[auth_address][j].pubkey2) ;
+                                if (conflicting_information.indexOf('encryption') != -1) console.log(pgm + 'encryption: ' + found_encryption + ', ' + res_hash[auth_address][j].encryption) ;
+                                console.log(pgm + 'last updated: ' + found_last_updated + ', ' + res_hash[auth_address][j].last_updated) ;
+                            }
+                        }
+                        if ((contact.unique_id == unique_id) &&
+                            (!found_hub || (found_hub && (res_hash[auth_address][j].last_updated > found_last_updated)))) {
+                            found_hub = res_hash[auth_address][j].hub;
                             found_user_seq = res_hash[auth_address][j].user_seq;
                             found_pubkey = res_hash[auth_address][j].pubkey;
                             found_pubkey2 = res_hash[auth_address][j].pubkey2;
@@ -4932,6 +5008,7 @@ angular.module('MoneyNetwork')
                         delete_contact(contact, i);
                         continue;
                     }
+                    contact.hub = found_hub ;
                     contact.user_seq = found_user_seq;
                     contact.pubkey = found_pubkey;
                     contact.pubkey2 = found_pubkey2;
@@ -4965,7 +5042,7 @@ angular.module('MoneyNetwork')
                     "from users, json " +
                     "where users.avatar is not null " +
                     "and json.json_id = users.json_id" ;
-                debug('select', pgm + 'query = ' + query) ;
+                debug('select', pgm + 'query 4 = ' + query) ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = service + '.ls_load_contacts dbQuery callback 2: ' ;
                     var i, unique_id, source1_avatars, source2_avatars, contact ;
@@ -5138,7 +5215,7 @@ angular.module('MoneyNetwork')
             } // for i (contacts)
             if (save_reactions) ls_save_reactions(false) ;
 
-            // cleanup contacts before save (remove work variables)
+            // cleanup contacts before save. remove work variables and other data available on zeronet
             var local_storage_contacts_clone = JSON.parse(JSON.stringify(ls_contacts));
             for (i=local_storage_contacts_clone.length-1 ; i >= 0 ; i--) {
                 contact = local_storage_contacts_clone[i] ;
@@ -5163,6 +5240,7 @@ angular.module('MoneyNetwork')
                 delete contact.pubkey ; // available on ZeroNet
                 delete contact.pubkey2 ; // available on ZeroNet
                 delete contact.encryption ; // available on ZeroNet
+                delete contact.hub ; // available on ZeroNet
                 if (contact.search) for (j=0 ; j<contact.search.length ; j++) {
                     delete contact.search[j]['$$hashKey'] ;
                     delete contact.search[j].edit_alias ;
@@ -5337,7 +5415,7 @@ angular.module('MoneyNetwork')
                 "where json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
                 "and users.json_id = json.json_id " +
                 "and users.pubkey = '" + pubkey + "'";
-            debug('select', pgm + 'query 1 = ' + query) ;
+            debug('select', pgm + 'query 5 = ' + query) ;
             // if (auth_address) debug('file_done', pgm + 'query 1 = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.z_contact_search dbQuery callback 1: ' ;
@@ -5359,8 +5437,7 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 if (res.length > 1) {
-                    console.log(pgm + 'todo: user with auth_address ' + ZeroFrame.site_info.auth_address + ' found at more that one hub. res = ' + JSON.stringify(RES)) ;
-
+                    console.log(pgm + 'todo: user with auth_address ' + ZeroFrame.site_info.auth_address + ' found at more that one hub. res = ' + JSON.stringify(res)) ;
                 }
                 var json_id = res[0].json_id ;
                 var user_seq = res[0].user_seq ;
@@ -5404,7 +5481,7 @@ angular.module('MoneyNetwork')
                     "and content_json.file_name = 'content.json' " +
                     "and keyvalue.json_id = content_json.json_id " +
                     "and keyvalue.key = 'cert_user_id'" ;
-                debug('select', pgm + 'contacts_query = ' + contacts_query) ;
+                debug('select', pgm + 'contacts_query 6 = ' + contacts_query) ;
                 // if (auth_address) debug('file_done', pgm + 'contacts_query = ' + contacts_query) ;
 
                 // find contacts with matching tags
@@ -5431,7 +5508,7 @@ angular.module('MoneyNetwork')
                     "or search.tag like my_search.tag and search.value like my_search.value) " +
                     "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " +
                     "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq" ;
-                debug('select', pgm + 'query = ' + query) ;
+                debug('select', pgm + 'query 7 = ' + query) ;
 
                 ZeroFrame.cmd("dbQuery", [query], function(res) {
                     var pgm = service + '.z_contact_search dbQuery callback 2: ';
@@ -5674,7 +5751,7 @@ angular.module('MoneyNetwork')
                 "and json.directory = 'users/" + auth_address + "' " +
                 "and ( files_optional.filename = '" + message_with_envelope.sent_at + '-image.json' + "'" +        // old format without <user_seq> in filename
                 "   or files_optional.filename like '" + message_with_envelope.sent_at + '-%-image.json' + "' )" ; // new format with <user_seq> in filename
-            debug('select', pgm + 'query = ' + query) ;
+            debug('select', pgm + 'query 8 = ' + query) ;
 
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.download_json_image_file dbQuery callback 1: ' ;
@@ -6194,7 +6271,7 @@ angular.module('MoneyNetwork')
                         "and json.directory = 'users/" + contact.auth_address + "' " +
                         "and  ( files_optional.filename = '" + message.sent_at + '-image.json' + "'" +
                         "    or files_optional.filename like '" + message.sent_at + '-%-image.json' + "' )";
-                    debug('select', pgm + 'query = ' + query);
+                    debug('select', pgm + 'query 9 = ' + query);
 
                     ZeroFrame.cmd("dbQuery", [query], function (query_res) {
                         var pgm = service + '.process_incoming_cryptmessage dbQuery callback 3: ';
@@ -7036,7 +7113,7 @@ angular.module('MoneyNetwork')
                         "and status_json.file_name = 'status.json' " +
                         "and status.json_id = status_json.json_id " +
                         "and status.user_seq = users.user_seq" ;
-                    debug('select', pgm + 'query = ' + query) ;
+                    debug('select', pgm + 'query 10 = ' + query) ;
 
                     ZeroFrame.cmd("dbQuery", [query], function (res2) {
                         var pgm = service + '.process_incoming_cryptmessage dbQuery callback 1: ';
@@ -7265,7 +7342,7 @@ angular.module('MoneyNetwork')
                 "and content_json.file_name = 'content.json' " +
                 "and keyvalue.json_id = content_json.json_id " +
                 "and keyvalue.key = 'cert_user_id'" ;
-            debug('select', pgm + 'contacts_query = ' + contacts_query) ;
+            debug('select', pgm + 'contacts_query 11 = ' + contacts_query) ;
 
             ZeroFrame.cmd("dbQuery", [contacts_query], function (res) {
                 var pgm = service  + '.create_unknown_contacts dbQuery callback: ';
@@ -7421,7 +7498,7 @@ angular.module('MoneyNetwork')
                 "and data_json.file_name = 'data.json' " +
                 "and users.json_id = data_json.json_id " +
                 "and users.user_seq = like.user_seq" ;
-            debug('select', pgm + 'query = ' + query) ;
+            debug('select', pgm + 'query 12 = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.check_public_reactions dbQuery callback: ';
                 var emoji_folder, user_reactions, i, title, unicode, j, sum, count, emoji ;
@@ -7644,7 +7721,7 @@ angular.module('MoneyNetwork')
             // console.log(pgm + 'ignore_zeronet_msg_id = ' + JSON.stringify(ignore_zeronet_msg_id)) ;
 
             // fetch relevant messages
-            // 1) listening to relevant receiver_sha256 addresses
+            // 1) listening to relevant receiver_sha256 addresses. Listening to messages from all connected user hubs
             var query =
                 "select" +
                 "  messages.user_seq, messages.receiver_sha256, messages.key, messages.message," +
@@ -7671,7 +7748,7 @@ angular.module('MoneyNetwork')
                 "and users.json_id = messages.json_id " +
                 "and users.user_seq = messages.user_seq " +
                 "and json.json_id = messages.json_id" ;
-            debug('select', pgm + 'query = ' + query) ;
+            debug('select', pgm + 'query 13 (MS OK) = ' + query) ;
 
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.local_storage_read_messages dbQuery callback: ';
@@ -7929,7 +8006,7 @@ angular.module('MoneyNetwork')
                 seperator = ', ' ;
             }
             query += ')' ;
-            debug('select', pgm + 'query = ' + query) ;
+            debug('select', pgm + 'query 14 = ' + query) ;
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.check_image_download_failed dbQuery callback 1: ' ;
                 var found_image_files, i, image_index, get_file_info ;
@@ -9059,7 +9136,7 @@ angular.module('MoneyNetwork')
                     "and users.user_seq = cast(substr( substr(files_optional.filename,29),1,instr(substr(files_optional.filename,29),'-')-1) as integer) " ;
                 if (user_setup.block_guests) query += "and users.guest is null " ; // check spam filter: guests
                 query += "order by files_optional.filename desc" ;
-                debug('select', pgm + 'query = ' + query) ;
+                debug('select', pgm + 'query 15 = ' + query) ;
 
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = service + '.get_public_chat dbQuery callback 2: ';
@@ -9942,7 +10019,7 @@ angular.module('MoneyNetwork')
                 "and json.json_id = keyvalue.json_id " +
                 "and files.json_id = keyvalue.json_id " +
                 "order by keyvalue.value, keyvalue.json_id";
-            debug('select', pgm + 'query = ' + query);
+            debug('select', pgm + 'query 16 (MS OK) = ' + query);
 
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.cleanup_inactive_users dbQuery callback: ';
@@ -9972,7 +10049,7 @@ angular.module('MoneyNetwork')
                     // sign/publish is not working. 1CCiJ97XHgVeJ@moneynetwork should be moderator and allowed to delete old user files
                     // http://127.0.0.1:43110/Blog.ZeroNetwork.bit/?Post:46:ZeroNet+site+development+tutorial+2#Comments
                     var sign_and_publish = function (directory) {
-                        var filename = 'data/' + directory + '/content.json';
+                        var filename = 'merged-MoneyNetwork/' + directory + '/content.json';
                         // console.log(pgm + 'sign and publish. filename = ' + filename);
                         ZeroFrame.cmd("sitePublish", {privatekey: privatekey, inner_path: filename}, function (res) {
                             var pgm = service + '.cleanup_inactive_users sitePublish callback: ', error;
@@ -9991,7 +10068,7 @@ angular.module('MoneyNetwork')
                             sign_and_publish(last_directory);
                             last_directory = res[i].directory;
                         }
-                        filename = "data/" + res[i].directory + "/" + res[i].filename;
+                        filename = "merged-MoneyNetwork/" + res[i].directory + "/" + res[i].filename;
                         if (res[i].optional == 'N') ZeroFrame.cmd("fileDelete", filename, function (res) {});
                         else ZeroFrame.cmd("optionalFileDelete", filename, function (res) {});
                     } // for i (res)
