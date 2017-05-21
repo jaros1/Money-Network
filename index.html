@@ -89,6 +89,7 @@
                     days. The data is still in client and will be restored from client to ZeroNet after next user login.
                 </li>
             </ul>
+            <br>
 
             Contact info: I am not using ZeroMail.
             Send a <a href="/moneynetwork.bit/?path=/chat2/jro@zeroid.bit" target="_top" rel="noopener noreferrer">PM ✉</a>
@@ -106,6 +107,19 @@
             <p>
                 money.html - page to manage the traditional, complementare and alternative money systems that you
                 want to use in here.
+            </p>
+
+            <p>
+                Integration tests. Test communication between this site "Money Network" and a wallet site "Money Network W2 (test Bitcoins).<br>
+                <a href="" ng-click="m.money_network_w2_1()">test1</a> - add iframe with wallet site. Test failed. Will redirect to wallet site.<br>
+                <a href="" ng-click="m.money_network_w2_2()">test2</a> - use ZeroNet wrapperOpenWindow. Test failed. Wallet opens in new tab but no window object is returned.<br>
+                <a href="" ng-click="m.money_network_w2_3()">test3</a> - use window.open. Test failed. Cross-origin error.<br>
+                <a href="" ng-click="m.money_network_w2_4()">test4</a> - use XMLHttpRequest. Test failed.  Cross-origin error. But should be possible.
+                Kaffie: I use XMLHttpRequest(); for Kaffiene. It works fine for me and other users that have reported feedback. But fails on proxies.<br>
+                <a href="" ng-click="m.money_network_w2_5()">test5</a> - add iframe without src + content with a src script. Test failed. Cross-origin error.<br>
+                <a href="" ng-click="m.money_network_w2_6()">test6</a> - test cross site all.js fileGet. Test failed. But OK with a shortcut to wallet site. Still iframe cross-origin error.<br>
+                <a href="" ng-click="m.money_network_w2_7()">test7</a> - test mergerSiteList.<br>
+                <a href="" ng-click="m.money_network_w2_8()">test8</a> - test wrapperPermissionAdd.<br>
             </p>
 
             Summary:
@@ -127,7 +141,6 @@
                 <li><a href="http://robertreich.org/" target="_blank" rel="noopener noreferrer">Robert Reich</a>'s
                     <a href="http://inequalityforall.com/" target="_blank" rel="noopener noreferrer">Inequality for All</a></li>
             </ul>
-
 
         </div>
 

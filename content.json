@@ -258,12 +258,8 @@
    "size": 3167
   }
  },
- "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*|emoji/.*/.*.png)",
+ "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*|emoji/.*/.*.png|merged-.*)",
  "includes": {
-  "data/users/content.json": {
-   "signers": [],
-   "signers_required": 1
-  },
   "emoji/apple/content.json": {
    "signers": [],
    "signers_required": 1
@@ -300,6 +296,14 @@
  "inner_path": "content.json",
  "modified": 1490884856,
  "postmessage_nonce_security": true,
+ "settings": {
+  "default_hubs": {
+   "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe": {
+    "description": "Money Network - D1 - User hub - runner jro",
+    "title": "D1 - User hub"
+   }
+  }
+ },
  "sign": [
   63123063702575730111434252745922535485942801567445884425431145485511706135965,
   64282238959957577828792711643503000737857660736175656849166154497008248096709
@@ -309,7 +313,7 @@
   "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G/uSfD3XLRIK1Mb4bBoaHsJ/oK9P//1gjgLFOxq7rcekynNlfaapbst6qULfWEI5p7cc7gmSX6vXuB7aR4kmaGA="
  },
  "signs_required": 1,
- "title": "Money Network",
+ "title": "MoneyNetwork",
  "viewport": "width=device-width, initial-scale=1.0",
  "zeronet_version": "0.5.3"
 }

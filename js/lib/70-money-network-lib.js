@@ -1100,6 +1100,7 @@ var MoneyNetworkHelper = (function () {
         "title": 'User data.json file. User info, user search tags and user private messages',
         "properties": {
             "version": { "type": 'integer' },
+            "hub": { "type": 'string'},
             "users": {
                 "type": 'array',
                 "description": 'Array with localStorage users. Unique user user_seq used in data.json, status.json and in filenames for optional files',
@@ -1153,6 +1154,7 @@ var MoneyNetworkHelper = (function () {
         "title": 'User status.json file. Last online timestamp. Can be disabled by user',
         "properties": {
             "version": { "type": 'integer' },
+            "hub": { "type": 'string'},
             "status": {
                 "type": 'array',
                 "items": {
@@ -1176,6 +1178,7 @@ var MoneyNetworkHelper = (function () {
         "description": 'User_seq. Local user id. timestamp and auth is message identification. timestamp should be enough id in most situations. Auth = first 4 characters of auth_address. Emoji is unicode symbol. Count is only used for private anonymous reactions',
         "properties": {
             "version": { "type": 'integer' },
+            "hub": { "type": 'string'},
             "like": {
                 "type": 'array',
                 "items": {

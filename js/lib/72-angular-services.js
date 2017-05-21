@@ -170,9 +170,10 @@ angular.module('MoneyNetwork')
             }
             // download data.json and add file to cache
             user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            console.log(pgm + 'user_path = ' + user_path) ;
             ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data_str) {
                 var pgm = service + '.get_data_json fileGet callback 1: ';
-                // console.log(pgm + 'data = ' + JSON.stringify(data));
+                console.log(pgm + 'data_str = ' + JSON.stringify(data_str));
                 var data, empty;
                 if (detected_client_log_out(pgm)) return ;
                 if (data_str) {
@@ -1617,10 +1618,70 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.z_update_1_data_json get_like_json callback 1: ';
 
                 // check current user disk usage. must keep total file usage <= user_contents_max_size
+                console.log(pgm + 'todo: should check user disk usage for current hub. site_info = ' + JSON.stringify(ZeroFrame.site_info));
+                //site_info = {
+                //    "tasks": 0,
+                //    "size_limit": 10,
+                //    "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+                //    "next_size_limit": 10,
+                //    "auth_address": "18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                //    "feed_follow_num": null,
+                //    "auth_key_sha512": "717ec0d36466325ac8001c78b569e090b97f3aa0acd162e1adcbd6912bdd5385",
+                //    "content": {
+                //        "files": 63,
+                //        "domain": "moneynetwork.bit",
+                //        "description": "Complementary & alternative money demo",
+                //        "includes": 8,
+                //        "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+                //        "cloneable": true,
+                //        "favicon": "favicon.ico",
+                //        "viewport": "width=device-width, initial-scale=1.0",
+                //        "inner_path": "content.json",
+                //        "settings": {
+                //            "default_hubs": {
+                //                "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe": {
+                //                    "description": "Money Network - D1 - User hub - runner jro",
+                //                    "title": "D1 - User hub"
+                //                }
+                //            }
+                //        },
+                //        "files_optional": 0,
+                //        "title": "MoneyNetwork",
+                //        "signs_required": 1,
+                //        "modified": 1490884856,
+                //        "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*|emoji/.*/.*.png|merged-.*)",
+                //        "zeronet_version": "0.5.3",
+                //        "postmessage_nonce_security": true
+                //    },
+                //    "peers": 90,
+                //    "auth_key": "2e6660337d0efeaca1cd6ee4b3b3dbfcabe30693f37d483a497c38fe322547f8",
+                //    "settings": {
+                //        "domain": "moneynetwork.bit",
+                //        "added": 1485444833,
+                //        "optional_downloaded": 166065,
+                //        "size_limit": 10,
+                //        "serving": true,
+                //        "own": true,
+                //        "size": 7830481,
+                //        "peers": 89,
+                //        "bytes_recv": 414455683,
+                //        "cache": {},
+                //        "bytes_sent": 1320104761,
+                //        "modified": 1495206667,
+                //        "size_optional": 20498187,
+                //        "permissions": ["Merger:MoneyNetwork"]
+                //    },
+                //    "bad_files": 16,
+                //    "workers": 0,
+                //    "privatekey": false,
+                //    "cert_user_id": "jro@zeroid.bit",
+                //    "started_task_num": 0,
+                //    "content_updated": null
+                //};
                 query =
                     "select files.filename, files.size " +
                     "from json, files " +
-                    "where json.directory = 'users/" + ZeroFrame.site_info.auth_address + "' " +
+                    "where json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
                     "and json.file_name = 'content.json' " +
                     "and files.json_id = json.json_id" ;
                 debug('select', pgm + 'query = ' + query);
@@ -1635,6 +1696,7 @@ angular.module('MoneyNetwork')
                         if (['data.json','avatar.png','avatar.jpg'].indexOf(res[i].filename) != -1) continue ;
                         data_json_max_size = data_json_max_size - res[i].size ;
                     }
+                    // console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
 
                     // update json table with public key and search words
                     // console.log(pgm + 'calling fileGet');
@@ -1648,6 +1710,7 @@ angular.module('MoneyNetwork')
                         // keep track of updates.
                         local_storage_updated = false ; // write localStorage?
                         data_str = JSON.stringify(data) ; // write data.json?
+                        if (!data.hub) data.hub = ZeroFrame.site_info.address ;
 
                         // check avatar. Full path in avatar.src. short path in data.users array in ZeroNet
                         // src:
@@ -3100,10 +3163,10 @@ angular.module('MoneyNetwork')
             // overwrite with empty json as a delete marked optional file.
             image_path = "data/users/" + ZeroFrame.site_info.auth_address + '/' + sent_at + '-image.json' ;
             query =
-                "select filename, files_optional.size " +
+                "select json.directory, files_optional.filename, files_optional.size " +
                 "from files_optional, json " +
                 "where json.json_id = files_optional.json_id " +
-                "and json.directory = 'users/" + ZeroFrame.site_info.auth_address + "' " +
+                "and json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
                 "and ( files_optional.filename = '" + sent_at + '-image.json' + "'" +  // old format without <user_seq> in filename
                 "   or files_optional.filename = '" + sent_at + '-' + z_cache.user_seq + '-image.json' + "' )" ; // new format with <user_seq> in filename
             debug('select', pgm + 'query = ' + query) ;
@@ -3120,7 +3183,7 @@ angular.module('MoneyNetwork')
                     if (cb) cb(false) ;
                     return;
                 }
-                image_path = "data/users/" + ZeroFrame.site_info.auth_address+ '/' + res[0].filename;
+                image_path = 'merged-MoneyNetwork/' + res[0].directory + '/' + res[0].filename;
                 if ((res[0].size <= 2) && logical_delete) {
                     console.log(pgm + 'optional image file ' + image_path + ' has already been logical deleted');
                     if (cb) cb(false) ;
@@ -3646,6 +3709,11 @@ angular.module('MoneyNetwork')
                 }
                 like_updated = false ;
                 like_index_updated = false ;
+
+                if (!like.hub) {
+                    like.hub = ZeroFrame.site_info.address ;
+                    like_updated = true ;
+                }
 
                 // debug('reaction', pgm + 'keep traq of messages with updated reactions. must refresh reactions info after fileWrite and publish. See like.json processing in event_file_done') ;
                 refresh_reactions = {} ;
@@ -4771,14 +4839,15 @@ angular.module('MoneyNetwork')
 
             var query =
                 "select" +
-                "  substr(data_json.directory,7) as auth_address, users.user_seq, users.pubkey, users.pubkey2," +
-                "  users.encryption, status.timestamp " +
+                "  substr(data_json.directory, 1, instr(data_json.directory,'/')-1) as hub," +
+                "  substr(data_json.directory, instr(data_json.directory,'/data/users/')+12) as auth_address,"+
+                "  users.user_seq, users.pubkey, users.pubkey2,users.encryption, status.timestamp " +
                 "from json as data_json, json as content_json, users, json as status_json, status " +
-                "where data_json.directory in " ;
+                "where " ;
             for (i = 0; i < auth_addresses.length; i++) {
                 if (i == 0) query += '(' ;
-                else query += ',';
-                query += "'users/" + auth_addresses[i] + "'";
+                else query += ' or ';
+                query += "data_json.directory like '%/users/" + auth_addresses[i] + "'";
             } // for i
             query += ") " +
                 "and data_json.file_name = 'data.json' " +
@@ -4881,12 +4950,18 @@ angular.module('MoneyNetwork')
                 // source 2: avatar from users table (random assigned avatar) - pubkey is not null - jpg, png or short ref to /public/images/avatar* images
                 // source 3: contacts without an avatar will be assigned a random public avatar
                 query =
-                    "select substr(json.directory,7) as auth_address, null as pubkey, substr(files.filename,8) as avatar " +
+                    "select "+
+                    "  substr(json.directory, 1, instr(json.directory,'/')-1) as hub, " +
+                    "  substr(json.directory, instr(json.directory,'/data/users/')+12) as auth_address, " +
+                    "  null as pubkey, substr(files.filename,8) as avatar " +
                     "from files, json " +
                     "where files.filename like 'avatar%' " +
                     "and json.json_id = files.json_id" +
                     "  union all " +
-                    "select substr(json.directory,7) as auth_address, users.pubkey, users.avatar " +
+                    "select " +
+                    "  substr(json.directory, 1, instr(json.directory,'/')-1) as hub, " +
+                    "  substr(json.directory, instr(json.directory,'/data/users/')+12) as auth_address, " +
+                    "  users.pubkey, users.avatar " +
                     "from users, json " +
                     "where users.avatar is not null " +
                     "and json.json_id = users.json_id" ;
@@ -5204,7 +5279,7 @@ angular.module('MoneyNetwork')
         //   optional. use when receiving files from other users (event_file_done) and when reading -chat.json files with public chat
         function z_contact_search (fnc_when_ready, file_auth_address, file_user_seq) {
             var pgm = service + '.z_contact_search: ' ;
-            var my_search_query, i, row, error, retry_z_contact_search, contact, directory, pubkey, query, no_contacts ;
+            var my_search_query, i, row, error, retry_z_contact_search, contact, pubkey, query, no_contacts ;
 
             no_contacts = 0 ;
 
@@ -5257,10 +5332,9 @@ angular.module('MoneyNetwork')
             // find json_id and user_seq for current user.
             // must use search words for current user
             // must not return search hits for current user
-            directory = 'users/' + ZeroFrame.site_info.auth_address ;
             pubkey = MoneyNetworkHelper.getItem('pubkey') ;
             query = "select json.json_id, users.user_seq from json, users " +
-                "where json.directory = '" + directory + "' " +
+                "where json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
                 "and users.json_id = json.json_id " +
                 "and users.pubkey = '" + pubkey + "'";
             debug('select', pgm + 'query 1 = ' + query) ;
@@ -5284,6 +5358,10 @@ angular.module('MoneyNetwork')
                     setTimeout(retry_z_contact_search,3000) ;
                     return ;
                 }
+                if (res.length > 1) {
+                    console.log(pgm + 'todo: user with auth_address ' + ZeroFrame.site_info.auth_address + ' found at more that one hub. res = ' + JSON.stringify(RES)) ;
+
+                }
                 var json_id = res[0].json_id ;
                 var user_seq = res[0].user_seq ;
                 // console.log(pgm + 'json_id = ' + json_id + ', user_seq = ' + user_seq) ;
@@ -5295,7 +5373,10 @@ angular.module('MoneyNetwork')
                 var contacts_query =
                     "select" +
                     "  users.user_seq, users.pubkey, users.pubkey2, users.encryption, users.avatar as users_avatar, users.guest," +
-                    "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
+                    "  data_json.directory,  " +
+                    "  substr(data_json.directory, 1, instr(data_json.directory,'/')-1) as hub, " +
+                    "  substr(data_json.directory, instr(data_json.directory,'/data/users/')+12) as auth_address," +
+                    "  data_json.json_id as data_json_id," +
                     "  content_json.json_id as content_json_id," +
                     "  keyvalue.value as cert_user_id," +
                     "  (select substr(files.filename,8)" +
@@ -5311,7 +5392,7 @@ angular.module('MoneyNetwork')
                     "from users, json as data_json, json as content_json, keyvalue " ;
                 if (file_auth_address) {
                     // file done event. check only info from this auth_address
-                    contacts_query += "where data_json.directory = 'users/" + file_auth_address + "' " ;
+                    contacts_query += "where data_json.directory like '%/users/" + file_auth_address + "' " ;
                 }
                 else {
                     // page startup. general contacts search. all contacts except current user
@@ -7568,7 +7649,9 @@ angular.module('MoneyNetwork')
                 "select" +
                 "  messages.user_seq, messages.receiver_sha256, messages.key, messages.message," +
                 "  messages.message_sha256, messages.timestamp, messages.json_id, " +
-                "  users.pubkey, substr(json.directory,7) auth_address " +
+                "  users.pubkey, " +
+                "  substr(json.directory, 1, instr(json.directory,'/')-1) as hub," +
+                "  substr(json.directory, instr(json.directory,'/data/users/')+12) as auth_address " +
                 "from messages, users, json " +
                 "where ( messages.receiver_sha256 in ('" + watch_receiver_sha256[0] + "'" ;
             for (i=1 ; i<watch_receiver_sha256.length ; i++) query = query + ", '" + watch_receiver_sha256[i] + "'" ;
@@ -7832,8 +7915,9 @@ angular.module('MoneyNetwork')
             query =
                 "select filename, image_index " +
                 "from " +
-                "  (select 'data/' || json.directory || '/' || files_optional.filename as filename," +
-                "          substr(json.directory,7) || ',' ||  substr(filename,1,13) as image_index" +
+                "  (select " +
+                "     'merged-MoneyNetwork/' + || json.directory || '/' || files_optional.filename as filename," +
+                "      substr(json.directory, instr(json.directory,'/data/users/')+12) || ',' ||  substr(filename,1,13) as image_index" +
                 "   from files_optional, json" +
                 "   where files_optional.filename like '%-image.json'" +
                 "   and files_optional.size > 2" +
@@ -8959,7 +9043,8 @@ angular.module('MoneyNetwork')
                 // - all json files with size 2 are logical deleted json files
                 query =
                     "select" +
-                    "  substr(content_json.directory,7) auth_address," +
+                    "  substr(content_json.directory, 1, instr(content_json.directory,'/')-1) as hub," +
+                    "  substr(content_json.directory, instr(content_json.directory,'/data/users/')+12) as auth_address," +
                     "  files_optional.filename," +
                     "  cast(substr(files_optional.filename,1,13) as integer) as to_timestamp," +
                     "  cast(substr(files_optional.filename,15,13) as integer) as from_timestamp," +
@@ -10170,6 +10255,12 @@ angular.module('MoneyNetwork')
                     // remove deleted users from status.json
                     my_user_seq_found = false ;
                     status_updated = false ;
+
+                    if (!status.hub) {
+                        status.hub = ZeroFrame.site_info.address ;
+                        status_updated = true ;
+                    }
+
                     for (i=status.status.length-1 ; i >= 0 ; i--) {
                         if (status.status[i].user_seq == my_user_seq) my_user_seq_found = true ;
                         else if (data_user_seqs.indexOf(status.status[i].user_seq) == -1) {

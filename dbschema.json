@@ -1,33 +1,46 @@
 {
   "db_name": "MoneyNetwork",
-  "db_file": "data/moneynetwork.db",
+  "db_file": "merged-MoneyNetwork/MoneyNetwork.db",
   "version": 2,
   "maps": {
-    "users/.+/data.json": {
+    ".+/data/users/.+/data.json": {
       "to_table": [
         { "node": "search", "table": "search" },
         { "node": "users",  "table": "users" },
-        { "node": "msg",    "table": "messages" } ]
+        { "node": "msg",    "table": "messages" } ],
+      "to_json_table": [ "hub" ]
     },
-    "users/.+/content.json": {
+    ".+/data/users/.+/content.json": {
       "to_keyvalue": [ "cert_user_id", "modified" ],
       "to_table": [
         { "node": "files", "table": "files", "key_col": "filename"},
         { "node": "files_optional", "table": "files_optional", "key_col": "filename"}
       ]
     },
-    "users/.+/status.json": {
+    ".+/data/users/.+/status.json": {
       "to_table": [
         { "node": "status", "table": "status"}
-      ]
+      ],
+      "to_json_table": [ "hub" ]
     },
-    "users/.+/like.json": {
+    ".+/data/users/.+/like.json": {
       "to_table": [
         { "node": "like", "table": "like"}
-      ]
+      ],
+      "to_json_table": [ "hub" ]
     }
   },
   "tables": {
+    "json": {
+      "cols": [
+        ["json_id", "INTEGER PRIMARY KEY AUTOINCREMENT"],
+        ["directory", "TEXT"],
+        ["file_name", "TEXT"],
+        ["hub", "TEXT"]
+      ],
+      "indexes": ["CREATE INDEX path ON json(directory, file_name)"],
+      "schema_changed": 4
+    },
     "search": {
       "cols": [
         ["user_seq", "INTEGER"],

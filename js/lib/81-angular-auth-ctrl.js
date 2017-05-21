@@ -64,12 +64,18 @@ angular.module('MoneyNetwork')
                     'account(s) still is in localStorage', 10000]);
             }
         } ;
+        function check_merger_permission() {
+            if (ZeroFrame.site_info.settings.permissions && (ZeroFrame.site_info.settings.permissions.indexOf("Merger:MoneyNetwork") != -1)) return true;
+            ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {}) ;
+            return false ;
+        }
 
         // callback when localStorage is ready (ZeroFrame's localStorage API is a little slow)
         var ls_was_loading = MoneyNetworkHelper.ls_is_loading();
         MoneyNetworkHelper.ls_bind(function() {
             set_register_yn() ;
             set_use_login() ;
+            check_merger_permission() ;
             moneyNetworkService.load_server_info() ;
             if (ls_was_loading) $rootScope.$apply() ; // workaround. Only needed after page start/reload
         }) ;
@@ -115,6 +121,11 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("wrapperNotification", ['info', 'Please wait. Loading localStorage data', 5000]);
                 return ;
             }
+            if (!check_merger_permission()) {
+                ZeroFrame.cmd("wrapperNotification", ['info', 'Please grant Merger:MoneyNetwork permission', 5000]);
+                return ;
+            }
+            console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
 
             if (!self.use_private_data) {
                 // login/register without saving any data in localStorage as Guest and using cryptMessage
