@@ -1111,7 +1111,7 @@ var MoneyNetworkHelper = (function () {
                         "pubkey": { "type": 'string'},
                         "pubkey2": { "type": 'string'},
                         "encryption": { "type": 'string', "pattern": '^(1|2)$'},
-                        "avatar": { "type": ['string']},
+                        "avatar": { "type": ['string'], "pattern": '^[1-9][0-9]*\.png$'},
                         "guest": { "type": 'boolean'}
                     },
                     "required": [ 'user_seq', 'pubkey', 'pubkey2', 'encryption'],

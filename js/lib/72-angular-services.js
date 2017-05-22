@@ -262,44 +262,56 @@ angular.module('MoneyNetwork')
         // wrapper for status.json fileGet and fileWrite (cache status.json file in memory)
         function get_status_json (cb) {
             var pgm = service + '.get_status_json: ' ;
-            var user_path ;
             if (detected_client_log_out(pgm)) return ;
             if (z_cache.status_json) {
                 // status.json file is already in cache
                 cb(z_cache.status_json, false) ;
                 return ;
             }
-            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            // read status.jsonn into cache
-            ZeroFrame.cmd("fileGet", {inner_path: user_path + '/status.json', required: false}, function (status) {
-                var pgm = service + '.get_status_json fileGet callback 1: ';
-                // console.log(pgm + 'data = ' + JSON.stringify(data));
-                var empty;
+            // callback 1 - get user data hub
+            get_my_user_hub(function (hub) {
+                var pgm = service + '.get_status_json get_my_user_hub callback 1: ';
+                var user_path ;
                 if (detected_client_log_out(pgm)) return ;
-                if (!status) {
-                    status = {version: dbschema_version, status: []};
-                    empty = true ;
-                }
-                else {
-                    status = JSON.parse(status);
-                    z_migrate_status(status);
-                    empty = false ;
-                }
-                z_cache.status_json = status ;
-                cb(status, empty);
-            }) ;
+                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                // read status.jsonn into cache
+                ZeroFrame.cmd("fileGet", {inner_path: user_path + '/status.json', required: false}, function (status) {
+                    var pgm = service + '.get_status_json fileGet callback 2: ';
+                    // console.log(pgm + 'data = ' + JSON.stringify(data));
+                    var empty;
+                    if (detected_client_log_out(pgm)) return ;
+                    if (!status) {
+                        status = {version: dbschema_version, status: []};
+                        empty = true ;
+                    }
+                    else {
+                        status = JSON.parse(status);
+                        z_migrate_status(status);
+                        empty = false ;
+                    }
+                    z_cache.status_json = status ;
+                    cb(status, empty);
+                }) ; // fileGet callback 2
+
+            }) ; // get_my_user_hub callback 1
+
         } // get_status_json
         function write_status_json (cb) {
             var pgm = service + '.write_status_json: ' ;
-            var status, json_raw, user_path ;
             if (detected_client_log_out(pgm)) return ;
-            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            status = z_cache.status_json || {} ;
-            json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
-            ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
-                if (detected_client_log_out(pgm)) return ;
-                cb(res) ;
-            }) ;
+            // callback 1 - get user data hub
+            get_my_user_hub(function (hub) {
+                var pgm = service + '.write_status_json get_my_user_hub callback 1: ';
+                var user_path, status, json_raw ;
+                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                status = z_cache.status_json || {} ;
+                json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
+                ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
+                    var pgm = service + '.write_status_json fileWrite callback 2: ';
+                    if (detected_client_log_out(pgm)) return ;
+                    cb(res) ;
+                }) ; // fileWrite callback 2
+            }) ; // get_my_userhub callback 1
         } // write_status_json
 
         // wrapper for like.json fileGet and fileWrite (cache like.json file in memory)
@@ -325,59 +337,74 @@ angular.module('MoneyNetwork')
                 }
                 // console.log(pgm + 'like = ' + JSON.stringify(like)) ;
                 //console.log(pgm + 'like_index = ' + JSON.stringify(like_index)) ;
-            }) ;
-        }
-        function get_like_json (cb) {
-            var pgm = service + '.get_like_json: ' ;
-            if (detected_client_log_out(pgm)) return ;
-            // ensure that user_seq has been loaded into z_cache. see update_like_index
+            }) ; // get_user_seq
+        } // update_like_index
+        function get_like_json(cb) {
+            var pgm = service + '.get_like_json: ';
+            if (detected_client_log_out(pgm)) return;
+            // callback 1 - ensure that user_seq has been loaded into z_cache. see update_like_index
             get_user_seq(function (my_user_seq) {
-                var pgm = service + '.get_like_json: ' ;
-                var user_path ;
-                if (detected_client_log_out(pgm)) return ;
+                var pgm = service + '.get_like_json get_user_seq callback 1: ';
+                var user_path;
+                if (detected_client_log_out(pgm)) return;
                 if (z_cache.like_json && z_cache.like_json_index) {
                     // like.json file is already in cache
-                    cb(z_cache.like_json, z_cache.like_json_index, false) ;
-                    return ;
+                    cb(z_cache.like_json, z_cache.like_json_index, false);
+                    return;
                 }
-                // download like.json and add file to cache
-                user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-                ZeroFrame.cmd("fileGet", {inner_path: user_path + '/like.json', required: false}, function (like_str) {
-                    var pgm = service + '.get_like_json fileGet callback 1: ';
-                    // console.log(pgm + 'like = ' + JSON.stringify(like));
-                    var like, empty;
-                    if (detected_client_log_out(pgm)) return ;
-                    if (like_str) {
-                        like = JSON.parse(like_str);
-                        // zeronet_migrate_like(like);
-                        empty = false ;
-                    }
-                    else {
-                        like = {
-                            version: dbschema_version,
-                            like: []
-                        };
-                        empty = true ;
-                    }
-                    // add like.json to cache
-                    z_cache.like_json = like ;
-                    z_cache.like_json_index = {} ;
-                    update_like_index(z_cache.like_json, z_cache.like_json_index) ;
-                    cb(z_cache.like_json, z_cache.like_json_index, empty) ;
-                }) ;
-            }) ;
+                // callback 2 - find user data hub
+                get_my_user_hub(function (hub) {
+                    var pgm = service + '.get_like_json get_my_user_hub callback 2: ';
+                    if (detected_client_log_out(pgm)) return;
+                    // callback 3 - download like.json and add file to cache
+                    user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                    ZeroFrame.cmd("fileGet", {
+                        inner_path: user_path + '/like.json',
+                        required: false
+                    }, function (like_str) {
+                        var pgm = service + '.get_like_json fileGet callback 3: ';
+                        // console.log(pgm + 'like = ' + JSON.stringify(like));
+                        var like, empty;
+                        if (detected_client_log_out(pgm)) return;
+                        if (like_str) {
+                            like = JSON.parse(like_str);
+                            // zeronet_migrate_like(like);
+                            empty = false;
+                        }
+                        else {
+                            like = {
+                                version: dbschema_version,
+                                like: []
+                            };
+                            empty = true;
+                        }
+                        // add like.json to cache
+                        z_cache.like_json = like;
+                        z_cache.like_json_index = {};
+                        update_like_index(z_cache.like_json, z_cache.like_json_index);
+                        cb(z_cache.like_json, z_cache.like_json_index, empty);
+                    }); // fileGet callback 3
+                }); // my_user_hub callback 2
+            }); // get_user_seq callback 1
         } // get_like_json
+
         function write_like_json (cb) {
             var pgm = service + '.write_like_json: ' ;
             var user_path, like, json_raw ;
             if (detected_client_log_out(pgm)) return ;
-            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            like = z_cache.like_json || {} ;
-            json_raw = unescape(encodeURIComponent(JSON.stringify(like, null, "\t")));
-            ZeroFrame.cmd("fileWrite", [user_path + '/like.json', btoa(json_raw)], function (res) {
+            // callback 1 - find user data hub
+            get_my_user_hub(function (hub) {
+                var pgm = service + '.write_like_json get_my_user_hub callback 2: ' ;
                 if (detected_client_log_out(pgm)) return ;
-                cb(res) ;
-            }) ;
+                // callback 2 - write like.json
+                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                like = z_cache.like_json || {} ;
+                json_raw = unescape(encodeURIComponent(JSON.stringify(like, null, "\t")));
+                ZeroFrame.cmd("fileWrite", [user_path + '/like.json', btoa(json_raw)], function (res) {
+                    if (detected_client_log_out(pgm)) return ;
+                    cb(res) ;
+                }) ; // fileWrite callback 2
+            }) ; // get_my_user_hub callback 1
         } // write_like_json
 
         // optional files format:
@@ -392,244 +419,260 @@ angular.module('MoneyNetwork')
         var zeronet_site_publish_interval = 0 ;
         function zeronet_site_publish(cb) {
             var pgm = service + '.zeronet_site_publish: ' ;
-            var user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            if (detected_client_log_out(pgm)) return ;
 
-            // get user_seq if ready
-            get_user_seq(function(user_seq) {
+            get_my_user_hub(function (hub) {
+                var pgm = service + '.zeronet_site_publish get_my_user_path callback 1: ';
                 if (detected_client_log_out(pgm)) return ;
-                // update timestamp in status
-                get_status_json(function (status) {
-                    var pgm = service + '.zeronet_site_publish fileGet callback 1: ';
-                    // console.log(pgm + 'data = ' + JSON.stringify(data));
-                    var i, index, timestamp, json_raw, error ;
-                    if (detected_client_log_out(pgm)) return ;
-                    if (user_seq) {
-                        // remove deleted users (removed in z_update_1_data_json)
-                        if (z_cache.user_seqs && (z_cache.user_seqs.indexOf(user_seq) != -1)) {
-                            for (i=status.status.length-1 ; i >= 0 ; i--) {
-                                if (z_cache.user_seqs.indexOf(status.status[i].user_seq) == -1) status.status.splice(i,1) ;
-                            }
-                        }
-                        index = -1 ;
-                        timestamp = new Date().getTime();
-                        for (i=0 ; i<status.status.length ; i++) {
-                            if (status.status[i].user_seq == user_seq) index = i ;
-                        }
-                        if (index == -1) status.status.push({ user_seq: user_seq, timestamp: timestamp}); // add new user
-                        else if (!user_setup.not_online) status.status[index].timestamp = timestamp; // show as online
-                        else console.log(pgm + 'Show as offline - status.json was not updated') ; // not online
-                        // console.log(pgm + 'updated timestamp. status = ' + JSON.stringify(status)) ;
-                    }
-                    // validate status.json before write
-                    error = MoneyNetworkHelper.validate_json (pgm, status, 'status.json', 'Invalid json file') ;
-                    if (error) {
-                        error = 'Cannot write invalid status.json file: ' + error;
-                        console.log(pgm + error);
-                        console.log(pgm + 'status = ' + JSON.stringify(status));
-                        ZeroFrame.cmd("wrapperNotification", ["error", error]);
-                        return ;
-                    }
 
-                    // write status.json
-                    write_status_json(function (res) {
-                        var pgm = service + '.zeronet_site_publish fileWrite callback 2: ';
-                        var error ;
+                var user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                if (detected_client_log_out(pgm)) return ;
+
+                // get user_seq if ready
+                get_user_seq(function(user_seq) {
+                    var pgm = service + '.zeronet_site_publish get_user_seq callback 2: ';
+                    if (detected_client_log_out(pgm)) return ;
+                    // update timestamp in status
+                    get_status_json(function (status) {
+                        var pgm = service + '.zeronet_site_publish get_status_json callback 3: ';
+                        // console.log(pgm + 'data = ' + JSON.stringify(data));
+                        var i, index, timestamp, json_raw, error ;
                         if (detected_client_log_out(pgm)) return ;
-                        if (res != "ok") {
-                            error = "Update was not published. fileWrite failed for status.json: " + res ;
+                        if (user_seq) {
+                            // remove deleted users (removed in z_update_1_data_json)
+                            if (z_cache.user_seqs && (z_cache.user_seqs.indexOf(user_seq) != -1)) {
+                                for (i=status.status.length-1 ; i >= 0 ; i--) {
+                                    if (z_cache.user_seqs.indexOf(status.status[i].user_seq) == -1) status.status.splice(i,1) ;
+                                }
+                            }
+                            index = -1 ;
+                            timestamp = new Date().getTime();
+                            for (i=0 ; i<status.status.length ; i++) {
+                                if (status.status[i].user_seq == user_seq) index = i ;
+                            }
+                            if (index == -1) status.status.push({ user_seq: user_seq, timestamp: timestamp}); // add new user
+                            else if (!user_setup.not_online) status.status[index].timestamp = timestamp; // show as online
+                            else console.log(pgm + 'Show as offline - status.json was not updated') ; // not online
+                            // console.log(pgm + 'updated timestamp. status = ' + JSON.stringify(status)) ;
+                        }
+                        // validate status.json before write
+                        error = MoneyNetworkHelper.validate_json (pgm, status, 'status.json', 'Invalid json file') ;
+                        if (error) {
+                            error = 'Cannot write invalid status.json file: ' + error;
                             console.log(pgm + error);
-                            ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                            console.log(pgm + 'status = ' + JSON.stringify(status));
+                            ZeroFrame.cmd("wrapperNotification", ["error", error]);
                             return ;
                         }
 
-                        // sitePublish
-                        ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
-                            var pgm = service + '.zeronet_site_publish sitePublish callback 3: ';
-                            // console.log(pgm + 'res = ' + JSON.stringify(res));
+                        // write status.json
+                        write_status_json(function (res) {
+                            var pgm = service + '.zeronet_site_publish fileWrite callback 4: ';
+                            var error ;
                             if (detected_client_log_out(pgm)) return ;
                             if (res != "ok") {
-                                ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish: " + res.error, 5000]);
-                                // error - repeat sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
-                                if (!zeronet_site_publish_interval) zeronet_site_publish_interval = 30 ;
-                                else zeronet_site_publish_interval = zeronet_site_publish_interval * 2 ;
-                                console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
-                                var retry_zeronet_site_publish = function () {
-                                    zeronet_site_publish();
-                                };
-                                if (cb) cb() ;
-                                $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval*1000);
-                                // debug_info() ;
-                                return;
+                                error = "Update was not published. fileWrite failed for status.json: " + res ;
+                                console.log(pgm + error);
+                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                return ;
                             }
 
-                            // sitePublish OK
-                            zeronet_site_publish_interval = 0 ;
-                            z_cache.publish = false ;
-
-                            // debug: is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
-                            if (user_setup.debug && user_setup.debug.check_sha256_addresses) check_sha256_addresses('sitePublish', false, false) ;
-
-                            // check content.json and add optional file support if missing
-                            // also check for
-                            ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
-                                var pgm = service + '.zeronet_site_publish fileGet callback 4: ';
-                                var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
-                                    logical_deleted_files, now, max_logical_deleted_files, some_time_ago ;
+                            // sitePublish
+                            ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
+                                var pgm = service + '.zeronet_site_publish sitePublish callback 5: ';
+                                // console.log(pgm + 'res = ' + JSON.stringify(res));
                                 if (detected_client_log_out(pgm)) return ;
-                                content_updated = false ;
-
-                                // optional files support:
-                                // 1) <to timestamp>-<from timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for first and last chat msg in json file
-                                // 2) <timestamp>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
-                                // 3) <timestamp>-<userseq>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
-                                content = JSON.parse(content) ;
-                                if (content.optional == CONTENT_OPTIONAL) {
-                                    // optional file support also in place. save to my_files_optional. used in public chat
-                                    save_my_files_optional(content.files_optional || {}) ;
+                                if (res != "ok") {
+                                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish: " + res.error, 5000]);
+                                    // error - repeat sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
+                                    if (!zeronet_site_publish_interval) zeronet_site_publish_interval = 30 ;
+                                    else zeronet_site_publish_interval = zeronet_site_publish_interval * 2 ;
+                                    console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
+                                    var retry_zeronet_site_publish = function () {
+                                        zeronet_site_publish();
+                                    };
+                                    if (cb) cb() ;
+                                    $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval*1000);
+                                    // debug_info() ;
+                                    return;
                                 }
-                                else {
-                                    content.optional = CONTENT_OPTIONAL ;
-                                    content_updated = true ;
-                                }
 
-                                // check logical deleted optional *-chat.json files
-                                // rules.
-                                // - *chat.json files with size 2 = empty json {}
-                                // - should only delete *chat.json files with info_info.peer = 0
-                                // - should only delete "old" *chat.json files
-                                // - max number of logical deleted *chat.json files.
-                                // check z_cache.user_seqs. deleted users. optional files from deleted users must be removed.
-                                if (content.files_optional && z_cache.user_seqs) {
-                                    // console.log(pgm + 'z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs)) ;
-                                    // z_cache.user_seqs = [2]
-                                    for (filename in content.files_optional) {
-                                        if (content.files_optional[filename].size <= 2) continue ;
-                                        // console.log(pgm + 'filename = ' + filename + ', size = ' + content.files_optional[filename].size) ;
-                                        if (filename.match(/-chat/)) {
-                                            // public unencrypted chat. 1483633906108-1483633906108-1-chat.json
-                                            file_user_seq = parseInt(filename.split('-')[2]) ;
-                                        }
-                                        else if (filename.match(/[0-9]{13}-[0-9]+-image/)) {
-                                            // encrypted image. new format. 1483877022900-1-image.json
-                                            file_user_seq = parseInt(filename.split('-')[1]) ;
-                                        }
-                                        else {
-                                            // encrypted image. old format. 1483877022900-image.json
-                                            // todo: cleanup in z_update_1_data_json?
-                                            continue ;
-                                        }
-                                        if (z_cache.user_seqs.indexOf(file_user_seq) != -1) continue ; // ok user seq
-                                        // logical delete - overwrite with empty json
-                                        write_empty_chat_file(user_path + '/' + filename);
+                                // sitePublish OK
+                                zeronet_site_publish_interval = 0 ;
+                                z_cache.publish = false ;
+
+                                // debug: is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
+                                if (user_setup.debug && user_setup.debug.check_sha256_addresses) check_sha256_addresses('sitePublish', false, false) ;
+
+                                // check content.json and add optional file support if missing
+                                // also check for
+                                ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
+                                    var pgm = service + '.zeronet_site_publish fileGet callback 6: ';
+                                    var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
+                                        logical_deleted_files, now, max_logical_deleted_files, some_time_ago ;
+                                    if (detected_client_log_out(pgm)) return ;
+                                    content_updated = false ;
+
+                                    // optional files support:
+                                    // 1) <to timestamp>-<from timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for first and last chat msg in json file
+                                    // 2) <timestamp>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
+                                    // 3) <timestamp>-<userseq>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
+                                    content = JSON.parse(content) ;
+                                    if (content.optional == CONTENT_OPTIONAL) {
+                                        // optional file support also in place. save to my_files_optional. used in public chat
+                                        save_my_files_optional(content.files_optional || {}) ;
                                     }
-                                }
-
-                                // physical delete old logical deleted optional files (empty json)
-                                // - all optional files older when one week
-                                // - keep max <n> logical deleted optional files
-                                if (content.files_optional) {
-                                    now = new Date().getTime() ;
-                                    max_logical_deleted_files = 10 ;
-                                    some_time_ago = now - 1000*60*60*24*7 ; // one week ago
-                                    logical_deleted_files = [] ;
-                                    for (filename in content.files_optional) {
-                                        if (content.files_optional[filename].size > 2) continue ;
-                                        if (!filename.match(/^[0-9]{13}-/)) continue ;
-                                        timestamp = parseInt(filename.substr(0,13)) ;
-                                        if (timestamp < some_time_ago) {
-                                            ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {}) ;
-                                            content_updated = true ;
-                                            continue ;
-                                        }
-                                        logical_deleted_files.push(filename) ;
-                                    }
-                                    logical_deleted_files.sort() ;
-                                    while (logical_deleted_files.length > max_logical_deleted_files) {
-                                        filename = logical_deleted_files.shift() ;
-                                        ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {}) ;
+                                    else {
+                                        content.optional = CONTENT_OPTIONAL ;
                                         content_updated = true ;
                                     }
-                                }
 
-                                // update size in cache_status for my optional files
-                                if (content.files_optional) for (filename in content.files_optional) {
-                                    if (filename.match(/image/)) continue;
-                                    if (content.files_optional[filename].size <= 2) continue;
-                                    cache_filename = user_path + '/' + filename ;
-                                    cache_status = files_optional_cache[cache_filename] ;
-                                    if (!cache_status) continue ;
-                                    if (cache_status.size == content.files_optional[filename].size) continue ;
-                                    debug('public_chat', pgm + 'issue #84: updating cache_status for ' + cache_filename +
-                                        '. old size = ' + cache_status.size + ', new size = ' + content.files_optional[filename].size);
-                                    cache_status.size = content.files_optional[filename].size ;
-                                }
+                                    // check logical deleted optional *-chat.json files
+                                    // rules.
+                                    // - *chat.json files with size 2 = empty json {}
+                                    // - should only delete *chat.json files with info_info.peer = 0
+                                    // - should only delete "old" *chat.json files
+                                    // - max number of logical deleted *chat.json files.
+                                    // check z_cache.user_seqs. deleted users. optional files from deleted users must be removed.
+                                    if (content.files_optional && z_cache.user_seqs) {
+                                        // console.log(pgm + 'z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs)) ;
+                                        // z_cache.user_seqs = [2]
+                                        for (filename in content.files_optional) {
+                                            if (content.files_optional[filename].size <= 2) continue ;
+                                            // console.log(pgm + 'filename = ' + filename + ', size = ' + content.files_optional[filename].size) ;
+                                            if (filename.match(/-chat/)) {
+                                                // public unencrypted chat. 1483633906108-1483633906108-1-chat.json
+                                                file_user_seq = parseInt(filename.split('-')[2]) ;
+                                            }
+                                            else if (filename.match(/[0-9]{13}-[0-9]+-image/)) {
+                                                // encrypted image. new format. 1483877022900-1-image.json
+                                                file_user_seq = parseInt(filename.split('-')[1]) ;
+                                            }
+                                            else {
+                                                // encrypted image. old format. 1483877022900-image.json
+                                                // todo: cleanup in z_update_1_data_json?
+                                                continue ;
+                                            }
+                                            if (z_cache.user_seqs.indexOf(file_user_seq) != -1) continue ; // ok user seq
+                                            // logical delete - overwrite with empty json
+                                            write_empty_chat_file(user_path + '/' + filename);
+                                        }
+                                    }
 
-                                if (!content_updated) {
-                                    if (cb) cb() ;
-                                    return ;
-                                }
+                                    // physical delete old logical deleted optional files (empty json)
+                                    // - all optional files older when one week
+                                    // - keep max <n> logical deleted optional files
+                                    if (content.files_optional) {
+                                        now = new Date().getTime() ;
+                                        max_logical_deleted_files = 10 ;
+                                        some_time_ago = now - 1000*60*60*24*7 ; // one week ago
+                                        logical_deleted_files = [] ;
+                                        for (filename in content.files_optional) {
+                                            if (content.files_optional[filename].size > 2) continue ;
+                                            if (!filename.match(/^[0-9]{13}-/)) continue ;
+                                            timestamp = parseInt(filename.substr(0,13)) ;
+                                            if (timestamp < some_time_ago) {
+                                                ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {}) ;
+                                                content_updated = true ;
+                                                continue ;
+                                            }
+                                            logical_deleted_files.push(filename) ;
+                                        }
+                                        logical_deleted_files.sort() ;
+                                        while (logical_deleted_files.length > max_logical_deleted_files) {
+                                            filename = logical_deleted_files.shift() ;
+                                            ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {}) ;
+                                            content_updated = true ;
+                                        }
+                                    }
 
-                                // update content.json. sign and publish in next publish call
-                                json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
-                                ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
-                                    var pgm = service + '.zeronet_site_publish fileWrite callback 5: ';
-                                    var error ;
-                                    if (detected_client_log_out(pgm)) return ;
-                                    if (res != "ok") {
-                                        error = "Could not add optional file support to content.json: " + res ;
-                                        console.log(pgm + error);
-                                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                    // update size in cache_status for my optional files
+                                    if (content.files_optional) for (filename in content.files_optional) {
+                                        if (filename.match(/image/)) continue;
+                                        if (content.files_optional[filename].size <= 2) continue;
+                                        cache_filename = user_path + '/' + filename ;
+                                        cache_status = files_optional_cache[cache_filename] ;
+                                        if (!cache_status) continue ;
+                                        if (cache_status.size == content.files_optional[filename].size) continue ;
+                                        debug('public_chat', pgm + 'issue #84: updating cache_status for ' + cache_filename +
+                                            '. old size = ' + cache_status.size + ', new size = ' + content.files_optional[filename].size);
+                                        cache_status.size = content.files_optional[filename].size ;
+                                    }
+
+                                    if (!content_updated) {
+                                        if (cb) cb() ;
                                         return ;
                                     }
-                                    // sign and publish in next zeronet_site_publish call
-                                    if (cb) cb() ;
 
-                                }) ; // fileWrite 5
+                                    // update content.json. sign and publish in next publish call
+                                    json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
+                                    ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
+                                        var pgm = service + '.zeronet_site_publish fileWrite callback 7: ';
+                                        var error ;
+                                        if (detected_client_log_out(pgm)) return ;
+                                        if (res != "ok") {
+                                            error = "Could not add optional file support to content.json: " + res ;
+                                            console.log(pgm + error);
+                                            ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                            return ;
+                                        }
+                                        // sign and publish in next zeronet_site_publish call
+                                        if (cb) cb() ;
 
-                            }) ; // fileGet 4
+                                    }) ; // fileWrite callback 7
 
-                        }); // sitePublish 3
+                                }) ; // fileGet callback 6
 
-                    }); // fileWrite 2
+                            }); // sitePublish callback 5
 
-                }); // fileGet 1
+                        }); // write_status_json callback 4
 
-            }) ; // get_user_seq
+                    }); // get_status_json callback 3
 
+                }) ; // get_user_seq callback 2
+
+            }); // get_my_user_path callback 1
 
         } // zeronet_site_publish
 
 
         var user_contents_max_size = null ; // max size of user directory. from data/users/content
         function load_user_contents_max_size (lock_pgm) {
-            ZeroFrame.cmd("fileGet", {inner_path: 'data/users/content.json', required: false}, function (data) {
-                var pgm = service + ".init_user_contents_max_size fileGet callback: " ;
-                if (data) data = JSON.parse(data) ;
-                else data = {} ;
-                // console.log(pgm + 'data = ' + JSON.stringify(data));
-                user_contents_max_size = 0 ;
-                var user_contents = data['user_contents'] ;
-                if (!user_contents) { z_update_1_data_json (lock_pgm) ; return }
-                // check per user permissions first
-                var permissions = user_contents.permissions ;
-                var cert_user_id = ZeroFrame.site_info.cert_user_id;
-                if (permissions && permissions.hasOwnProperty(cert_user_id)) {
-                    if (!permissions[cert_user_id]) return ; //  banned user
-                    if (!permissions[cert_user_id].hasOwnProperty('max_size')) { z_update_1_data_json (lock_pgm) ; return } // no max size?
-                    user_contents_max_size = permissions[cert_user_id].max_size ;
-                    z_update_1_data_json (lock_pgm) ;
-                    return ;
-                }
-                // check generel user permissions
-                var permission_rules = user_contents['permission_rules'] ;
-                if (!permission_rules) { z_update_1_data_json (lock_pgm) ; return }
-                if (!permission_rules[".*"]) { z_update_1_data_json (lock_pgm) ; return }
-                if (!permission_rules[".*"].hasOwnProperty('max_size')) { z_update_1_data_json (lock_pgm) ; return }
-                user_contents_max_size = permission_rules[".*"].max_size ;
-                if (lock_pgm) z_update_1_data_json (lock_pgm) ; // called from z_update_1_data_json. continue data.json update
-            }) ; // fileGet
+
+            get_my_user_hub(function (hub) {
+                var pgm = service + ".load_user_contents_max_size get_my_user_hub callback 1: " ;
+                var inner_path ;
+                inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/content.json' ;
+                ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (data) {
+                    var pgm = service + ".load_user_contents_max_size fileGet callback 2: " ;
+                    if (data) data = JSON.parse(data) ;
+                    else data = {} ;
+                    // console.log(pgm + 'data = ' + JSON.stringify(data));
+                    user_contents_max_size = 0 ;
+                    var user_contents = data['user_contents'] ;
+                    if (!user_contents) { z_update_1_data_json (lock_pgm) ; return }
+                    // check per user permissions first
+                    var permissions = user_contents.permissions ;
+                    var cert_user_id = ZeroFrame.site_info.cert_user_id;
+                    if (permissions && permissions.hasOwnProperty(cert_user_id)) {
+                        if (!permissions[cert_user_id]) return ; //  banned user
+                        if (!permissions[cert_user_id].hasOwnProperty('max_size')) { z_update_1_data_json (lock_pgm) ; return } // no max size?
+                        user_contents_max_size = permissions[cert_user_id].max_size ;
+                        z_update_1_data_json (lock_pgm) ;
+                        return ;
+                    }
+                    // check generel user permissions
+                    var permission_rules = user_contents['permission_rules'] ;
+                    if (!permission_rules) { z_update_1_data_json (lock_pgm) ; return }
+                    if (!permission_rules[".*"]) { z_update_1_data_json (lock_pgm) ; return }
+                    if (!permission_rules[".*"].hasOwnProperty('max_size')) { z_update_1_data_json (lock_pgm) ; return }
+                    user_contents_max_size = permission_rules[".*"].max_size ;
+                    if (lock_pgm) z_update_1_data_json (lock_pgm) ; // called from z_update_1_data_json. continue data.json update
+                }) ; // fileGet callback 2
+
+            }) ; // get_my_user_hub callback 1
+
         } // load_user_contents_max_size
+
         function get_max_image_size () {
             if (!user_contents_max_size) return 0 ;
             return Math.round(user_contents_max_size * 0.9) ;
@@ -5022,7 +5065,7 @@ angular.module('MoneyNetwork')
                 // and set no participants in group chat
                 ls_update_group_last_updated();
 
-                // 2) refresh contact avatars
+                // 2) refresh contact avatars. contact.hub has been applied in step 1
                 // source 1: uploaded avatars from files table (users/.../content.json) - pubkey is null - jpg or png
                 // source 2: avatar from users table (random assigned avatar) - pubkey is not null - jpg, png or short ref to /public/images/avatar* images
                 // source 3: contacts without an avatar will be assigned a random public avatar
@@ -5042,10 +5085,10 @@ angular.module('MoneyNetwork')
                     "from users, json " +
                     "where users.avatar is not null " +
                     "and json.json_id = users.json_id" ;
-                debug('select', pgm + 'query 4 = ' + query) ;
+                debug('select', pgm + 'query 4 (MS OK) = ' + query) ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = service + '.ls_load_contacts dbQuery callback 2: ' ;
-                    var i, unique_id, source1_avatars, source2_avatars, contact ;
+                    var i, unique_id, source1_avatars, source2_avatars, contact, index1, index2 ;
 
                     // console.log(pgm + 'res.length = ' + res.length);
                     if (res.error) {
@@ -5063,35 +5106,48 @@ angular.module('MoneyNetwork')
                         if (res[i].avatar == 'png') continue ;
                         if (public_avatars.indexOf(res[i].avatar) != -1) continue ;
                         debug('invalid_avatars', pgm + 'Error. removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
+                        //res[27] = {
+                        //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQB0oWbjKx4Uc2LFupcMIqbU\nxH6Xbd8FIQCRM7icadV7aseKj76D8I385Nqm+Injlv0SwWHEQKqNwjPi5+5lD7WZ\niX4BFDni4FFhsPLoEBg+rOyxz8tF1qa7S4QlW7R/qcZBbi5s/rBBoVOG8CL94imD\np3SmifFlohEoBMVhO65YKvHvgqhC2oreyEXxQA3T87iqpoHxGGBolyl2dq4Y/CI2\nuD/+8LIHToTeYgXouYzYUMYzyx/iZceydfMCbFShlPAROb7c3/aRvLwbC+SRdIP2\nZKO7vVIS0JlDj3IL2zigj+aEC0Kmgs7oNwKg1Xg7mYT7Pub1Hn7sj7hGk6txM5YN\nAgMBAAE=\n-----END PUBLIC KEY-----",
+                        //    "avatar": "undefined",
+                        //    "hub": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe",
+                        //    "auth_address": "1K4tMUXAUbaJ3h2qHYpGwEq3RiLd5XHyRM"
+                        //};
                         res.splice(i,1) ;
                     } // for i
 
                     // find source 1 and 2 avatars. Avatars from source 1 (uploaded avatars) has 1. priority
-                    source1_avatars = {} ;
-                    source2_avatars = {} ;
-                    for (i=0 ; i<res.length ; i++) if (!res[i].pubkey) source1_avatars[res[i].auth_address] = res[i].avatar;
+                    source1_avatars = {} ; // index1: hub,auth_address
+                    source2_avatars = {} ; // index2: hub,unique_id
+                    for (i=0 ; i<res.length ; i++) if (!res[i].pubkey) {
+                        index1 = res[i].hub + ',' + res[i].auth_address ;
+                        source1_avatars[index1] = res[i].avatar;
+                    }
                     for (i=res.length-1 ; i>=0; i--) {
-                        if (!res[i].public) continue ; // source 1
+                        if (!res[i].pubkey) continue ; // source 1
                         // source 2
-                        if (source1_avatars.hasOwnProperty(res[i].auth_address)) continue ;
+                        index1 = res[i].hub + ',' + res[i].auth_address ;
+                        if (source1_avatars.hasOwnProperty(index1)) continue ;
                         unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
-                        source2_avatars[unique_id] = res[i].avatar ;
+                        index2 = res[i].hub + ',' + unique_id ;
+                        source2_avatars[index2] = res[i].avatar ;
                     }
                     // console.log(pgm + 'source1_avatars = ' + JSON.stringify(source1_avatars));
                     // console.log(pgm + 'source2_avatars = ' + JSON.stringify(source2_avatars));
 
-                    // apply avatars
+                    // apply avatars from dbQuery
                     var index ;
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         contact = ls_contacts[i] ;
-                        if (source1_avatars.hasOwnProperty(contact.auth_address)) {
-                            contact.avatar = source1_avatars[contact.auth_address] ;
+                        index1 = contact.hub + ',' + contact.auth_address ;
+                        if (source1_avatars.hasOwnProperty(index1)) {
+                            contact.avatar = source1_avatars[index1] ;
                             continue ;
                         }
                         if (contact.pubkey) {
                             unique_id = CryptoJS.SHA256(contact.auth_address + '/'  + contact.pubkey).toString();
-                            if (source2_avatars.hasOwnProperty(unique_id)) {
-                                contact.avatar = source1_avatars[unique_id] ;
+                            index2 = res[i].hub + ',' + unique_id ;
+                            if (source2_avatars.hasOwnProperty(index2)) {
+                                contact.avatar = source2_avatars[index2] ;
                                 continue ;
                             }
                         }
@@ -5407,305 +5463,324 @@ angular.module('MoneyNetwork')
                 if (!contact.avatar) debug('invalid_avatars', pgm + 'Error. Pre search check. Contact without avatar ' + JSON.stringify(contact)) ;
             } // for i
 
-            // find json_id and user_seq for current user.
-            // must use search words for current user
-            // must not return search hits for current user
-            pubkey = MoneyNetworkHelper.getItem('pubkey') ;
-            query = "select json.json_id, users.user_seq from json, users " +
-                "where json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
-                "and users.json_id = json.json_id " +
-                "and users.pubkey = '" + pubkey + "'";
-            debug('select', pgm + 'query 5 = ' + query) ;
-            // if (auth_address) debug('file_done', pgm + 'query 1 = ' + query) ;
-            ZeroFrame.cmd("dbQuery", [query], function(res) {
-                var pgm = service + '.z_contact_search dbQuery callback 1: ' ;
-                var error ;
-                if (detected_client_log_out(pgm)) return ;
-                // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                if (res.error) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
-                    console.log(pgm + "Search for new contacts failed: " + res.error) ;
-                    console.log(pgm + 'query = ' + query) ;
-                    if (fnc_when_ready) fnc_when_ready(no_contacts);
-                    return ;
-                }
-                if (res.length == 0) {
-                    // current user not in data.users array. must be a new user (first save). Try again in 3 seconds
-                    console.log(pgm + 'current user not in data.users array. must be a new user (first save). Try again in 3 seconds');
-                    // ZeroFrame.cmd("wrapperNotification", ["info", "Updating ZeroNet database. Please wait", 3000]);
-                    setTimeout(retry_z_contact_search,3000) ;
-                    return ;
-                }
-                if (res.length > 1) {
-                    console.log(pgm + 'todo: user with auth_address ' + ZeroFrame.site_info.auth_address + ' found at more that one hub. res = ' + JSON.stringify(res)) ;
-                }
-                var json_id = res[0].json_id ;
-                var user_seq = res[0].user_seq ;
-                // console.log(pgm + 'json_id = ' + json_id + ', user_seq = ' + user_seq) ;
-                // find other clients with matching search words using sqlite like operator
-                // Search: tags shared public on ZeroNet. Hidden: tags stored only in localStorage
+            // get user data hub (last content.modified timestamp)
+            get_my_user_hub(function (hub) {
+                var pgm = service + '.z_contact_search get_my_user_hub callback 1: ' ;
 
-                // contacts query. getting timestamp in a column sub query as status.json file often get received after data.json file
-                if (file_auth_address) debug('select || file_done', pgm + 'file_auth_address = ' + file_auth_address + ', file user seq = ' + file_user_seq) ;
-                var contacts_query =
-                    "select" +
-                    "  users.user_seq, users.pubkey, users.pubkey2, users.encryption, users.avatar as users_avatar, users.guest," +
-                    "  data_json.directory,  " +
-                    "  substr(data_json.directory, 1, instr(data_json.directory,'/')-1) as hub, " +
-                    "  substr(data_json.directory, instr(data_json.directory,'/data/users/')+12) as auth_address," +
-                    "  data_json.json_id as data_json_id," +
-                    "  content_json.json_id as content_json_id," +
-                    "  keyvalue.value as cert_user_id," +
-                    "  (select substr(files.filename,8)" +
-                    "   from files, json as avatar_json " +
-                    "   where files.filename like 'avatar%'" +
-                    "   and avatar_json.json_id = files.json_id" +
-                    "   and avatar_json.directory = data_json.directory) as files_avatar," +
-                    "  (select status.timestamp" +
-                    "   from json as status_json, status" +
-                    "   where status_json.directory = data_json.directory" +
-                    "   and    status.json_id = status_json.json_id" +
-                    "   and    status.user_seq = users.user_seq) as timestamp " +
-                    "from users, json as data_json, json as content_json, keyvalue " ;
-                if (file_auth_address) {
-                    // file done event. check only info from this auth_address
-                    contacts_query += "where data_json.directory like '%/users/" + file_auth_address + "' " ;
-                }
-                else {
-                    // page startup. general contacts search. all contacts except current user
-                    contacts_query += "where users.pubkey <> '" + pubkey + "' " ;
-                }
-                contacts_query +=
-                    "and data_json.json_id = users.json_id " +
-                    "and content_json.directory = data_json.directory " +
-                    "and content_json.file_name = 'content.json' " +
-                    "and keyvalue.json_id = content_json.json_id " +
-                    "and keyvalue.key = 'cert_user_id'" ;
-                debug('select', pgm + 'contacts_query 6 = ' + contacts_query) ;
-                // if (auth_address) debug('file_done', pgm + 'contacts_query = ' + contacts_query) ;
-
-                // find contacts with matching tags
-                query =
-                    "select" +
-                    "  my_search.tag as my_tag, my_search.value as my_value," +
-                    "  contacts.user_seq as other_user_seq, contacts.pubkey as other_pubkey, contacts.pubkey2 as other_pubkey2," +
-                    "  contacts.encryption as other_encryption, contacts.guest as other_guest," +
-                    "  contacts.auth_address as other_auth_address," +
-                    "  contacts.cert_user_id as other_cert_user_id," +
-                    "  contacts.timestamp as other_user_timestamp," +
-                    "  search.tag as other_tag, search.value as other_value, " +
-                    "  contacts.users_avatar as other_users_avatar, contacts.files_avatar as other_files_avatar " +
-                    "from (" + my_search_query + ") as my_search, " +
-                    "(select user_seq, tag, value, json_id from search " +
-                    "   union all " +
-                    " select user_seq, '' as tag, '' as value, users.json_id" +
-                    " from users" +
-                    " where 0 = (select count(*) from search " +
-                    "            where search.json_id = users.json_id " +
-                    "            and search.user_seq = users.user_seq)) as search, " +
-                    "(" + contacts_query + ") as contacts " +
-                    "where (my_search.tag like search.tag and search.tag <> '%' and my_search.value like search.value and search.value <> '%' " +
-                    "or search.tag like my_search.tag and search.value like my_search.value) " +
-                    "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " +
-                    "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq" ;
-                debug('select', pgm + 'query 7 = ' + query) ;
-
+                // find json_id and user_seq for current user.
+                // must use search words for current user
+                // must not return search hits for current user
+                pubkey = MoneyNetworkHelper.getItem('pubkey') ;
+                query = "select json.json_id, users.user_seq from json, users " +
+                    "where json.directory = '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' " +
+                    "and users.json_id = json.json_id " +
+                    "and users.pubkey = '" + pubkey + "'";
+                debug('select', pgm + 'query 5 (MS OK) = ' + query) ;
+                // if (auth_address) debug('file_done', pgm + 'query 1 = ' + query) ;
                 ZeroFrame.cmd("dbQuery", [query], function(res) {
-                    var pgm = service + '.z_contact_search dbQuery callback 2: ';
+                    var pgm = service + '.z_contact_search dbQuery callback 2: ' ;
+                    var error ;
                     if (detected_client_log_out(pgm)) return ;
-                    // console.log(pgm + 'res = ' + JSON.stringify(res));
+                    // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     if (res.error) {
                         ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
                         console.log(pgm + "Search for new contacts failed: " + res.error) ;
                         console.log(pgm + 'query = ' + query) ;
                         if (fnc_when_ready) fnc_when_ready(no_contacts);
-                        return;
+                        return ;
                     }
                     if (res.length == 0) {
-                        // current user not in data.users array. must be an user without any search words in user_info
-                        ZeroFrame.cmd("wrapperNotification", ["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
-                        if (fnc_when_ready) fnc_when_ready(no_contacts);
-                        return;
+                        // current user not in data.users array. must be a new user (first save). Try again in 3 seconds
+                        console.log(pgm + 'current user not in data.users array. must be a new user (first save). Try again in 3 seconds');
+                        // ZeroFrame.cmd("wrapperNotification", ["info", "Updating ZeroNet database. Please wait", 3000]);
+                        setTimeout(retry_z_contact_search,3000) ;
+                        return ;
                     }
-                    if (detected_client_log_out(pgm)) return ;
+                    if (res.length > 1) {
+                        console.log(pgm + 'todo: user with auth_address ' + ZeroFrame.site_info.auth_address + ' found at more that one hub. res = ' + JSON.stringify(res)) ;
+                    }
+                    var json_id = res[0].json_id ;
+                    var user_seq = res[0].user_seq ;
+                    // console.log(pgm + 'json_id = ' + json_id + ', user_seq = ' + user_seq) ;
+                    // find other clients with matching search words using sqlite like operator
+                    // Search: tags shared public on ZeroNet. Hidden: tags stored only in localStorage
 
-                    // error elsewhere in code but remove invalid avatars from query result
-                    var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                    for (i=0 ; i<res.length ; i++) {
-                        if (!res[i].other_users_avatar) continue ;
-                        if (res[i].other_users_avatar == 'jpg') continue ;
-                        if (res[i].other_users_avatar == 'png') continue ;
-                        if (public_avatars.indexOf(res[i].other_users_avatar) != -1) continue ;
-                        debug('invalid_avatars', pgm + 'Error. Removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
-                        delete res[i].other_users_avatar ;
-                    } // for i
+                    // contacts query. getting timestamp in a column sub query as status.json file often get received after data.json file
+                    if (file_auth_address) debug('select || file_done', pgm + 'file_auth_address = ' + file_auth_address + ', file user seq = ' + file_user_seq) ;
+                    var contacts_query =
+                        "select" +
+                        "  users.user_seq, users.pubkey, users.pubkey2, users.encryption, users.avatar as users_avatar, users.guest," +
+                        "  data_json.directory,  " +
+                        "  substr(data_json.directory, 1, instr(data_json.directory,'/')-1) as hub, " +
+                        "  substr(data_json.directory, instr(data_json.directory,'/data/users/')+12) as auth_address," +
+                        "  data_json.json_id as data_json_id," +
+                        "  content_json.json_id as content_json_id," +
+                        "  keyvalue1.value as cert_user_id," +
+                        "  keyvalue2.value as modified," +
+                        "  (select substr(files.filename,8)" +
+                        "   from files, json as avatar_json " +
+                        "   where files.filename like 'avatar%'" +
+                        "   and avatar_json.json_id = files.json_id" +
+                        "   and avatar_json.directory = data_json.directory) as files_avatar," +
+                        "  (select status.timestamp" +
+                        "   from json as status_json, status" +
+                        "   where status_json.directory = data_json.directory" +
+                        "   and    status.json_id = status_json.json_id" +
+                        "   and    status.user_seq = users.user_seq) as timestamp " +
+                        "from users, json as data_json, json as content_json, keyvalue as keyvalue1, keyvalue as keyvalue2 " ;
+                    if (file_auth_address) {
+                        // file done event. check only info from this auth_address
+                        contacts_query += "where data_json.directory like '%/users/" + file_auth_address + "' " ;
+                    }
+                    else {
+                        // page startup. general contacts search. all contacts except current user
+                        contacts_query += "where users.pubkey <> '" + pubkey + "' " ;
+                    }
+                    contacts_query +=
+                        "and data_json.json_id = users.json_id " +
+                        "and content_json.directory = data_json.directory " +
+                        "and content_json.file_name = 'content.json' " +
+                        "and keyvalue1.json_id = content_json.json_id " +
+                        "and keyvalue1.key = 'cert_user_id'" +
+                        "and keyvalue2.json_id = content_json.json_id " +
+                        "and keyvalue2.key = 'modified'";
 
-                    var unique_id, unique_ids = [], res_hash = {}, ignore, j, last_updated ;
-                    for (var i=0 ; i<res.length ; i++) {
-                        // check contacts on ignore list
-                        ignore=false ;
-                        for (j=0 ; (!ignore && (j<ls_contacts.length)) ; j++) {
-                            if (ls_contacts[j].type != 'ignore') continue ;
-                            if (res[i].auth_address == ls_contacts[j].auth_address) ignore=true ;
-                            if (res[i].pubkey == ls_contacts[j].pubkey) ignore=true ;
+                    console.log(pgm + 'todo: query 6 and query 7 will return doublet contact info for users on multiple user hubs. ' +
+                        'Now using user data from hub with last content.modified timestamp. Should filter data from "bad" hubs. ');
+                    debug('select', pgm + 'contacts_query 6 (MS OK) = ' + contacts_query) ;
+                    // if (auth_address) debug('file_done', pgm + 'contacts_query = ' + contacts_query) ;
+
+                    // find contacts with matching tags
+                    console.log(pgm + 'todo: query 7 is only deselecting current user on current user hub. query will return current user on other hubs.') ;
+                    query =
+                        "select" +
+                        "  my_search.tag as my_tag, my_search.value as my_value," +
+                        "  contacts.user_seq as other_user_seq, contacts.pubkey as other_pubkey, contacts.pubkey2 as other_pubkey2," +
+                        "  contacts.encryption as other_encryption, contacts.guest as other_guest," +
+                        "  contacts.directory as other_directory,contacts.hub as other_hub, " +
+                        "  contacts.auth_address as other_auth_address, contacts.cert_user_id as other_cert_user_id," +
+                        "  contacts.modified as other_content_modified, contacts.timestamp as other_user_timestamp," +
+                        "  search.tag as other_tag, search.value as other_value, " +
+                        "  contacts.users_avatar as other_users_avatar, contacts.files_avatar as other_files_avatar " +
+                        "from (" + my_search_query + ") as my_search, " +
+                        "(select user_seq, tag, value, json_id from search " +
+                        "   union all " +
+                        " select user_seq, '' as tag, '' as value, users.json_id" +
+                        " from users" +
+                        " where 0 = (select count(*) from search " +
+                        "            where search.json_id = users.json_id " +
+                        "            and search.user_seq = users.user_seq)) as search, " +
+                        "(" + contacts_query + ") as contacts " +
+                        "where (my_search.tag like search.tag and search.tag <> '%' and my_search.value like search.value and search.value <> '%' " +
+                        "or search.tag like my_search.tag and search.value like my_search.value) " +
+                        "and not (search.json_id = " + json_id + " and search.user_seq = " + user_seq + ") " + // see todo:
+                        "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq " +
+                        "order by contacts.auth_address, contacts.modified desc, contacts.hub";
+                    debug('select', pgm + 'query 7 (MS OK) = ' + query) ;
+
+                    ZeroFrame.cmd("dbQuery", [query], function(res) {
+                        var pgm = service + '.z_contact_search dbQuery callback 3: ';
+                        if (detected_client_log_out(pgm)) return ;
+                        // console.log(pgm + 'res = ' + JSON.stringify(res));
+                        if (res.error) {
+                            ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
+                            console.log(pgm + "Search for new contacts failed: " + res.error) ;
+                            console.log(pgm + 'query = ' + query) ;
+                            if (fnc_when_ready) fnc_when_ready(no_contacts);
+                            return;
                         }
-                        if (ignore) continue ;
-                        // add search match to res_hash
-                        // unique id is sha256 signatur of ZeroNet authorization and localStorage authorization
-                        // note many to many relation in the authorization and contact ids:
-                        // - a ZeroNet id can have been used on multiple devices (localStorage) when communicating with ZeroNet
-                        // - public/private localStorage key pairs can have been exported to other devices
-                        unique_id = CryptoJS.SHA256(res[i].other_auth_address + '/'  + res[i].other_pubkey).toString();
-                        res[i].other_unique_id = unique_id;
-                        if (!res[i].other_user_timestamp) {
-                            // must be a new contact received in file done event. data.json file received before status.json file
-                            if (file_auth_address) debug('file_done', pgm + 'file done event. data.json received before status.json. Using now as timestamp') ;
-                            else {
-                                // console.log(pgm + 'Ignoring contact without timestamp. res[i] = ' + JSON.stringify(res[i])) ;
+                        if (res.length == 0) {
+                            // current user not in data.users array. must be an user without any search words in user_info
+                            ZeroFrame.cmd("wrapperNotification", ["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
+                            if (fnc_when_ready) fnc_when_ready(no_contacts);
+                            return;
+                        }
+                        if (detected_client_log_out(pgm)) return ;
+
+                        // error elsewhere in code but remove invalid avatars from query result
+                        var public_avatars = MoneyNetworkHelper.get_public_avatars() ;
+                        for (i=0 ; i<res.length ; i++) {
+                            if (!res[i].other_users_avatar) continue ;
+                            if (res[i].other_users_avatar == 'jpg') continue ;
+                            if (res[i].other_users_avatar == 'png') continue ;
+                            if (public_avatars.indexOf(res[i].other_users_avatar) != -1) continue ;
+                            debug('invalid_avatars', pgm + 'Error. Removing invalid avatar from query result. res[' + i + '] = ' + JSON.stringify(res[i])) ;
+                            delete res[i].other_users_avatar ;
+                        } // for i
+
+                        var unique_id, unique_ids = [], res_hash = {}, ignore, j, last_updated ;
+                        var current_auth_address, current_hub ;
+                        for (var i=0 ; i<res.length ; i++) {
+                            // use only data from last updated user hub (content.modified). see above todos
+                            if (current_auth_address != res[i].other_auth_address) {
+                                current_auth_address = res[i].other_auth_address ;
+                                current_hub = res[i].other_hub ;
+                            }
+                            if ((current_auth_address == res[i].other_auth_address) && (current_hub != res[i].other_hub)) continue ;
+                            // check contacts on ignore list
+                            ignore=false ;
+                            for (j=0 ; (!ignore && (j<ls_contacts.length)) ; j++) {
+                                if (ls_contacts[j].type != 'ignore') continue ;
+                                if (res[i].auth_address == ls_contacts[j].auth_address) ignore=true ;
+                                if (res[i].pubkey == ls_contacts[j].pubkey) ignore=true ;
+                            }
+                            if (ignore) continue ;
+                            // add search match to res_hash
+                            // unique id is sha256 signatur of ZeroNet authorization and localStorage authorization
+                            // note many to many relation in the authorization and contact ids:
+                            // - a ZeroNet id can have been used on multiple devices (localStorage) when communicating with ZeroNet
+                            // - public/private localStorage key pairs can have been exported to other devices
+                            unique_id = CryptoJS.SHA256(res[i].other_auth_address + '/'  + res[i].other_pubkey).toString();
+                            res[i].other_unique_id = unique_id;
+                            if (!res[i].other_user_timestamp) {
+                                // must be a new contact received in file done event. data.json file received before status.json file
+                                if (file_auth_address) debug('file_done', pgm + 'file done event. data.json received before status.json. Using now as timestamp') ;
+                                else {
+                                    // console.log(pgm + 'Ignoring contact without timestamp. res[i] = ' + JSON.stringify(res[i])) ;
+                                    continue ;
+                                }
+                                res[i].other_user_timestamp = new Date().getTime() ;
+                            }
+                            last_updated = Math.round(res[i].other_user_timestamp / 1000) ;
+                            if (unique_ids.indexOf(res[i].other_unique_id)==-1) unique_ids.push(res[i].other_unique_id) ;
+                            if (!res_hash.hasOwnProperty(unique_id)) {
+                                res_hash[unique_id] = {
+                                    type: 'new',
+                                    auth_address: res[i].other_auth_address,
+                                    cert_user_id: res[i].other_cert_user_id,
+                                    user_seq: res[i].other_user_seq,
+                                    pubkey: res[i].other_pubkey,
+                                    pubkey2: res[i].other_pubkey2,
+                                    encryption: res[i].other_encryption,
+                                    guest: res[i].other_guest,
+                                    avatar: res[i].other_files_avatar || res[i].other_users_avatar,
+                                    search: [{ tag: 'Online', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
+                                };
+                            }
+                            res_hash[unique_id].search.push({
+                                tag: res[i].other_tag,
+                                value: res[i].other_value,
+                                privacy: 'Search',
+                                row: res_hash[unique_id].search.length+1
+                                // issue #10# - debug info
+                                //debug_info: {
+                                //    my_tag: res[i].my_tag,
+                                //    my_value: res[i].my_value,
+                                //    other_tag: res[i].other_tag,
+                                //    other_value: res[i].other_value
+                                //}
+                            }) ;
+                        }
+                        no_contacts = Object.keys(res_hash).keys.length ;
+
+                        // insert/update/delete new contacts in local_storage_contacts (type=new)
+                        // console.log(pgm + 'issue #10#: user_info = ' + JSON.stringify(user_info));
+                        var contact, found_unique_ids = [], debug_info ;
+                        for (i=ls_contacts.length-1 ; i>= 0 ; i--) {
+                            contact = ls_contacts[i] ;
+                            if (file_auth_address && (contact.auth_address != file_auth_address)) continue ; // checking only this auth_address
+                            if (file_user_seq && (contact.user_seq != file_user_seq)) continue ; // checking only this auth_address and user_seq
+                            unique_id = contact.unique_id ;
+                            if (!res_hash.hasOwnProperty(unique_id)) {
+                                // contact no longer matching search words. Delete contact if no messages
+                                if ((contact.type == 'new') && (contact.messages.length == 0)) {
+                                    remove_contact(i);
+                                }
                                 continue ;
                             }
-                            res[i].other_user_timestamp = new Date().getTime() ;
-                        }
-                        last_updated = Math.round(res[i].other_user_timestamp / 1000) ;
-                        if (unique_id == "8d07e1d69db580cb7169f752bddff989129a47338d626685c32dad0633a35180") {
-                            console.log(pgm + 'last_updated = ' + last_updated + ', res = ' + JSON.stringify(res[i])) ;
-                        }
-                        if (unique_ids.indexOf(res[i].other_unique_id)==-1) unique_ids.push(res[i].other_unique_id) ;
-                        if (!res_hash.hasOwnProperty(unique_id)) {
-                            res_hash[unique_id] = {
-                                type: 'new',
-                                auth_address: res[i].other_auth_address,
-                                cert_user_id: res[i].other_cert_user_id,
-                                user_seq: res[i].other_user_seq,
-                                pubkey: res[i].other_pubkey,
-                                pubkey2: res[i].other_pubkey2,
-                                encryption: res[i].other_encryption,
-                                guest: res[i].other_guest,
-                                avatar: res[i].other_files_avatar || res[i].other_users_avatar,
-                                search: [{ tag: 'Online', value: last_updated, privacy: 'Search', row: 1, debug_info: {}}]
-                            };
-                        }
-                        res_hash[unique_id].search.push({
-                            tag: res[i].other_tag,
-                            value: res[i].other_value,
-                            privacy: 'Search',
-                            row: res_hash[unique_id].search.length+1
-                            // issue #10# - debug info
-                            //debug_info: {
-                            //    my_tag: res[i].my_tag,
-                            //    my_value: res[i].my_value,
-                            //    other_tag: res[i].other_tag,
-                            //    other_value: res[i].other_value
+                            found_unique_ids.push(unique_id) ;
+
+                            // issue #10 - problem with wildcards in search. debug info.
+                            // keep debug code. maybe also other problems with wildcards
+                            //debug_info = [] ;
+                            //for (j=0 ; j<res_hash[unique_id].search.length ; j++) {
+                            //    debug_info.push({
+                            //        row: res_hash[unique_id].search[j].row,
+                            //        my_tag: res_hash[unique_id].search[j].debug_info.my_tag,
+                            //        my_value: res_hash[unique_id].search[j].debug_info.my_value,
+                            //        other_tag: res_hash[unique_id].search[j].debug_info.other_tag,
+                            //        other_value: res_hash[unique_id].search[j].debug_info.other_value
+                            //    }) ;
                             //}
-                        }) ;
-                    }
-                    no_contacts = Object.keys(res_hash).keys.length ;
+                            // console.log(pgm + 'issue #10: contact.search.debug_info = ' + JSON.stringify(debug_info)) ;
 
-                    // insert/update/delete new contacts in local_storage_contacts (type=new)
-                    // console.log(pgm + 'issue #10#: user_info = ' + JSON.stringify(user_info));
-                    var contact, found_unique_ids = [], debug_info ;
-                    for (i=ls_contacts.length-1 ; i>= 0 ; i--) {
-                        contact = ls_contacts[i] ;
-                        if (file_auth_address && (contact.auth_address != file_auth_address)) continue ; // checking only this auth_address
-                        if (file_user_seq && (contact.user_seq != file_user_seq)) continue ; // checking only this auth_address and user_seq
-                        unique_id = contact.unique_id ;
-                        if (!res_hash.hasOwnProperty(unique_id)) {
-                            // contact no longer matching search words. Delete contact if no messages
-                            if ((contact.type == 'new') && (contact.messages.length == 0)) {
-                                remove_contact(i);
+                            // update contact with new search words
+                            contact.cert_user_id = res_hash[unique_id].cert_user_id ;
+                            contact.encryption = res_hash[unique_id].encryption ;
+                            if (res_hash[unique_id].guest && (contact.type == 'new')) {
+                                contact.type = 'guest';
+                                contact.guest = true ;
                             }
-                            continue ;
-                        }
-                        found_unique_ids.push(unique_id) ;
-
-                        // issue #10 - problem with wildcards in search. debug info.
-                        // keep debug code. maybe also other problems with wildcards
-                        //debug_info = [] ;
-                        //for (j=0 ; j<res_hash[unique_id].search.length ; j++) {
-                        //    debug_info.push({
-                        //        row: res_hash[unique_id].search[j].row,
-                        //        my_tag: res_hash[unique_id].search[j].debug_info.my_tag,
-                        //        my_value: res_hash[unique_id].search[j].debug_info.my_value,
-                        //        other_tag: res_hash[unique_id].search[j].debug_info.other_tag,
-                        //        other_value: res_hash[unique_id].search[j].debug_info.other_value
-                        //    }) ;
-                        //}
-                        // console.log(pgm + 'issue #10: contact.search.debug_info = ' + JSON.stringify(debug_info)) ;
-
-                        // update contact with new search words
-                        contact.cert_user_id = res_hash[unique_id].cert_user_id ;
-                        contact.encryption = res_hash[unique_id].encryption ;
-                        if (res_hash[unique_id].guest && (contact.type == 'new')) {
-                            contact.type = 'guest';
-                            contact.guest = true ;
-                        }
-                        if (res_hash[unique_id].avatar) contact.avatar = res_hash[unique_id].avatar ;
-                        for (j=contact.search.length-1 ; j >= 0 ; j--) {
-                            if (contact.search[j].privacy == 'Search') {
-                                contact.search.splice(j,1);
+                            if (res_hash[unique_id].avatar) contact.avatar = res_hash[unique_id].avatar ;
+                            for (j=contact.search.length-1 ; j >= 0 ; j--) {
+                                if (contact.search[j].privacy == 'Search') {
+                                    contact.search.splice(j,1);
+                                }
                             }
-                        }
-                        for (j=0 ; j<res_hash[unique_id].search.length ; j++) {
-                            contact.search.push(res_hash[unique_id].search[j]) ;
-                        }
-                        for (j=0 ; j<contact.search.length ; j++) contact.search[j].row = j+1 ;
-
-                        // if (contact.type == 'guest') console.log(pgm + 'guest = ' + JSON.stringify(contact));
-                    } // i
-
-                    var new_contact ;
-                    for (unique_id in res_hash) {
-                        if (found_unique_ids.indexOf(unique_id) != -1) continue ;
-                        // insert new contact
-                        new_contact = {
-                            unique_id: unique_id,
-                            type: (res_hash[unique_id].guest ? 'guest' : 'new'),
-                            guest: (res_hash[unique_id].guest ? true : null),
-                            auth_address: res_hash[unique_id].auth_address,
-                            cert_user_id: res_hash[unique_id].cert_user_id,
-                            avatar: res_hash[unique_id].avatar,
-                            user_seq: res_hash[unique_id].user_seq,
-                            pubkey: res_hash[unique_id].pubkey,
-                            pubkey2: res_hash[unique_id].pubkey2,
-                            encryption: res_hash[unique_id].encryption,
-                            search: res_hash[unique_id].search,
-                            messages: [],
-                            outbox_sender_sha256: {},
-                            inbox_zeronet_msg_id: [],
-                            inbox_last_sender_sha256: null,
-                            inbox_last_sender_sha256_at: 0
-                        };
-
-                        if (!new_contact.avatar) {
-                            // assign random avatar
-                            if (public_avatars.length == 0) {
-                                console.log(pgm + 'Error. Public avatars array are not ready. Using 1.png as avatar') ;
-                                new_contact.avatar = '1.png' ;
+                            for (j=0 ; j<res_hash[unique_id].search.length ; j++) {
+                                contact.search.push(res_hash[unique_id].search[j]) ;
                             }
-                            else {
-                                var index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
-                                new_contact.avatar = public_avatars[index] ;
+                            for (j=0 ; j<contact.search.length ; j++) contact.search[j].row = j+1 ;
+
+                            // if (contact.type == 'guest') console.log(pgm + 'guest = ' + JSON.stringify(contact));
+                        } // i
+
+                        var new_contact ;
+                        for (unique_id in res_hash) {
+                            if (found_unique_ids.indexOf(unique_id) != -1) continue ;
+                            // insert new contact
+                            new_contact = {
+                                unique_id: unique_id,
+                                type: (res_hash[unique_id].guest ? 'guest' : 'new'),
+                                guest: (res_hash[unique_id].guest ? true : null),
+                                auth_address: res_hash[unique_id].auth_address,
+                                cert_user_id: res_hash[unique_id].cert_user_id,
+                                avatar: res_hash[unique_id].avatar,
+                                user_seq: res_hash[unique_id].user_seq,
+                                pubkey: res_hash[unique_id].pubkey,
+                                pubkey2: res_hash[unique_id].pubkey2,
+                                encryption: res_hash[unique_id].encryption,
+                                search: res_hash[unique_id].search,
+                                messages: [],
+                                outbox_sender_sha256: {},
+                                inbox_zeronet_msg_id: [],
+                                inbox_last_sender_sha256: null,
+                                inbox_last_sender_sha256_at: 0
+                            };
+
+                            if (!new_contact.avatar) {
+                                // assign random avatar
+                                if (public_avatars.length == 0) {
+                                    console.log(pgm + 'Error. Public avatars array are not ready. Using 1.png as avatar') ;
+                                    new_contact.avatar = '1.png' ;
+                                }
+                                else {
+                                    var index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                                    new_contact.avatar = public_avatars[index] ;
+                                }
                             }
+                            add_contact(new_contact) ;
+                            if (file_auth_address) debug('file_done', pgm + 'new_contact = ' + JSON.stringify(new_contact));
                         }
-                        add_contact(new_contact) ;
-                        if (file_auth_address) debug('file_done', pgm + 'new_contact = ' + JSON.stringify(new_contact));
-                    }
-                    // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
+                        // console.log(pgm + 'local_storage_contacts = ' + JSON.stringify(local_storage_contacts));
 
-                    // update Last online for pseudo group chat contacts.
-                    ls_update_group_last_updated() ;
+                        // update Last online for pseudo group chat contacts.
+                        ls_update_group_last_updated() ;
 
-                    // check avatars. All contacts must have a avatar
-                    for (i=0 ; i<ls_contacts.length ; i++) {
-                        contact = ls_contacts[i] ;
-                        if (!contact.avatar) console.log(pgm + 'Error. Post search check. Contact without avatar ' + JSON.stringify(contact)) ;
-                    }
+                        // check avatars. All contacts must have a avatar
+                        for (i=0 ; i<ls_contacts.length ; i++) {
+                            contact = ls_contacts[i] ;
+                            if (!contact.avatar) console.log(pgm + 'Error. Post search check. Contact without avatar ' + JSON.stringify(contact)) ;
+                        }
 
-                    // refresh angularJS UI
-                    if (fnc_when_ready) fnc_when_ready(no_contacts) ;
+                        // refresh angularJS UI
+                        if (fnc_when_ready) fnc_when_ready(no_contacts) ;
 
-                });
-            }) ;
+                    }); // dbQuery callback 3
+
+                }) ; // dbQuery callback 2
+
+            }) ; // get_my_user_hub callback 1
 
         } // z_contact_search
 
