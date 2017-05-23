@@ -10,28 +10,28 @@
    "size": 18027
   },
   "README.md": {
-   "sha512": "fc4ed066dde56880aa20ed7178a7a348904a198ff41ef2213dc5ed15e713017a",
-   "size": 2663
+   "sha512": "3018b342541759ac1fa6baed844376915f9bfbfb71085d7d5dddeeafb8d536d6",
+   "size": 2976
   },
   "css/all.css": {
-   "sha512": "b0d701bf119ac40b13f59aa9592347e9784b0b62ab763f3b936b9b1ef9deee8d",
-   "size": 415269
+   "sha512": "d998847816e6f79362dfac17be6e253ffca3185aa0ea670a46d2a57e38a20e2b",
+   "size": 415280
   },
   "data-default/users/content-default.json": {
    "sha512": "3bbc8c28ae8d50c7c04409edb47153e3d02ad470ed14fde839c8e8dd8dbe1ff4",
    "size": 741
   },
   "dbschema.json": {
-   "sha512": "5e203fc5bf23f59f8aaa6b4385e654049ae44c4974e8fd36fb55f9126908622a",
-   "size": 3257
+   "sha512": "d11d6382631f2e9bb857181e471af990dfc26a0b2214a0783bd87bdbd6f25dd8",
+   "size": 3692
   },
   "favicon.ico": {
    "sha512": "b1b7e2667c8ed0376d756fdb27ab0aeb9881275cf29b0ef7510aa47271b9ec4e",
    "size": 4286
   },
   "index.html": {
-   "sha512": "393bb24989cc03accea194dc6e57391cd13ed3421af826fef9e80c38a15a21cb",
-   "size": 119584
+   "sha512": "b1c748d39ec3530ee68ee8644c3f0becf335fd8f68fba2855b36144c1bf12d6d",
+   "size": 121917
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -66,8 +66,8 @@
    "size": 7565
   },
   "js-external/40-angular.js": {
-   "sha512": "e70292a66eaaf28c1f1594a9dce67269f7a0e3c44a88f79e38d87e239d68623a",
-   "size": 1111193
+   "sha512": "1609aea738f6b492bfe1d46ed034005db6edbef1f65c1c5610ddb89a613d009e",
+   "size": 1111210
   },
   "js-external/41-angular-route.js": {
    "sha512": "c4d57762f28bdbc8f32677de8c4cbc09f11fa0ec259d498c1530ca7951e35233",
@@ -174,12 +174,12 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "b6842f997b5c48fe53fe89facae6e839652968501a3f7fff80a81ee88bedf11d",
-   "size": 1031451
+   "sha512": "ea93f5c052fb4195600684b39cf42ae36828546ce0106ed9afb76eed9d647d05",
+   "size": 1081034
   },
   "js/all.js.zip": {
-   "sha512": "1679a7f61f644d8027216c4c0fcbd618ab4f6514aea73b45d10f311f71be926d",
-   "size": 178189
+   "sha512": "8659477c193f691f2e361960683b5049c677da3d8d8f04c4e89adc3211219cbb",
+   "size": 187089
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -294,7 +294,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1490884856,
+ "modified": 1495558647,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -305,15 +305,15 @@
   }
  },
  "sign": [
-  63123063702575730111434252745922535485942801567445884425431145485511706135965,
-  64282238959957577828792711643503000737857660736175656849166154497008248096709
+  59645154237977858522832568187883886893611984617513230309350753043439333309307,
+  104112549106758510223378083328788072255391266720708242322225691094514253370363
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G/uSfD3XLRIK1Mb4bBoaHsJ/oK9P//1gjgLFOxq7rcekynNlfaapbst6qULfWEI5p7cc7gmSX6vXuB7aR4kmaGA="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G1pj+HhbPyEquxwym+++sZZVWLICeZidrfwI9qJIrsxtVL+GgZ35JWfGZcLC9r+csuAkmMO0/+yCmKtb8ByPe94="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",
  "viewport": "width=device-width, initial-scale=1.0",
- "zeronet_version": "0.5.3"
+ "zeronet_version": "0.5.5"
 }

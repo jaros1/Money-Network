@@ -1558,6 +1558,16 @@
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.select" ng-change="u.debug_settings_changed()"></td>
                 </tr>
+                <tr title="Click to see all fileGet operations">
+                    <td>Show fileGet?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.file_get" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to see all fileWrite operations">
+                    <td>Show fileWrite?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.file_write" ng-change="u.debug_settings_changed()"></td>
+                </tr>
                 <tr title="Click to see file done event processing of content.json, data.json and status.json files">
                     <td>File done events?</td>
                     <td>&nbsp;&nbsp;</td>
@@ -1997,8 +2007,10 @@
   all.js ~= 1 Mb and distribution is slow on zeronet
   js/all.js.tar.bz2 is small and distributed fast but tar.bz2 is not yet supported by all clients
  -->
-<script type="text/javascript" src="js/all.js"></script>
-<!-- script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js"></script>
+<!-- -->
+<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!-- -->
 
 <!-- end - some more static js files -->
 <script type="text/javascript" src="js-external/90-ui-bootstrap-tpls-2.1.3.js"></script>

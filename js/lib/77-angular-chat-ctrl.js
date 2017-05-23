@@ -741,16 +741,19 @@ angular.module('MoneyNetwork')
             self.show_delete_user1 = moneyNetworkService.is_admin() ;
             self.delete_user1 = function () {
                 var pgm = controller + '.delete_user1: ' ;
-                var contact ;
+                var contact, debug_seq ;
                 if (!self.contact || (self.contact.type == 'group')) return ;
                 contact = self.contact ;
 
                 // any files to delete? check content.json file
                 var user_path = "data/users/" + contact.auth_address;
+                debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                debug('file_get', pgm + user_path + '/content.json fileGet started (' + debug_seq + ')');
                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                     var pgm = controller + '.delete_user1 fileGet callback: ' ;
                     var error, files, file_names, total_size, file_name, file_texts, text, files_optional,
                         file_names_lng1, file_names_lng2, last_online, modified, dif ;
+                    debug('file_get', pgm + user_path + '/content.json fileGet done (' + debug_seq + ')');
                     if (!content) {
                         error = 'system error. content.json file was not found for auth_address ' + contact.auth_address ;
                         console.log(pgm + error) ;

@@ -110,7 +110,7 @@ angular.module('MoneyNetwork')
 
             // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
             ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
-                console.log(pgm + 'res = ', res) ;
+                console.log(pgm + 'res = ', res + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
             }) ;
 
         }; // money_network_w2_8
@@ -122,8 +122,7 @@ angular.module('MoneyNetwork')
 
             // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
             ZeroFrame.cmd("mergerSiteAdd", ["182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"], function (res) {
-                console.log(pgm + 'res = ', res) ;
-                console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+                console.log(pgm + 'res = ', res + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
             }) ;
 
         }; // money_network_w2_9

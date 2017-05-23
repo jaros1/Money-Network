@@ -88,7 +88,8 @@ angular.module('MoneyNetwork')
 
         // upload_avatar callback function. handle upload
         function handleAvatarUpload (image_base64uri) {
-            var ext, image_base64, user_path;
+            var pgm = controller + '.handleAvatarUpload: ' ;
+            var ext, image_base64, user_path, debug_seq;
             if (!image_base64uri) return ;
             user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
             ext = moneyNetworkService.get_image_ext_from_base64uri(image_base64uri);
@@ -99,8 +100,11 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd("fileDelete", user_path + "/avatar.jpg", function (res) {});
             ZeroFrame.cmd("fileDelete", user_path + "/avatar.png", function (res) {});
             image_base64 = image_base64uri != null ? image_base64uri.replace(/.*?,/, "") : void 0;
+            debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+            debug('file_write', pgm + user_path + "/avatar." + ext + ' fileWrite started (' + debug_seq + ')');
             ZeroFrame.cmd("fileWrite", [user_path + "/avatar." + ext, image_base64], function(res) {
                 var pgm = controller + '.handleAvatarUpload fileWrite callback: ';
+                debug('file_write', pgm + user_path + "/avatar." + ext + ' fileWrite done (' + debug_seq + ')');
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 self.avatar.src = user_path + "/avatar." + ext + '?rev=' + MoneyNetworkHelper.generate_random_password(10);
                 $scope.$apply() ;
@@ -402,9 +406,14 @@ angular.module('MoneyNetwork')
                     }) ;
                 }; // step_3_delete_status_json
                 var step_3_update_status_json = function (my_user_seq) {
+                    var pgm = controller + '.delete_user2.step_3_update_status_json: ' ;
+                    var debug_seq ;
+                    debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                    debug('file_get', pgm + user_path + '/' + 'status.json fileGet started (' + debug_seq + ')');
                     ZeroFrame.cmd("fileGet", [user_path + '/' + 'status.json', false], function (status) {
                         var pgm = controller + '.delete_user2.step_3_update_status_json fileGet: ' ;
                         var i, json_raw ;
+                        debug('file_get', pgm + user_path + '/' + 'status.json fileGet done (' + debug_seq + ')');
                         if (!status) { step_4_publish() ; return }
                         status = JSON.parse(status) ;
                         if (!status.status) status.status = [] ;
@@ -415,8 +424,11 @@ angular.module('MoneyNetwork')
                             return ;
                         }
                         json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
+                        debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                        debug('file_write', pgm + user_path + '/' + 'status.json fileWrite started (' + debug_seq + ')');
                         ZeroFrame.cmd("fileWrite", [user_path + '/' + 'status.json', btoa(json_raw)], function (res) {
                             var pgm = controller + '.delete_user2.step_3_update_status_json fileWrite: ' ;
+                            debug('file_write', pgm + user_path + '/' + 'status.json fileWrite done (' + debug_seq + ')');
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                             step_4_publish() ;
                         }) ; // fileWrite
@@ -439,9 +451,14 @@ angular.module('MoneyNetwork')
                     }) ;
                 };
                 var step_2_update_data_json = function (my_user_seq) {
+                    var pgm = controller + '.delete_user2.step_2_update_data_json: ' ;
+                    var debug_seq ;
+                    debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                    debug('file_get', pgm + user_path + '/' + 'data.json fileGet started (' + debug_seq + ')');
                     ZeroFrame.cmd("fileGet", [user_path + '/' + 'data.json', false], function (data) {
                         var pgm = controller + '.delete_user2.step_2_update_data_json fileGet: ' ;
                         var i, json_raw ;
+                        debug('file_get', pgm + user_path + '/' + 'data.json fileGet done (' + debug_seq + ')');
                         if (!data) { step_3_update_or_delete_status_json(user_seq) ; return }
                         data = JSON.parse(data) ;
                         if (!data.users) data.users = [] ;
@@ -456,8 +473,11 @@ angular.module('MoneyNetwork')
                             return ;
                         }
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
+                        debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                        debug('file_write', pgm + user_path + '/' + 'data.json fileWrite started (' + debug_seq + ')');
                         ZeroFrame.cmd("fileWrite", [user_path + '/' + 'data.json', btoa(json_raw)], function (res) {
                             var pgm = controller + '.delete_user2.step_2_update_data_json fileWrite: ' ;
+                            debug('file_write', pgm + user_path + '/' + 'data.json fileWrite done (' + debug_seq + ')');
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                             step_3_update_or_delete_status_json(my_user_seq) ;
                         }) ; // fileWrite
@@ -479,7 +499,7 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("optionalFileList", { limit: 99999}, function (list) {
                         var pgm = controller + '.delete_user2.step_1_cleanup_optional_files: ';
                         var i, file_auth_address, file_user_seq, inner_path, empty_json, empty_json_raw, user_path,
-                            a_path, z_path;
+                            debug_seq;
                         // console.log(pgm + 'list = ' + JSON.stringify(list)) ;
                         empty_json = {};
                         empty_json_raw = unescape(encodeURIComponent(JSON.stringify(empty_json, null, "\t")));
@@ -490,7 +510,10 @@ angular.module('MoneyNetwork')
                             if ((file_auth_address == my_auth_address) && ((file_user_seq == my_user_seq) || all_accounts)) {
                                 // overwrite uploaded optional file with empty json.
                                 // empty json will be distributed to other ZeroNet users before physical delete
+                                debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                                debug('file_write', pgm + inner_path + ' fileWrite started (' + debug_seq + ')');
                                 ZeroFrame.cmd("fileWrite", [inner_path, btoa(empty_json_raw)], function () {
+                                    debug('file_write', pgm + inner_path + ' fileWrite done (' + debug_seq + ')');
                                 });
                             }
                             else if (file_auth_address == my_auth_address) {
@@ -541,7 +564,8 @@ angular.module('MoneyNetwork')
 
         // get export info. show in export options section
         (function() {
-            var ls_size, passwords, i, no_users, user_path ;
+            var pgm = controller + ': ' ;
+            var ls_size, passwords, i, no_users, user_path, debug_seq ;
             // localStorage info
             ls_size = JSON.stringify(MoneyNetworkHelper.ls_get()).length ;
             passwords = JSON.parse(MoneyNetworkHelper.getItem('passwords')) ;
@@ -550,8 +574,11 @@ angular.module('MoneyNetwork')
             self.export_info.ls = no_users + ' account' + (no_users > 1 ? 's' : '') + ', ' + ls_size + ' bytes' ;
             // zeroNet info
             user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+            debug('file_get', pgm + user_path + '/content.json fileGet started (' + debug_seq + ')') ;
             ZeroFrame.cmd("fileGet", [user_path + '/content.json', false], function (content) {
                 var filename, z_files, z_bytes, chat_files, chat_bytes ;
+                debug('file_get', pgm + user_path + '/content.json fileGet done (' + debug_seq + ')') ;
                 if (!content) return ;
                 content = JSON.parse(content) ;
                 z_files = 0 ; z_bytes = 0 ;
@@ -671,7 +698,7 @@ angular.module('MoneyNetwork')
 
             step_3_read_zeronet_file = function () {
                 var pgm = controller + '.export.3_read_zeronet_file: ' ;
-                var filename, key, image_format ;
+                var filename, key, image_format, debug_seq ;
 
                 // find next file to download
                 for (key in data.z_files) {
@@ -693,8 +720,11 @@ angular.module('MoneyNetwork')
                 }
                 else {
                     // json file. normal fileGet
+                    debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                    debug('file_get', pgm + user_path + '/' + filename + ' fileGet started (' + debug_seq + ')');
                     ZeroFrame.cmd("fileGet", [user_path + '/' + filename, false], function (content) {
                         var error ;
+                        debug('file_get', pgm + user_path + '/' + filename + ' fileGet done (' + debug_seq + ')');
                         if (!content) {
                             error = 'Cannot export zeronet data. file ' + filename + ' was not found' ;
                             console.log(pgm + error) ;
@@ -708,9 +738,14 @@ angular.module('MoneyNetwork')
             }; // step_3_read_zeronet_file
 
             step_2_read_content_json = function () {
+                var pgm = controller + '.export.step_2_read_content_json: ' ;
+                var debug_seq ;
+                debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                debug('file_get', pgm + user_path + '/' + 'content.json fileGet started (' + debug_seq + ')') ;
                 ZeroFrame.cmd("fileGet", [user_path + '/' + 'content.json', false], function (content) {
-                    var pgm = controller + '.export.step_2_read_content_json: ' ;
+                    var pgm = controller + '.export.step_2_read_content_json fileGet callback: ' ;
                     var error, filename ;
+                    debug('file_get', pgm + user_path + '/' + 'content.json fileGet done (' + debug_seq + ')') ;
                     if (!content) {
                         error = 'Cannot export zeronet data. content.json file was not found' ;
                         console.log(pgm + error) ;
@@ -821,7 +856,7 @@ angular.module('MoneyNetwork')
 
             step_4_write_z_file = function (data) {
                 var pgm = controller + '.import.step_4_write_z_file: ' ;
-                var key, filename, json_raw, image_base64uri, post_data ;
+                var key, filename, json_raw, image_base64uri, post_data, debug_seq ;
                 for (key in data.z_files) {
                     filename = key ;
                     break ;
@@ -840,9 +875,12 @@ angular.module('MoneyNetwork')
                 }
                 delete data.z_files[filename] ;
 
+                debug_seq = MoneyNetworkHelper.next_debug_seq() ;
+                debug('file_write', pgm + user_path + '/' + filename + ' fileWrite started (' + debug_seq + ')');
                 ZeroFrame.cmd("fileWrite", [user_path + '/' + filename, post_data], function (res) {
                     // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     var error ;
+                    debug('file_write', pgm + user_path + '/' + filename + ' fileWrite done (' + debug_seq + ')');
                     if (res == "ok") {
                         console.log(pgm + 'uploaded ZeroNet file ' + filename) ;
                         return step_4_write_z_file(data)
