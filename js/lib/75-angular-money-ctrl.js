@@ -4,6 +4,7 @@ angular.module('MoneyNetwork')
         var self = this;
         var controller = 'MoneyCtrl';
         console.log(controller + ' loaded');
+        console.log(controller + ': site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
 
         self.money_network_w2_1 = function () {
             var pgm = controller + '.money_network_w2_1: ' ;
@@ -103,7 +104,7 @@ angular.module('MoneyNetwork')
         }; // money_network_w2_7
 
         self.money_network_w2_8 = function () {
-            var pgm = controller + '.money_network_w2_7: ' ;
+            var pgm = controller + '.money_network_w2_8: ' ;
             console.log(pgm + 'test 8 - merger sites - wrapperPermissionAdd') ;
 
 
@@ -112,11 +113,33 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'res = ', res) ;
             }) ;
 
-
         }; // money_network_w2_8
 
+        self.money_network_w2_9 = function () {
+            var pgm = controller + '.money_network_w2_9: ' ;
+            console.log(pgm + 'test 9 - merger sites - mergerSiteAdd') ;
 
 
+            // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
+            ZeroFrame.cmd("mergerSiteAdd", ["182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"], function (res) {
+                console.log(pgm + 'res = ', res) ;
+                console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+            }) ;
+
+        }; // money_network_w2_9
+
+        self.money_network_w2_10 = function () {
+            var pgm = controller + '.money_network_w2_10: ' ;
+            console.log(pgm + 'test 10 - merger sites - mergerSitedelete') ;
+
+
+            // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
+            ZeroFrame.cmd("mergerSiteDelete", "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe", function (res) {
+                console.log(pgm + 'res = ', res) ;
+                console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+            }) ;
+
+        }; // money_network_w2_10
 
         // end MoneyCtrl
     }])
