@@ -10,16 +10,12 @@
    "size": 18027
   },
   "README.md": {
-   "sha512": "3018b342541759ac1fa6baed844376915f9bfbfb71085d7d5dddeeafb8d536d6",
-   "size": 2976
+   "sha512": "6a80fafbe6f4b3885dc5f29086c0728602f750f4d11a087c3ac9bf5fdd5b4939",
+   "size": 2892
   },
   "css/all.css": {
    "sha512": "d998847816e6f79362dfac17be6e253ffca3185aa0ea670a46d2a57e38a20e2b",
    "size": 415280
-  },
-  "data-default/users/content-default.json": {
-   "sha512": "3bbc8c28ae8d50c7c04409edb47153e3d02ad470ed14fde839c8e8dd8dbe1ff4",
-   "size": 741
   },
   "dbschema.json": {
    "sha512": "d11d6382631f2e9bb857181e471af990dfc26a0b2214a0783bd87bdbd6f25dd8",
@@ -30,8 +26,8 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "b1c748d39ec3530ee68ee8644c3f0becf335fd8f68fba2855b36144c1bf12d6d",
-   "size": 121917
+   "sha512": "ec54402d1bb35b5ffb41286bcae55262fd61ef5f76ce8a87ca10707ba287f173",
+   "size": 121918
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -62,8 +58,8 @@
    "size": 4814
   },
   "js-external/30-ZeroFrame.js": {
-   "sha512": "be4533b32c63d0ac835f1b07ac8f5d7a6e118f483f2815665325b5947560b816",
-   "size": 7565
+   "sha512": "5341d5d772dfebf3844b501344e89d9d3fa977ddd3566e9147f7e9cafa89ba56",
+   "size": 7738
   },
   "js-external/40-angular.js": {
    "sha512": "1609aea738f6b492bfe1d46ed034005db6edbef1f65c1c5610ddb89a613d009e",
@@ -174,12 +170,12 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "ea93f5c052fb4195600684b39cf42ae36828546ce0106ed9afb76eed9d647d05",
-   "size": 1081034
+   "sha512": "b273eb6bdbedfabc4c08e6cbbac69dfb11cd062e81dde82cc3a2a37171a83aa0",
+   "size": 1083655
   },
   "js/all.js.zip": {
-   "sha512": "8659477c193f691f2e361960683b5049c677da3d8d8f04c4e89adc3211219cbb",
-   "size": 187089
+   "sha512": "f1b2d2ee6edcfa8309ae7b3cf458c3a0dadfae81a4974b3c5881a90036a7be7c",
+   "size": 187517
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -294,23 +290,23 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1495558647,
+ "modified": 1495642512,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
-   "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe": {
-    "description": "Money Network - D1 - User hub - runner jro",
-    "title": "D1 - User hub"
+   "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh": {
+    "description": "Money Network - U2 - User hub - runner jro",
+    "title": "U2 - User hub"
    }
   }
  },
  "sign": [
-  59645154237977858522832568187883886893611984617513230309350753043439333309307,
-  104112549106758510223378083328788072255391266720708242322225691094514253370363
+  62012867747821105476687326835835528605644573964535725636080476733450198890466,
+  67520425495662633206841121770741369625699676012663613757074176012973062778307
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G1pj+HhbPyEquxwym+++sZZVWLICeZidrfwI9qJIrsxtVL+GgZ35JWfGZcLC9r+csuAkmMO0/+yCmKtb8ByPe94="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HIQLbMDCj5nVf+xKQCP1I/LBLhflIp5z4DLL4SdELGaeZKAk2RRs19SpqFPdBs7ZEYhrFp0lwNr2ITjKQidvG0Y="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",

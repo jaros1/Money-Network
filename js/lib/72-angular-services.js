@@ -159,8 +159,10 @@ angular.module('MoneyNetwork')
         }
 
         function get_default_user_hub () {
+            var pgm = service + '.get_default_user_hub: ' ;
             var default_user_hub, default_hubs, hub ;
-            var default_user_hub = '182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe' ;
+            default_user_hub = '1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh' ;
+            console.log(pgm + 'ZeroFrame.site_info.content = ' + JSON.stringify(ZeroFrame.site_info.content));
             default_hubs = ZeroFrame.site_info.content.settings.default_hubs ;
             if (!default_hubs) return default_user_hub ;
             for (hub in default_hubs) {
@@ -674,8 +676,13 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (data) {
                     var pgm = service + ".load_user_contents_max_size fileGet callback 2: " ;
                     debug('file_get', pgm + inner_path + ' fileGet done (' + debug_seq + ')');
-                    if (data) data = JSON.parse(data) ;
-                    else data = {} ;
+                    if (!data) {
+                        console.log(pgm + 'Error. Cannot find max user directory size. Content.json lookup failed. Path was ' + inner_path) ;
+                        user_contents_max_size = -1 ;
+                        if (lock_pgm) z_update_1_data_json (lock_pgm) ;
+                        return
+                    }
+                    data = JSON.parse(data) ;
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
                     user_contents_max_size = 0 ;
                     var user_contents = data['user_contents'] ;
@@ -687,7 +694,7 @@ angular.module('MoneyNetwork')
                         if (!permissions[cert_user_id]) return ; //  banned user
                         if (!permissions[cert_user_id].hasOwnProperty('max_size')) { z_update_1_data_json (lock_pgm) ; return } // no max size?
                         user_contents_max_size = permissions[cert_user_id].max_size ;
-                        z_update_1_data_json (lock_pgm) ;
+                        if (lock_pgm) z_update_1_data_json (lock_pgm) ;
                         return ;
                     }
                     // check generel user permissions
@@ -5128,7 +5135,7 @@ angular.module('MoneyNetwork')
                         //res[27] = {
                         //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQB0oWbjKx4Uc2LFupcMIqbU\nxH6Xbd8FIQCRM7icadV7aseKj76D8I385Nqm+Injlv0SwWHEQKqNwjPi5+5lD7WZ\niX4BFDni4FFhsPLoEBg+rOyxz8tF1qa7S4QlW7R/qcZBbi5s/rBBoVOG8CL94imD\np3SmifFlohEoBMVhO65YKvHvgqhC2oreyEXxQA3T87iqpoHxGGBolyl2dq4Y/CI2\nuD/+8LIHToTeYgXouYzYUMYzyx/iZceydfMCbFShlPAROb7c3/aRvLwbC+SRdIP2\nZKO7vVIS0JlDj3IL2zigj+aEC0Kmgs7oNwKg1Xg7mYT7Pub1Hn7sj7hGk6txM5YN\nAgMBAAE=\n-----END PUBLIC KEY-----",
                         //    "avatar": "undefined",
-                        //    "hub": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe",
+                        //    "hub": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
                         //    "auth_address": "1K4tMUXAUbaJ3h2qHYpGwEq3RiLd5XHyRM"
                         //};
                         res.splice(i,1) ;
@@ -8374,7 +8381,7 @@ angular.module('MoneyNetwork')
         }
 
         // wait for setSiteInfo events (new files)
-        function event_file_done (event, filename) {
+        function event_file_done (hub, event, filename) {
             var pgm = service + '.event_file_done: ' ;
             var debug_seq ;
             // console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
@@ -8384,7 +8391,7 @@ angular.module('MoneyNetwork')
             // - data/users/<auth_address>/content.json - check for avatar uploads
             // - data/users/<auth_address>/data.json - check for new messages
             // - ignore all other files from Money Network
-            debug('file_done', pgm + 'filename = ' + filename) ;
+            debug('file_done', pgm + 'hub = ' + hub + ', filename = ' + filename) ;
             if (filename.substr(0,11) != 'data/users/') return ;
             if (!filename.match(/json$/)) return ;
             // must be content.json, data.json or status.json

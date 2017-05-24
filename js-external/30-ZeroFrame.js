@@ -68,7 +68,10 @@ ZeroFrame = (function() {
             this.checkCertUserId() ;
             // execute any functions waiting for event
             if (message.params.event) {
-                for (var i=0 ; i<this.event_callbacks.length ; i++) this.event_callbacks[i].apply(undefined, message.params.event);
+                var event = [] ;
+                event.push(message.params.address) ;
+                for (i=0 ; i<message.params.event.length ; i++) event.push(message.params.event[i]) ;
+                for (var i=0 ; i<this.event_callbacks.length ; i++) this.event_callbacks[i].apply(undefined, event);
             }
             // a little dirty. callback to authCtrl and update ZeroNet ID link in log in page
             var link = document.getElementById('zeronet_cert_changed_link') ;

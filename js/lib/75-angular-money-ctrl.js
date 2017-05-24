@@ -97,7 +97,7 @@ angular.module('MoneyNetwork')
 
             // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
             ZeroFrame.cmd("mergerSiteList", {}, function (merger_sites) {
-                console.log(pgm + 'merger_sites = ', merger_sites) ;
+                console.log(pgm + 'merger_sites = ', JSON.stringify(merger_sites)) ;
             }) ;
 
 
@@ -107,10 +107,15 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.money_network_w2_8: ' ;
             console.log(pgm + 'test 8 - merger sites - wrapperPermissionAdd') ;
 
-
             // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
             ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
-                console.log(pgm + 'res = ', res + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+                if (res != "Granted") {
+                    console.log(pgm + 'res = ', JSON.stringify(res)) ;
+                    return ;
+                }
+                ZeroFrame.cmd("siteInfo", {}, function (site_info) {
+                    console.log(pgm + 'res = ', JSON.stringify(res) + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+                }) ;
             }) ;
 
         }; // money_network_w2_8
@@ -119,10 +124,9 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.money_network_w2_9: ' ;
             console.log(pgm + 'test 9 - merger sites - mergerSiteAdd') ;
 
-
             // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
-            ZeroFrame.cmd("mergerSiteAdd", ["182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"], function (res) {
-                console.log(pgm + 'res = ', res + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+            ZeroFrame.cmd("mergerSiteAdd", ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"], function (res) {
+                console.log(pgm + 'res = ', JSON.stringify(res) + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
             }) ;
 
         }; // money_network_w2_9
@@ -131,11 +135,9 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.money_network_w2_10: ' ;
             console.log(pgm + 'test 10 - merger sites - mergerSitedelete') ;
 
-
             // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
-            ZeroFrame.cmd("mergerSiteDelete", "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe", function (res) {
-                console.log(pgm + 'res = ', res) ;
-                console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+            ZeroFrame.cmd("mergerSiteDelete", "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh", function (res) {
+                console.log(pgm + 'res = ', JSON.stringify(res) + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
             }) ;
 
         }; // money_network_w2_10

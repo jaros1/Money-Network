@@ -64,11 +64,38 @@ angular.module('MoneyNetwork')
                     'account(s) still is in localStorage', 10000]);
             }
         } ;
-        function check_merger_permission() {
-            if (ZeroFrame.site_info.settings.permissions && (ZeroFrame.site_info.settings.permissions.indexOf("Merger:MoneyNetwork") != -1)) return true;
-            ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {}) ;
-            return false ;
-        }
+
+        // check merger site permission + one user hub
+        function check_merger_permission(cb) {
+            var pgm = controller + '.check_merger_permission: ' ;
+            if (!cb) cb = function (ok) {} ;
+            var request1 = function (cb) {
+                var pgm = controller + '.check_merger_permission.request1: ' ;
+                ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
+                    console.log(pgm + 'res = ', JSON.stringify(res)) ;
+                    if (res == "Granted") request2(cb) ;
+                    else cb(false) ;
+                }) ;
+            } ; // request1
+            var request2 = function (cb) {
+                var pgm = controller + '.check_merger_permission.request2: ' ;
+                ZeroFrame.cmd("mergerSiteAdd", ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"], function (res) {
+                    console.log(pgm + 'res = ', JSON.stringify(res)) ;
+                    cb((res == 'ok')) ;
+                }) ;
+            }; // request2
+            ZeroFrame.cmd("siteInfo", {}, function (site_info) {
+                var pgm = controller + '.check_merger_permission siteInfo callback 1: ' ;
+                console.log(pgm , 'site_info = ' + JSON.stringify(site_info)) ;
+                if (site_info.settings.permissions.indexOf("Merger:MoneyNetwork") == -1) return request1(cb);
+                ZeroFrame.cmd("mergerSiteList", {}, function (merger_sites) {
+                    var pgm = controller + '.check_merger_permission mergerSiteList callback 2: ' ;
+                    console.log(pgm + 'merger_sites = ', JSON.stringify(merger_sites)) ;
+                    if (merger_sites["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"] == "MoneyNetwork") cb(true) ;
+                    else request2(cb) ;
+                }) ; // mergerSiteList callback 2
+            }) ; // siteInfo callback 1
+        } // check_merger_permission
 
         // callback when localStorage is ready (ZeroFrame's localStorage API is a little slow)
         var ls_was_loading = MoneyNetworkHelper.ls_is_loading();
@@ -121,12 +148,6 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("wrapperNotification", ['info', 'Please wait. Loading localStorage data', 5000]);
                 return ;
             }
-            if (!check_merger_permission()) {
-                ZeroFrame.cmd("wrapperNotification", ['info', 'Please grant Merger:MoneyNetwork permission', 5000]);
-                return ;
-            }
-            console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
-
             if (!self.use_private_data) {
                 // login/register without saving any data in localStorage as Guest and using cryptMessage
                 self.register = 'G' ;
@@ -211,28 +232,38 @@ angular.module('MoneyNetwork')
                 else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
             } ; // login_or_register_cb
 
+            // check merger site permission before login
+            check_merger_permission(function (ok) {
+                console.log(pgm + 'ok = ' + JSON.stringify(ok)) ;
+                if (!ok) {
+                    ZeroFrame.cmd("wrapperNotification", ['info', 'Please grant Merger:MoneyNetwork permission', 5000]);
+                    return ;
+                }
 
-            if ((self.register != 'N') && (self.keysize >= '4096')) {
-                // warning before login user has selected a long key for a new account
-                verb = self.keysize == '4096' ? 'some' : 'long' ;
-                ZeroFrame.cmd("wrapperConfirm", ["Generating a " + self.keysize + " bits key will take " + verb + " time.<br>Continue?", "OK"], function (confirm) {
-                    if (confirm) login_or_register_cb() ;
-                })
-            }
-            else if ((self.register != 'N') && (self.keysize == '256') && moneyNetworkService.is_proxy_server()) {
-                // warning using cryptMessage on proxy servers
-                msg = 'Warning. Using CryptMessage 256 bits encryption on a proxy server' +
-                    '<br>Certificate is saved on proxy server (not secure),' +
-                    '<br>certificate will be deleted after a short period' +
-                    '<br>and message encrypted to this certificate will be lost.' +
-                    '<br>Recommend instead using JSEncrypt with 1024 bits key. ' +
-                    '<br>Private key will be saved encrypted in browser (localStorage).' +
-                    '<br>Continue with CryptMessage and 256 bits key?';
-                ZeroFrame.cmd("wrapperConfirm", [msg, "OK"], function (confirm) {
-                    if (confirm) login_or_register_cb();
-                })
-            }
-            else login_or_register_cb() ;
+                // login
+                if ((self.register != 'N') && (self.keysize >= '4096')) {
+                    // warning before login user has selected a long key for a new account
+                    verb = self.keysize == '4096' ? 'some' : 'long' ;
+                    ZeroFrame.cmd("wrapperConfirm", ["Generating a " + self.keysize + " bits key will take " + verb + " time.<br>Continue?", "OK"], function (confirm) {
+                        if (confirm) login_or_register_cb() ;
+                    })
+                }
+                else if ((self.register != 'N') && (self.keysize == '256') && moneyNetworkService.is_proxy_server()) {
+                    // warning using cryptMessage on proxy servers
+                    msg = 'Warning. Using CryptMessage 256 bits encryption on a proxy server' +
+                        '<br>Certificate is saved on proxy server (not secure),' +
+                        '<br>certificate will be deleted after a short period' +
+                        '<br>and message encrypted to this certificate will be lost.' +
+                        '<br>Recommend instead using JSEncrypt with 1024 bits key. ' +
+                        '<br>Private key will be saved encrypted in browser (localStorage).' +
+                        '<br>Continue with CryptMessage and 256 bits key?';
+                    ZeroFrame.cmd("wrapperConfirm", [msg, "OK"], function (confirm) {
+                        if (confirm) login_or_register_cb();
+                    })
+                }
+                else login_or_register_cb() ;
+
+            }) ; // check_merger_permission callback 1
 
         }; // self.login_or_register
 
