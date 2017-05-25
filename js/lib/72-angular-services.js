@@ -170,10 +170,18 @@ angular.module('MoneyNetwork')
             }
             return default_user_hub ;
         } // get_default_user_hub3
+
+        var get_my_user_hub_cbs = [] ; // callbacks waiting for query 17 to finish
         function get_my_user_hub (cb) {
             var pgm = service + '.get_my_hub: ' ;
             var query ;
+            if (z_cache.my_user_hub == true) {
+                // query 17 is already running. please wait
+                get_my_user_hub_cbs.push(cb) ;
+                return ;
+            }
             if (z_cache.my_user_hub) return cb(z_cache.my_user_hub) ;
+            z_cache.my_user_hub = true ;
 
             // Use content.modified timestamp as sort condition if multiple user data hubs
             query =
@@ -199,33 +207,41 @@ angular.module('MoneyNetwork')
                 }
                 if (res.length == 0) z_cache.my_user_hub = get_default_user_hub() ;
                 else z_cache.my_user_hub = res[0].hub ;
+                console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
                 cb(z_cache.my_user_hub) ;
+                while (get_my_user_hub_cbs.length) { cb = get_my_user_hub_cbs.shift() ; cb(z_cache.my_user_hub)} ;
             }) ; // dbQuery callback 1
 
         } // get_my_user_hub
 
         // wrapper for data.json fileGet and fileWrite (cache data.json file in memory)
+        var get_data_json_cbs = [] ; // callbacks waiting for get_data_json to finish
         function get_data_json (cb) {
             var pgm = service + '.get_data_json: ' ;
             if (detected_client_log_out(pgm)) return ;
+            if (z_cache.data_json == true) {
+                // please wait. get_data_json request is already running
+                get_data_json_cbs.push(cb) ;
+                return ;
+            }
             if (z_cache.data_json) {
                 // data.json file is already in cache
                 if (detected_client_log_out(pgm)) return ;
                 cb(z_cache.data_json, false) ;
                 return ;
             }
+            z_cache.data_json = true ;
             // find user data hub (if any)
             get_my_user_hub (function (hub) {
                 var user_path, debug_seq ;
                 // download data.json and add file to cache
                 if (detected_client_log_out(pgm)) return ;
                 user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
-                console.log(pgm + 'user_path = ' + user_path) ;
                 debug_seq = MoneyNetworkHelper.next_debug_seq() ;
                 debug('file_get', pgm + user_path + '/data.json fileGet started (' + debug_seq + ')') ;
                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/data.json', required: false}, function (data_str) {
                     var pgm = service + '.get_data_json fileGet callback 1: ';
-                    var data, empty;
+                    var data, empty, cb2;
                     debug('file_get', pgm + user_path + '/data.json fileGet done (' + debug_seq + ')') ;
                     if (detected_client_log_out(pgm)) return ;
                     if (data_str) {
@@ -245,6 +261,7 @@ angular.module('MoneyNetwork')
                     // add data.json to cache
                     z_cache.data_json = data ;
                     cb(z_cache.data_json, empty) ;
+                    while (get_data_json_cbs.length) { cb = get_data_json_cbs.shift() ; cb(z_cache.data_json, empty)} ;
                 }) ; // fileGet callback 2
             }) ; // get_my_user_hub callback 1
         } // get_data_json
@@ -353,6 +370,8 @@ angular.module('MoneyNetwork')
                 //console.log(pgm + 'like_index = ' + JSON.stringify(like_index)) ;
             }) ; // get_user_seq
         } // update_like_index
+
+        var get_like_json_cbs = [] ; // any callbacks waiting for first get_like_json operation to finish
         function get_like_json(cb) {
             var pgm = service + '.get_like_json: ';
             if (detected_client_log_out(pgm)) return;
@@ -361,11 +380,17 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.get_like_json get_user_seq callback 1: ';
                 var user_path;
                 if (detected_client_log_out(pgm)) return;
-                if (z_cache.like_json && z_cache.like_json_index) {
+                if (z_cache.like_json == true) {
+                    // get_like_json operation already running. please wait
+                    get_like_json_cbs.push(cb) ;
+                    return ;
+                }
+                if (z_cache.like_json) {
                     // like.json file is already in cache
                     cb(z_cache.like_json, z_cache.like_json_index, false);
                     return;
                 }
+                z_cache.like_json = true ;
                 // callback 2 - find user data hub
                 get_my_user_hub(function (hub) {
                     var pgm = service + '.get_like_json get_my_user_hub callback 2: ';
@@ -401,6 +426,10 @@ angular.module('MoneyNetwork')
                         z_cache.like_json_index = {};
                         update_like_index(z_cache.like_json, z_cache.like_json_index);
                         cb(z_cache.like_json, z_cache.like_json_index, empty);
+                        while (get_like_json_cbs.length) {
+                            cb = get_like_json_cbs.shift() ;
+                            cb(z_cache.like_json, z_cache.like_json_index, empty);
+                        }
                     }); // fileGet callback 3
                 }); // my_user_hub callback 2
             }); // get_user_seq callback 1
@@ -6650,9 +6679,10 @@ angular.module('MoneyNetwork')
                         // reprocess just received data.json file
                         debug('file_done', pgm + 'received a cryptmessage encrypted group chat password. reprocessing just received data.json file to read first group chat message in new group chat') ;
                         if (!res.hub) console.log(pgm + 'todo: merger site. hub is missing in res. res = ' + JSON.stringify(res));
-                        file_name = res.hub + '/data/users/' + res.auth_address + '/data.json' ;
+                        file_name = '/data/users/' + res.auth_address + '/data.json' ;
+                        if (!res.hub) console.log(pgm + 'todo: hub is missing in res. res = ' + JSON.stringify(res));
                         $timeout(function () {
-                            event_file_done('file_done', file_name) ;
+                            event_file_done(res.hub, 'file_done', file_name) ;
                         });
                     }
                 }
@@ -8101,6 +8131,7 @@ angular.module('MoneyNetwork')
                     // this speciel index will work for both old and new format
                     image_index = contact.auth_address + "," + message.sent_at  ;
                     expected_image_files[image_index] = message ;
+                    console.log(pgm + 'todo: add hub to image index? add hub to message? image_index = ' + image_index + ', message = ' + JSON.stringify(message));
                 } // for j (messages)
             } // for i (contacts)
             if (!Object.keys(expected_image_files).length) return ;
@@ -8108,9 +8139,10 @@ angular.module('MoneyNetwork')
 
             // does image files still exist?
             query =
-                "select filename, image_index " +
+                "select hub, filename, image_index " +
                 "from " +
                 "  (select " +
+                "     substr(json.directory, 1, instr(json.directory,'/')-1) as hub," +
                 "     'merged-MoneyNetwork/' + || json.directory || '/' || files_optional.filename as filename," +
                 "      substr(json.directory, instr(json.directory,'/data/users/')+12) || ',' ||  substr(filename,1,13) as image_index" +
                 "   from files_optional, json" +
@@ -8125,6 +8157,7 @@ angular.module('MoneyNetwork')
             }
             query += ')' ;
             debug('select', pgm + 'query 14 = ' + query) ;
+            console.log(pgm + 'todo: add hub to image_index in query 14?');
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.check_image_download_failed dbQuery callback 1: ' ;
                 var found_image_files, i, image_index, get_file_info ;
@@ -8135,7 +8168,7 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 found_image_files = {} ;
-                for (i=0 ; i<res.length ; i++) found_image_files[res[i].image_index] = res[i].filename ;
+                for (i=0 ; i<res.length ; i++) found_image_files[res[i].image_index] = { hub: res[i].hub, filename: res[i].filename} ;
                 console.log(pgm + 'Object.keys(expected_image_files).length = ' + Object.keys(expected_image_files).length +
                     ', Object.keys(found_image_files).length = ' + Object.keys(found_image_files).length) ;
                 for (image_index in expected_image_files) {
@@ -8147,12 +8180,14 @@ angular.module('MoneyNetwork')
                 }
                 // check download info for image json files and optional trigger a file_done event for already downloaded files
                 get_file_info = function () {
-                    var keys, filename, image_index ;
+                    var keys, obs, hub, filename, image_index, obj ;
                     // find next file = Object.pop()
                     keys = Object.keys(found_image_files) ;
                     if (keys.length == 0) return ;
                     image_index = keys[0] ;
-                    filename = found_image_files[image_index] ;
+                    obj = found_image_files[image_index] ;
+                    hub = obj.hub ;
+                    filename = obj.filename ;
                     delete found_image_files[image_index] ;
                     // check file info for image json file
                     ZeroFrame.cmd("optionalFileInfo", [filename], function (file_info) {
@@ -8162,7 +8197,7 @@ angular.module('MoneyNetwork')
                         // continue with file_done event or start a new file download
                         if (file_info.is_downloaded) {
                             console.log(pgm + 'already downloaded. trigger a file_done event for ' + filename) ;
-                            event_file_done('file_done', filename) ;
+                            event_file_done(hub, 'file_done', filename) ;
                         }
                         else {
                             console.log(pgm + 'Not downloaded. Starting a new download for ' + filename);
@@ -8383,7 +8418,7 @@ angular.module('MoneyNetwork')
         // wait for setSiteInfo events (new files)
         function event_file_done (hub, event, filename) {
             var pgm = service + '.event_file_done: ' ;
-            var debug_seq ;
+            var debug_seq, merged_filename ;
             // console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
             if (event != 'file_done') return ;
             if (!user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
@@ -8398,13 +8433,14 @@ angular.module('MoneyNetwork')
             debug('file_done', pgm + 'filename = ' + filename) ;
 
             // read json file (content.json, data.json, status.json, -chat.json or -image.json)
+            merged_filename = 'merged-MoneyNetwork/' + hub + '/' + filename ;
             debug_seq = MoneyNetworkHelper.next_debug_seq() ;
-            debug('file_get', pgm + filename + ' fileGet started (' + debug_seq + ')');
-            ZeroFrame.cmd("fileGet", [filename, false], function (res) {
+            debug('file_get', pgm + merged_filename + ' fileGet started (' + debug_seq + ')');
+            ZeroFrame.cmd("fileGet", [merged_filename, false], function (res) {
                 var pgm = service + '.event_file_done fileGet callback 1: ';
                 var i, contact, auth_address, contacts_updated, index, my_pubkey_sha256, using_my_pubkey,
                     cleanup_inbox_messages_lng1, cleanup_inbox_messages_lng2, cleanup_inbox_messages_lng3, timestamp ;
-                debug('file_get', pgm + filename + ' fileGet done (' + debug_seq + ')');
+                debug('file_get', pgm + merged_filename + ' fileGet done (' + debug_seq + ')');
                 if (!res) res = {} ;
                 else res = JSON.parse(res) ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
@@ -8612,6 +8648,7 @@ angular.module('MoneyNetwork')
                             continue ;
                         }
                         unique_id = CryptoJS.SHA256(auth_address + '/'  + pubkey).toString();
+                        res.msg[i].hub = hub ; // where is message comming from?
                         res.msg[i].auth_address = auth_address ; // used if create new unknown contacts
                         // debug('file_done', pgm + 'unique_id = ' + unique_id);
 
@@ -11094,7 +11131,7 @@ angular.module('MoneyNetwork')
                 } // for i
             } // for key
             debug('emoji', pgm + 'max_lng = ' + max_lng) ;
-            debug('emojis = ' + JSON.stringify(emojis_short_list)) ;
+            debug('emoji', pgm + 'emojis_short_list = ' + JSON.stringify(emojis_short_list)) ;
 
             // apply current emoji folder to reactions
             if (!emoji_folders) console.log(pgm + 'issue #134 emoji_folders is undefined. emoji_folders = ' + JSON.stringify(emoji_folders));

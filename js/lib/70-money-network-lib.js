@@ -1327,6 +1327,8 @@ var MoneyNetworkHelper = (function () {
     var debug_cache = {} ;
     function debug (keys, text) {
         var pgm = module + '. debug: ' ;
+        if (!keys) throw pgm + 'Invalid call. key is missing' ;
+        if (!text) throw pgm + 'Invalid call. text is missing' ;
         if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
         if (debug_cache.hasOwnProperty(keys)) {
             // keys expression already in cache
