@@ -5868,7 +5868,7 @@ angular.module('MoneyNetwork')
         // received an incoming message with image=true
         // download optional file and insert image in message
         // symmetric encrypted image. private chat with JSEncrypt and group chat.
-        function download_json_image_file(auth_address, message_with_envelope, password, cb) {
+        function download_json_image_file(hub, auth_address, message_with_envelope, password, cb) {
             var pgm = service + '.download_json_image_file: ' ;
             var query, image_path ;
             // console.log(pgm + 'auth_address = ' + auth_address) ;
@@ -5877,12 +5877,12 @@ angular.module('MoneyNetwork')
 
             // is image attachment ready for download? should not be a problem ...
             // temp image_path - only used in error messages
-            image_path = "data/users/" + auth_address + '/' + message_with_envelope.sent_at + '-%-image.json' ;
+            image_path = "merged-MoneyNetwork/" + hub + "/data/users/" + auth_address + '/' + message_with_envelope.sent_at + '-%-image.json' ;
             query =
                 "select filename, files_optional.size " +
                 "from files_optional, json " +
                 "where json.json_id = files_optional.json_id " +
-                "and json.directory = 'users/" + auth_address + "' " +
+                "and json.directory = '" + hub + "/data/users/" + auth_address + "' " +
                 "and ( files_optional.filename = '" + message_with_envelope.sent_at + '-image.json' + "'" +        // old format without <user_seq> in filename
                 "   or files_optional.filename like '" + message_with_envelope.sent_at + '-%-image.json' + "' )" ; // new format with <user_seq> in filename
             debug('select', pgm + 'query 8 = ' + query) ;
@@ -5905,7 +5905,7 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 // set real image_path. should be new format with <user_seq> in filename
-                image_path = "data/users/" + auth_address + '/' + res[0].filename ;
+                image_path = "merged-MoneyNetwork/" + hub + "/data/users/" + auth_address + '/' + res[0].filename ;
                 if (res[0].size <= 2) {
                     console.log(pgm + 'optional image file ' + image_path + ' has been deleted') ;
                     if (cb) cb(false) ;
@@ -6514,7 +6514,7 @@ angular.module('MoneyNetwork')
                 else if (decrypted_message.image == true) {
                     // new image attachment method
                     // true: message image is in an optional image json file <timestamp>-image.json (old format) or <timestamp>-<userseq>-image.json (new format)
-                    download_json_image_file(res.auth_address, message, password, function (ok) {
+                    download_json_image_file(res.hub, res.auth_address, message, password, function (ok) {
                         var pgm = service + '.download_json_image_file callback: ';
                         if (!ok) {
                             // image download failed. remember failed image download. image may arrive later and be processed in a file_done event
@@ -9321,7 +9321,6 @@ angular.module('MoneyNetwork')
                     if (user_setup.block_guests) query += "and users.guest is null " ; // check spam filter: guests
                     query += "order by files_optional.filename desc" ;
                     debug('select', pgm + 'query 15 = ' + query) ;
-                    debug('select', pgm + 'permissions = ' + JSON.stringify(ZeroFrame.site_info.settings.permissions));
 
                     ZeroFrame.cmd("dbQuery", [query], function (res) {
                         var pgm = service + '.get_public_chat dbQuery callback 3: ';
@@ -9333,7 +9332,6 @@ angular.module('MoneyNetwork')
                             ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error]);
                             console.log(pgm + "Search for public chat failed: " + res.error);
                             console.log(pgm + 'query 15 = ' + query);
-                            debug('select', pgm + 'permissions = ' + JSON.stringify(ZeroFrame.site_info.settings.permissions));
                             return cb('done') ;
                         }
 
@@ -9886,7 +9884,6 @@ angular.module('MoneyNetwork')
                 debug('public_chat || issue_112', pgm + 'start download ' + cache_filename) ;
                 debug_seq = MoneyNetworkHelper.next_debug_seq() ;
                 debug('file_get', pgm + cache_filename + ' fileGet started (' + debug_seq + ')');
-                debug('file_get', pgm + 'permissions = ' + JSON.stringify(ZeroFrame.site_info.settings.permissions));
 
                 ZeroFrame.cmd("fileGet", {inner_path: cache_filename, required: true}, function (chat) {
                     var pgm = service + '.get_and_load_chat_file fileGet callback 2: ';
@@ -9894,7 +9891,7 @@ angular.module('MoneyNetwork')
                         file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                         new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
                         image, byteAmount, chat_bytes, chat_length, error, auth_address, index, break_point,
-                        reactions_index, reactions_info ;
+                        reactions_index, reactions_info, file_hub ;
                     debug('file_get', pgm + cache_filename + ' fileGet done (' + debug_seq + ')');
                     // update cache_status
                     cache_status.is_pending = false;
@@ -9907,8 +9904,11 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'download failed for ' + cache_filename + ', failures = ' + chat_page_context.failures.length) ;
                         return cb2() ;
                     }
-                    file_auth_address = cache_filename.split('/')[2] ;
-                    file_user_seq = parseInt(cache_filename.split('-')[2]) ;
+                    // cache_filename = merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/13CMaVD3fimSq8Zr1Xr3UkbZqhA8BupBAf/1495700749498-1495700684383-1-chat.json
+                    file_hub = cache_filename.split('/')[1] ;
+                    file_auth_address = cache_filename.split('/')[4] ;
+                    file_user_seq = parseInt(cache_filename.split('-')[3]) ;
+                    debug('public_chat', pgm + 'file_hub = ' + file_hub + ', file_auth_address = ' + file_auth_address + ', file_user_seq = ' + file_user_seq);
 
                     // check json size. Problem with compressed images!
                     chat_length = chat.length ;
@@ -9977,7 +9977,8 @@ angular.module('MoneyNetwork')
                         return cb2();
                     }
                     // find contact
-                    z_filename = cache_filename.split('/')[3] ;
+                    // cache_filename = merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/13CMaVD3fimSq8Zr1Xr3UkbZqhA8BupBAf/1495700749498-1495700684383-1-chat.json
+                    z_filename = cache_filename.split('/')[5] ;
                     debug('public_chat', pgm + 'file_auth_address = ' + file_auth_address + ', file_user_seq = ' + file_user_seq);
                     if ((file_auth_address == ZeroFrame.site_info.auth_address) && (file_user_seq == my_user_seq)) {
                         // loading current user public outbox chat messages
