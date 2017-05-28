@@ -1,6 +1,6 @@
 angular.module('MoneyNetwork')
 
-    .controller('MoneyCtrl', ['$window', '$http', function ($window, $http) {
+    .controller('MoneyCtrl', ['$window', '$http', '$timeout', function ($window, $http, $timeout) {
         var self = this;
         var controller = 'MoneyCtrl';
         console.log(controller + ' loaded');
@@ -19,7 +19,6 @@ angular.module('MoneyNetwork')
 
         }; // money_network_w2_1
 
-
         self.money_network_w2_2 = function () {
             var pgm = controller + '.money_network_w2_2: ' ;
             console.log(pgm + 'test 2 - use ZeroNet wrapperOpenWindow') ;
@@ -29,7 +28,6 @@ angular.module('MoneyNetwork')
                 console.log(pgm +'res = ' + JSON.stringify(res)) ;
             }) ;
             console.log(pgm + 'x = ' + JSON.stringify(x)) ;
-
 
         }; // money_network_w2_2
 
@@ -124,8 +122,10 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.money_network_w2_9: ' ;
             console.log(pgm + 'test 9 - merger sites - mergerSiteAdd') ;
 
-            // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
-            ZeroFrame.cmd("mergerSiteAdd", ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"], function (res) {
+            //ZeroFrame.cmd("mergerSiteAdd", ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"], function (res) {
+            //    console.log(pgm + 'res = ', JSON.stringify(res) + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+            //}) ;
+            ZeroFrame.cmd("mergerSiteAdd", ["1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ"], function (res) {
                 console.log(pgm + 'res = ', JSON.stringify(res) + ', site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
             }) ;
 
@@ -141,6 +141,58 @@ angular.module('MoneyNetwork')
             }) ;
 
         }; // money_network_w2_10
+
+        self.money_network_w2_11 = function () {
+            var pgm = controller + '.money_network_w2_11: ' ;
+            var session_at, sessionid, url, query, sessionid_sha256, check_session ;
+            session_at = new Date().getTime() ;
+            sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
+            url = "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1?sessionid=" + sessionid ;
+            console.log(pgm + 'test 11 - use ZeroNet wrapperOpenWindow. url = ' + url) ;
+            ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]) ;
+
+            // wait for session to start. no event file done event. wait for db update. max 1 minute
+            sessionid_sha256 = CryptoJS.SHA256(sessionid).toString();
+            query =
+                "select keyvalue2.value as session_at, keyvalue3.value as pubkey2 " +
+                "from keyvalue as keyvalue1, keyvalue as keyvalue2, keyvalue as keyvalue3 " +
+                "where keyvalue1.key = 'sessionid_sha256' " +
+                "and keyvalue1.value = '" + sessionid_sha256 + "' " +
+                "and keyvalue2.json_id = keyvalue1.json_id " +
+                "and keyvalue2.key = 'session_at' " +
+                "and keyvalue3.json_id = keyvalue1.json_id " +
+                "and keyvalue3.key = 'pubkey2' " +
+                "and keyvalue2.value > '" + session_at + "'"  ;
+            MoneyNetworkHelper.debug('select', 'query = ' + query) ;
+            var check_session = function(cb, count) {
+                if (!count) count = 0;
+                if (count > 60) return cb({ error: "timeout" }) ;
+                ZeroFrame.cmd("dbQuery", [query], function (res) {
+                    var pgm = controller + '.money_network_w2_11.check_session: ' ;
+                    if (res.error) {
+                        console.log(pgm + 'Error when checking for new wallet session. error = ' + res.error) ;
+                        console.log(pgm + 'query = ' + query) ;
+                        return cb({ error: res.error }) ;
+                    }
+                    if (res.length == 0) {
+                        var job = function () { check_session(cb, count+1) };
+                        $timeout(job, 1000) ;
+                        return ;
+                    }
+                    cb({session_at: res[0].session_at, pubkey2: res[0].pubkey2 }) ;
+                }); // dbQuery callback 1
+            } // check_session
+            check_session(function (res) {
+                var elapsed ;
+                if (res.error) console.log(pgm + 'wallet session was not found. error = ' + res.error) ;
+                else {
+                    elapsed = res.session_at - session_at ;
+                    console.log(pgm + 'new wallet session was found. pubkey2 = ' + res.pubkey2 + ', waited ' + Math.round(elapsed / 1000) + ' seconds') ;
+                }
+                console.log(pgm + 'check_session. res = ' + JSON.stringify(res)) ;
+            }) ;
+
+        }; // money_network_w2_11
 
         // end MoneyCtrl
     }])

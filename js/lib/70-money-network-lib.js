@@ -647,16 +647,18 @@ var MoneyNetworkHelper = (function () {
     } // sha256
 
     // generate password - used as key for local storage encryption and used in client to client communication (symmetric encryption)
-    function generate_random_password(length) {
-        var character_set = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789![]{}#%&/()=?+-:;_-.@$|£';
-        var password = [], index, char;
+    function generate_random_password(length, alfa_numeric_only) {
+        var character_set = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        if (!alfa_numeric_only) character_set += '![]{}#%&/()=?+-:;_-.@$|£' ;
+        var string = [], index, char;
         for (var i = 0; i < length; i++) {
             index = Math.floor(Math.random() * character_set.length);
             char = character_set.substr(index, 1);
-            password.push(char);
+            string.push(char);
         }
-        return password.join('');
-    } // generate_random_password
+        return string.join('');
+    } // generate_random_string
+
 
     // post login. add/update pubkey2 (used in ZeroNet CryptMessage plugin)
     function get_cryptmessage_pubkey2 () {

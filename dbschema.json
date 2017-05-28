@@ -28,6 +28,9 @@
         { "node": "like", "table": "like"}
       ],
       "to_json_table": [ "hub" ]
+    },
+    ".+/data/users/.+/wallet.json": {
+      "to_keyvalue": [ "sessionid_sha256", "session_at", "pubkey2" ]
     }
   },
   "tables": {

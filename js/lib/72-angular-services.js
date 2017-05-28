@@ -8419,7 +8419,7 @@ angular.module('MoneyNetwork')
         function event_file_done (hub, event, filename) {
             var pgm = service + '.event_file_done: ' ;
             var debug_seq, merged_filename ;
-            // console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
+            console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename) + ', hub = ' + hub);
             if (event != 'file_done') return ;
             if (!user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
             // process user files:
