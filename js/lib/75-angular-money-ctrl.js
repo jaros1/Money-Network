@@ -163,12 +163,15 @@ angular.module('MoneyNetwork')
                 "and keyvalue3.json_id = keyvalue1.json_id " +
                 "and keyvalue3.key = 'pubkey2' " +
                 "and keyvalue2.value > '" + session_at + "'"  ;
-            MoneyNetworkHelper.debug('select', 'query = ' + query) ;
+            MoneyNetworkHelper.debug('select', 'query 18 = ' + query) ;
             var check_session = function(cb, count) {
+                var debug_seq ;
                 if (!count) count = 0;
                 if (count > 60) return cb({ error: "timeout" }) ;
+                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('db_query', pgm + 'query 18') ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = controller + '.money_network_w2_11.check_session: ' ;
+                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     if (res.error) {
                         console.log(pgm + 'Error when checking for new wallet session. error = ' + res.error) ;
                         console.log(pgm + 'query = ' + query) ;

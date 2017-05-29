@@ -187,16 +187,19 @@ var MoneyNetworkHelper = (function () {
         }
     } // ls_import
 
+    // sequence and hash used in debug operations
+    var debug_seq = 0 ;
+    var debug_operations = {} ;
+
     // initialize array with public avatars from public/images/avatar
     var public_avatars = [] ;
     var emojis = {} ;
     function load_public_avatars () {
         var pgm = module + '.load_public_avatars: ' ;
-        var debug_seq = next_debug_seq() ;
-        debug('file_get', pgm + 'content.json fileGet started (' + debug_seq + ')') ;
+        var debug_seq = debug_z_api_operation_start('file_get', pgm + 'content.json fileGet') ;
         ZeroFrame.cmd("fileGet", ['content.json', false], function (res) {
             var pgm = module + '.load_public_avatars fileGet callback: ';
-            debug('file_get', pgm + 'content.json fileGet done (' + debug_seq + ')') ;
+            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
             if (res) res = JSON.parse(res) ;
             else res = { files: {} } ;
             for (var key in res.files) {
@@ -1318,11 +1321,39 @@ var MoneyNetworkHelper = (function () {
         return shorten_long_strings(str) ;
     }
 
-    var debug_seq = 0 ;
-    function next_debug_seq () {
-        debug_seq++ ;
-        return debug_seq ;
+    // some debug information before and after ZeroNet API operations
+    // debug info in log before and after each operation
+    function debug_z_api_operation_pending () {
+        var keys = Object.keys(debug_operations) ;
+        if (keys.length == 0) return 'No pending ZeroNet API operations' ;
+        if (keys.length == 1) return '1 pending ZeroNet API operation (' + keys[0] + ')' ;
+        return keys.length + ' pending ZeroNet API operations (' + keys.join(',') + ')' ;
     }
+    function debug_z_api_operation_start (keys, text) {
+        debug_seq++ ;
+        debug_operations[debug_seq] = {
+            keys: keys,
+            text: text,
+            started_at: new Date().getTime()
+        } ;
+        debug(keys, text + ' started (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+        return debug_seq ;
+    } // debug_z_api_operation_start
+    function debug_z_api_operation_end (debug_seq) {
+        var pgm = module + '.debug_z_api_operation_end: ' ;
+        var keys, text, started_at, finished_at, elapsed_time ;
+        if (!debug_operations[debug_seq]) {
+            console.log(pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found') ;
+            return ;
+        }
+        keys = debug_operations[debug_seq].keys ;
+        text = debug_operations[debug_seq].text ;
+        started_at = debug_operations[debug_seq].started_at ;
+        delete debug_operations['' + debug_seq] ;
+        finished_at = new Date().getTime() ;
+        elapsed_time = finished_at - started_at ;
+        debug(keys, text + ' finished. elapsed time ' + elapsed_time + ' (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+    } // debug_z_api_operation_end
 
     // output debug info in log. For key, see user page and setup.debug hash
     // keys: simple expressions are supported. For example inbox && unencrypted
@@ -1344,7 +1375,7 @@ var MoneyNetworkHelper = (function () {
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
-            'issue_112', 'emoji', 'site_info', 'reaction', 'issue_131', 'file_write', 'file_get'];
+            'issue_112', 'emoji', 'site_info', 'reaction', 'issue_131', 'file_write', 'file_get', 'db_query'];
         for (i = 0; i < debug_keys.length; i++) {
             key = debug_keys[i];
             if (user_setup.debug[key]) debug_value = 'true';
@@ -1429,7 +1460,8 @@ var MoneyNetworkHelper = (function () {
         validate_json: validate_json,
         load_user_setup: load_user_setup,
         debug: debug,
-        next_debug_seq: next_debug_seq,
+        debug_z_api_operation_start: debug_z_api_operation_start,
+        debug_z_api_operation_end: debug_z_api_operation_end,
         stringify: stringify,
         get_fake_name: get_fake_name,
         sha256: sha256

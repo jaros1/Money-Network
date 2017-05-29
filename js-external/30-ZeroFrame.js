@@ -61,7 +61,7 @@ ZeroFrame = (function() {
     };
 
     ZeroFrame.prototype.route = function(cmd, message) {
-        this.log("ZeroFrame.prototype.route: cmd = " + cmd + ', message = ' + JSON.stringify(message));
+        // this.log("ZeroFrame.prototype.route: cmd = " + cmd + ', message = ' + JSON.stringify(message));
         if (cmd == "setSiteInfo") {
             this.site_info = message.params;
             // this.log("ZeroFrame.prototype.route: site_info = " + JSON.stringify(this.site_info));
