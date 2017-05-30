@@ -12,60 +12,40 @@
         <div class="bodyfull">
 
             <p>
-                The world today is mainly only using one kind of money.
-                That is money with interest backed by national banks.
-                That money system have with minor changes been the driving force behind the worlds development
-                for the last 300 years.
-                Not always a nice tour but in the end more good than bad things.
-                But today that money system is causing too many problems and cannot alone bring the world forward.
-                We need something new.
-            </p>
-
-            <p>
-                We have lived for too long time with only one type of money, have forgotten that money is a human
-                invention,
-                have forgotten why money exists and have forgotten the purpose of money.
-                Money is not one thing only. Money don't have to be a monoculture.
-                Money exists to make make exchange of service and goods between humans easier.
-                Money don't have to rule the world.
-            </p>
-
-            <p>
-                Money Network is a demo about money.
-                With inspiration from
-                <a href="http://charleseisenstein.net/" target="_blank" rel="noopener noreferrer">Charles Eisenstein</a>
-                and
-                <a href="http://www.lietaer.com/" target="_blank" rel="noopener noreferrer">Bernard Lietaer</a>.
-                This is an attempt to free money. Make it easy to use complementare and alternative money systems
-                together
-                with traditional money systems.
-                A monetary ecosystem can solve many of the problems the world are facing today.
-                The vision is one wallet with any kind of money.
-                Here as a demo. Someone more skilled than I may bring the vision into real existence ...
+                Money is everything. Money Network is a demo about money. With inspiration from
+                <a href="http://charleseisenstein.net/" target="_blank" rel="noopener noreferrer">Charles Eisenstein</a>,
+                <a href="http://www.lietaer.com/" target="_blank" rel="noopener noreferrer">Bernard Lietaer</a>
+                and others.<br>
+                The all dominating traditional money system is dangerous for the world.
+                This is an attempt to make money free.
+                Make it easy to use complementare and alternative money systems together with traditional money.
+                A monetary ecosystem with any kind of money will solve many of the problems the world are facing today.
+                The vision is one wallet with easy access to any kind of money. Be free.<br>
+                Here is the demo. Someone more skilled than I may bring the vision into real existence.
             </p>
 
             Summary:
             <ul style="list-style-type:disc">
-                <li>No registration. User account is created in browser client.
-                    A anonymous <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a> cert
-                    is being for client communication.</li>
+                <li>Running on <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>.
+                    Distributed network, no server, no censor and no way to shut it down.</li>
+                <li>No registration. User account is created in browser client
+                    (an anonymous ZeroNet user certificate is required for client communication).</li>
                 <li>Contacts. Search, add, verify contacts in Money Network.</li>
-                <li>Chat with contacts, quick dialog, pictures, group chat and deep links to conversations.</li>
+                <li>Chat. End to end encrypted chat, quick dialog, images, reactions and comments.</li>
                 <li>todo: Free money definition. Use existing money definitions from network or create your own type of money.</li>
                 <li>todo: API to money systems. Plugin the money systems you want to use.</li>
                 <li>todo: Use money to exchange goods and services.
                     Transactions are stored encrypted in <b>todo:</b> block chains, clients or
                     on <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>.</li>
-                <li>Full client and server side encryption. Only very little information is shared public and
-                    unencrypted.<br>
-                    Public/private key encryption using either
+                <li>All data except a few exceptions is encrypted. Only little information is shared unencrypted with public.<br>
+                    Encryption using either
                     <a href="https://github.com/travist/jsencrypt" target="_blank" rel="noopener noreferrer">JSEncrypt</a> (RSA)
                     or ZeroNet's
                     <a href="https://zeronet.readthedocs.io/en/latest/site_development/zeroframe_api_reference/#plugin-cryptmessage"
                        target="_blank" rel="noopener noreferrer">CryptMessage</a>
                     plugin (BitCoin).
                 </li>
-                <li>A client network. Data on clients. Minimum data on servers. Servers are used for communication between clients.</li>
+                <li>Max data in client. Minimum data on ZeroNet. ZeroNet is used for communication between clients.</li>
                 <li>Open source on <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_top"
                                       rel="noopener noreferrer">GitHub</a>.
                     Feel free to clone, download, modify and make your own website or app.
@@ -83,10 +63,6 @@
                     You may want to delete your data
                     from <a href="https://zeronet.io/" target="_blank" rel="noopener noreferrer">ZeroNet</a>
                     and browser client when finished used this demo. See delete option in Account page.
-                </li>
-                <li>
-                    Data from inactive user accounts will be deleted from ZeroNet after {{a.no_days_before_cleanup}}
-                    days. The data is still in client and will be restored from client to ZeroNet after next user login.
                 </li>
             </ul>
             <br>
@@ -1108,20 +1084,51 @@
 
         <div class="bodyfull">
 
-            <p>wallet.html - page to manage wallet with traditional, complementare and alternative money</p>
+            <p>Money Network wallet sites. No money is stored in Money Network but each<br>
+                added Money Network wallet site gives API access to an external money system.<br>
+            </p>
             
-            Summary:
-            <ul style="list-style-type:disc">
-                <li>todo: money overview - sum for each money system</li>
-                <li>todo: account overview - list accounts and totals</li>
-                <li>todo: money/account details - list transactions</li>
-                <li>todo: transaction details - sender, receiver, dates, signed documents etc</li>
-                <li>todo: pay/transfer/request - maybe also in chat page</li>
-                <li>todo:</li>
-                <li>todo:</li>
-            </ul>
+            <p>
+                New wallet URL:
+                <input type="text" placeholder="ZeroNet Money Network Wallet site URL"
+                       ng-model="w.new_wallet_url" ng-disabled="w.test_running"
+                       class="user_info" style="width: 300px">
+                <button ng-show="w.show_test_new_wallet(1)" type="submit" ng-click="w.test_new_wallet()" ng-disabled="w.test_running">Test</button>
+                <button ng-show="w.show_add_new_wallet()" type="submit" ng-click="w.add_new_wallet()" ng-disabled="w.test_running">Add</button>
+            </p>
 
-            <img src="emoji/twitter/1f3a0.png">
+            <p ng-show="w.show_test_new_wallet(2)">
+                Test results:
+                <table ng-show="w.show_test_new_wallet(3)">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>&nbsp;</th>
+                    <th>Test steps</th>
+                    <th>&nbsp;</th>
+                    <th>Status</th>
+                    <th>&nbsp;</th>
+                    <th>OK?</th>
+                    <th>&nbsp;</th>
+                    <th>Failed?</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr ng-repeat="t in w.tests">
+                    <td ng-bind="t.info.no"></td>
+                    <td></td>
+                    <td ng-bind="t.info.text"></td>
+                    <td></td>
+                    <td ng-bind="t.info.status"></td>
+                    <td></td>
+                    <td><input type="checkbox" ng-model="t.test_ok" ng-change="w.test_feedback(t, true)" ng-disabled="(t.status == 'Not tested')"></td>
+                    <td></td>
+                    <td><input type="checkbox" ng-model="t.test_failed" ng-change="w.test_feedback(t, false)"></td>
+                </tr>
+                </tbody>
+                </table>
+            </p>
+
 
         </div>
 
@@ -1555,25 +1562,45 @@
                 </tr>
                 </tbody>
                 <tbody ng-show="u.setup.debug.enabled">
-                <tr title="Click to see all dbQuery select statements">
+                <tr title="Click to see all select statements">
                     <td>Show sql selects?</td>
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.select" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr title="Click to see all fileGet operations">
+                <tr title="Click to see all ZeroFrame.fileGet operations">
                     <td>Show fileGet?</td>
                     <td>&nbsp;&nbsp;</td>
-                    <td><input type="checkbox" ng-model="u.setup.debug.file_get" ng-change="u.debug_settings_changed()"></td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.z_file_get" ng-change="u.debug_settings_changed()"></td>
                 </tr>
-                <tr title="Click to see all fileWrite operations">
+                <tr title="Click to see all ZeroFrame.fileWrite operations">
                     <td>Show fileWrite?</td>
                     <td>&nbsp;&nbsp;</td>
-                    <td><input type="checkbox" ng-model="u.setup.debug.file_write" ng-change="u.debug_settings_changed()"></td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.z_file_write" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to see all ZeroFrame.fileDelete operations">
+                    <td>Show fileWrite?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.z_file_delete" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to see all ZeroFrame.serverInfo operations">
+                    <td>Show serverInfo?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.z_server_info" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to see all ZeroFrame.cryptMessage operations">
+                    <td>Show cryptMessage?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.z_crypt_message" ng-change="u.debug_settings_changed()"></td>
+                </tr>
+                <tr title="Click to see all site publish operations">
+                    <td>Show sitePublish?</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.z_site_publish" ng-change="u.debug_settings_changed()"></td>
                 </tr>
                 <tr title="Click to see dbQuery operations">
                     <td>Show dbQuery?</td>
                     <td>&nbsp;&nbsp;</td>
-                    <td><input type="checkbox" ng-model="u.setup.debug.db_query" ng-change="u.debug_settings_changed()"></td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.z_db_query" ng-change="u.debug_settings_changed()"></td>
                 </tr>
                 <tr title="Click to see file done event processing of content.json, data.json and status.json files">
                     <td>File done events?</td>
@@ -2014,9 +2041,9 @@
   all.js ~= 1 Mb and distribution is slow on zeronet
   js/all.js.tar.bz2 is small and distributed fast but tar.bz2 is not yet supported by all clients
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->

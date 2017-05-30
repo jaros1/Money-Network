@@ -100,7 +100,7 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd("fileDelete", user_path + "/avatar.jpg", function (res) {});
             ZeroFrame.cmd("fileDelete", user_path + "/avatar.png", function (res) {});
             image_base64 = image_base64uri != null ? image_base64uri.replace(/.*?,/, "") : void 0;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_write', pgm + user_path + "/avatar." + ext + ' fileWrite') ;
+            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + "/avatar." + ext + ' fileWrite') ;
             ZeroFrame.cmd("fileWrite", [user_path + "/avatar." + ext, image_base64], function(res) {
                 var pgm = controller + '.handleAvatarUpload fileWrite callback: ';
                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -407,7 +407,7 @@ angular.module('MoneyNetwork')
                 var step_3_update_status_json = function (my_user_seq) {
                     var pgm = controller + '.delete_user2.step_3_update_status_json: ' ;
                     var debug_seq ;
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_get', pgm + user_path + '/' + 'status.json fileGet') ;
+                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + '/' + 'status.json fileGet') ;
                     ZeroFrame.cmd("fileGet", [user_path + '/' + 'status.json', false], function (status) {
                         var pgm = controller + '.delete_user2.step_3_update_status_json fileGet: ' ;
                         var i, json_raw ;
@@ -422,7 +422,7 @@ angular.module('MoneyNetwork')
                             return ;
                         }
                         json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
-                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_write', pgm + user_path + '/' + 'status.json fileWrite') ;
+                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/' + 'status.json fileWrite') ;
                         ZeroFrame.cmd("fileWrite", [user_path + '/' + 'status.json', btoa(json_raw)], function (res) {
                             var pgm = controller + '.delete_user2.step_3_update_status_json fileWrite: ' ;
                             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -450,7 +450,7 @@ angular.module('MoneyNetwork')
                 var step_2_update_data_json = function (my_user_seq) {
                     var pgm = controller + '.delete_user2.step_2_update_data_json: ' ;
                     var debug_seq ;
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_get', pgm + user_path + '/' + 'data.json fileGet') ;
+                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + '/' + 'data.json fileGet') ;
                     ZeroFrame.cmd("fileGet", [user_path + '/' + 'data.json', false], function (data) {
                         var pgm = controller + '.delete_user2.step_2_update_data_json fileGet: ' ;
                         var i, json_raw ;
@@ -469,7 +469,7 @@ angular.module('MoneyNetwork')
                             return ;
                         }
                         json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
-                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_write', pgm + user_path + '/' + 'data.json fileWrite') ;
+                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/' + 'data.json fileWrite') ;
                         ZeroFrame.cmd("fileWrite", [user_path + '/' + 'data.json', btoa(json_raw)], function (res) {
                             var pgm = controller + '.delete_user2.step_2_update_data_json fileWrite: ' ;
                             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -505,7 +505,7 @@ angular.module('MoneyNetwork')
                             if ((file_auth_address == my_auth_address) && ((file_user_seq == my_user_seq) || all_accounts)) {
                                 // overwrite uploaded optional file with empty json.
                                 // empty json will be distributed to other ZeroNet users before physical delete
-                                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_write', pgm + inner_path + ' fileWrite') ;
+                                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                                 ZeroFrame.cmd("fileWrite", [inner_path, btoa(empty_json_raw)], function () {
                                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                 });
@@ -568,7 +568,7 @@ angular.module('MoneyNetwork')
             self.export_info.ls = no_users + ' account' + (no_users > 1 ? 's' : '') + ', ' + ls_size + ' bytes' ;
             // zeroNet info
             user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_get', pgm + user_path + '/content.json fileGet') ;
+            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + '/content.json fileGet') ;
             ZeroFrame.cmd("fileGet", [user_path + '/content.json', false], function (content) {
                 var filename, z_files, z_bytes, chat_files, chat_bytes ;
                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -713,7 +713,7 @@ angular.module('MoneyNetwork')
                 }
                 else {
                     // json file. normal fileGet
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_get', pgm + user_path + '/' + filename + ' fileGet') ;
+                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + '/' + filename + ' fileGet') ;
                     ZeroFrame.cmd("fileGet", [user_path + '/' + filename, false], function (content) {
                         var error ;
                         MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -732,7 +732,7 @@ angular.module('MoneyNetwork')
             step_2_read_content_json = function () {
                 var pgm = controller + '.export.step_2_read_content_json: ' ;
                 var debug_seq ;
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_get', pgm + user_path + '/' + 'content.json fileGet') ;
+                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + '/' + 'content.json fileGet') ;
                 ZeroFrame.cmd("fileGet", [user_path + '/' + 'content.json', false], function (content) {
                     var pgm = controller + '.export.step_2_read_content_json fileGet callback: ' ;
                     var error, filename ;
@@ -866,7 +866,7 @@ angular.module('MoneyNetwork')
                 }
                 delete data.z_files[filename] ;
 
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('file_write', pgm + user_path + '/' + filename + ' fileWrite') ;
+                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/' + filename + ' fileWrite') ;
                 ZeroFrame.cmd("fileWrite", [user_path + '/' + filename, post_data], function (res) {
                     // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     var error ;

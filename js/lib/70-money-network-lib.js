@@ -196,7 +196,7 @@ var MoneyNetworkHelper = (function () {
     var emojis = {} ;
     function load_public_avatars () {
         var pgm = module + '.load_public_avatars: ' ;
-        var debug_seq = debug_z_api_operation_start('file_get', pgm + 'content.json fileGet') ;
+        var debug_seq = debug_z_api_operation_start('z_file_get', pgm + 'content.json fileGet') ;
         ZeroFrame.cmd("fileGet", ['content.json', false], function (res) {
             var pgm = module + '.load_public_avatars fileGet callback: ';
             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -1352,7 +1352,7 @@ var MoneyNetworkHelper = (function () {
         delete debug_operations['' + debug_seq] ;
         finished_at = new Date().getTime() ;
         elapsed_time = finished_at - started_at ;
-        debug(keys, text + ' finished. elapsed time ' + elapsed_time + ' (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+        debug(keys, text + ' finished. elapsed time ' + elapsed_time + ' ms (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
     } // debug_z_api_operation_end
 
     // output debug info in log. For key, see user page and setup.debug hash
@@ -1375,7 +1375,8 @@ var MoneyNetworkHelper = (function () {
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
-            'issue_112', 'emoji', 'site_info', 'reaction', 'issue_131', 'file_write', 'file_get', 'db_query'];
+            'issue_112', 'emoji', 'site_info', 'reaction', 'issue_131', 'z_file_write', 'z_file_get', 'z_db_query',
+            'z_site_publish', 'z_file_delete', 'z_server_info', 'z_crypt_message'];
         for (i = 0; i < debug_keys.length; i++) {
             key = debug_keys[i];
             if (user_setup.debug[key]) debug_value = 'true';

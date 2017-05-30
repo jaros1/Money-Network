@@ -168,7 +168,7 @@ angular.module('MoneyNetwork')
                 var debug_seq ;
                 if (!count) count = 0;
                 if (count > 60) return cb({ error: "timeout" }) ;
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('db_query', pgm + 'query 18') ;
+                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 18') ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = controller + '.money_network_w2_11.check_session: ' ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
