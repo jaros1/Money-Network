@@ -1094,23 +1094,30 @@
                        ng-model="w.new_wallet_url" ng-disabled="w.test_running"
                        class="user_info" style="width: 300px">
                 <button ng-show="w.show_test_new_wallet(1)" type="submit" ng-click="w.test_new_wallet()" ng-disabled="w.test_running">Test</button>
+                <button ng-show="w.test_running" type="submit" ng-click="w.reset_test()">Reset</button>
                 <button ng-show="w.show_add_new_wallet()" type="submit" ng-click="w.add_new_wallet()" ng-disabled="w.test_running">Add</button>
             </p>
 
             <p ng-show="w.show_test_new_wallet(2)">
-                Test results:
+                Test result. You can use checkboxes to skip some tests steps and/or to enter manual feedback to test steps.
                 <table ng-show="w.show_test_new_wallet(3)">
                 <thead>
                 <tr>
+                    <th colspan="6"></th>
+                    <th colspan="5" style="text-align: center">User feedback</th>
+                </tr>
+                <tr>
                     <th>#</th>
                     <th>&nbsp;</th>
-                    <th>Test steps</th>
+                    <th>Test result</th>
                     <th>&nbsp;</th>
-                    <th>Status</th>
+                    <th style="width: 80px">Status</th>
                     <th>&nbsp;</th>
-                    <th>OK?</th>
+                    <th>Skip</th>
                     <th>&nbsp;</th>
-                    <th>Failed?</th>
+                    <th>OK</th>
+                    <th>&nbsp;</th>
+                    <th>Failed</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -1121,9 +1128,20 @@
                     <td></td>
                     <td ng-bind="t.info.status"></td>
                     <td></td>
-                    <td><input type="checkbox" ng-model="t.test_ok" ng-change="w.test_feedback(t, true)" ng-disabled="(t.status == 'Not tested')"></td>
+                    <td style="text-align: center">
+                        <input type="checkbox" ng-model="t.info.test_skipped" ng-change="w.test_feedback(t, 'skipped')"
+                                ng-disabled="t.info.disabled">
+                    </td>
                     <td></td>
-                    <td><input type="checkbox" ng-model="t.test_failed" ng-change="w.test_feedback(t, false)"></td>
+                    <td style="text-align: center">
+                        <input type="checkbox" ng-model="t.info.test_ok" ng-change="w.test_feedback(t, 'OK')"
+                               ng-disabled="t.info.disabled">
+                    </td>
+                    <td></td>
+                    <td style="text-align: center">
+                        <input type="checkbox" ng-model="t.info.test_failed" ng-change="w.test_feedback(t, 'failed')"
+                               ng-disabled="t.info.disabled">
+                    </td>
                 </tr>
                 </tbody>
                 </table>
@@ -2041,9 +2059,9 @@
   all.js ~= 1 Mb and distribution is slow on zeronet
   js/all.js.tar.bz2 is small and distributed fast but tar.bz2 is not yet supported by all clients
  -->
-<script type="text/javascript" src="js/all.js"></script>
+<!--script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->
