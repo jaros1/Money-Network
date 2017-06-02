@@ -91,7 +91,7 @@ angular.module('MoneyNetwork')
             .when('/wallet', {
                 templateUrl: 'wallet.html',
                 controller: 'WalletCtrl as w',
-                resolve: {check_auth: set_z_path} // todo: enable authorization
+                resolve: {check_auth: check_auth_resolve}
             })
             .when('/user', {
                 templateUrl: 'user.html',

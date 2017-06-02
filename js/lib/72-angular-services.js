@@ -160,59 +160,100 @@ angular.module('MoneyNetwork')
 
         function get_default_user_hub () {
             var pgm = service + '.get_default_user_hub: ' ;
-            var default_user_hub, default_hubs, hub ;
+            var default_user_hub, default_hubs, hub, hubs, i ;
             default_user_hub = '1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh' ;
             console.log(pgm + 'ZeroFrame.site_info.content = ' + JSON.stringify(ZeroFrame.site_info.content));
             default_hubs = ZeroFrame.site_info.content.settings.default_hubs ;
             if (!default_hubs) return default_user_hub ;
-            for (hub in default_hubs) {
-                if (default_hubs[hub].title.match(/user hub/i)) return hub ;
-            }
-            return default_user_hub ;
+            hubs = [] ;
+            for (hub in default_hubs) hubs.push(hub) ;
+            if (!hubs.length) return default_user_hub ;
+            i = Math.floor(Math.random() * hubs.length);
+            return hubs[i] ;
         } // get_default_user_hub3
 
         var get_my_user_hub_cbs = [] ; // callbacks waiting for query 17 to finish
         function get_my_user_hub (cb) {
             var pgm = service + '.get_my_hub: ' ;
-            var query, debug_seq ;
             if (z_cache.my_user_hub == true) {
-                // query 17 is already running. please wait
+                // get_my_user_hub request is already running. please wait
                 get_my_user_hub_cbs.push(cb) ;
                 return ;
             }
             if (z_cache.my_user_hub) return cb(z_cache.my_user_hub) ;
             z_cache.my_user_hub = true ;
 
-            // Use content.modified timestamp as sort condition if multiple user data hubs
-            query =
-                "select substr(data_json.directory, 1, instr(data_json.directory,'/')-1) as hub " +
-                "from json as data_json, json as content_json, keyvalue " +
-                "where data_json.directory like '%/data/users/" + ZeroFrame.site_info.auth_address + "' " +
-                "and data_json.file_name = 'data.json' " +
-                "and content_json.directory = data_json.directory " +
-                "and content_json.file_name = 'content.json' " +
-                "and keyvalue.json_id = content_json.json_id " +
-                "and keyvalue.key = 'modified' " +
-                "order by keyvalue.key desc" ;
-            debug('select', pgm + 'query 17 (MS OK) = ' + query);
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
-            ZeroFrame.cmd("dbQuery", [query], function (res) {
-                var pgm = service + '.get_my_hub dbQuery callback 1: ' ;
-                if (detected_client_log_out(pgm)) return ;
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                if (res.error) {
-                    console.log(pgm + "user data hub lookup failed: " + res.error);
-                    console.log(pgm + 'query = ' + query);
-                    z_cache.my_user_hub = get_default_user_hub() ;
-                    cb(z_cache.my_user_hub) ;
-                    return;
+            // get a list of MoneyNetwork User data hubs
+            ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
+                var pgm = service + '.get_my_hub mergerSiteList callback 1: ' ;
+                var user_data_hubs, hub, query, debug_seq, i ;
+                user_data_hubs = [] ;
+                if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites)) ;
+                else for (hub in merger_sites) {
+                    if (merger_sites[hub].content.title.match(/user data hub/i)) user_data_hubs.push(hub);
                 }
-                if (res.length == 0) z_cache.my_user_hub = get_default_user_hub() ;
-                else z_cache.my_user_hub = res[0].hub ;
-                console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
-                cb(z_cache.my_user_hub) ;
-                while (get_my_user_hub_cbs.length) { cb = get_my_user_hub_cbs.shift() ; cb(z_cache.my_user_hub)} ;
-            }) ; // dbQuery callback 1
+                // console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
+                // user_data_hubs = ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh","1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc"]
+
+                // Use content.modified timestamp as sort condition if multiple user data hub. data.json file must exists.
+                query =
+                    "select substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
+                    "from json, keyvalue " +
+                    "where " ;
+                if (user_data_hubs.length) {
+                    for (i=0 ; i<user_data_hubs.length ; i++) {
+                        hub = user_data_hubs[i] ;
+                        if (i == 0) query += "(" ; else query += "or " ;
+                        query += "json.directory = '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' "
+                    }
+                    query += ") " ;
+                }
+                else query += "(1 = 2) " ;
+                query +=
+                    "and json.file_name = 'content.json' " +
+                    "and keyvalue.json_id = json.json_id " +
+                    "and keyvalue.key = 'modified' " +
+                    "order by keyvalue.key desc" ;
+
+                debug('select', pgm + 'query 17 (MS OK) = ' + query);
+                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
+                ZeroFrame.cmd("dbQuery", [query], function (res) {
+                    var pgm = service + '.get_my_hub dbQuery callback 2: ' ;
+                    var i ;
+                    if (detected_client_log_out(pgm)) return ;
+                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    var execute_pending_callbacks = function () {
+                        while (get_my_user_hub_cbs.length) { cb = get_my_user_hub_cbs.shift() ; cb(z_cache.my_user_hub)} ;
+                    };
+                    if (res.error) {
+                        console.log(pgm + "user data hub lookup failed: " + res.error);
+                        console.log(pgm + 'query = ' + query);
+                        z_cache.my_user_hub = get_default_user_hub() ;
+                        cb(z_cache.my_user_hub) ;
+                        return;
+                    }
+                    if (res.length) {
+                        // old user found
+                        z_cache.my_user_hub = res[0].hub ; // return hub for last updated content.json
+                        console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
+                        cb(z_cache.my_user_hub) ;
+                        execute_pending_callbacks() ;
+                        return ;
+                    }
+                    // new user. get user data hub from
+                    // 1) list of MoneyNetwork merger sites (mergerSiteList)
+                    // 2) default_hubs from site_info.content.sessions.default_hubs
+                    if (user_data_hubs.length) {
+                        i = Math.floor(Math.random() * user_data_hubs.length);
+                        z_cache.my_user_hub = user_data_hubs[i] ;
+                    }
+                    else z_cache.my_user_hub = get_default_user_hub() ;
+                    console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
+                    cb(z_cache.my_user_hub) ;
+                    execute_pending_callbacks() ;
+                }) ; // dbQuery callback 2
+
+            }) ; // mergerSiteList callback 1
 
         } // get_my_user_hub
 

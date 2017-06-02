@@ -9,10 +9,15 @@ angular.module('MoneyNetwork')
 
         var BITCOIN_ADDRESS_PATTERN = '1[a-km-zA-HJ-NP-Z1-9]{25,34}' ;
 
+        function get_new_sessionid () {
+            return MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
+        }
+
         self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?
         var tested_wallet_url = null ; // last tested url
-        var test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
+        var test_sessionid = get_new_sessionid ();
         var test_session_at = null ;
+
 
         function get_relative_url (url) {
             var pgm = controller + '.get_relative_url: ' ;
@@ -52,7 +57,6 @@ angular.module('MoneyNetwork')
                     }
                 }
             }
-
             var rows_txt = temp + "" + param + "=" + paramVal;
             return baseURL + "?" + newAdditionalURL + rows_txt;
         }
@@ -96,7 +100,7 @@ angular.module('MoneyNetwork')
                 delete self.tests[i].info.disabled ;
             }
             // new sessionid
-            test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
+            test_sessionid = get_new_sessionid() ;
         };
         var test1_open_url = (function () {
             var pgm = controller + '.test1: ' ;
@@ -106,7 +110,7 @@ angular.module('MoneyNetwork')
                 status: 'Pending'
             };
             function run() {
-                var url, pos, search;
+                var url, pubkey2;
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // continue with next test
                     console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no + 1));
@@ -114,10 +118,22 @@ angular.module('MoneyNetwork')
                     test2_allow_popup.run();
                 }
                 else {
-                    // start test 1
+                    // start test 1. add sessionid and pubkey2 (cryptMessage) to URL
+                    // expects wallet session to create an operation file with filename and encrypted with pubkey2
                     info.status = 'Running';
                     url = get_relative_url(self.new_wallet_url);
+
+                    // reconnect to a old wallet session? check previously used sessionids and saved wallet sessionid
+
+
+                    // todo: save url and sessionid in localStorage.
+                    //       sessionid is a kind of password and MoneyNetwork wallet may choice to save session
+                    //
+
                     url = updateURLParameter(url, 'sessionid', test_sessionid) ;
+                    pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
+                    url = updateURLParameter(url, 'pubkey2', encodeURIComponent(pubkey2)) ;
+                    console.log(pgm + 'url = ' + url) ;
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
                     test_session_at = new Date().getTime() ;
                 }
@@ -290,14 +306,14 @@ angular.module('MoneyNetwork')
                             self.test_running = false ;
                         }
                         console.log(pgm + 'check_session. res = ' + JSON.stringify(res)) ;
-                        // res = {
-                        //    "sessionid_sha256": "2be2c9a124cfb85c307aa771d906c5c316f02ac22d61a43e1c6806b6c65c057a",
-                        //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                        //    "session_at": 1496332540922,
-                        //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                        //    "wallet_title": "MoneyNetworkW2",
-                        //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro"
-                        //};
+                         res = {
+                            "sessionid_sha256": "2be2c9a124cfb85c307aa771d906c5c316f02ac22d61a43e1c6806b6c65c057a",
+                            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                            "session_at": 1496332540922,
+                            "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            "wallet_title": "MoneyNetworkW2",
+                            "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro"
+                        };
                         $rootScope.$apply() ;
                     }) ; // check_session callback
                 }
