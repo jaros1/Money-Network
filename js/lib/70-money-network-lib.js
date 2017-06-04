@@ -1342,10 +1342,7 @@ var MoneyNetworkHelper = (function () {
     function debug_z_api_operation_end (debug_seq) {
         var pgm = module + '.debug_z_api_operation_end: ' ;
         var keys, text, started_at, finished_at, elapsed_time ;
-        if (!debug_operations[debug_seq]) {
-            console.log(pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found') ;
-            return ;
-        }
+        if (!debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
         keys = debug_operations[debug_seq].keys ;
         text = debug_operations[debug_seq].text ;
         started_at = debug_operations[debug_seq].started_at ;

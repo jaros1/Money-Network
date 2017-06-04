@@ -112,9 +112,9 @@ angular.module('MoneyNetwork')
                 redirectTo: function () {
                     // error or startup. Check deep link. redirect to auth or deep link
                     var pgm = 'routeProvider.otherwise: ';
-                    var search, a_path, z_path, i;
+                    var search, a_path, z_path, i, new_wallet_site;
                     search = window.location.search;
-                    // check for deep link
+                    // check for deep link (path)
                     i = search.indexOf('path=');
                     if (i == -1) a_path = '/auth'; // error or no path in startup url
                     else {
@@ -123,7 +123,16 @@ angular.module('MoneyNetwork')
                         i = a_path.indexOf('&');
                         if (i != -1) a_path = a_path.substr(0, i);
                     }
+                    // check for new_wallet_site (redirect from a MoneyNetwork wallet site)
+                    i = search.indexOf('new_wallet_site=');
+                    if (i != -1) {
+                        new_wallet_site = search.substr(i + 16);
+                        i = new_wallet_site.indexOf('&');
+                        if (i != -1) new_wallet_site = new_wallet_site.substr(0, i);
+                    }
+                    if (new_wallet_site) a_path +='?new_wallet_site=' + new_wallet_site ;
                     z_path = "?path=" + a_path;
+                    // check for new_wallet_site
                     // console.log(pgm + 'window.location.search = ' + search + ', angularjs_path = ' + a_path + ', z_path = ' + z_path) ;
                     ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
                     return a_path;

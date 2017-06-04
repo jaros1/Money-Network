@@ -499,7 +499,7 @@ angular.module('MoneyNetwork')
         // - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
         // - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
         // - new encrypted image: <unix timestamp>-<user seq>-image.json
-        var CONTENT_OPTIONAL = '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json|[0-9]{13}-[0-9]+-image.json)' ;
+        var CONTENT_OPTIONAL = '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json|[0-9]{13}-[0-9]+-image.json|[0-9a-f]{10}.[0-9]{13})' ;
 
         // user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
         // params:
@@ -598,7 +598,7 @@ angular.module('MoneyNetwork')
                                 ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                                     var pgm = service + '.zeronet_site_publish fileGet callback 6: ';
                                     var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
-                                        logical_deleted_files, now, max_logical_deleted_files, some_time_ago ;
+                                        logical_deleted_files, now, max_logical_deleted_files, some_time_ago, debug_seq2 ;
                                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                     if (detected_client_log_out(pgm)) return ;
                                     content_updated = false ;
@@ -702,11 +702,11 @@ angular.module('MoneyNetwork')
 
                                     // update content.json. sign and publish in next publish call
                                     json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
-                                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/content.json fileWrite') ;
+                                    debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/content.json fileWrite') ;
                                     ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
                                         var pgm = service + '.zeronet_site_publish fileWrite callback 7: ';
                                         var error ;
-                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
                                         if (detected_client_log_out(pgm)) return ;
                                         if (res != "ok") {
                                             error = "Could not add optional file support to content.json: " + res ;
@@ -10368,6 +10368,26 @@ angular.module('MoneyNetwork')
 
         } // cleanup_inactive_users
 
+        // MoneyNetwork was previously a non merger site with data under data/users/...
+        // MoneyNetwork is now a merger site with data under merged-MoneyNetwork/<hub>/data/users/...
+        // data folder should be deleted manuelly. all use of API functions to delete content has failed
+        function cleanup_non_merger_site_data () {
+            var pgm = service + '.cleanup_non_merger_site_data: ' ;
+
+            // any files under data/ ?
+            ZeroFrame.cmd("fileList", ['data'], function(files) {
+                var pgm = service + '.cleanup_non_merger_site_data fileList callback 1: ' ;
+                var text ;
+                console.log(pgm + 'files.length = ' + files.length) ;
+                if (!files.length) return ;
+
+                text = 'MoneyNetwork is now a merger site.<br>Please delete folder:<br>' + ZeroFrame.site_info.address + '/data<br>folder';
+                ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
+
+            }) ; // fileList callback 1
+
+        } // cleanup_non_merger_site_data
+
         var user_id = 0 ;
         var my_unique_id ;
         function client_login(password, create_new_account, guest, keysize) {
@@ -10410,6 +10430,7 @@ angular.module('MoneyNetwork')
                 // load_my_public_chat() ;
                 update_chat_notifications() ;
                 cleanup_inactive_users() ;
+                cleanup_non_merger_site_data() ;
             }
             return user_id ;
         } // client_login
@@ -11519,7 +11540,8 @@ angular.module('MoneyNetwork')
             is_proxy_server: is_proxy_server,
             check_reactions: check_reactions,
             unicode_to_symbol: unicode_to_symbol,
-            symbol_to_unicode: symbol_to_unicode
+            symbol_to_unicode: symbol_to_unicode,
+            get_my_user_hub: get_my_user_hub
         };
 
         // end MoneyNetworkService

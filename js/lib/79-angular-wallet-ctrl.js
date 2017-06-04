@@ -9,15 +9,30 @@ angular.module('MoneyNetwork')
 
         var BITCOIN_ADDRESS_PATTERN = '1[a-km-zA-HJ-NP-Z1-9]{25,34}' ;
 
-        function get_new_sessionid () {
-            return MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
-        }
+        // create new sessionid for MoneyNetwork and MoneyNetwork wallet communication
+        // sessionid: a "secret" sessionid URL parameter used when opening MoneyNetwork wallet site (only a secret when running ZeroNet local)
+        // no event file done for "internal" cross site communication. dbQuery fetching will be used to detect new messages
+        // using optional files and siteSign. sitePublish is not needed for "internal" cross site communication
+        // filenames:
+        // - my messages: sha256.first(10).timestamp
+        // - wallet messages: sha256.last(10).timestamp
+        // messages between MoneyNetwork and MoneyNetwork wallet will be encrypted with cryptMessage, JSEncrypt and/or sessionid
+        // messages will be deleted when read and processed
+        function new_sessionid () {
+            var sha256 ;
+            test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
+            sha256 = CryptoJS.SHA256(test_sessionid).toString() ;
+            my_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
+            wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
+        } // new_sessionid
 
         self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?
         var tested_wallet_url = null ; // last tested url
-        var test_sessionid = get_new_sessionid ();
+        var test_sessionid ;
+        var my_session_filename ;
+        var wallet_session_filename ;
         var test_session_at = null ;
-
+        new_sessionid () ;
 
         function get_relative_url (url) {
             var pgm = controller + '.get_relative_url: ' ;
@@ -100,7 +115,7 @@ angular.module('MoneyNetwork')
                 delete self.tests[i].info.disabled ;
             }
             // new sessionid
-            test_sessionid = get_new_sessionid() ;
+            new_sessionid() ;
         };
         var test1_open_url = (function () {
             var pgm = controller + '.test1: ' ;
@@ -110,7 +125,8 @@ angular.module('MoneyNetwork')
                 status: 'Pending'
             };
             function run() {
-                var url, pubkey2;
+                var pgm = controller + '.test1.run: ' ;
+                var url, json, inner_path ;
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // continue with next test
                     console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no + 1));
@@ -118,26 +134,49 @@ angular.module('MoneyNetwork')
                     test2_allow_popup.run();
                 }
                 else {
-                    // start test 1. add sessionid and pubkey2 (cryptMessage) to URL
-                    // expects wallet session to create an operation file with filename and encrypted with pubkey2
-                    info.status = 'Running';
-                    url = get_relative_url(self.new_wallet_url);
-
-                    // reconnect to a old wallet session? check previously used sessionids and saved wallet sessionid
-
-
-                    // todo: save url and sessionid in localStorage.
-                    //       sessionid is a kind of password and MoneyNetwork wallet may choice to save session
-                    //
-
+                    // start test 1. add sessionid to URL and open new window with wallet session
+                    // sessionid: "secret" sessionid. random 60 character password
+                    // SHA256(sessionid).first(10).<timestamp>: MoneyNetwork session filename (optional file). this session
+                    // SHA256(sessionid).last(10).<timestamp>: MoneyNetwork wallet session filename (optional file). other session
+                    url = get_relative_url(self.new_wallet_url) ;
                     url = updateURLParameter(url, 'sessionid', test_sessionid) ;
-                    pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
-                    url = updateURLParameter(url, 'pubkey2', encodeURIComponent(pubkey2)) ;
                     console.log(pgm + 'url = ' + url) ;
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
-                    test_session_at = new Date().getTime() ;
-                }
-            }
+
+                    // save my public keys for secure wallet communication
+                    moneyNetworkService.get_my_user_hub(function (hub) {
+                        var pgm = controller + '.test1.run get_my_user_hub callback 1: ' ;
+                        var user_path, json, inner_path, json_raw, debug_seq1 ;
+                        json = {
+                            pubkey: MoneyNetworkHelper.getItem('pubkey'), // for JSEncrypt
+                            pubkey2: MoneyNetworkHelper.getItem('pubkey2') // for cryptMessage
+                        } ;
+                        json_raw = unescape(encodeURIComponent(JSON.stringify(json, null, "\t")));
+                        user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
+                        inner_path = user_path + my_session_filename + '.' + (new Date().getTime()) ;
+                        // write file
+                        debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
+                        ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+                            var pgm = controller + '.test1.run fileWrite callback 2: ' ;
+                            var inner_path, debug_seq2 ;
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1) ;
+                            console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                            // sign (publish is not needed)
+                            inner_path = user_path + 'content.json' ;
+                            debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + inner_path + ' siteSign') ;
+                            ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+                                var pgm = controller + '.test1.run siteSign callback 3: ' ;
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
+                                console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                                test_session_at = new Date().getTime() ;
+                            }) ; // siteSign callback 3
+
+                        }) ; // writeFile callback 2
+
+                    }) ; // get_my_user_hub callback 1
+
+                } // if else
+            } // run
             return {
                 info: info,
                 run: run
@@ -238,7 +277,7 @@ angular.module('MoneyNetwork')
                 status: 'Pending'
             };
             function run () {
-                var relative_url, sessionid_sha256, query ;
+                var relative_url, sessionid_sha256, query, json ;
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // test done
                     info.disabled = true ;
@@ -247,6 +286,8 @@ angular.module('MoneyNetwork')
                 else {
                     // start test 5. wait for wallet feedback
                     info.status = 'Running' ;
+                    console.log(pgm + 'todo: try a test without publish. siteSign should update content.json and database');
+
 
                     // wait for session to start. no event file done event. wait for db update. max 1 minute
                     sessionid_sha256 = CryptoJS.SHA256(test_sessionid).toString();
