@@ -82,6 +82,7 @@ angular.module('MoneyNetwork')
             } ; // request1
             var request2 = function (cb) {
                 var pgm = controller + '.check_merger_permission.request2: ' ;
+                return cb(true);
                 ZeroFrame.cmd("mergerSiteAdd", ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"], function (res) {
                     if (res == 'ok') cb(true) ;
                     else {

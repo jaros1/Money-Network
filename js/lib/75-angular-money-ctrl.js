@@ -4,7 +4,12 @@ angular.module('MoneyNetwork')
         var self = this;
         var controller = 'MoneyCtrl';
         console.log(controller + ' loaded');
-        console.log(controller + ': site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
+
+        // check site info. Merger:MoneyNetwork permission is required
+        console.log(controller + ': site_info (1) = ' + JSON.stringify(ZeroFrame.site_info)) ;
+        ZeroFrame.cmd("siteInfo", {}, function (site_info) {
+            console.log(controller + ': site_info (2) = ' + JSON.stringify(site_info)) ;
+        }) ;
 
         self.money_network_w2_1 = function () {
             var pgm = controller + '.money_network_w2_1: ' ;

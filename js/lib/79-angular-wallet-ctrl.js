@@ -135,7 +135,7 @@ angular.module('MoneyNetwork')
                 }
                 else {
                     // start test 1. add sessionid to URL and open new window with wallet session
-                    // sessionid: "secret" sessionid. random 60 character password
+                    // sessionid: "secret" sessionid random 60 character password
                     // SHA256(sessionid).first(10).<timestamp>: MoneyNetwork session filename (optional file). this session
                     // SHA256(sessionid).last(10).<timestamp>: MoneyNetwork wallet session filename (optional file). other session
                     url = get_relative_url(self.new_wallet_url) ;
@@ -143,14 +143,16 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'url = ' + url) ;
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
 
-                    // save my public keys for secure wallet communication
+                    // msg 1: send my public keys for secure wallet communication to wallet session
                     moneyNetworkService.get_my_user_hub(function (hub) {
                         var pgm = controller + '.test1.run get_my_user_hub callback 1: ' ;
                         var user_path, json, inner_path, json_raw, debug_seq1 ;
                         json = {
+                            msgtype: 'pubkeys',
                             pubkey: MoneyNetworkHelper.getItem('pubkey'), // for JSEncrypt
                             pubkey2: MoneyNetworkHelper.getItem('pubkey2') // for cryptMessage
                         } ;
+                        // todo: validate json. API with msgtypes and validating rules
                         json_raw = unescape(encodeURIComponent(JSON.stringify(json, null, "\t")));
                         user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
                         inner_path = user_path + my_session_filename + '.' + (new Date().getTime()) ;
@@ -161,7 +163,7 @@ angular.module('MoneyNetwork')
                             var inner_path, debug_seq2 ;
                             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1) ;
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                            // sign (publish is not needed)
+                            // sign. should update wallet database. publish is not needed.
                             inner_path = user_path + 'content.json' ;
                             debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + inner_path + ' siteSign') ;
                             ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
@@ -305,7 +307,7 @@ angular.module('MoneyNetwork')
                         var debug_seq ;
                         if (!count) count = 0;
                         if (count > 60) return cb({ error: "timeout" }) ;
-                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 18') ;
+                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 18. count = ' + count) ;
                         ZeroFrame.cmd("dbQuery", [query], function (res) {
                             var pgm = controller + '.test5.check_session dbQuery callback 1: ' ;
                             var inner_path ;
@@ -331,6 +333,8 @@ angular.module('MoneyNetwork')
                             }) ; // fileGet callback 2
                         }); // dbQuery callback 1
                     }; // check_session
+
+                    // start session check. should wait for max 60 seconds for session handshake
                     check_session(function (res) {
                         var elapsed ;
                         if (res.error) {
@@ -347,17 +351,17 @@ angular.module('MoneyNetwork')
                             self.test_running = false ;
                         }
                         console.log(pgm + 'check_session. res = ' + JSON.stringify(res)) ;
-                         res = {
-                            "sessionid_sha256": "2be2c9a124cfb85c307aa771d906c5c316f02ac22d61a43e1c6806b6c65c057a",
-                            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                            "session_at": 1496332540922,
-                            "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                            "wallet_title": "MoneyNetworkW2",
-                            "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro"
-                        };
+                        //res = {
+                        //    "sessionid_sha256": "2be2c9a124cfb85c307aa771d906c5c316f02ac22d61a43e1c6806b6c65c057a",
+                        //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                        //    "session_at": 1496332540922,
+                        //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                        //    "wallet_title": "MoneyNetworkW2",
+                        //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro"
+                        //};
                         $rootScope.$apply() ;
                     }) ; // check_session callback
-                }
+                } // end if else
             } // run
             return {
                 info: info,
