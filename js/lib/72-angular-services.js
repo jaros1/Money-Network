@@ -9409,7 +9409,7 @@ angular.module('MoneyNetwork')
                         var i, cache_filename, cache_status, j, pending_files, get_no_peers, unique_id,
                             contact, compare_files1, compare_files2, auth_address, filename, interval_obj, user_seq, key,
                             hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
-                            deleted_messages, message, cb_status, js_messages_row, one_hour_ago, k ;
+                            deleted_messages, message, cb_status, js_messages_row, one_hour_ago, k, delete_file ;
                         MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                         if (res.error) {
                             ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error]);
@@ -9454,10 +9454,15 @@ angular.module('MoneyNetwork')
                             // physical delete logical deleted json file. maybe already done. ignore any error message
                             debug('public_chat', pgm + 'physical delete logical deleted json file ' + cache_filename +
                                 ', res[' + i + '] = ' + JSON.stringify(res[i])) ;
-                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + cache_filename + ' optionalFileDelete') ;
-                            ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function () {
-                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                            }) ;
+                            // new debug_seq for each optionalFileDelete request
+                            delete_file = function () {
+                                var debug_seq ;
+                                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + cache_filename + ' optionalFileDelete') ;
+                                ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function () {
+                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                }) ;
+                            }; // delete_file
+                            delete_file() ;
                             // check already read public chat messages from this file
                             for (j=0 ; j<ls_contacts.length ; j++) {
                                 contact = ls_contacts[j] ;
@@ -10483,7 +10488,7 @@ angular.module('MoneyNetwork')
                 // load_my_public_chat() ;
                 update_chat_notifications() ;
                 cleanup_inactive_users() ;
-                cleanup_non_merger_site_data() ;
+                // cleanup_non_merger_site_data() ;
             }
             return user_id ;
         } // client_login

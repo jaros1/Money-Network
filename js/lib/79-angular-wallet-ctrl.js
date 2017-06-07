@@ -138,6 +138,7 @@ angular.module('MoneyNetwork')
                     // sessionid: "secret" sessionid random 60 character password
                     // SHA256(sessionid).first(10).<timestamp>: MoneyNetwork session filename (optional file). this session
                     // SHA256(sessionid).last(10).<timestamp>: MoneyNetwork wallet session filename (optional file). other session
+                    info.status = 'Running' ;
                     url = get_relative_url(self.new_wallet_url) ;
                     url = updateURLParameter(url, 'sessionid', test_sessionid) ;
                     console.log(pgm + 'url = ' + url) ;
