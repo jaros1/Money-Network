@@ -13,24 +13,27 @@ angular.module('MoneyNetwork')
         // sessionid: a "secret" sessionid URL parameter used when opening MoneyNetwork wallet site (only a secret when running ZeroNet local)
         // no event file done for "internal" cross site communication. dbQuery fetching will be used to detect new messages
         // using optional files and siteSign. sitePublish is not needed for "internal" cross site communication
-        // filenames:
+        // message filenames:
         // - my messages: sha256.first(10).timestamp
         // - wallet messages: sha256.last(10).timestamp
         // messages between MoneyNetwork and MoneyNetwork wallet will be encrypted with cryptMessage, JSEncrypt and/or sessionid
         // messages will be deleted when read and processed
         function new_sessionid () {
+            var pgm = controller + '.new_sessionid: ' ;
             var sha256 ;
             test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
             sha256 = CryptoJS.SHA256(test_sessionid).toString() ;
-            my_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
-            wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
+            this_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
+            other_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
+            console.log(pgm + 'this_session_filename = ' + this_session_filename);
+            console.log(pgm + 'other_session_filename = ' + other_session_filename);
         } // new_sessionid
 
         self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?
         var tested_wallet_url = null ; // last tested url
         var test_sessionid ;
-        var my_session_filename ;
-        var wallet_session_filename ;
+        var this_session_filename ; // MoneyNetwork (main windows/this session)
+        var other_session_filename ; // MoneyNetwork wallet session (popup window)
         var test_session_at = null ;
         new_sessionid () ;
 
@@ -156,7 +159,7 @@ angular.module('MoneyNetwork')
                         // todo: validate json. API with msgtypes and validating rules
                         json_raw = unescape(encodeURIComponent(JSON.stringify(json, null, "\t")));
                         user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
-                        inner_path = user_path + my_session_filename + '.' + (new Date().getTime()) ;
+                        inner_path = user_path + this_session_filename + '.' + (new Date().getTime()) ;
                         // write file
                         debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                         ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
@@ -291,18 +294,18 @@ angular.module('MoneyNetwork')
                     info.status = 'Running' ;
                     console.log(pgm + 'todo: try a test without publish. siteSign should update content.json and database');
 
-
-                    // wait for session to start. no event file done event. wait for db update. max 1 minute
+                    // wait for session to start. expects a pubkeys message from MoneyNetwork wallet session
+                    // no event file done event. wait for db update. max 1 minute
                     sessionid_sha256 = CryptoJS.SHA256(test_sessionid).toString();
-                    query = "" +
-                        "select json.directory " +
-                        "from keyvalue as keyvalue1, keyvalue as keyvalue2, json " +
-                        "where keyvalue1.key = 'sessionid_sha256' " +
-                        "and keyvalue1.value = '" + sessionid_sha256 + "' " +
-                        "and keyvalue2.json_id = keyvalue1.json_id " +
-                        "and keyvalue2.key = 'session_at' " +
-                        "and keyvalue2.value > '" + test_session_at + "' "  +
-                        "and json.json_id = keyvalue1.json_id" ;
+                    query =
+                        "select json.directory, files_optional.filename, keyvalue.value as modified " +
+                        "from files_optional, json, keyvalue " +
+                        "where files_optional.filename like '" + other_session_filename + ".%' " +
+                        "and json.json_id = files_optional.json_id " +
+                        "and keyvalue.json_id = json.json_id " +
+                        "and keyvalue.key = 'modified' " +
+                        "and keyvalue.value > '" + ('' + test_session_at).substr(0,10) + "' " +
+                        "order by filename" ;
                     MoneyNetworkHelper.debug('select', 'query 18 = ' + query) ;
                     var check_session = function(cb, count) {
                         var debug_seq ;
@@ -323,14 +326,15 @@ angular.module('MoneyNetwork')
                                 $timeout(job, 1000) ;
                                 return ;
                             }
-                            // found updated wallet with correct sessionid_sha256.
-                            inner_path = 'merged-MoneyNetwork/' + res[0].directory + '/wallet.json' ;
+                            // found message from wallet with correct filename .
+                            inner_path = 'merged-MoneyNetwork/' + res[0].directory + '/' + res[0].filename ;
                             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-                            ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
+                            ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (pubkeys_str) {
                                 var pgm = controller + '.test5.check_session fileGet callback 2: ' ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                if (!wallet_str) return (cb({ error: 'File ' + inner_path + ' was not found'})) ;
-                                cb(JSON.parse(wallet_str)) ;
+                                if (!pubkeys_str) return (cb({ error: 'File ' + inner_path + ' was not found'})) ;
+                                console.log(pgm + 'pubkeys2_str = ' + pubkeys_str);
+                                cb(JSON.parse(pubkeys_str)) ;
                             }) ; // fileGet callback 2
                         }); // dbQuery callback 1
                     }; // check_session
