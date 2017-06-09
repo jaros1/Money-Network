@@ -38,7 +38,8 @@ angular.module('MoneyNetwork')
         new_sessionid () ;
 
         // encrypt/decrypt helpers
-        // 1: cryptMessage encrypt/decrypt
+
+        // 1: cryptMessage encrypt/decrypt using ZeroNet cryptMessage plugin (pubkey2)
         function encrypt_1 (clear_text, cb) {
             // 1a. get random password
             ZeroFrame.cmd("aesEncrypt", [""], function (res1) {
@@ -74,7 +75,7 @@ angular.module('MoneyNetwork')
             }) ; // eciesDecrypt callback 1
         } // decrypt_1
 
-        // 2: JSEncrypt encrypt/decrypt
+        // 2: JSEncrypt encrypt/decrypt using pubkey/prvkey
         function encrypt_2 (encrypted_text_1, cb) {
             var password, encrypt, key, output_wa, encrypted_text, encrypted_array ;
             encrypt = new JSEncrypt();
@@ -101,12 +102,18 @@ angular.module('MoneyNetwork')
             cb(encrypted_text_1)
         } // decrypt_2
 
-        // 3: symmetric encrypt/decrypt
+        // 3: symmetric encrypt/decrypt using sessionid
         function encrypt_3 (encrypted_text_2, cb) {
-            cb(encrypted_text_2) ;
+            var output_wa, encrypted_text_3 ;
+            output_wa = CryptoJS.AES.encrypt(encrypted_text_2, test_sessionid, {format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+            encrypted_text_3 = output_wa.toString(CryptoJS.format.OpenSSL);
+            cb(encrypted_text_3) ;
         } // encrypt_3
         function decrypt_3 (encrypted_text_3, cb) {
-            cb(encrypted_text_3)
+            var output_wa, encrypted_text_2 ;
+            output_wa = CryptoJS.AES.decrypt(encrypted_text_3, test_sessionid, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+            encrypted_text_2 = output_wa.toString(CryptoJS.enc.Utf8);
+            cb(encrypted_text_2)
         } // decrypt_3
 
         // encrypt/decrypt json messages
