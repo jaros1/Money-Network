@@ -5,6 +5,10 @@ angular.module('MoneyNetwork')
     {
         var self = this;
         var controller = 'WalletCtrl';
+        if (!MoneyNetworkHelper.getItem('userid')) {
+            // not logged in - skip initialization of controller
+            return;
+        }
         console.log(controller + ' loaded');
 
         var BITCOIN_ADDRESS_PATTERN = '1[a-km-zA-HJ-NP-Z1-9]{25,34}' ;
@@ -18,10 +22,15 @@ angular.module('MoneyNetwork')
         // - wallet messages: sha256.last(10).timestamp
         // messages between MoneyNetwork and MoneyNetwork wallet will be encrypted with cryptMessage, JSEncrypt and/or sessionid
         // messages will be deleted when read and processed
+        MoneyNetworkAPI.setup_encryption({
+            prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
+            userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
+        }) ;
         function new_sessionid () {
             var pgm = controller + '.new_sessionid: ' ;
             var sha256 ;
             test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
+            MoneyNetworkAPI.setup_encryption({sessionid: test_sessionid, debug: true});
             sha256 = CryptoJS.SHA256(test_sessionid).toString() ;
             this_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
             other_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
@@ -36,110 +45,6 @@ angular.module('MoneyNetwork')
         var other_session_filename ; // MoneyNetwork wallet session (popup window)
         var test_session_at = null ;
         new_sessionid () ;
-
-        // encrypt/decrypt helpers
-
-        // 1: cryptMessage encrypt/decrypt using ZeroNet cryptMessage plugin (pubkey2)
-        function encrypt_1 (clear_text, cb) {
-            // 1a. get random password
-            ZeroFrame.cmd("aesEncrypt", [""], function (res1) {
-                var password ;
-                password = res1[0];
-                // 1b. encrypt password
-                ZeroFrame.cmd("eciesEncrypt", [password, other_pubkey2], function (key) {
-                    // 1c. encrypt text
-                    ZeroFrame.cmd("aesEncrypt", [clear_text, password], function (res3) {
-                        var iv, encrypted_text, encrypted_array ;
-                        // forward encrypted result to next function in encryption chain
-                        iv = res3[1] ;
-                        encrypted_text = res3[2];
-                        encrypted_array = [key, iv, encrypted_text] ;
-                        cb(JSON.stringify(encrypted_array)) ;
-                    }) ; // aesEncrypt callback 3
-                }) ; // eciesEncrypt callback 2
-            }) ; // aesEncrypt callback 1
-        } // encrypt_1
-        function decrypt_1 (encrypted_text_1, cb) {
-            var encrypted_array, key, iv, encrypted_text, user_id ;
-            encrypted_array = JSON.parse(encrypted_text_1) ;
-            key = encrypted_array[0] ;
-            iv = encrypted_array[1] ;
-            encrypted_text = encrypted_array[2] ;
-            user_id = moneyNetworkService.get_user_id() ;
-            // 1a. decrypt key = password
-            ZeroFrame.cmd("eciesDecrypt", [key, user_id], function(password) {
-                // 1b. decrypt encrypted_text
-                ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (clear_text) {
-                    cb(clear_text) ;
-                }) ; // aesDecrypt callback 2
-            }) ; // eciesDecrypt callback 1
-        } // decrypt_1
-
-        // 2: JSEncrypt encrypt/decrypt using pubkey/prvkey
-        function encrypt_2 (encrypted_text_1, cb) {
-            var password, encrypt, key, output_wa, encrypted_text, encrypted_array ;
-            encrypt = new JSEncrypt();
-            encrypt.setPublicKey(other_pubkey);
-            password = generate_random_string(100, true) ;
-            key = encrypt.encrypt(password);
-            output_wa = CryptoJS.AES.encrypt(encrypted_text_1, password, {format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-            encrypted_text = output_wa.toString(CryptoJS.format.OpenSSL);
-            encrypted_array = [key, encrypted_text] ;
-            cb(JSON.stringify(encrypted_array)) ;
-        } // encrypt_2
-        function decrypt_2 (encrypted_text_2, cb) {
-            var pgm = controller + 'decrypt_2: ' ;
-            var encrypted_array, key, encrypted_text, encrypt, password, output_wa, encrypted_text_1 ;
-            console.log(pgm + 'encrypted_text_2 = ' + encrypted_text_2) ;
-            encrypted_array = JSON.parse(encrypted_text_2) ;
-            key = encrypted_array[0] ;
-            encrypted_text = encrypted_array[1] ;
-            encrypt = new JSEncrypt();
-            encrypt.setPrivateKey(MoneyNetworkHelper.getItem('prvkey'));
-            password = encrypt.decrypt(key);
-            output_wa = CryptoJS.AES.decrypt(encrypted_text, password, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-            encrypted_text_1 = output_wa.toString(CryptoJS.enc.Utf8);
-            cb(encrypted_text_1)
-        } // decrypt_2
-
-        // 3: symmetric encrypt/decrypt using sessionid
-        function encrypt_3 (encrypted_text_2, cb) {
-            var output_wa, encrypted_text_3 ;
-            output_wa = CryptoJS.AES.encrypt(encrypted_text_2, test_sessionid, {format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-            encrypted_text_3 = output_wa.toString(CryptoJS.format.OpenSSL);
-            cb(encrypted_text_3) ;
-        } // encrypt_3
-        function decrypt_3 (encrypted_text_3, cb) {
-            var output_wa, encrypted_text_2 ;
-            output_wa = CryptoJS.AES.decrypt(encrypted_text_3, test_sessionid, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-            encrypted_text_2 = output_wa.toString(CryptoJS.enc.Utf8);
-            cb(encrypted_text_2)
-        } // decrypt_3
-
-        // encrypt/decrypt json messages
-        // clear text => 1 cryptMessage => 2 JSEncrypt => 3 symmetric => encrypted message
-        function encrypt_json(json, cb) {
-            var clear_text = JSON.stringify(json) ;
-            encrypt_1(clear_text, function (encrypted_text_1) {
-                encrypt_2(encrypted_text_1, function (encrypted_text_2) {
-                    encrypt_3(encrypted_text_2, function (encrypted_text_3) {
-                        cb(encrypted_text_3) ;
-                    }) ; // encrypt_3 callback 3
-                }) ; // encrypt_2 callback 2
-            }) ; // encrypt_1 callback 1
-            cb(json) ;
-        } // encrypt_json
-        // encrypted message => 3 symmetric => 2 JSEncrypt => 1 cryptMessage => clear text
-        function decrypt_json(encrypted_text_3, cb) {
-            decrypt_3(encrypted_text_3, function (encrypted_text_2) {
-                decrypt_2(encrypted_text_2, function (encrypted_text_1) {
-                    decrypt_1(encrypted_text_1, function (clear_text) {
-                        var json = JSON.parse(clear_text) ;
-                        cb(json) ;
-                    }) ;
-                }) ;
-            }) ;
-        } // decrypt_json
 
         function get_relative_url (url) {
             var pgm = controller + '.get_relative_url: ' ;
@@ -251,7 +156,7 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'url = ' + url) ;
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
 
-                    // msg 1: send my public keys for secure wallet communication to wallet session
+                    // msg 1: MoneyNetwork: send my public keys to MoneyNetwork wallet session
                     moneyNetworkService.get_my_user_hub(function (hub) {
                         var pgm = controller + '.test1.run get_my_user_hub callback 1: ' ;
                         var user_path, json, inner_path, json_raw, debug_seq1 ;
@@ -438,7 +343,7 @@ angular.module('MoneyNetwork')
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                 if (!encrypted_str) return (cb({ error: 'File ' + inner_path + ' was not found'})) ;
                                 console.log(pgm + 'encrypted_str = ' + encrypted_str);
-                                decrypt_json(encrypted_str, function (json) {
+                                MoneyNetworkAPI.decrypt_json(encrypted_str, function (json) {
                                     console.log(pgm + 'json = ' + JSON.stringify(json)) ;
                                     cb(json) ;
                                 }) ;

@@ -30,8 +30,12 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "23f50e9d9b8b2fba286760a233d949934db948766e4cd388393326d5421e5cc7",
-   "size": 125068
+   "sha512": "e3eac77514f23669a7cd687660269c929d0f3f00b140ac7dc6ddd726c30c99f3",
+   "size": 125144
+  },
+  "js-api/69-MoneyNetworkAPI.js": {
+   "sha512": "936afab2c33cd5bf65842b3fdfa02bd3e0d529b3978191c2bf7b3ffac72105a8",
+   "size": 10173
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -174,12 +178,12 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "581267233de8230a6a45aa3d814e006920da94da0d1e948c7994b272b6f54dc0",
-   "size": 1144765
+   "sha512": "b06f605ed572252c9202cdaf129870d18e8a27be0bfb66a65b5a89155efdeac8",
+   "size": 1140216
   },
   "js/all.js.zip": {
-   "sha512": "bb599a0d5397bdbbb37ed1997daa5563b1ba6f7e0693c6ea7b3264e01fa1a429",
-   "size": 197981
+   "sha512": "edfd6fd39243d4f3df43fe050cd461d0ee96c57611e054ade1815b0cbc902270",
+   "size": 197096
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -298,7 +302,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1496940873,
+ "modified": 1497026435,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -309,12 +313,12 @@
   }
  },
  "sign": [
-  39592775440130056299544539992963925733164051459701472791309243340383937368418,
-  76021502811369810514657377897499441503325600943768811459542367049156200502796
+  103445620080557196955754205664434126354113500584386071931911153499151774161640,
+  14399151818966893572214620072537911391473837182253065033847378413978988441687
  ],
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G2LHqTkNPrPTbV42ug4CrHaqOE6zfcs58RMmh4R3tO1UA/jINyMwz293T71+EgapHyxJKs1akMEyxz8FfGGb2hw="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G8ePBB3AsiVwVslbgsea4V6c84WFpyY5hseqRaDGrLshAizCLE7cwUGgcxCYsd68h9H39zIc2ioZLCh8n+WJOdI="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",
