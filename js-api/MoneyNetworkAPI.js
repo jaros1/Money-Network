@@ -28,7 +28,7 @@ var MoneyNetworkAPI = (function () {
         if (hash.hasOwnProperty('userid2')) encryption_setup.this_session_userid2 = hash.userid2 ;
         if (hash.hasOwnProperty('debug'))  encryption_setup.debug = hash.debug ;
         if (!encryption_setup.debug) return ;
-        // encryption setup status:
+        // debug: encryption setup status:
         missing_keys = [] ;
         for (key in encryption_setup) if (encryption_setup[key] == null) missing_keys.push(key) ;
         if (missing_keys.length == 0) console.log(pgm + 'Encryption setup done') ;
@@ -47,9 +47,38 @@ var MoneyNetworkAPI = (function () {
         return string.join('');
     } // generate_random_string
 
-    // 1: cryptMessage encrypt/decrypt using ZeroNet cryptMessage plugin (pubkey2)
-    function encrypt_1 (clear_text, cb) {
+    // 1: JSEncrypt encrypt/decrypt using pubkey/prvkey
+    function encrypt_1 (clear_text_1, cb) {
         var pgm = module + '.encrypt_1: ' ;
+        var password, encrypt, key, output_wa, encrypted_text, encrypted_array ;
+        if (!encryption_setup.other_session_pubkey) throw pgm + 'encrypt_1 failed. pubkey is missing in encryption setup' ;
+        encrypt = new JSEncrypt();
+        encrypt.setPublicKey(encryption_setup.other_session_pubkey);
+        password = generate_random_string(100, true) ;
+        key = encrypt.encrypt(password);
+        output_wa = CryptoJS.AES.encrypt(clear_text_1, password, {format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+        encrypted_text = output_wa.toString(CryptoJS.format.OpenSSL);
+        encrypted_array = [key, encrypted_text] ;
+        cb(JSON.stringify(encrypted_array)) ;
+    } // encrypt_1
+    function decrypt_1 (encrypted_text_1, cb) {
+        var pgm = module + 'decrypt_1: ' ;
+        var encrypted_array, key, encrypted_text, encrypt, password, output_wa, clear_text ;
+        if (!encryption_setup.this_session_prvkey) throw pgm + 'decrypt_1 failed. prvkey is missing in encryption setup' ;
+        encrypted_array = JSON.parse(encrypted_text_1) ;
+        key = encrypted_array[0] ;
+        encrypted_text = encrypted_array[1] ;
+        encrypt = new JSEncrypt();
+        encrypt.setPrivateKey(encryption_setup.this_session_prvkey);
+        password = encrypt.decrypt(key);
+        output_wa = CryptoJS.AES.decrypt(encrypted_text, password, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+        clear_text = output_wa.toString(CryptoJS.enc.Utf8);
+        cb(clear_text)
+    } // decrypt_1
+
+    // 2: cryptMessage encrypt/decrypt using ZeroNet cryptMessage plugin (pubkey2)
+    function encrypt_2 (encrypted_text_1, cb) {
+        var pgm = module + '.encrypt_2: ' ;
         if (!encryption_setup.other_session_pubkey2) throw pgm + 'encryption failed. Pubkey2 is missing in encryption setup' ;
         // 1a. get random password
         if (encryption_setup.debug) console.log(pgm + 'calling aesEncrypt') ;
@@ -61,25 +90,25 @@ var MoneyNetworkAPI = (function () {
             ZeroFrame.cmd("eciesEncrypt", [password, encryption_setup.other_session_pubkey2], function (key) {
                 // 1c. encrypt text
                 if (encryption_setup.debug) console.log(pgm + 'eciesEncrypt OK. calling aesEncrypt') ;
-                ZeroFrame.cmd("aesEncrypt", [clear_text, password], function (res3) {
-                    var iv, encrypted_text, encrypted_array, encrypted_text_1 ;
+                ZeroFrame.cmd("aesEncrypt", [encrypted_text_1, password], function (res3) {
+                    var iv, encrypted_text, encrypted_array, encrypted_text_2 ;
                     if (encryption_setup.debug) console.log(pgm + 'aesEncrypt OK') ;
                     // forward encrypted result to next function in encryption chain
                     iv = res3[1] ;
                     encrypted_text = res3[2];
                     encrypted_array = [key, iv, encrypted_text] ;
-                    encrypted_text_1 = JSON.stringify(encrypted_array) ;
-                    if (encryption_setup.debug) console.log(pgm + 'encrypted_text_1 = ' + encrypted_text_1) ;
-                    cb(encrypted_text_1) ;
+                    encrypted_text_2 = JSON.stringify(encrypted_array) ;
+                    if (encryption_setup.debug) console.log(pgm + 'encrypted_text_1 = ' + encrypted_text_2) ;
+                    cb(encrypted_text_2) ;
                 }) ; // aesEncrypt callback 3
             }) ; // eciesEncrypt callback 2
         }) ; // aesEncrypt callback 1
-    } // encrypt_1
-    function decrypt_1 (encrypted_text_1, cb) {
+    } // encrypt_2
+    function decrypt_2 (encrypted_text_2, cb) {
         var pgm = module + '.decrypt_1: ' ;
         var encrypted_array, key, iv, encrypted_text, user_id ;
-        if (encryption_setup.debug) console.log(pgm + 'encrypted_text_1 = ' + encrypted_text_1) ;
-        encrypted_array = JSON.parse(encrypted_text_1) ;
+        if (encryption_setup.debug) console.log(pgm + 'encrypted_text_2 = ' + encrypted_text_2) ;
+        encrypted_array = JSON.parse(encrypted_text_2) ;
         key = encrypted_array[0] ;
         iv = encrypted_array[1] ;
         encrypted_text = encrypted_array[2] ;
@@ -89,40 +118,11 @@ var MoneyNetworkAPI = (function () {
             if (!password) throw pgm + 'key eciesDecrypt failed. userid2 = ' + encryption_setup.this_session_userid2 ;
             // 1b. decrypt encrypted_text
             if (encryption_setup.debug) console.log(pgm + 'eciesDecrypt OK. calling aesDecrypt') ;
-            ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (clear_text) {
+            ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (encrypted_text_1) {
                 if (encryption_setup.debug) console.log(pgm + 'aesDecrypt OK') ;
-                cb(clear_text) ;
+                cb(encrypted_text_1) ;
             }) ; // aesDecrypt callback 2
         }) ; // eciesDecrypt callback 1
-    } // decrypt_1
-
-    // 2: JSEncrypt encrypt/decrypt using pubkey/prvkey
-    function encrypt_2 (encrypted_text_1, cb) {
-        var pgm = module + '.encrypt_2: ' ;
-        var password, encrypt, key, output_wa, encrypted_text, encrypted_array ;
-        if (!encryption_setup.other_session_pubkey) throw pgm + 'encrypt_2 failed. pubkey is missing in encryption setup' ;
-        encrypt = new JSEncrypt();
-        encrypt.setPublicKey(encryption_setup.other_session_pubkey);
-        password = generate_random_string(100, true) ;
-        key = encrypt.encrypt(password);
-        output_wa = CryptoJS.AES.encrypt(encrypted_text_1, password, {format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-        encrypted_text = output_wa.toString(CryptoJS.format.OpenSSL);
-        encrypted_array = [key, encrypted_text] ;
-        cb(JSON.stringify(encrypted_array)) ;
-    } // encrypt_2
-    function decrypt_2 (encrypted_text_2, cb) {
-        var pgm = module + 'decrypt_2: ' ;
-        var encrypted_array, key, encrypted_text, encrypt, password, output_wa, encrypted_text_1 ;
-        if (!encryption_setup.this_session_prvkey) throw pgm + 'decrypt_2 failed. prvkey is missing in encryption setup' ;
-        encrypted_array = JSON.parse(encrypted_text_2) ;
-        key = encrypted_array[0] ;
-        encrypted_text = encrypted_array[1] ;
-        encrypt = new JSEncrypt();
-        encrypt.setPrivateKey(encryption_setup.this_session_prvkey);
-        password = encrypt.decrypt(key);
-        output_wa = CryptoJS.AES.decrypt(encrypted_text, password, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-        encrypted_text_1 = output_wa.toString(CryptoJS.enc.Utf8);
-        cb(encrypted_text_1)
     } // decrypt_2
 
     // 3: symmetric encrypt/decrypt using sessionid
@@ -144,32 +144,43 @@ var MoneyNetworkAPI = (function () {
     } // decrypt_3
 
     // encrypt/decrypt json messages
-    // clear text => 1 cryptMessage => 2 JSEncrypt => 3 symmetric => encrypted message
-    function encrypt_json(json, cb) {
-        var clear_text = JSON.stringify(json) ;
-        encrypt_1(clear_text, function (encrypted_text_1) {
-            encrypt_2(encrypted_text_1, function (encrypted_text_2) {
-                encrypt_3(encrypted_text_2, function (encrypted_text_3) {
-                    cb(encrypted_text_3) ;
-                }) ; // encrypt_3 callback 3
-            }) ; // encrypt_2 callback 2
-        }) ; // encrypt_1 callback 1
-        cb(json) ;
+    // encryptions: integer or array of integers: 1 cryptMessage, 2 JSEncrypt, 3 symmetric encryption
+    function encrypt_json(json, encryptions, cb) {
+        var pgm = module + '.encrypt_json: ' ;
+        var encryption, encrypt;
+        if (typeof encryptions == 'number') encryptions = [encryptions];
+        if (encryptions.length == 0) return cb(json); // done
+        encryption = encryptions.shift();
+        if (encryption == 1) encrypt = encrypt_1;
+        else if (encryption == 2) encrypt = encrypt_2;
+        else if (encryption == 3) encrypt = encrypt_3;
+        else {
+            console.log(pgm + 'Unsupported encryption ' + encryption);
+            return cb(json);
+        }
+        encrypt(JSON.stringify(json), function (encrypted_text) {
+            json = {
+                encryption: encryption,
+                message: encrypted_text
+            };
+            encrypt_json(json, encryptions, cb);
+        });
     } // encrypt_json
-    // encrypted message => 3 symmetric => 2 JSEncrypt => 1 cryptMessage => clear text
-    function decrypt_json(encrypted_text_3, cb) {
+    function decrypt_json(json, cb) {
         var pgm = module + '.decrypt_json: ' ;
-        if (encryption_setup.debug) console.log(pgm + 'calling decrypt_3') ;
-        decrypt_3(encrypted_text_3, function (encrypted_text_2) {
-            if (encryption_setup.debug) console.log(pgm + 'decrypt_3 OK. calling decrypt_2') ;
-            decrypt_2(encrypted_text_2, function (encrypted_text_1) {
-                if (encryption_setup.debug) console.log(pgm + 'decrypt_2 OK. calling decrypt_1') ;
-                decrypt_1(encrypted_text_1, function (clear_text) {
-                    if (encryption_setup.debug) console.log(pgm + 'decrypt_1 OK') ;
-                    var json = JSON.parse(clear_text) ;
-                    cb(json) ;
-                }) ;
-            }) ;
+        var decrypt ;
+        if (json.encryption == 1) decrypt = decrypt_1;
+        else if (json.encryption == 2) decrypt = decrypt_2;
+        else if (json.encryption == 3) decrypt = decrypt_3;
+        else {
+            console.log(pgm + 'Unsupported encryption ' + json.encryption);
+            return cb(json);
+        }
+        decrypt(json.message, function (decrypted_text) {
+            var json ;
+            json = JSON.parse(decrypted_text) ;
+            if (json.hasOwnProperty('encryption')) decrypt_json(json, cb) ;
+            else cb(json) ; // done
         }) ;
     } // decrypt_json
 

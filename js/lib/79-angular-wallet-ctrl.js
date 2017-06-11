@@ -338,12 +338,14 @@ angular.module('MoneyNetwork')
                             // found message from wallet with correct filename .
                             inner_path = 'merged-MoneyNetwork/' + res[0].directory + '/' + res[0].filename ;
                             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-                            ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (encrypted_str) {
+                            ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (json_str) {
                                 var pgm = controller + '.test5.check_session fileGet callback 2: ' ;
+                                var json ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                if (!encrypted_str) return (cb({ error: 'File ' + inner_path + ' was not found'})) ;
-                                console.log(pgm + 'encrypted_str = ' + encrypted_str);
-                                MoneyNetworkAPI.decrypt_json(encrypted_str, function (json) {
+                                if (!json_str) return (cb({ error: 'File ' + inner_path + ' was not found'})) ;
+                                console.log(pgm + 'encrypted_str = ' + JSON.stringify(json_str));
+                                json = JSON.parse(json_str) ;
+                                MoneyNetworkAPI.decrypt_json(json, function (json) {
                                     console.log(pgm + 'json = ' + JSON.stringify(json)) ;
                                     cb(json) ;
                                 }) ;
