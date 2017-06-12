@@ -1339,6 +1339,33 @@ var MoneyNetworkHelper = (function () {
         debug(keys, text + ' started (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
         return debug_seq ;
     } // debug_z_api_operation_start
+    var api_operation_timeout = null ;
+    function check_api_operation_timeout () {
+        var pgm = module + '.check_api_operation_timeout: ' ;
+        var now, debug_seq, started_at, remaining, max_remaining ;
+        api_operation_timeout = null ;
+        now = new Date().getTime() ;
+        max_remaining = 0 ;
+        for (debug_seq in debug_operations) {
+            if (!debug_operations[debug_seq].cb) continue ;
+            started_at = debug_operations [debug_seq].started_at ;
+            remaining = 60000 - now + started_at ;
+            if (remaining <= 0) {
+                console.log(pgm +
+                    'timeout for ' + debug_operations[debug_seq].text + ' after 60 seconds. ' +
+                    'todo: check for lost merger:MoneyNetwork permission') ;
+                setTimeout(debug_operations [debug_seq].cb, 0) ;
+            }
+            else if (remaining > max_remaining) max_remaining = remaining ;
+        }
+        if (remaining) api_operation_timeout = setTimeout(check_api_operation_timeout, remaining) ;
+    }
+    function debug_z_api_operation_timeout (debug_seq, cb) {
+        var pgm = module + '.debug_z_api_operation_timeout: ' ;
+        if (!debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
+        debug_operations[debug_seq].cb = cb ;
+        if (!api_operation_timeout) api_operation_timeout = setTimeout(check_api_operation_timeout, 60000) ;
+    }
     function debug_z_api_operation_end (debug_seq) {
         var pgm = module + '.debug_z_api_operation_end: ' ;
         var keys, text, started_at, finished_at, elapsed_time ;
@@ -1459,6 +1486,7 @@ var MoneyNetworkHelper = (function () {
         load_user_setup: load_user_setup,
         debug: debug,
         debug_z_api_operation_start: debug_z_api_operation_start,
+        debug_z_api_operation_timeout: debug_z_api_operation_timeout,
         debug_z_api_operation_end: debug_z_api_operation_end,
         stringify: stringify,
         get_fake_name: get_fake_name,

@@ -63,7 +63,9 @@ ZeroFrame = (function() {
     ZeroFrame.prototype.route = function(cmd, message) {
         // this.log("ZeroFrame.prototype.route: cmd = " + cmd + ', message = ' + JSON.stringify(message));
         if (cmd == "setSiteInfo") {
-            this.site_info = message.params;
+            // merger site: only save site_info for front end site & ignore site_info from data hubs
+            // this.site_info = message.params;
+            if (!this.site_info || (this.site_info.address == message.params.address)) this.site_info = message.params;
             // this.log("ZeroFrame.prototype.route: site_info = " + JSON.stringify(this.site_info));
             this.checkCertUserId() ;
             // execute any functions waiting for event
