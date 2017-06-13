@@ -225,7 +225,7 @@ angular.module('MoneyNetwork')
                 debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = service + '.get_my_hub dbQuery callback 2: ' ;
-                    var i ;
+                    var i, merge_job ;
                     if (detected_client_log_out(pgm)) return ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     var execute_pending_callbacks = function () {
@@ -244,6 +244,20 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
                         cb(z_cache.my_user_hub) ;
                         execute_pending_callbacks() ;
+                        if (res.length > 1) {
+                            // possible doublet or conflicting user information.
+                            // allow data loading for current process to finish before starting merge and delete operation
+                            merge_job = function() {
+                                var i, hubs ;
+                                hubs = [] ;
+                                for (i=1 ; i<res.length ; i++) hubs.push(res[i].hub) ;
+                                console.log(pgm + 'user with auth_address ' + ZeroFrame.site_info.auth_address +
+                                    ' found on more than one user data hub. other hubs = ' + JSON.stringify(hubs)) ;
+                                // user with auth_address 18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ found on more than one user data hub. other hubs = ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"]
+                                merge_user_hubs(hubs) ;
+                            } ;
+                            $timeout(merge_job, 5000) ;
+                        }
                         return ;
                     }
                     // new user. get user data hub from
@@ -262,6 +276,229 @@ angular.module('MoneyNetwork')
             }) ; // mergerSiteList callback 1
 
         } // get_my_user_hub
+
+        // possible doublet user data hubs were found. If possible move and merge data to current user hub
+        // data.json/users:
+        // - 1) pubkey*pubkey2 combination in users must be unique. keep user definition from current hub
+        // - 2) merge users. re-sequence user_seq from old users array
+        // data.json/search:
+        // - 3) merge search info. current user. correct search in user_info array in JS
+        // data.json/msg:
+        // - 4) merge. keep all msg records
+        //
+
+        function merge_user_hubs (hubs) {
+            var pgm = service + '.merge_user_hubs: ' ;
+            var hub ;
+            if (!hubs.length) return ;
+            hub = hubs.shift() ; // first row in array = current user hub
+            merge_user_hub(hub, function(res) {
+                var pgm = service + '.merge_user_hubs merge_user_hub callback: ' ;
+                console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                merge_user_hubs (hubs) ;
+            }) ; // merge_user_hub callback 1
+        } // merge_user_hubs
+
+        function merge_user_hub (hub, cb) {
+            var pgm = service + '.merge_user_hub: ' ;
+            console.log(pgm + 'hub = ' + hub) ;
+            get_my_user_hub(function(my_hub) {
+                var hub_user_path, my_user_path, inner_path0, debug_seq0 ;
+                hub_user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
+                my_user_path = 'merged-MoneyNetwork/' + my_hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
+                // read hub content.json
+                inner_path0 = hub_user_path + 'content.json' ;
+                debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
+                ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: false}, function (hub_content_str) {
+                    var pgm = service + '.merge_user_hub fileGet callback 2: ';
+                    var hub_content, my_content, hub_data, my_data, hub_status, my_status,  my_like, hub_like,
+                        step_1_remove_file_doublets, step_2_get_file_info, step_3_download_files, step_4_get_data_files,
+                        step_n_done ;
+                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                    // console.log(pgm + 'content_str = ' + content_str) ;
+                    if (!hub_content_str) {
+                        console.log(pgm + 'error. ' + inner_path0 + ' was not found') ;
+                        return cb(null) ;
+                    }
+                    hub_content = JSON.parse(hub_content_str) ;
+                    // console.log(pgm + 'files = ' + JSON.stringify(hub_content.files)) ;
+                    // console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
+
+                    // step 1: remove optional files already in current user hub
+                    step_1_remove_file_doublets = function (cb2) {
+                        var inner_path0, debug_seq0 ;
+                        if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return cb2() ;
+                        // read content.json
+                        inner_path0 = my_user_path + 'content.json' ;
+                        debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
+                        ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: false}, function (content_str) {
+                            var pgm = service + '.merge_user_hub.step_1_remove_file_doublets fileGet callback: ';
+                            var remove_files, filename ;
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                            if (!content_str) {
+                                console.log(pgm + 'error. ' + inner_path0 + ' was not found') ;
+                                return cb(null) ;
+                            }
+                            my_content = JSON.parse(content_str) ;
+                            if (!my_content.files_optional || (Object.keys(my_content.files_optional).length == 0)) return cb2() ;
+                            remove_files = [] ;
+                            for (filename in hub_content.files_optional) {
+                                if (!my_content.files_optional[filename]) continue ;
+                                if (my_content.files_optional[filename].sha512 != my_content.files_optional[filename].sha512) continue ;
+                                console.log(pgm + 'optional file ' + filename + ' already in current user hub');
+                                remove_files.push(filename) ;
+                            } // for
+                            while (remove_files.length) {
+                                filename = remove_files.shift() ;
+                                delete hub_content.files_optional[filename] ;
+                            }
+                            // continue with next step
+                            cb2() ;
+
+                        }) ; // fileGet
+
+                    } ; // step_1_remove_file_doublets
+
+                    // step 2: get optional file info
+                    // 1) size=2: deleted optional file
+                    // 2) check bad_files list. do not try to download files on bad-files list
+                    step_2_get_file_info = function (cb3) {
+                        var key, filename ;
+                        if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return cb3() ;
+                        // find next optional file to check
+                        for (key in hub_content.files_optional) {
+                            if (hub_content.files_optional[key].file_info) continue ;
+                            if (hub_content.files_optional[key].size == 2) continue ; // deleted marked optional file
+                            filename = hub_user_path + key ;
+                            break ;
+                        }
+                        if (!filename) return cb3() ; // next step: done with optional file info calls
+                        // check file info for image json file
+                        ZeroFrame.cmd("optionalFileInfo", [filename], function (file_info) {
+                            var pgm = service + '.merge_user_hub.step_2_get_file_info optionalFileInfo callback 2: ';
+                            hub_content.files_optional[key].file_info = file_info || {} ;
+                            // continue with next optional file
+                            step_2_get_file_info(cb3) ;
+                        }) ; // optionalFileInfo
+                    } ; // step_2_get_file_info
+
+                    // step 3: download any missing optional files
+                    step_3_download_files = function (cb4) {
+                        var key, filename, debug_seq0 ;
+                        if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return cb4() ;
+                        // find next optional file to download
+                        for (key in hub_content.files_optional) {
+                            if (hub_content.files_optional[key].size == 2) continue ; // deleted marked optional file
+                            if (hub_content.files_optional[key].file_info.is_downloaded) continue ;
+                            filename = hub_user_path + key ;
+                            break ;
+                        }
+                        if (!filename) return cb4() ; // next step: done with optional file downloads
+
+                        debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + ' fileGet') ;
+                        ZeroFrame.cmd("fileGet", {inner_path: filename, required: true}, function (file_str) {
+                            var pgm = service + '.merge_user_hub.step_2_download_files fileGet callback: ';
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                            if (!file_str) hub_content.files_optional[key].file_info.is_downloaded = -1 ; // download failed
+                            hub_content.files_optional[key].file_str = file_str ;
+                            // continue with next download
+                            step_3_download_files(cb4) ;
+                        }) ; // fileGet callback
+                    }; // step_3_download_files
+
+                    step_4_get_data_files = function (cb5) {
+                        get_data_json(function (data) {
+                            var inner_path0, debug_seq0 ;
+                            my_data = data ;
+                            if (!hub_content.files['data.json']) {
+                                hub_data = {} ;
+                                return cb5() ;
+                            }
+                            inner_path0 = hub_user_path + 'data.json' ;
+                            debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
+                            ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (data_str) {
+                                var pgm = service + '.merge_user_hub.step_4_get_data_files fileGet callback 2: ';
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
+                                if (!data_str) hub_data = {} ;
+                                else hub_data = JSON.parse(data_str) ;
+                                cb5() ;
+                            }) ; // fileGet callback 2
+                        }) // get_data_json callback 1
+                    }; // step_4_get_data_files
+
+                    step_5_get_status_files = function (cb6) {
+                        get_status_json(function (status) {
+                            var inner_path0, debug_seq0 ;
+                            my_status = status ;
+                            if (!hub_content.files['status.json']) {
+                                hub_status = {} ;
+                                return cb6() ;
+                            }
+                            inner_path0 = hub_user_path + 'status.json' ;
+                            debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
+                            ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (status_str) {
+                                var pgm = service + '.merge_user_hub.step_5_get_status_files fileGet callback 2: ';
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
+                                if (!status_str) hub_status = {} ;
+                                else hub_status = JSON.parse(status_str) ;
+                                cb6() ;
+                            }) ; // fileGet callback 2
+                        }) // get_status_json callback 1
+                    }; // step_5_get_status_files
+
+                    step_6_get_like_files = function (cb7) {
+                        get_like_json(function (like) {
+                            var inner_path0, debug_seq0 ;
+                            my_like = like ;
+                            if (!hub_content.files['like.json']) {
+                                hub_like = {} ;
+                                return cb7() ;
+                            }
+                            inner_path0 = hub_user_path + 'like.json' ;
+                            debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
+                            ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (like_str) {
+                                var pgm = service + '.merge_user_hub.step_5_get_like_files fileGet callback 2: ';
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
+                                if (!like_str) hub_like = {} ;
+                                else hub_like = JSON.parse(like_str) ;
+                                cb7() ;
+                            }) ; // fileGet callback 2
+                        }) // get_like_json callback 1
+                    }; // step_6_get_like_files
+
+                    // step n: finish doing tasks
+                    step_n_done = function () {
+                        var pgm = service + '.merge_user_hub.step_n_done: ';
+                        console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
+                        console.log(pgm + 'my_data = ' + JSON.stringify(my_data));
+                        console.log(pgm + 'hub_data = ' + JSON.stringify(hub_data));
+                        console.log(pgm + 'my_status = ' + JSON.stringify(my_status));
+                        console.log(pgm + 'hub_status = ' + JSON.stringify(hub_status));
+                        console.log(pgm + 'my_like = ' + JSON.stringify(my_like));
+                        console.log(pgm + 'hub_like = ' + JSON.stringify(hub_like));
+                        cb(null) ;
+                    }; // step_n_done
+
+                    // callback chain step 1, .2, ... n
+                    step_1_remove_file_doublets(function() {
+                        step_2_get_file_info(function() {
+                            step_3_download_files(function() {
+                                step_4_get_data_files(function() {
+                                    step_5_get_status_files(function() {
+                                        step_6_get_like_files(function() {
+                                            step_n_done() ;
+                                        })
+                                    })
+                                })
+                            })
+                        })
+                    }) ;
+
+                }) ; // fileGet callback 2
+
+            }) ; // get_my_hub callback 1
+
+        } // merge_user_hub
 
         // wrapper for data.json fileGet and fileWrite (cache data.json file in memory)
         var get_data_json_cbs = [] ; // callbacks waiting for get_data_json to finish
@@ -9420,17 +9657,19 @@ angular.module('MoneyNetwork')
 
                         // remove any already running getFile requests from previous get_public_chat requests
                         for (i=res.length-1 ; i >= 0 ; i--) {
-                            cache_filename = 'data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                            cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
                             cache_status = files_optional_cache[cache_filename] ;
                             if (cache_status && cache_status.is_pending) res.splice(i,1) ;
                         }
 
-                        // my chat files: remove any old chat files from other user data hubs
-                        for (i=res.length-1 ; i >= 0 ; i--) {
-                            if (res[i].auth_address != my_auth_address) continue ;
-                            if (res[i].hub == my_user_hub) continue ;
-                            res.splice(i,1) ;
-                        }
+                        // issue: Optional files and multiple user directories #177
+                        //// my chat files: remove any old chat files from other user data hubs
+                        //for (i=res.length-1 ; i >= 0 ; i--) {
+                        //    if (res[i].auth_address != my_auth_address) continue ;
+                        //    if (res[i].hub == my_user_hub) continue ;
+                        //    debug('public_chat', 'remove chat file from old data hub ' + JSON.stringify(res[i])) ;
+                        //    res.splice(i,1) ;
+                        //} // for i
 
                         // remove json files with size 2 (logical deleted json files)
                         // 1) logical deleted by owner and is in optional files list with size 2 = {}
@@ -9851,6 +10090,8 @@ angular.module('MoneyNetwork')
                                     else {
                                         res[i].peer = file_info.peer ;
                                     }
+                                    if (res[i].peer == 0) res.splice(i,1) ;
+                                    if (res.length == 0) return cb2('done') ;
                                     // continue with next file
                                     get_no_peers(cb2);
                                     return ;
@@ -10052,7 +10293,7 @@ angular.module('MoneyNetwork')
                         }
                         if (expected_size != chat_length) {
                             debug('public_chat', 'changed size for ' + cache_filename + ' . expected size ' + expected_size + ', found size ' + chat_length);
-                            if ((file_auth_address == my_auth_address) && (file_user_seq = '' + my_user_seq)) {
+                            if ((file_auth_address == my_auth_address) && (file_user_seq == my_user_seq)) {
                                 // size in content.json is invalid. publish!
                                 debug('public_chat', pgm + 'size in content.json is invalid. publish')
                                 zeronet_site_publish();
@@ -10109,7 +10350,9 @@ angular.module('MoneyNetwork')
                         // find contact
                         // cache_filename = merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/13CMaVD3fimSq8Zr1Xr3UkbZqhA8BupBAf/1495700749498-1495700684383-1-chat.json
                         z_filename = cache_filename.split('/')[5] ;
-                        debug('public_chat', pgm + 'file_auth_address = ' + file_auth_address + ', file_user_seq = ' + file_user_seq);
+                        debug('public_chat',
+                            pgm + 'file_auth_address = ' + file_auth_address + ', file_user_seq = ' + file_user_seq +
+                            ', ZeroFrame.site_info.auth_address = ' + ZeroFrame.site_info.auth_address + ', my_user_seq = ' + my_user_seq);
                         if ((file_auth_address == ZeroFrame.site_info.auth_address) && (file_user_seq == my_user_seq)) {
                             // loading current user public outbox chat messages
                             folder = 'outbox' ;
