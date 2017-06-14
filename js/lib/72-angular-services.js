@@ -313,7 +313,8 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.merge_user_hub fileGet callback 2: ';
                     var hub_content, my_content, hub_data, my_data, hub_status, my_status,  my_like, hub_like,
                         step_1_remove_file_doublets, step_2_get_file_info, step_3_download_files, step_4_get_data_files,
-                        step_n_done ;
+                        step_5_get_status_files, step_6_get_like_files, step_7_debug_output, step_8_merge_user,
+                        step_n_done, my_data_updated, my_status_updated, my_like_updated, my_publish, hub_publish ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                     // console.log(pgm + 'content_str = ' + content_str) ;
                     if (!hub_content_str) {
@@ -323,6 +324,13 @@ angular.module('MoneyNetwork')
                     hub_content = JSON.parse(hub_content_str) ;
                     // console.log(pgm + 'files = ' + JSON.stringify(hub_content.files)) ;
                     // console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
+
+                    // keep track of pending file updates and publish operations
+                    my_data_updated = false ;
+                    my_status_updated = false ;
+                    my_like_updated = false ;
+                    my_publish = false ;
+                    hub_publish = false ;
 
                     // step 1: remove optional files already in current user hub
                     step_1_remove_file_doublets = function (cb2) {
@@ -418,9 +426,21 @@ angular.module('MoneyNetwork')
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (data_str) {
                                 var pgm = service + '.merge_user_hub.step_4_get_data_files fileGet callback 2: ';
+                                var empty_data, error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
-                                if (!data_str) hub_data = {} ;
-                                else hub_data = JSON.parse(data_str) ;
+                                empty_data = data = {
+                                    version: dbschema_version,
+                                    users: [],
+                                    search: [],
+                                    msg: []
+                                };
+                                if (!data_str) hub_data = empty_data ;
+                                else {
+                                    hub_data = JSON.parse(data_str) ;
+                                    zeronet_migrate_data(hub_data);
+                                    error = MoneyNetworkHelper.validate_json (pgm, hub_data, 'data.json', 'Invalid json file') ;
+                                    if (error) hub_data = empty_data ;
+                                }
                                 cb5() ;
                             }) ; // fileGet callback 2
                         }) // get_data_json callback 1
@@ -438,9 +458,16 @@ angular.module('MoneyNetwork')
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (status_str) {
                                 var pgm = service + '.merge_user_hub.step_5_get_status_files fileGet callback 2: ';
+                                var empty_status, error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
-                                if (!status_str) hub_status = {} ;
-                                else hub_status = JSON.parse(status_str) ;
+                                empty_status = status = {version: dbschema_version, status: []};
+                                if (!status_str) hub_status = empty_status ;
+                                else {
+                                    hub_status = JSON.parse(status_str) ;
+                                    error = MoneyNetworkHelper.validate_json (pgm, hub_status, 'status.json', 'Invalid json file') ;
+                                    if (error) hub_status = empty_status ;
+
+                                }
                                 cb6() ;
                             }) ; // fileGet callback 2
                         }) // get_status_json callback 1
@@ -458,24 +485,260 @@ angular.module('MoneyNetwork')
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (like_str) {
                                 var pgm = service + '.merge_user_hub.step_5_get_like_files fileGet callback 2: ';
+                                var empty_like, error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
-                                if (!like_str) hub_like = {} ;
-                                else hub_like = JSON.parse(like_str) ;
+                                empty_like =  {
+                                    version: dbschema_version,
+                                    like: []
+                                } ;
+                                if (!like_str) hub_like = empty_like ;
+                                else {
+                                    hub_like = JSON.parse(like_str) ;
+                                    error = MoneyNetworkHelper.validate_json (pgm, hub_like, 'like.json', 'Invalid json file') ;
+                                    if (error) hub_like = empty_like ;
+                                }
                                 cb7() ;
                             }) ; // fileGet callback 2
                         }) // get_like_json callback 1
                     }; // step_6_get_like_files
 
+                    step_7_debug_output = function(cb8) {
+                        var pgm = service + '.merge_user_hub.step_7_debug_output: ';
+                        console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
+                        console.log(pgm + 'my_data = ' + JSON.stringify(my_data));
+                        //my_data = {
+                        //    "version": 9,
+                        //    "users": [{
+                        //        "user_seq": 1,
+                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0pMuMJyynH1BmhMJ6vvd\nQZplIBgiiOQSqwu2SpYKICm+P1gGNHnICQic/Nuqi9t93rxJLfWCsl0+lCtoJLen\nf78xz4XzEcGPBeBFn2TbQqPO9loylNlaOgiqDG5qcSc9n7yEF0xmpReDGATwzECi\nJrpZBImwhUMO48iS08b4IfQaMsbnUVY8hdUeJiQ831kMkNQLtxWaeRiyn8cTbKQ6\nLXCDG7GDaFN6t+x3cv/xBX06+ykuYQ0gNIBySiIz69RYzhvOkqOQggLWPF+NMW1J\nO6VRqvX7Sybwm51v3kGGKWeX4znvGY+GwVCpwiH+b2hbGZHIqFp9ogimGVE0WPgu\nnwIDAQAB\n-----END PUBLIC KEY-----",
+                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
+                        //        "encryption": "1"
+                        //    }, {
+                        //        "user_seq": 2,
+                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCkADnNMuzk+fhChpMnfmKmJttl\nZ6U6ZLI6aoiOO7SjbgpDXX1rDLCPvyHKtM3a0npAHZ8Czz8IMTRLopbq5h4Z9n3P\nMth1dnGr8zwkHpztVrbYgvUgtgUdRMD3MNegnsq0DYc7G6xTF+g84dOBy/9rmL4B\nWRNqgZ3Kzxu7X+KODwIDAQAB\n-----END PUBLIC KEY-----",
+                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
+                        //        "encryption": "2",
+                        //        "guest": true
+                        //    }, {
+                        //        "user_seq": 3,
+                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyk/emEpTuLPqAA4/I8Mu\nbVtm1bxO2el/G7+GrcQSgDKoUpOIsq4MH/gv9FfCuXBcL7aNdpRjbI4mCxmBs7Pq\nUmIQjb47rs/VtWN/uV4BZXRElfVluCMGgOnRq4tuRrJuOwBD0kiNNL0KjKXv1zX8\nDyhzeFVao77zk3N6eVrmi+eRm6SAuDBjISTHm4qH7TPTOS3OTB+LjV9TIp4j+TtZ\nZ1rqPDzarensQLdezgtP1apBY7pQqNfeUo3SuN9tLRy1xX7HPrTIbq1Gk3a+lo/s\nInrTMF0OZeIgnMxyNoKC4Yjh6v4L/YwE3XkLxDo8EqwE8HiEXISx3bNE74h+Z9Om\n5QIDAQAB\n-----END PUBLIC KEY-----",
+                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
+                        //        "encryption": "1"
+                        //    }, {
+                        //        "user_seq": 4,
+                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQB/0HQnfqOrsecfsHqNSYQa\nKOXtw7E/Z2AFpMS7XIOn34p5nmkuL6aI3VoVQE+McYtuYVKbzcBjd3HjQ1ilFWAr\nk9kvSjY9+D4SsTgb5BWw/lhAM7ZgRoGgKmltw/p1IqQTpIntiwycG2c1ASoB2Igz\n3CrvoGG3Drkff840bwyz/ExcV817nODGh/v3Ym7OJBytBh0uFz2UaldIRtXH94Ml\nSYEuTkk2+a9unl5TJLzOC9lfpBkB+BWsFKIbdsXzBa5Ehb3af3XPa2nMQGS2p/kU\n+Wwb5WIh+JObbDFo6SYHuaupVj6C1Pj3QZZ7M34Tm7d2hcbZR5Vxj0njmq6nRcFD\nAgMBAAE=\n-----END PUBLIC KEY-----",
+                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
+                        //        "encryption": "1"
+                        //    }, {
+                        //        "user_seq": 5,
+                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBpQDut223gZcYfGTHxqoal\nDFX4PvQY1riWEPVqiO2eXS3E47XJjRUtMSUqzpb011ZxzauTxSXlTL1uunIykTvN\nmsXaNSq/tPIue0zdVSCN4PrJo5FY5P6SYGviZBLzdHZJYqlNk3QPngrBGJl/VBBp\nToPXmN7hog/9rXEGhPyN7GX2AKy3pPFCkXFC9GDlCoEjt0Pq+y5sF/t4iPXyn878\nirWfYbRPisLjnJGqSe23/c6MhP8CTvnbFvpiBcLES7HQk6hqqBBnLe9NLTABbqXK\n6i1LW6+aZRqOX72mMwU+1LTcbQRIW1nG6rtPhaUqiIzeH0g8B743bjmcJagm1foH\nAgMBAAE=\n-----END PUBLIC KEY-----",
+                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
+                        //        "encryption": "2"
+                        //    }],
+                        //    "search": [{"user_seq": 1, "tag": "Name", "value": "Money Network dev"}, {
+                        //        "user_seq": 1,
+                        //        "tag": "%",
+                        //        "value": "%"
+                        //    }, ... , {"user_seq": 5, "tag": "Name", "value": "Money developer"}, {
+                        //        "user_seq": 5,
+                        //        "tag": "%",
+                        //        "value": "%"
+                        //    }],
+                        //    "msg": [{
+                        //        "user_seq": 1,
+                        //        "receiver_sha256": "e2aa3e300aa4438bb4b0eebd4ed04222e405e6e13926f88f15da230b0c45e9f6",
+                        //        "key": "jQpjz8Rb2K593r79FDzNyALKACA8T5/acloO861aNxKigH4o8bjtUfWEnpXAIqV6CVuKGQAg5qOw+mB+45JNAFI34/ec80mTY9Z6PflwftjNb3aF0oYSlLFzmQvkon0O2mtUHYRaTnx5KC6Q6UmkNl607PDxSguEmM5TtUdMITZeTYNUazfdT3rzanUv048kvsZYR5c13Pj2S3ie8wMRTQVvbgFg2Q==",
+                        //        "message": "uVLNKcRC8g0OvbBaoxh9mg==,McH3voV30AQB2UZqx/GpGFJ6Rkqxpft0voSEGh3FwEvukleDAe9b8kF3iiadd4TDr9K9U2emkLNrMplj67/0SVE2hafJxLfNcTnBpdniHOUm/HEwOCBF+dE9HWsvlxIyJkvnWefALdn1mJ6h6dkmWNKmhgAZA8c5lJE+yJv4CF+s9YVd7cWz8i2HIM398SUxkT0BuYhGBd5bFH5kgLp0hBcH6qTb3g4X4a9r3ZCel0BCbp3n6yd8gDtMBnxCb9NlRSGRXQp2WhW2Sml8G8o+sPlO+zUZYoA2H/nabYfzCzs=",
+                        //        "message_sha256": "2c55aa993e1225f3e3cf66d1350af2bbf4f0bf1e46774f1d3617d4e6b79135d1",
+                        //        "timestamp": 1490160111831
+                        //    }, ... , {
+                        //        "user_seq": 1,
+                        //        "receiver_sha256": "c4f4564a23f801e740cdb99ff2a32cce4d59bece1864171f147a37788adef3e3",
+                        //        "key": "MZnLXbTinHL3NYOwgp4iBwLKACDKSSvBvOD1BQeaIUc4aP5/1UG539Yg5IZSPqOxpWZhZQAgpDPPTSzyECkQv3UUlyf6LENjLiSSSAJlJBy97Xoa2f3ZBzy5lYNnR5IHTwpuRWoTojQjOhIi72ii7ai/0gKtqQk0qLdrhC/eeyDf2RTI1WQajOHeO1mpgyyJhSuA/hb/Zf19f6ezjs8Xctfzi7beuw==",
+                        //        "message": "oqctvWvbaTxNZPzdESgAoQ==,5QlM26850m0IvZZ9VRBEhzlydmTOGEkr3b6Lpx4P/kY0F1/SMBtaKhNoYwxuAHyeLRJakcvMs7fPY6rzYsr/okcwy54unv9Di4vlqnuzWukwcWDrVYMVq8iACc7NfKdH5V5l8j/nA4ijRjDxq9vOfeC4UByG5lxzBYB6RDsvrzg3CXPxlpZpnQgqjIVJXRL0gg61XmjqSOcTPfAL9lzoke2inwAj8izuYk0MbjGF9jIt2k7JqzTnw23fWAXoB5XVvz/GhD4jhW+JLORwa3AaLFzdlSDMIUupy6vfA4SubdbKzg8yQDCjW/MCgUtO9Wj7eKAaREbofvlXg0xfwxAo/9i8R7dba8yJlZm6TObkXVQ=",
+                        //        "message_sha256": "c3dcb14a56d1d588a778c1a14ddfac82f2182d89b568e07654474b29995667b3",
+                        //        "timestamp": 1490769932459
+                        //    }],
+                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
+                        //};
+                        console.log(pgm + 'hub_data = ' + JSON.stringify(hub_data));
+                        //hub_data = {
+                        //    "version": 9,
+                        //    "users": [{
+                        //        "user_seq": 1,
+                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBpQDut223gZcYfGTHxqoal\nDFX4PvQY1riWEPVqiO2eXS3E47XJjRUtMSUqzpb011ZxzauTxSXlTL1uunIykTvN\nmsXaNSq/tPIue0zdVSCN4PrJo5FY5P6SYGviZBLzdHZJYqlNk3QPngrBGJl/VBBp\nToPXmN7hog/9rXEGhPyN7GX2AKy3pPFCkXFC9GDlCoEjt0Pq+y5sF/t4iPXyn878\nirWfYbRPisLjnJGqSe23/c6MhP8CTvnbFvpiBcLES7HQk6hqqBBnLe9NLTABbqXK\n6i1LW6+aZRqOX72mMwU+1LTcbQRIW1nG6rtPhaUqiIzeH0g8B743bjmcJagm1foH\nAgMBAAE=\n-----END PUBLIC KEY-----",
+                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
+                        //        "encryption": "2",
+                        //        "avatar": "10.png"
+                        //    }],
+                        //    "search": [{"user_seq": 1, "tag": "Name", "value": "Money developer"}, {
+                        //        "user_seq": 1,
+                        //        "tag": "%",
+                        //        "value": "%"
+                        //    }],
+                        //    "msg": [],
+                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
+                        //};
+                        console.log(pgm + 'my_status = ' + JSON.stringify(my_status));
+                        //my_status = {
+                        //    "version": 9,
+                        //    "status": [{"user_seq": 1, "timestamp": 1492969523124}, {
+                        //        "user_seq": 2,
+                        //        "timestamp": 1492160235781
+                        //    }, {"user_seq": 3, "timestamp": 1495613227536}, {
+                        //        "user_seq": 4,
+                        //        "timestamp": 1495115371635
+                        //    }, {"user_seq": 5, "timestamp": 1497369908219}],
+                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
+                        //};
+                        console.log(pgm + 'hub_status = ' + JSON.stringify(hub_status));
+                        //hub_status = {
+                        //    "version": 9,
+                        //    "status": [{"user_seq": 1, "timestamp": 1497250648862}],
+                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
+                        //};
+                        console.log(pgm + 'my_like = ' + JSON.stringify(my_like));
+                        //my_like = {
+                        //    "version": 8,
+                        //    "like": [{
+                        //        "user_seq": 1,
+                        //        "timestamp": 1486109564902,
+                        //        "auth": "18Db",
+                        //        "emoji": "❤"
+                        //    }, {
+                        //        "user_seq": 1,
+                        //        "timestamp": 1485968457030,
+                        //        "auth": "18Db",
+                        //        "emoji": "😮",
+                        //        "count": 1
+                        //    }, ... , {
+                        //        "user_seq": 4,
+                        //        "timestamp": 1492418540610,
+                        //        "auth": "18Db",
+                        //        "emoji": "😃"
+                        //    }, {"user_seq": 3, "timestamp": 1494586613401, "auth": "18Db", "emoji": "😃"}],
+                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
+                        //};
+                        console.log(pgm + 'hub_like = ' + JSON.stringify(hub_like));
+
+                        cb8() ;
+
+                    }; // step_7_debug_output
+
+                    // todo: what about max user directory size. below limit before merge. over limit after merge
+                    step_8_merge_user = function (cb9) {
+                        var pgm = service + '.merge_user_hub.step_8_merge_user: ';
+                        var hub_user, my_user, i, my_max_user_seq, my_user_seq, hub_user_seq, found, j ;
+                        if (!hub_data.users.length) return cb9() ; // done with merging users
+                        hub_user = hub_data.users.shift() ;
+                        console.log(pgm + 'hub_user = ' + JSON.stringify(hub_user)) ;
+                        //hub_user = {
+                        //    "user_seq": 1,
+                        //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBpQDut223gZcYfGTHxqoal\nDFX4PvQY1riWEPVqiO2eXS3E47XJjRUtMSUqzpb011ZxzauTxSXlTL1uunIykTvN\nmsXaNSq/tPIue0zdVSCN4PrJo5FY5P6SYGviZBLzdHZJYqlNk3QPngrBGJl/VBBp\nToPXmN7hog/9rXEGhPyN7GX2AKy3pPFCkXFC9GDlCoEjt0Pq+y5sF/t4iPXyn878\nirWfYbRPisLjnJGqSe23/c6MhP8CTvnbFvpiBcLES7HQk6hqqBBnLe9NLTABbqXK\n6i1LW6+aZRqOX72mMwU+1LTcbQRIW1nG6rtPhaUqiIzeH0g8B743bjmcJagm1foH\nAgMBAAE=\n-----END PUBLIC KEY-----",
+                        //    "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
+                        //    "encryption": "2",
+                        //    "avatar": "10.png"
+                        //};
+                        // data.json users array
+                        // check if hub user already is in my users array
+                        my_max_user_seq = 0 ;
+                        for (i=0 ; i<my_data.users.length ; i++) {
+                            if (my_data.users[i].user_seq > my_max_user_seq) my_max_user_seq = my_data.users[i].user_seq ;
+                            if (my_user) continue ;
+                            if (my_data.users[i].pubkey != hub_user.pubkey) continue ; // JSEncrypt public key
+                            if (my_data.users[i].pubkey2 != hub_user.pubkey2) continue ; // cryptMessage (ZeroNet) public key
+                            my_user = my_data.users[i] ;
+                        } // for i
+                        console.log(pgm + 'my_user = ' + JSON.stringify(my_user)) ;
+                        //my_user = {
+                        //    "user_seq": 5,
+                        //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBpQDut223gZcYfGTHxqoal\nDFX4PvQY1riWEPVqiO2eXS3E47XJjRUtMSUqzpb011ZxzauTxSXlTL1uunIykTvN\nmsXaNSq/tPIue0zdVSCN4PrJo5FY5P6SYGviZBLzdHZJYqlNk3QPngrBGJl/VBBp\nToPXmN7hog/9rXEGhPyN7GX2AKy3pPFCkXFC9GDlCoEjt0Pq+y5sF/t4iPXyn878\nirWfYbRPisLjnJGqSe23/c6MhP8CTvnbFvpiBcLES7HQk6hqqBBnLe9NLTABbqXK\n6i1LW6+aZRqOX72mMwU+1LTcbQRIW1nG6rtPhaUqiIzeH0g8B743bjmcJagm1foH\nAgMBAAE=\n-----END PUBLIC KEY-----",
+                        //    "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
+                        //    "encryption": "2"
+                        //};
+                        if (!my_user) {
+                            my_user = JSON.parse(JSON.stringify(hub_user)) ;
+                            my_user.user_seq = my_max_user_seq + 1 ;
+                            my_data.users.push(my_user) ;
+                            my_data_updated = true ;
+                        }
+                        my_user_seq = my_user.user_seq ;
+                        hub_user_seq = hub_user.user_seq ;
+                        // data.json search array
+                        for (i=hub_data.search.length-1 ; i>=0 ; i--) {
+                            if (hub_data.search[i].user_seq != hub_user_seq) continue ;
+                            found = -1 ;
+                            for (j=0 ; j<my_data.search.length ; j++) {
+                                if (my_data.search[j].user_seq != my_user_seq) continue ;
+                                if (my_data.search[j].tag != hub_data.search[i].tag) continue ;
+                                if (my_data.search[j].value != hub_data.search[i].value) continue ;
+                                found = j ;
+                                break ;
+                            } // for j
+                            if (found != -1) {
+                                my_data.search.push({
+                                    user_seq: my_user_seq,
+                                    tag: hub_data.search[found].tag,
+                                    value: hub_data.search[found].value
+                                }) ;
+                                my_data_updated = true ;
+                            }
+                            hub_data.search.splice(i,1);
+                        } // for i
+                        // data.json msg array
+                        for (i=hub_data.msg.length-1 ; i>=0 ; i--) {
+                            if (hub_data.msg[i].user_seq != hub_user_seq) continue ;
+                            found = -1 ;
+                            for (j=0 ; j<my_data.msg.length ; j++) {
+                                if (my_data.msg[j].user_seq != my_user_seq) continue ;
+                                if (my_data.msg[j].message_sha256 != hub_data.msg[i].message_sha256) continue ;
+                                found = j ;
+                                break ;
+                            } // for j
+                            if (found != -1) {
+                                my_data.msg.push({
+                                    user_seq: my_user_seq,
+                                    receiver_sha256: hub_data.msg[found].receiver_sha256,
+                                    key: hub_data.msg[found].key,
+                                    message: hub_data.msg[found].message,
+                                    message_sha256: hub_data.msg[found].message_sha256,
+                                    timestamp: hub_data.msg[found].timestamp
+                                }) ;
+                                my_data_updated = true ;
+                            }
+                            hub_data.msg.splice(i,1);
+                        } // for i
+                        // status.json
+                        for (i=hub_status.status.length-1 ; i>=0 ; i--) {
+                            if (hub_status.status[i].user_seq != hub_user_seq) continue ;
+                            found = -1 ;
+                            for (j=0 ; j<my_status.status.length ; j++) {
+                                if (my_status.status[j].user_seq != my_user_seq) continue ;
+                                found = j ;
+                                break ;
+                            } // for j
+                            if (found != -1) {
+                                my_status.status.push({
+                                    user_seq: my_user_seq,
+                                    timestamp: hub_status.status[found].timestamp
+                                }) ;
+                                my_status_updated = true ;
+                            }
+                            hub_status.status.splice(i,1);
+                        } // for i
+                        // like.json
+
+                        
+
+
+
+                        // continue with next user
+                        step_8_merge_user(cb9) ;
+                    }; // step_8_merge_user
+
                     // step n: finish doing tasks
                     step_n_done = function () {
                         var pgm = service + '.merge_user_hub.step_n_done: ';
-                        console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
-                        console.log(pgm + 'my_data = ' + JSON.stringify(my_data));
-                        console.log(pgm + 'hub_data = ' + JSON.stringify(hub_data));
-                        console.log(pgm + 'my_status = ' + JSON.stringify(my_status));
-                        console.log(pgm + 'hub_status = ' + JSON.stringify(hub_status));
-                        console.log(pgm + 'my_like = ' + JSON.stringify(my_like));
-                        console.log(pgm + 'hub_like = ' + JSON.stringify(hub_like));
                         cb(null) ;
                     }; // step_n_done
 
@@ -486,7 +749,11 @@ angular.module('MoneyNetwork')
                                 step_4_get_data_files(function() {
                                     step_5_get_status_files(function() {
                                         step_6_get_like_files(function() {
-                                            step_n_done() ;
+                                            step_7_debug_output(function() {
+                                                step_8_merge_user(function() {
+                                                    step_n_done() ;
+                                                })
+                                            })
                                         })
                                     })
                                 })
