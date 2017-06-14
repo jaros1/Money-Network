@@ -332,7 +332,7 @@ angular.module('MoneyNetwork')
                     my_publish = false ;
                     hub_publish = false ;
 
-                    // step 1: remove optional files already in current user hub
+                    // step 1: remove optional files already in current user hub (identical filename and sha512 signature)
                     step_1_remove_file_doublets = function (cb2) {
                         var inner_path0, debug_seq0 ;
                         if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return cb2() ;
@@ -397,7 +397,10 @@ angular.module('MoneyNetwork')
                         // find next optional file to download
                         for (key in hub_content.files_optional) {
                             if (hub_content.files_optional[key].size == 2) continue ; // deleted marked optional file
-                            if (hub_content.files_optional[key].file_info.is_downloaded) continue ;
+                            if (!hub_content.files_optional[key].file_info.is_downloaded &&
+                                !hub_content.files_optional[key].file_info.peer) continue ; // not downloaded and no peers
+                            if (hub_content.files_optional[key].file_info.is_downloaded == -1) continue ; // download failed
+                            if (hub_content.files_optional[key].file_str) continue ; // already downloaded
                             filename = hub_user_path + key ;
                             break ;
                         }
@@ -475,22 +478,22 @@ angular.module('MoneyNetwork')
 
                     step_6_get_like_files = function (cb7) {
                         get_like_json(function (like) {
-                            var inner_path0, debug_seq0 ;
+                            var empty_like, inner_path0, debug_seq0 ;
+                            empty_like =  {
+                                version: dbschema_version,
+                                like: []
+                            } ;
                             my_like = like ;
                             if (!hub_content.files['like.json']) {
-                                hub_like = {} ;
+                                hub_like = empty_like ;
                                 return cb7() ;
                             }
                             inner_path0 = hub_user_path + 'like.json' ;
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (like_str) {
                                 var pgm = service + '.merge_user_hub.step_5_get_like_files fileGet callback 2: ';
-                                var empty_like, error ;
+                                var error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
-                                empty_like =  {
-                                    version: dbschema_version,
-                                    like: []
-                                } ;
                                 if (!like_str) hub_like = empty_like ;
                                 else {
                                     hub_like = JSON.parse(like_str) ;
@@ -628,7 +631,7 @@ angular.module('MoneyNetwork')
                     // todo: what about max user directory size. below limit before merge. over limit after merge
                     step_8_merge_user = function (cb9) {
                         var pgm = service + '.merge_user_hub.step_8_merge_user: ';
-                        var hub_user, my_user, i, my_max_user_seq, my_user_seq, hub_user_seq, found, j ;
+                        var hub_user, my_user, i, my_max_user_seq, my_user_seq, hub_user_seq, found, j, json, move_files ;
                         if (!hub_data.users.length) return cb9() ; // done with merging users
                         hub_user = hub_data.users.shift() ;
                         console.log(pgm + 'hub_user = ' + JSON.stringify(hub_user)) ;
@@ -675,12 +678,10 @@ angular.module('MoneyNetwork')
                                 found = j ;
                                 break ;
                             } // for j
-                            if (found != -1) {
-                                my_data.search.push({
-                                    user_seq: my_user_seq,
-                                    tag: hub_data.search[found].tag,
-                                    value: hub_data.search[found].value
-                                }) ;
+                            if (found == -1) {
+                                json = JSON.parse(JSON.stringify(hub_data.search[i])) ;
+                                json.user_seq = my_user_seq ;
+                                my_data.search.push(json) ;
                                 my_data_updated = true ;
                             }
                             hub_data.search.splice(i,1);
@@ -695,15 +696,10 @@ angular.module('MoneyNetwork')
                                 found = j ;
                                 break ;
                             } // for j
-                            if (found != -1) {
-                                my_data.msg.push({
-                                    user_seq: my_user_seq,
-                                    receiver_sha256: hub_data.msg[found].receiver_sha256,
-                                    key: hub_data.msg[found].key,
-                                    message: hub_data.msg[found].message,
-                                    message_sha256: hub_data.msg[found].message_sha256,
-                                    timestamp: hub_data.msg[found].timestamp
-                                }) ;
+                            if (found == -1) {
+                                json = JSON.parse(JSON.stringify(hub_data.msg[i])) ;
+                                json.user_seq = my_user_seq ;
+                                my_data.msg.push(json) ;
                                 my_data_updated = true ;
                             }
                             hub_data.msg.splice(i,1);
@@ -717,23 +713,96 @@ angular.module('MoneyNetwork')
                                 found = j ;
                                 break ;
                             } // for j
-                            if (found != -1) {
-                                my_status.status.push({
-                                    user_seq: my_user_seq,
-                                    timestamp: hub_status.status[found].timestamp
-                                }) ;
+                            if (found == -1) {
+                                json = JSON.parse(JSON.stringify(hub_status.status[i])) ;
+                                json.user_seq = my_user_seq ;
+                                my_status.status.push(json) ;
                                 my_status_updated = true ;
                             }
                             hub_status.status.splice(i,1);
                         } // for i
                         // like.json
+                        for (i=hub_like.like.length-1 ; i>=0 ; i--) {
+                            if (hub_like.like[i].user_seq != hub_user_seq) continue ;
+                            found = -1 ;
+                            for (j=0 ; j<my_like.like.length ; j++) {
+                                if (my_like.like[j].user_seq != my_user_seq) continue ;
+                                if (my_like.like[j].auth != hub_like.like[i].auth) continue ;
+                                if (my_like.like[j].emoji != hub_like.like[i].emoji) continue ;
+                                if (my_like.like[j].hasOwnProperty('count') != hub_like.like[i].hasOwnProperty('count')) continue ;
+                                found = j ;
+                                break ;
+                            } // for j
+                            if (found == -1) {
+                                json = JSON.parse(JSON.stringify(hub_like.like[i])) ;
+                                json.user_seq = my_user_seq ;
+                                my_like.like.push(json) ;
+                                my_like_updated = true ;
+                            }
+                            hub_like.like.splice(i,1);
+                        } // for i
 
-                        
+                        // check and move optional files ending with::
+                        // 1) -<hub_user_seq>-chat.json
+                        // 2) -<hub_user_seq>-image.json
+                        move_files = function() {
+                            var pgm = service + '.merge_user_hub.step_8_merge_user.move_files: ';
+                            var key, re1, re2, match, hub_filename, filename_splitted, my_filename, inner_path0,
+                                debug_seq0, file_str, json_raw ;
+                            if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return step_8_merge_user(cb9) ; // next user
+                            re1 = new RegExp('-' + hub_user_seq + '-chat\.json$');
+                            re2 = new RegExp('-' + hub_user_seq + '-image\.json$');
+                            for (key in hub_content.files_optional) {
+                                if (hub_content.files_optional[key].size == 2) continue ; // empty file
+                                if (!hub_content.files_optional[key].file_info.is_downloaded &&
+                                    !hub_content.files_optional[key].file_info.peer) continue ; // not downloaded and no peers
+                                if (hub_content.files_optional[key].file_info.is_downloaded == -1) continue ; // download failed
+                                if (!hub_content.files_optional[key].file_str) continue ; // fileGet failed
+                                if (key.match(re1)) match = 1 ;
+                                else if (key.match(re2)) match = 2 ;
+                                else continue ;
+                                hub_filename = key ;
+                                break ;
+                            }
+                            if (match) {
+                                filename_splitted = hub_filename.split('-') ;
+                                filename_splitted[filename_splitted.length-2] = my_user_seq ;
+                                my_filename = filename_splitted.join('-');
+                                console.log(pgm + 'match = ' + match + ', my_filename = ' + my_filename + ', hub_filename = ' + hub_filename);
+                                // match = 1, my_filename = 1496820690619-1496820256791-5-chat.json, hub_filename = 1496820690619-1496820256791-1-chat.json
 
+                                // move file. write and delete
+                                file_str = hub_content.files_optional[hub_filename].file_str ;
+                                json_raw = unescape(encodeURIComponent(file_str));
+                                inner_path0 = my_user_path + my_filename ;
+                                debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite') ;
+                                ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
+                                    var inner_path1, debug_seq1 ;
+                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                                    if (res != 'ok') {
+                                        // move failed
+                                        console.log(pgm + inner_path0 + 'fileWrite failed. res = ' + JSON.stringify(res));
+                                        delete hub_content.files_optional[hub_filename] ;
+                                        return move_files() ;
+                                    }
+                                    inner_path1 = hub_user_path + hub_filename ;
+                                    debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path1 + ' fileDelete') ;
+                                    ZeroFrame.cmd("fileDelete", inner_path1, function () {
+                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1) ;
+                                        // move ok
+                                        delete hub_content.files_optional[hub_filename] ;
+                                        my_publish = true ;
+                                        hub_publish = true ;
+                                        move_files() ;
+                                    }) ;
 
+                                }) ;
 
-                        // continue with next user
-                        step_8_merge_user(cb9) ;
+                            }
+                            else step_8_merge_user(cb9) ; // // continue with next user
+                        }; // move_files
+                        move_files() ;
+
                     }; // step_8_merge_user
 
                     // step n: finish doing tasks
@@ -751,7 +820,9 @@ angular.module('MoneyNetwork')
                                         step_6_get_like_files(function() {
                                             step_7_debug_output(function() {
                                                 step_8_merge_user(function() {
-                                                    step_n_done() ;
+                                                    step_7_debug_output(function() {
+                                                        step_n_done() ;
+                                                    })
                                                 })
                                             })
                                         })
