@@ -314,7 +314,9 @@ angular.module('MoneyNetwork')
                     var hub_content, my_content, hub_data, my_data, hub_status, my_status,  my_like, hub_like,
                         step_1_remove_file_doublets, step_2_get_file_info, step_3_download_files, step_4_get_data_files,
                         step_5_get_status_files, step_6_get_like_files, step_7_debug_output, step_8_merge_user,
-                        step_n_done, my_data_updated, my_status_updated, my_like_updated, my_publish, hub_publish ;
+                        step_9_move_other_files, step_10_cleanup_hub_user_files, step_11_publish_empty_hub,
+                        step_12_write_and_publish_user_data, step_n_done,
+                        my_data_updated, my_status_updated, my_like_updated, my_publish, hub_publish ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                     // console.log(pgm + 'content_str = ' + content_str) ;
                     if (!hub_content_str) {
@@ -322,6 +324,7 @@ angular.module('MoneyNetwork')
                         return cb(null) ;
                     }
                     hub_content = JSON.parse(hub_content_str) ;
+                    if (!hub_content.files_optional) hub_content.files_optional = [] ;
                     // console.log(pgm + 'files = ' + JSON.stringify(hub_content.files)) ;
                     // console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
 
@@ -335,7 +338,7 @@ angular.module('MoneyNetwork')
                     // step 1: remove optional files already in current user hub (identical filename and sha512 signature)
                     step_1_remove_file_doublets = function (cb2) {
                         var inner_path0, debug_seq0 ;
-                        if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return cb2() ;
+                        if (Object.keys(hub_content.files_optional).length == 0) return cb2() ;
                         // read content.json
                         inner_path0 = my_user_path + 'content.json' ;
                         debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
@@ -348,7 +351,8 @@ angular.module('MoneyNetwork')
                                 return cb(null) ;
                             }
                             my_content = JSON.parse(content_str) ;
-                            if (!my_content.files_optional || (Object.keys(my_content.files_optional).length == 0)) return cb2() ;
+                            if (!my_content.files_optional) my_content.files_optional = [] ;
+                            if (Object.keys(my_content.files_optional).length == 0) return cb2() ;
                             remove_files = [] ;
                             for (filename in hub_content.files_optional) {
                                 if (!my_content.files_optional[filename]) continue ;
@@ -372,7 +376,7 @@ angular.module('MoneyNetwork')
                     // 2) check bad_files list. do not try to download files on bad-files list
                     step_2_get_file_info = function (cb3) {
                         var key, filename ;
-                        if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return cb3() ;
+                        if (Object.keys(hub_content.files_optional).length == 0) return cb3() ;
                         // find next optional file to check
                         for (key in hub_content.files_optional) {
                             if (hub_content.files_optional[key].file_info) continue ;
@@ -393,7 +397,7 @@ angular.module('MoneyNetwork')
                     // step 3: download any missing optional files
                     step_3_download_files = function (cb4) {
                         var key, filename, debug_seq0 ;
-                        if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return cb4() ;
+                        if (Object.keys(hub_content.files_optional).length == 0) return cb4() ;
                         // find next optional file to download
                         for (key in hub_content.files_optional) {
                             if (hub_content.files_optional[key].size == 2) continue ; // deleted marked optional file
@@ -419,24 +423,24 @@ angular.module('MoneyNetwork')
 
                     step_4_get_data_files = function (cb5) {
                         get_data_json(function (data) {
-                            var inner_path0, debug_seq0 ;
+                            var inner_path0, debug_seq0, empty_data ;
                             my_data = data ;
+                            empty_data = data = {
+                                version: dbschema_version,
+                                users: [],
+                                search: [],
+                                msg: []
+                            };
                             if (!hub_content.files['data.json']) {
-                                hub_data = {} ;
+                                hub_data = empty_data ;
                                 return cb5() ;
                             }
                             inner_path0 = hub_user_path + 'data.json' ;
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (data_str) {
                                 var pgm = service + '.merge_user_hub.step_4_get_data_files fileGet callback 2: ';
-                                var empty_data, error ;
+                                var error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
-                                empty_data = data = {
-                                    version: dbschema_version,
-                                    users: [],
-                                    search: [],
-                                    msg: []
-                                };
                                 if (!data_str) hub_data = empty_data ;
                                 else {
                                     hub_data = JSON.parse(data_str) ;
@@ -509,129 +513,20 @@ angular.module('MoneyNetwork')
                         var pgm = service + '.merge_user_hub.step_7_debug_output: ';
                         console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
                         console.log(pgm + 'my_data = ' + JSON.stringify(my_data));
-                        //my_data = {
-                        //    "version": 9,
-                        //    "users": [{
-                        //        "user_seq": 1,
-                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0pMuMJyynH1BmhMJ6vvd\nQZplIBgiiOQSqwu2SpYKICm+P1gGNHnICQic/Nuqi9t93rxJLfWCsl0+lCtoJLen\nf78xz4XzEcGPBeBFn2TbQqPO9loylNlaOgiqDG5qcSc9n7yEF0xmpReDGATwzECi\nJrpZBImwhUMO48iS08b4IfQaMsbnUVY8hdUeJiQ831kMkNQLtxWaeRiyn8cTbKQ6\nLXCDG7GDaFN6t+x3cv/xBX06+ykuYQ0gNIBySiIz69RYzhvOkqOQggLWPF+NMW1J\nO6VRqvX7Sybwm51v3kGGKWeX4znvGY+GwVCpwiH+b2hbGZHIqFp9ogimGVE0WPgu\nnwIDAQAB\n-----END PUBLIC KEY-----",
-                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                        //        "encryption": "1"
-                        //    }, {
-                        //        "user_seq": 2,
-                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCkADnNMuzk+fhChpMnfmKmJttl\nZ6U6ZLI6aoiOO7SjbgpDXX1rDLCPvyHKtM3a0npAHZ8Czz8IMTRLopbq5h4Z9n3P\nMth1dnGr8zwkHpztVrbYgvUgtgUdRMD3MNegnsq0DYc7G6xTF+g84dOBy/9rmL4B\nWRNqgZ3Kzxu7X+KODwIDAQAB\n-----END PUBLIC KEY-----",
-                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                        //        "encryption": "2",
-                        //        "guest": true
-                        //    }, {
-                        //        "user_seq": 3,
-                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyk/emEpTuLPqAA4/I8Mu\nbVtm1bxO2el/G7+GrcQSgDKoUpOIsq4MH/gv9FfCuXBcL7aNdpRjbI4mCxmBs7Pq\nUmIQjb47rs/VtWN/uV4BZXRElfVluCMGgOnRq4tuRrJuOwBD0kiNNL0KjKXv1zX8\nDyhzeFVao77zk3N6eVrmi+eRm6SAuDBjISTHm4qH7TPTOS3OTB+LjV9TIp4j+TtZ\nZ1rqPDzarensQLdezgtP1apBY7pQqNfeUo3SuN9tLRy1xX7HPrTIbq1Gk3a+lo/s\nInrTMF0OZeIgnMxyNoKC4Yjh6v4L/YwE3XkLxDo8EqwE8HiEXISx3bNE74h+Z9Om\n5QIDAQAB\n-----END PUBLIC KEY-----",
-                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                        //        "encryption": "1"
-                        //    }, {
-                        //        "user_seq": 4,
-                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQB/0HQnfqOrsecfsHqNSYQa\nKOXtw7E/Z2AFpMS7XIOn34p5nmkuL6aI3VoVQE+McYtuYVKbzcBjd3HjQ1ilFWAr\nk9kvSjY9+D4SsTgb5BWw/lhAM7ZgRoGgKmltw/p1IqQTpIntiwycG2c1ASoB2Igz\n3CrvoGG3Drkff840bwyz/ExcV817nODGh/v3Ym7OJBytBh0uFz2UaldIRtXH94Ml\nSYEuTkk2+a9unl5TJLzOC9lfpBkB+BWsFKIbdsXzBa5Ehb3af3XPa2nMQGS2p/kU\n+Wwb5WIh+JObbDFo6SYHuaupVj6C1Pj3QZZ7M34Tm7d2hcbZR5Vxj0njmq6nRcFD\nAgMBAAE=\n-----END PUBLIC KEY-----",
-                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                        //        "encryption": "1"
-                        //    }, {
-                        //        "user_seq": 5,
-                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBpQDut223gZcYfGTHxqoal\nDFX4PvQY1riWEPVqiO2eXS3E47XJjRUtMSUqzpb011ZxzauTxSXlTL1uunIykTvN\nmsXaNSq/tPIue0zdVSCN4PrJo5FY5P6SYGviZBLzdHZJYqlNk3QPngrBGJl/VBBp\nToPXmN7hog/9rXEGhPyN7GX2AKy3pPFCkXFC9GDlCoEjt0Pq+y5sF/t4iPXyn878\nirWfYbRPisLjnJGqSe23/c6MhP8CTvnbFvpiBcLES7HQk6hqqBBnLe9NLTABbqXK\n6i1LW6+aZRqOX72mMwU+1LTcbQRIW1nG6rtPhaUqiIzeH0g8B743bjmcJagm1foH\nAgMBAAE=\n-----END PUBLIC KEY-----",
-                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                        //        "encryption": "2"
-                        //    }],
-                        //    "search": [{"user_seq": 1, "tag": "Name", "value": "Money Network dev"}, {
-                        //        "user_seq": 1,
-                        //        "tag": "%",
-                        //        "value": "%"
-                        //    }, ... , {"user_seq": 5, "tag": "Name", "value": "Money developer"}, {
-                        //        "user_seq": 5,
-                        //        "tag": "%",
-                        //        "value": "%"
-                        //    }],
-                        //    "msg": [{
-                        //        "user_seq": 1,
-                        //        "receiver_sha256": "e2aa3e300aa4438bb4b0eebd4ed04222e405e6e13926f88f15da230b0c45e9f6",
-                        //        "key": "jQpjz8Rb2K593r79FDzNyALKACA8T5/acloO861aNxKigH4o8bjtUfWEnpXAIqV6CVuKGQAg5qOw+mB+45JNAFI34/ec80mTY9Z6PflwftjNb3aF0oYSlLFzmQvkon0O2mtUHYRaTnx5KC6Q6UmkNl607PDxSguEmM5TtUdMITZeTYNUazfdT3rzanUv048kvsZYR5c13Pj2S3ie8wMRTQVvbgFg2Q==",
-                        //        "message": "uVLNKcRC8g0OvbBaoxh9mg==,McH3voV30AQB2UZqx/GpGFJ6Rkqxpft0voSEGh3FwEvukleDAe9b8kF3iiadd4TDr9K9U2emkLNrMplj67/0SVE2hafJxLfNcTnBpdniHOUm/HEwOCBF+dE9HWsvlxIyJkvnWefALdn1mJ6h6dkmWNKmhgAZA8c5lJE+yJv4CF+s9YVd7cWz8i2HIM398SUxkT0BuYhGBd5bFH5kgLp0hBcH6qTb3g4X4a9r3ZCel0BCbp3n6yd8gDtMBnxCb9NlRSGRXQp2WhW2Sml8G8o+sPlO+zUZYoA2H/nabYfzCzs=",
-                        //        "message_sha256": "2c55aa993e1225f3e3cf66d1350af2bbf4f0bf1e46774f1d3617d4e6b79135d1",
-                        //        "timestamp": 1490160111831
-                        //    }, ... , {
-                        //        "user_seq": 1,
-                        //        "receiver_sha256": "c4f4564a23f801e740cdb99ff2a32cce4d59bece1864171f147a37788adef3e3",
-                        //        "key": "MZnLXbTinHL3NYOwgp4iBwLKACDKSSvBvOD1BQeaIUc4aP5/1UG539Yg5IZSPqOxpWZhZQAgpDPPTSzyECkQv3UUlyf6LENjLiSSSAJlJBy97Xoa2f3ZBzy5lYNnR5IHTwpuRWoTojQjOhIi72ii7ai/0gKtqQk0qLdrhC/eeyDf2RTI1WQajOHeO1mpgyyJhSuA/hb/Zf19f6ezjs8Xctfzi7beuw==",
-                        //        "message": "oqctvWvbaTxNZPzdESgAoQ==,5QlM26850m0IvZZ9VRBEhzlydmTOGEkr3b6Lpx4P/kY0F1/SMBtaKhNoYwxuAHyeLRJakcvMs7fPY6rzYsr/okcwy54unv9Di4vlqnuzWukwcWDrVYMVq8iACc7NfKdH5V5l8j/nA4ijRjDxq9vOfeC4UByG5lxzBYB6RDsvrzg3CXPxlpZpnQgqjIVJXRL0gg61XmjqSOcTPfAL9lzoke2inwAj8izuYk0MbjGF9jIt2k7JqzTnw23fWAXoB5XVvz/GhD4jhW+JLORwa3AaLFzdlSDMIUupy6vfA4SubdbKzg8yQDCjW/MCgUtO9Wj7eKAaREbofvlXg0xfwxAo/9i8R7dba8yJlZm6TObkXVQ=",
-                        //        "message_sha256": "c3dcb14a56d1d588a778c1a14ddfac82f2182d89b568e07654474b29995667b3",
-                        //        "timestamp": 1490769932459
-                        //    }],
-                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
-                        //};
                         console.log(pgm + 'hub_data = ' + JSON.stringify(hub_data));
-                        //hub_data = {
-                        //    "version": 9,
-                        //    "users": [{
-                        //        "user_seq": 1,
-                        //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBpQDut223gZcYfGTHxqoal\nDFX4PvQY1riWEPVqiO2eXS3E47XJjRUtMSUqzpb011ZxzauTxSXlTL1uunIykTvN\nmsXaNSq/tPIue0zdVSCN4PrJo5FY5P6SYGviZBLzdHZJYqlNk3QPngrBGJl/VBBp\nToPXmN7hog/9rXEGhPyN7GX2AKy3pPFCkXFC9GDlCoEjt0Pq+y5sF/t4iPXyn878\nirWfYbRPisLjnJGqSe23/c6MhP8CTvnbFvpiBcLES7HQk6hqqBBnLe9NLTABbqXK\n6i1LW6+aZRqOX72mMwU+1LTcbQRIW1nG6rtPhaUqiIzeH0g8B743bjmcJagm1foH\nAgMBAAE=\n-----END PUBLIC KEY-----",
-                        //        "pubkey2": "A4RQ77ia8qK1b3FW/ERL2HdW33jwCyKqxRwKQLzMw/yu",
-                        //        "encryption": "2",
-                        //        "avatar": "10.png"
-                        //    }],
-                        //    "search": [{"user_seq": 1, "tag": "Name", "value": "Money developer"}, {
-                        //        "user_seq": 1,
-                        //        "tag": "%",
-                        //        "value": "%"
-                        //    }],
-                        //    "msg": [],
-                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
-                        //};
                         console.log(pgm + 'my_status = ' + JSON.stringify(my_status));
-                        //my_status = {
-                        //    "version": 9,
-                        //    "status": [{"user_seq": 1, "timestamp": 1492969523124}, {
-                        //        "user_seq": 2,
-                        //        "timestamp": 1492160235781
-                        //    }, {"user_seq": 3, "timestamp": 1495613227536}, {
-                        //        "user_seq": 4,
-                        //        "timestamp": 1495115371635
-                        //    }, {"user_seq": 5, "timestamp": 1497369908219}],
-                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
-                        //};
                         console.log(pgm + 'hub_status = ' + JSON.stringify(hub_status));
-                        //hub_status = {
-                        //    "version": 9,
-                        //    "status": [{"user_seq": 1, "timestamp": 1497250648862}],
-                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
-                        //};
                         console.log(pgm + 'my_like = ' + JSON.stringify(my_like));
-                        //my_like = {
-                        //    "version": 8,
-                        //    "like": [{
-                        //        "user_seq": 1,
-                        //        "timestamp": 1486109564902,
-                        //        "auth": "18Db",
-                        //        "emoji": "❤"
-                        //    }, {
-                        //        "user_seq": 1,
-                        //        "timestamp": 1485968457030,
-                        //        "auth": "18Db",
-                        //        "emoji": "😮",
-                        //        "count": 1
-                        //    }, ... , {
-                        //        "user_seq": 4,
-                        //        "timestamp": 1492418540610,
-                        //        "auth": "18Db",
-                        //        "emoji": "😃"
-                        //    }, {"user_seq": 3, "timestamp": 1494586613401, "auth": "18Db", "emoji": "😃"}],
-                        //    "hub": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk"
-                        //};
                         console.log(pgm + 'hub_like = ' + JSON.stringify(hub_like));
-
                         cb8() ;
-
                     }; // step_7_debug_output
 
                     // todo: what about max user directory size. below limit before merge. over limit after merge
                     step_8_merge_user = function (cb9) {
                         var pgm = service + '.merge_user_hub.step_8_merge_user: ';
-                        var hub_user, my_user, i, my_max_user_seq, my_user_seq, hub_user_seq, found, j, json, move_files ;
+                        var hub_user, my_user, i, my_max_user_seq, my_user_seq, hub_user_seq, found, j, json,
+                            move_user_files ;
+
                         if (!hub_data.users.length) return cb9() ; // done with merging users
                         hub_user = hub_data.users.shift() ;
                         console.log(pgm + 'hub_user = ' + JSON.stringify(hub_user)) ;
@@ -745,11 +640,11 @@ angular.module('MoneyNetwork')
                         // check and move optional files ending with::
                         // 1) -<hub_user_seq>-chat.json
                         // 2) -<hub_user_seq>-image.json
-                        move_files = function() {
-                            var pgm = service + '.merge_user_hub.step_8_merge_user.move_files: ';
+                        move_user_files = function() {
+                            var pgm = service + '.merge_user_hub.step_8_merge_user.move_user_files: ';
                             var key, re1, re2, match, hub_filename, filename_splitted, my_filename, inner_path0,
                                 debug_seq0, file_str, json_raw ;
-                            if (!hub_content.files_optional || (Object.keys(hub_content.files_optional).length == 0)) return step_8_merge_user(cb9) ; // next user
+                            if (Object.keys(hub_content.files_optional).length == 0) return step_8_merge_user(cb9) ; // next user
                             re1 = new RegExp('-' + hub_user_seq + '-chat\.json$');
                             re2 = new RegExp('-' + hub_user_seq + '-image\.json$');
                             for (key in hub_content.files_optional) {
@@ -764,46 +659,246 @@ angular.module('MoneyNetwork')
                                 hub_filename = key ;
                                 break ;
                             }
-                            if (match) {
-                                filename_splitted = hub_filename.split('-') ;
-                                filename_splitted[filename_splitted.length-2] = my_user_seq ;
-                                my_filename = filename_splitted.join('-');
-                                console.log(pgm + 'match = ' + match + ', my_filename = ' + my_filename + ', hub_filename = ' + hub_filename);
-                                // match = 1, my_filename = 1496820690619-1496820256791-5-chat.json, hub_filename = 1496820690619-1496820256791-1-chat.json
+                            if (!match) return step_8_merge_user(cb9); // continue with next user
 
-                                // move file. write and delete
-                                file_str = hub_content.files_optional[hub_filename].file_str ;
-                                json_raw = unescape(encodeURIComponent(file_str));
-                                inner_path0 = my_user_path + my_filename ;
-                                debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite') ;
-                                ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
-                                    var inner_path1, debug_seq1 ;
-                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
-                                    if (res != 'ok') {
-                                        // move failed
-                                        console.log(pgm + inner_path0 + 'fileWrite failed. res = ' + JSON.stringify(res));
-                                        delete hub_content.files_optional[hub_filename] ;
-                                        return move_files() ;
-                                    }
-                                    inner_path1 = hub_user_path + hub_filename ;
-                                    debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path1 + ' fileDelete') ;
-                                    ZeroFrame.cmd("fileDelete", inner_path1, function () {
-                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1) ;
-                                        // move ok
-                                        delete hub_content.files_optional[hub_filename] ;
-                                        my_publish = true ;
-                                        hub_publish = true ;
-                                        move_files() ;
-                                    }) ;
+                            filename_splitted = hub_filename.split('-');
+                            filename_splitted[filename_splitted.length - 2] = my_user_seq;
+                            my_filename = filename_splitted.join('-');
+                            console.log(pgm + 'match = ' + match + ', my_filename = ' + my_filename + ', hub_filename = ' + hub_filename);
+                            // match = 1, my_filename = 1496820690619-1496820256791-5-chat.json, hub_filename = 1496820690619-1496820256791-1-chat.json
 
-                                }) ;
-
+                            if (my_content.files_optional[my_filename]) {
+                                // file already in current user hub.
+                                delete hub_content.files_optional[hub_filename];
+                                return move_user_files(); // next user file
                             }
-                            else step_8_merge_user(cb9) ; // // continue with next user
+
+                            // move file.
+                            file_str = hub_content.files_optional[hub_filename].file_str;
+                            json_raw = unescape(encodeURIComponent(file_str));
+                            // write file to current user hub
+                            inner_path0 = my_user_path + my_filename;
+                            debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
+                            ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
+                                var inner_path1, debug_seq1;
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                                if (res != 'ok') {
+                                    // move failed
+                                    console.log(pgm + inner_path0 + 'fileWrite failed. res = ' + JSON.stringify(res));
+                                    delete hub_content.files_optional[hub_filename];
+                                    return move_user_files(); // next user file
+                                }
+                                // delete file from old user hub
+                                inner_path1 = hub_user_path + hub_filename;
+                                debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path1 + ' fileDelete');
+                                ZeroFrame.cmd("fileDelete", inner_path1, function () {
+                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
+                                    // move ok
+                                    delete hub_content.files_optional[hub_filename];0
+                                    my_publish = true;
+                                    hub_publish = true;
+                                    move_user_files(); // next user file
+                                }); // fileDelete callback
+
+                            }); // fileWrite callback
+
                         }; // move_files
-                        move_files() ;
+                        move_user_files() ;
 
                     }; // step_8_merge_user
+
+                    // step_9_move_other_files. Etc optional files not ending with -<user_seq>-chat.json or -<user_seq>-image.json
+                    step_9_move_other_files = function (cb10) {
+                        var pgm = service + '.merge_user_hub.step_9_move_other_files: ';
+                        var key, filename, file_str, json_raw, inner_path0, debug_seq0 ;
+                        for (key in hub_content.files_optional) {
+                            if (hub_content.files_optional[key].size == 2) continue ; // empty file
+                            if (!hub_content.files_optional[key].file_info.is_downloaded &&
+                                !hub_content.files_optional[key].file_info.peer) continue ; // not downloaded and no peers
+                            if (hub_content.files_optional[key].file_info.is_downloaded == -1) continue ; // download failed
+                            if (!hub_content.files_optional[key].file_str) continue ; // fileGet failed
+                            filename = key ;
+                            break ;
+                        }
+                        if (!filename) return cb10() ; // done with other files
+
+                        if (my_content.files_optional[filename]) {
+                            // file already in current user hub.
+                            delete hub_content.files_optional[hub_filename];
+                            return move_other_files(cb10); // next file
+                        }
+
+                        // move file.
+                        console.log(pgm + 'move file ' + filename) ;
+                        file_str = hub_content.files_optional[filename].file_str;
+                        json_raw = unescape(encodeURIComponent(file_str));
+                        // write file to current user hub
+                        inner_path0 = my_user_path + filename;
+                        debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
+                        ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
+                            var inner_path1, debug_seq1;
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                            if (res != 'ok') {
+                                // move failed
+                                console.log(pgm + inner_path0 + 'fileWrite failed. res = ' + JSON.stringify(res));
+                                delete hub_content.files_optional[filename];
+                                return step_9_move_other_files(cb10); // next file
+                            }
+                            // delete file from old user hub
+                            inner_path1 = hub_user_path + filename;
+                            debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path1 + ' fileDelete');
+                            ZeroFrame.cmd("fileDelete", inner_path1, function () {
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
+                                // move ok
+                                delete hub_content.files_optional[filename];
+                                my_publish = true;
+                                hub_publish = true;
+                                step_9_move_other_files(cb10); // next file
+                            }); // fileDelete callback
+
+                        }); // fileWrite callback
+
+                    }; // step_9_move_other_files
+
+                    step_10_cleanup_hub_user_files = function(cb11) {
+                        var pgm = service + '.merge_user_hub.step_10_cleanup_hub_user_files: ';
+                        var inner_path, debug_seq, filename ;
+                        if (!hub_publish) return cb11() ; // no hub user files were updated
+                        if (!hub_content.files) return cb11() ; // no hub user files
+                        if (Object.keys(hub_content.files).length == 0) return cb11() ; // no more hub user files - next step
+                        filename = Object.keys(hub_content.files)[0] ;
+                        inner_path = hub_user_path + filename ;
+                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete');
+                        ZeroFrame.cmd("fileDelete", inner_path, function () {
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                            delete hub_content.files[filename] ;
+                            // next file
+                            step_10_cleanup_hub_user_files(cb11) ;
+                        }) ; // fileDelete callback
+                    }; // step_10_cleanup_hub_user_files
+
+                    step_11_publish_empty_hub = function (cb12) {
+                        var pgm = service + '.merge_user_hub.step_11_publish_empty_hub: ';
+                        var json_raw, inner_path, debug_seq ;
+                        if (!hub_publish) return cb12() ;
+
+                        // write hub content without any optional files to prevent missing optional files error
+                        delete hub_content.files_optional ;
+                        json_raw = unescape(encodeURIComponent(JSON.stringify(hub_content, null, "\t")));
+                        inner_path = hub_user_path + 'content.json' ;
+                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
+                        ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
+                            var pgm = service + '.merge_user_hub.step_11_publish_empty_hub fileWrite callback 1: ';
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                            if (res != 'ok') {
+                                console.log(pgm + inner_path + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
+                                return ;
+                            }
+                            // sign and publish
+                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + hub + ' publish') ;
+                            ZeroFrame.cmd("sitePublish", {inner_path: inner_path}, function (res) {
+                                var pgm = service + '.merge_user_hub.step_11_publish_empty_hub sitePublish callback 2: ';
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                                if (res != 'ok') {
+                                    console.log(pgm + inner_path + ' sitePublish failed. error = ' + JSON.stringify(res)) ;
+                                    return ;
+                                }
+                                cb12() ;
+                            }) ; // sitePublish
+                        }) ; // fileWrite callback 1
+                    }; // step_11_publish_empty_hub
+
+                    step_12_write_and_publish_user_data = function (cb13) {
+                        var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data: ';
+                        var write_data, write_status, write_like, publish ;
+                        
+                        write_data = function (cb) {
+                            var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.write_data: ';
+                            var json_raw, inner_path, debug_seq ;
+                            if (!my_data_updated) return cb() ;
+                            my_publish = true ;
+                            json_raw = unescape(encodeURIComponent(JSON.stringify(my_data, null, "\t")));
+                            inner_path = hub_user_path + 'data.json' ;
+                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
+                            ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
+                                var pgm = service + '.merge_user_hub.step_11_publish_empty_hub fileWrite callback 1: ';
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                                if (res != 'ok') {
+                                    console.log(pgm + inner_path + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
+                                    return ;
+                                }
+                                cb() ;
+                            }) ;
+                        } ; // write_data
+
+                        write_status = function (cb) {
+                            var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.write_status: ';
+                            var json_raw, inner_path, debug_seq ;
+                            if (!my_status_updated) return cb() ;
+                            my_publish = true ;
+                            json_raw = unescape(encodeURIComponent(JSON.stringify(my_status, null, "\t")));
+                            inner_path = hub_user_path + 'status.json' ;
+                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
+                            ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
+                                var pgm = service + '.merge_user_hub.step_11_publish_empty_hub fileWrite callback 1: ';
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                                if (res != 'ok') {
+                                    console.log(pgm + inner_path + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
+                                    return ;
+                                }
+                                cb() ;
+                            }) ;
+                        } ; // write_status
+
+                        write_like = function (cb) {
+                            var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.write_like: ';
+                            var json_raw, inner_path, debug_seq ;
+                            if (!my_like_updated) return cb() ;
+                            my_publish = true ;
+                            json_raw = unescape(encodeURIComponent(JSON.stringify(my_like, null, "\t")));
+                            inner_path = hub_user_path + 'like.json' ;
+                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
+                            ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
+                                var pgm = service + '.merge_user_hub.step_11_publish_empty_hub fileWrite callback 1: ';
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                                if (res != 'ok') {
+                                    console.log(pgm + inner_path + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
+                                    return ;
+                                }
+                                cb() ;
+                            }) ;
+                        } ; // write_like
+
+                        publish = function (cb) {
+                            var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.publish: ';
+                            var json_raw, inner_path0, debug_seq0;
+                            if (!my_publish) return cb();
+
+                            inner_path0 = my_user_path + 'content.json';
+                            debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + my_hub + ' publish');
+                            ZeroFrame.cmd("sitePublish", {inner_path: inner_path0}, function (res) {
+                                var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.publish sitePublish callback: ';
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                                if (res != 'ok') {
+                                    console.log(pgm + inner_path0 + ' sitePublish failed. error = ' + JSON.stringify(res));
+                                    return;
+                                }
+                                cb();
+                            }); // sitePublish
+
+                        }; // publish
+
+                        write_data(function () {
+                            write_status(function () {
+                                write_like(function () {
+                                    publish(function () {
+                                        cb13();
+                                    }) ;
+                                });
+                            })
+                        });
+                        
+                    }; // step_12_write_and_publish_user_data
 
                     // step n: finish doing tasks
                     step_n_done = function () {
@@ -821,7 +916,15 @@ angular.module('MoneyNetwork')
                                             step_7_debug_output(function() {
                                                 step_8_merge_user(function() {
                                                     step_7_debug_output(function() {
-                                                        step_n_done() ;
+                                                        step_9_move_other_files(function(){
+                                                            step_10_cleanup_hub_user_files(function() {
+                                                                step_11_publish_empty_hub(function() {
+                                                                    step_12_write_and_publish_user_data(function() {
+                                                                        step_n_done() ;
+                                                                    })
+                                                                })
+                                                            })
+                                                        })
                                                     })
                                                 })
                                             })
