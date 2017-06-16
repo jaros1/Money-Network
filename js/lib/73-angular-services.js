@@ -54,250 +54,19 @@ angular.module('MoneyNetwork')
             moneyNetworkHubService.write_like_json(cb) ;
         }
 
-        // optional files format:
-        // - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
-        // - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
-        // - new encrypted image: <unix timestamp>-<user seq>-image.json
-        var CONTENT_OPTIONAL = '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json|[0-9]{13}-[0-9]+-image.json|[0-9a-f]{10}.[0-9]{13})' ;
-
-        // user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
-        // params:
-        // - cb: optional callback function. post publish processing. used in i_am_online. check pubkey2 takes long time and best done after publish
-        var zeronet_site_publish_interval = 0 ;
+        //// optional files format:
+        //// - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
+        //// - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
+        //// - new encrypted image: <unix timestamp>-<user seq>-image.json
+        var CONTENT_OPTIONAL = moneyNetworkHubService.get_content_optional() ; ;
+        //
+        //// user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
+        //// params:
+        //// - cb: optional callback function. post publish processing. used in i_am_online. check pubkey2 takes long time and best done after publish
+        //var zeronet_site_publish_interval = 0 ;
         function zeronet_site_publish(cb) {
-            var pgm = service + '.zeronet_site_publish: ' ;
-
-            get_my_user_hub(function (hub) {
-                var pgm = service + '.zeronet_site_publish get_my_user_path callback 1: ';
-                if (detected_client_log_out(pgm)) return ;
-
-                var user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
-                if (detected_client_log_out(pgm)) return ;
-
-                // get user_seq if ready
-                get_user_seq(function(user_seq) {
-                    var pgm = service + '.zeronet_site_publish get_user_seq callback 2: ';
-                    if (detected_client_log_out(pgm)) return ;
-                    // update timestamp in status
-                    get_status_json(function (status) {
-                        var pgm = service + '.zeronet_site_publish get_status_json callback 3: ';
-                        // console.log(pgm + 'data = ' + JSON.stringify(data));
-                        var i, index, timestamp, json_raw, error ;
-                        if (detected_client_log_out(pgm)) return ;
-                        if (user_seq) {
-                            // remove deleted users (removed in z_update_1_data_json)
-                            if (z_cache.user_seqs && (z_cache.user_seqs.indexOf(user_seq) != -1)) {
-                                for (i=status.status.length-1 ; i >= 0 ; i--) {
-                                    if (z_cache.user_seqs.indexOf(status.status[i].user_seq) == -1) status.status.splice(i,1) ;
-                                }
-                            }
-                            index = -1 ;
-                            timestamp = new Date().getTime();
-                            for (i=0 ; i<status.status.length ; i++) {
-                                if (status.status[i].user_seq == user_seq) index = i ;
-                            }
-                            if (index == -1) status.status.push({ user_seq: user_seq, timestamp: timestamp}); // add new user
-                            else if (!user_setup.not_online) status.status[index].timestamp = timestamp; // show as online
-                            else console.log(pgm + 'Show as offline - status.json was not updated') ; // not online
-                            // console.log(pgm + 'updated timestamp. status = ' + JSON.stringify(status)) ;
-                        }
-                        // validate status.json before write
-                        error = MoneyNetworkHelper.validate_json (pgm, status, 'status.json', 'Invalid json file') ;
-                        if (error) {
-                            error = 'Cannot write invalid status.json file: ' + error;
-                            console.log(pgm + error);
-                            console.log(pgm + 'status = ' + JSON.stringify(status));
-                            ZeroFrame.cmd("wrapperNotification", ["error", error]);
-                            return ;
-                        }
-
-                        // write status.json
-                        write_status_json(function (res) {
-                            var pgm = service + '.zeronet_site_publish write_status_json callback 4: ';
-                            var error, debug_seq ;
-                            if (detected_client_log_out(pgm)) return ;
-                            if (res != "ok") {
-                                error = "Update was not published. fileWrite failed for status.json: " + res ;
-                                console.log(pgm + error);
-                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
-                                return ;
-                            }
-                            // sitePublish
-                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + 'publish') ;
-                            ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
-                                var pgm = service + '.zeronet_site_publish sitePublish callback 5: ';
-                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                console.log(pgm + 'res = ' + JSON.stringify(res) + ' (' + debug_seq + ')');
-                                if (detected_client_log_out(pgm)) return ;
-                                if (res != "ok") {
-                                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish: " + res.error, 5000]);
-                                    // error - repeat sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
-                                    if (!zeronet_site_publish_interval) zeronet_site_publish_interval = 30 ;
-                                    else zeronet_site_publish_interval = zeronet_site_publish_interval * 2 ;
-                                    console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
-                                    var retry_zeronet_site_publish = function () {
-                                        zeronet_site_publish();
-                                    };
-                                    if (cb) cb() ;
-                                    $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval*1000);
-                                    // debug_info() ;
-                                    return;
-                                }
-
-                                // sitePublish OK
-                                zeronet_site_publish_interval = 0 ;
-                                z_cache.publish = false ;
-
-                                // debug: is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
-                                if (user_setup.debug && user_setup.debug.check_sha256_addresses) check_sha256_addresses('sitePublish', false, false) ;
-
-                                // todo: debug problem with lost Merger:MoneyNetwork permission.
-                                check_merger_permission(pgm, function () {
-
-                                    // check content.json and add optional file support if missing
-                                    // also check for
-                                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + '/content.json fileGet') ;
-                                    ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
-                                        var pgm = service + '.zeronet_site_publish fileGet callback 6: ';
-                                        var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
-                                            logical_deleted_files, now, max_logical_deleted_files, some_time_ago, debug_seq2 ;
-                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                        if (detected_client_log_out(pgm)) return ;
-                                        content_updated = false ;
-
-                                        // optional files support:
-                                        // 1) <to timestamp>-<from timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for first and last chat msg in json file
-                                        // 2) <timestamp>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
-                                        // 3) <timestamp>-<userseq>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
-                                        content = JSON.parse(content) ;
-                                        if (content.optional == CONTENT_OPTIONAL) {
-                                            // optional file support also in place. save to my_files_optional. used in public chat
-                                            save_my_files_optional(content.files_optional || {}) ;
-                                        }
-                                        else {
-                                            content.optional = CONTENT_OPTIONAL ;
-                                            content_updated = true ;
-                                        }
-
-                                        // check logical deleted optional *-chat.json files
-                                        // rules.
-                                        // - *chat.json files with size 2 = empty json {}
-                                        // - should only delete *chat.json files with info_info.peer = 0
-                                        // - should only delete "old" *chat.json files
-                                        // - max number of logical deleted *chat.json files.
-                                        // check z_cache.user_seqs. deleted users. optional files from deleted users must be removed.
-                                        if (content.files_optional && z_cache.user_seqs) {
-                                            // console.log(pgm + 'z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs)) ;
-                                            // z_cache.user_seqs = [2]
-                                            for (filename in content.files_optional) {
-                                                if (content.files_optional[filename].size <= 2) continue ;
-                                                // console.log(pgm + 'filename = ' + filename + ', size = ' + content.files_optional[filename].size) ;
-                                                if (filename.match(/-chat/)) {
-                                                    // public unencrypted chat. 1483633906108-1483633906108-1-chat.json
-                                                    file_user_seq = parseInt(filename.split('-')[2]) ;
-                                                }
-                                                else if (filename.match(/[0-9]{13}-[0-9]+-image/)) {
-                                                    // encrypted image. new format. 1483877022900-1-image.json
-                                                    file_user_seq = parseInt(filename.split('-')[1]) ;
-                                                }
-                                                else {
-                                                    // encrypted image. old format. 1483877022900-image.json
-                                                    // todo: cleanup in z_update_1_data_json?
-                                                    continue ;
-                                                }
-                                                if (z_cache.user_seqs.indexOf(file_user_seq) != -1) continue ; // ok user seq
-                                                // logical delete - overwrite with empty json
-                                                write_empty_chat_file(user_path + '/' + filename);
-                                            }
-                                        }
-
-                                        // physical delete old logical deleted optional files (empty json)
-                                        // - all optional files older when one week
-                                        // - keep max <n> logical deleted optional files
-                                        if (content.files_optional) {
-                                            now = new Date().getTime() ;
-                                            max_logical_deleted_files = 10 ;
-                                            some_time_ago = now - 1000*60*60*24*7 ; // one week ago
-                                            logical_deleted_files = [] ;
-                                            for (filename in content.files_optional) {
-                                                if (content.files_optional[filename].size > 2) continue ;
-                                                if (!filename.match(/^[0-9]{13}-/)) continue ;
-                                                timestamp = parseInt(filename.substr(0,13)) ;
-                                                if (timestamp < some_time_ago) {
-                                                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + user_path + '/' + filename + ' fileDelete') ;
-                                                    ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {
-                                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                                    }) ;
-                                                    content_updated = true ;
-                                                    continue ;
-                                                }
-                                                logical_deleted_files.push(filename) ;
-                                            }
-                                            logical_deleted_files.sort() ;
-                                            while (logical_deleted_files.length > max_logical_deleted_files) {
-                                                filename = logical_deleted_files.shift() ;
-                                                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + user_path + '/' + filename + ' fileDelete') ;
-                                                ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {
-                                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                                }) ;
-                                                content_updated = true ;
-                                            }
-                                        }
-
-                                        // update size in cache_status for my optional files
-                                        if (content.files_optional) for (filename in content.files_optional) {
-                                            if (filename.match(/image/)) continue;
-                                            if (content.files_optional[filename].size <= 2) continue;
-                                            cache_filename = user_path + '/' + filename ;
-                                            cache_status = files_optional_cache[cache_filename] ;
-                                            if (!cache_status) continue ;
-                                            if (cache_status.size == content.files_optional[filename].size) continue ;
-                                            debug('public_chat', pgm + 'issue #84: updating cache_status for ' + cache_filename +
-                                                '. old size = ' + cache_status.size + ', new size = ' + content.files_optional[filename].size);
-                                            cache_status.size = content.files_optional[filename].size ;
-                                        }
-
-                                        if (!content_updated) {
-                                            if (cb) cb() ;
-                                            return ;
-                                        }
-
-                                        // update content.json. sign and publish in next publish call
-                                        json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
-                                        debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/content.json fileWrite') ;
-                                        ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
-                                            var pgm = service + '.zeronet_site_publish fileWrite callback 7: ';
-                                            var error ;
-                                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
-                                            if (detected_client_log_out(pgm)) return ;
-                                            if (res != "ok") {
-                                                error = "Could not add optional file support to content.json: " + res ;
-                                                console.log(pgm + error);
-                                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
-                                                return ;
-                                            }
-                                            // sign and publish in next zeronet_site_publish call
-                                            if (cb) cb() ;
-
-                                        }) ; // fileWrite callback 7
-
-                                    }) ; // fileGet callback 6
-
-                                }) ; // check_merger_permission
-
-
-                            }); // sitePublish callback 5
-
-                        }); // write_status_json callback 4
-
-                    }); // get_status_json callback 3
-
-                }) ; // get_user_seq callback 2
-
-            }); // get_my_user_path callback 1
-
-        } // zeronet_site_publish
-
+            moneyNetworkHubService.zeronet_site_publish(cb);
+        }
 
         var user_contents_max_size = null ; // max size of user directory. from data/users/content
         function load_user_contents_max_size (lock_pgm) {
@@ -1444,7 +1213,7 @@ angular.module('MoneyNetwork')
                         }
                         if (my_user_seq) {
                             data.users[my_user_i].pubkey2 = pubkey2 ;
-                            data.users[my_user_i].encryption = user_setup.encryption ;
+                            data.users[my_user_i].encryption = z_cache.user_setup.encryption ;
                             if (short_avatar) data.users[my_user_i].avatar = short_avatar ;
                         }
                         else {
@@ -1454,7 +1223,7 @@ angular.module('MoneyNetwork')
                                 user_seq: my_user_seq,
                                 pubkey: pubkey,
                                 pubkey2: pubkey2,
-                                encryption: user_setup.encryption
+                                encryption: z_cache.user_setup.encryption
                             };
                             if (short_avatar) new_user_row.avatar = short_avatar ;
                             guest_id = MoneyNetworkHelper.getItem('guestid');
@@ -1667,7 +1436,7 @@ angular.module('MoneyNetwork')
                                 if (message_with_envelope.z_filename) {
                                     // public chat
                                     if (message_with_envelope.folder == 'inbox') message_sender = contact ;
-                                    if (!user_setup.private_reactions) {
+                                    if (!z_cache.user_setup.private_reactions) {
                                         // a: public reaction to public chat. no message and add non anonymous info to my like.json fil
                                         // check for any old private reaction and send a private cancel reaction message if any
                                         reactions_index = message_with_envelope.sent_at ;
@@ -1739,7 +1508,7 @@ angular.module('MoneyNetwork')
                                         message_sender = get_contact_by_unique_id(unique_id) ;
                                     }
                                     // initial group message setup. see more details in update reaction info section (a bit complicated)
-                                    if (!user_setup.private_reactions) {
+                                    if (!z_cache.user_setup.private_reactions) {
                                         // group chat a: group reaction to a group chat message.
                                         update_reaction_info = true ;
                                         send_message_reaction_grp2 = 2 ; // reaction grp 2 - a reaction in a group chat to all members in group chat
@@ -1761,7 +1530,7 @@ angular.module('MoneyNetwork')
                                         message_receiver2 = message_sender ;
                                     }
                                     debug('reaction', pgm + 'folder = ' + message_with_envelope.folder +
-                                        ', private_reactions = ' + user_setup.private_reactions +
+                                        ', private_reactions = ' + z_cache.user_setup.private_reactions +
                                         ', send_message_reaction_grp2 = ' + send_message_reaction_grp2) ;
                                     // update reaction info.
                                     if (!message_with_envelope.reactions) message_with_envelope.reactions = [] ;
@@ -1855,7 +1624,7 @@ angular.module('MoneyNetwork')
                                                 old_reaction = old_reaction[0] ;
                                                 old_private_group_reaction = true ;
                                             }
-                                            new_private_group_reaction = user_setup.private_reactions ;
+                                            new_private_group_reaction = z_cache.user_setup.private_reactions ;
                                         }
                                         if ((old_reaction == new_reaction) && (old_private_group_reaction == new_private_group_reaction)) {
                                             debug('reaction', pgm + 'no update. old reaction = new reaction in ls_reactions.') ;
@@ -1964,7 +1733,7 @@ angular.module('MoneyNetwork')
                                             debug('reaction', pgm + 'reactions_index = ' + reactions_index + ', new reaction_info = ' + JSON.stringify(reaction_info)) ;
                                         }
                                     }
-                                    if (user_setup.private_reactions) delete message_with_envelope.reaction_at ;
+                                    if (z_cache.user_setup.private_reactions) delete message_with_envelope.reaction_at ;
                                 }
 
                                 // send 1-2 private messages. normally only one message. two messages in some special cases
@@ -2006,7 +1775,7 @@ angular.module('MoneyNetwork')
                                         debug('reaction', pgm + 'send_message_reaction_grp = ' + send_message_reaction_grp +
                                             ', z_filename = ' + message_with_envelope.z_filename +
                                             ', contact.type = ' + contact.type +
-                                            ', user_setup.private_reactions = ' + user_setup.private_reactions);
+                                            ', user_setup.private_reactions = ' + z_cache.user_setup.private_reactions);
                                         message = {
                                             msgtype: 'reaction',
                                             timestamp: message_with_envelope.sent_at,
@@ -2295,7 +2064,7 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'image_e1.length = ' + image_e1.length) ;
                                 console.log(pgm + 'image_e1c1.length = ' + image_e1c1.length) ;
                                 // console.log(pgm + 'image_c1e1.length = ' + image_c1e1.length) ;
-                                if (user_setup.test && user_setup.test.image_compress_disabled) {
+                                if (z_cache.user_setup.test && z_cache.user_setup.test.image_compress_disabled) {
                                     image_json = { image: image_e1, storage: { image: 'e1'} };
                                 }
                                 else {
@@ -2467,7 +2236,7 @@ angular.module('MoneyNetwork')
                                     user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
                                     image_path = user_path + '/' + message_with_envelope.sent_at + '-' + z_cache.user_seq + '-image.json';
                                     // optional compress encrypted image
-                                    if (user_setup.test && user_setup.test.image_compress_disabled) {
+                                    if (z_cache.user_setup.test && z_cache.user_setup.test.image_compress_disabled) {
                                         // encrypt only
                                         image_json = {
                                             image: iv + ',' + encrypted_image_str,
@@ -2868,29 +2637,11 @@ angular.module('MoneyNetwork')
         } // z_update_4_data_json_write
 
 
-        // temporary solution instead of fileDelete
-        // see https://github.com/HelloZeroNet/ZeroNet/issues/726
+        //// temporary solution instead of fileDelete
+        //// see https://github.com/HelloZeroNet/ZeroNet/issues/726
         function write_empty_chat_file (file_path, cb) {
-            var pgm = service + '.write_empty_chat_file: ' ;
-            var empty_json, json_raw, debug_seq ;
-            empty_json = {} ;
-            json_raw = unescape(encodeURIComponent(JSON.stringify(empty_json, null, "\t")));
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + file_path + ' fileWrite') ;
-            ZeroFrame.cmd("fileWrite", [file_path, btoa(json_raw)], function (res) {
-                var pgm = service + '.write_empty_chat_file fileWrite callback: ' ;
-                var error ;
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                if (res === "ok") {
-                    if (cb) cb(true) ;
-                    return ;
-                }
-                error = 'failed to write file ' + file_path + ', res = ' + res ;
-                debug('public_chat', pgm + error) ;
-                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
-                if (cb) cb(false) ;
-            }) ; // fileWrite callback
-        } // write_empty_chat_file
-
+            moneyNetworkHubService.write_empty_chat_file(file_path, cb);
+        }
 
         function cleanup_my_image_json (sent_at, logical_delete, cb) {
 
@@ -2984,7 +2735,7 @@ angular.module('MoneyNetwork')
                             z_filename = message_with_envelope.z_filename ;
 
                             // remove message from file or delete file from *-chat.json file
-                            if (!my_files_optional[z_filename]) {
+                            if (!z_cache.my_files_optional[z_filename]) {
                                 debug('public_chat', pgm + 'UPS. File ' + z_filename + ' was not found in my_files_optional') ;
                                 // cleanup all public outbox messages with this z_filename
                                 for (j=0 ; j<contact.messages.length ; j++) {
@@ -3027,7 +2778,7 @@ angular.module('MoneyNetwork')
                                         }
                                     }
                                     // cleanup my optional files list
-                                    delete my_files_optional[z_filename] ;
+                                    delete z_cache.my_files_optional[z_filename] ;
                                     // cleanup files_optional_cache
                                     file_path = user_path + '/' + z_filename ;
                                     delete files_optional_cache[file_path] ;
@@ -3057,7 +2808,7 @@ angular.module('MoneyNetwork')
                                         }
                                     }
                                     // cleanup my optional files list
-                                    delete my_files_optional[z_filename] ;
+                                    delete z_cache.my_files_optional[z_filename] ;
                                     // cleanup files_optional_cache
                                     // delete files_optional_cache[file_path] ;
                                     files_optional_cache[file_path].is_deleted = true ;
@@ -3161,8 +2912,8 @@ angular.module('MoneyNetwork')
                                             // debug('public_chat', pgm + 'res = ' + JSON.stringify(res)) ;
                                             if (res === "ok") {
                                                 // write OK
-                                                if (!my_files_optional[new_z_filename]) my_files_optional[new_z_filename] = {} ;
-                                                my_files_optional[new_z_filename].size = json_raw.length ;
+                                                if (!z_cache.my_files_optional[new_z_filename]) z_cache.my_files_optional[new_z_filename] = {} ;
+                                                z_cache.my_files_optional[new_z_filename].size = json_raw.length ;
                                                 callback() ;
                                             }
                                             else {
@@ -3182,8 +2933,8 @@ angular.module('MoneyNetwork')
                                     }
                                     else {
                                         // changed filename - delete + write
-                                        my_files_optional[new_z_filename] = my_files_optional[z_filename] ;
-                                        delete my_files_optional[z_filename] ;
+                                        z_cache.my_files_optional[new_z_filename] = z_cache.my_files_optional[z_filename] ;
+                                        delete z_cache.my_files_optional[z_filename] ;
                                         files_optional_cache[new_file_path] = files_optional_cache[file_path] ;
                                         // delete files_optional_cache[file_path] ;
                                         files_optional_cache[file_path].is_deleted = true ;
@@ -3223,7 +2974,7 @@ angular.module('MoneyNetwork')
                                 // find last *-chat* file. format 1482081231234-1482081231234-1-chat.json
                                 z_filename = null ;
                                 last_timestamp = 0 ;
-                                for (key in my_files_optional) {
+                                for (key in z_cache.my_files_optional) {
                                     key_a = key.split(/[.-]/) ;
                                     if (key_a[2] != '' + user_seq) continue ; // not actual user
                                     timestamp1 = parseInt(key_a[0]) ;
@@ -3237,8 +2988,8 @@ angular.module('MoneyNetwork')
                                 // debug('public_chat', pgm + 'last_key = ' + last_chat_file + ', last_timestamp = ' + last_timestamp) ;
 
                                 // check size
-                                debug('public_chat', pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
-                                if (z_filename && (my_files_optional[z_filename]['size'] > DATA_FILE_SIZE)) {
+                                debug('public_chat', pgm + 'my_files_optional = ' + JSON.stringify(z_cache.my_files_optional)) ;
+                                if (z_filename && (z_cache.my_files_optional[z_filename]['size'] > DATA_FILE_SIZE)) {
                                     z_filename = null ;
                                     first_timestamp = null ;
                                 }
@@ -3278,7 +3029,7 @@ angular.module('MoneyNetwork')
                                             }
                                         }
                                         // cleanup my optional files list
-                                        delete my_files_optional[z_filename] ;
+                                        delete z_cache.my_files_optional[z_filename] ;
                                         // cleanup files_optional_cache
                                         // delete files_optional_cache[file_path] ;
                                         files_optional_cache[file_path].is_deleted = true ;
@@ -3307,7 +3058,7 @@ angular.module('MoneyNetwork')
                                     message: message.message
                                 } ;
                                 if (message.image) {
-                                    if (user_setup.test && user_setup.test.image_compress_disabled) {
+                                    if (z_cache.user_setup.test && z_cache.user_setup.test.image_compress_disabled) {
                                         // uncompressed unencrypted image
                                         new_msg.image = message.image ;
                                     }
@@ -3343,8 +3094,8 @@ angular.module('MoneyNetwork')
                                         // debug('public_chat', pgm + 'res = ' + JSON.stringify(res)) ;
                                         if (res === "ok") {
                                             // write ok.
-                                            if (!my_files_optional[new_z_filename]) my_files_optional[new_z_filename] = {} ;
-                                            my_files_optional[new_z_filename].size = json_raw.length ;
+                                            if (!z_cache.my_files_optional[new_z_filename]) z_cache.my_files_optional[new_z_filename] = {} ;
+                                            z_cache.my_files_optional[new_z_filename].size = json_raw.length ;
                                             debug('public_chat', pgm + 'checking js_messages_index.local_msg_seq. message_with_envelope before next_local_msg_seq = ' + JSON.stringify(message_with_envelope)) ;
                                             //message_with_envelope = {
                                             //    "folder": "outbox",
@@ -3378,8 +3129,8 @@ angular.module('MoneyNetwork')
                                 if (z_filename == new_z_filename) write_file() ;
                                 else {
                                     // changed filename - delete + write
-                                    my_files_optional[new_z_filename] = my_files_optional[z_filename] ;
-                                    delete my_files_optional[z_filename] ;
+                                    z_cache.my_files_optional[new_z_filename] = z_cache.my_files_optional[z_filename] ;
+                                    delete z_cache.my_files_optional[z_filename] ;
                                     files_optional_cache[new_file_path] = files_optional_cache[file_path] ;
                                     // delete files_optional_cache[file_path] ;
                                     files_optional_cache[file_path].is_deleted = true ;
@@ -3486,7 +3237,7 @@ angular.module('MoneyNetwork')
                         message_with_envelope = contact.messages[j] ;
                         if (!message_with_envelope.z_filename) continue ;
                         if (!message_with_envelope.reaction_at && !message_with_envelope.my_private_reaction_at) continue ;
-                        if (message_with_envelope.reaction_at && user_setup.private_reactions) {
+                        if (message_with_envelope.reaction_at && z_cache.user_setup.private_reactions) {
                             debug('reaction', pgm + 'Error. Private reactions is enabled and found post with sent_at timestamp ' +
                                 message_with_envelope.sent_at + '. See ls_reactions update in z_update_1_data_json and anonymous reaction update in next section') ;
                             continue ;
@@ -3731,7 +3482,7 @@ angular.module('MoneyNetwork')
             index = name.indexOf(' ') ;
             if (index == -1) alias = name ;
             else alias = name.substr(0,index);
-            user_setup.alias = alias ;
+            z_cache.user_setup.alias = alias ;
             timezone = (new Date()).getTimezoneOffset()/60 ;
             language = navigator.languages ? navigator.languages[0] : navigator.language;
             return [
@@ -3825,7 +3576,7 @@ angular.module('MoneyNetwork')
 
         // array and indexes with contacts from localStorage
         // array for angularUI. hash with indexes for fast access
-        var ls_contacts = [] ; // array with contacts
+        var ls_contacts = moneyNetworkHubService.get_ls_contacts() ; // array with contacts
         var ls_contacts_index = { //
             unique_id: {}, // from unique_id to contract
             password_sha256: {}, // from group password sha256 value to group contact
@@ -3973,9 +3724,9 @@ angular.module('MoneyNetwork')
         }
         function get_user_reactions () {
             var pgm = service + '.get_user_reactions: ' ;
-            if (!user_setup.reactions) return standard_reactions ;
+            if (!z_cache.user_setup.reactions) return standard_reactions ;
             // console.log(pgm + 'user_setup.reactions = ' + JSON.stringify(user_setup.reactions)) ;
-            return user_setup.reactions ;
+            return z_cache.user_setup.reactions ;
         } // get_user_reactions
 
         // validate child parent context.
@@ -4314,114 +4065,10 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.set_last_online(contact, last_online) ;
         }
 
-        // check sha256 addresses in localStorage <=> sha256 addresses in data.json file. Should normally be identical
+        //// check sha256 addresses in localStorage <=> sha256 addresses in data.json file. Should normally be identical
         function check_sha256_addresses (context, update_local_storage, correct_errors) {
-            // 3) check data.json. check contacts outbox zeronet_msg_id and data.msg message_sha256
-            get_data_json(function (data) {
-                var pgm = service + '.check_sha256_addresses fileGet callback for ' + context + ': ';
-                var my_pubkey, i, user_seq, sha256, sha256_hash, contact, j, message, ls_missing, z_missing, sha256_ok, delete_msg_rows, update_zeronet, now ;
-                update_zeronet = false ;
-                if (!data.users) data.users = [] ;
-                if (!data.msg) data.msg = [] ;
-                // console.log(pgm + 'res = ' + JSON.stringify(data)) ;
-
-                // find user_seq for current user
-                my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
-                for (i=0 ; i<data.users.length ; i++) {
-                    if (data.users[i].pubkey == my_pubkey) user_seq = data.users[i].user_seq ;
-                }
-                // console.log(pgm + 'user_seq = ' + user_seq)
-                if (!user_seq) {
-                    // maybe or maybe not an error. but user_seq is link between current user and messages in data.msg array
-                    console.log(pgm + 'public key for current user was not found in data.json file');
-                    if (update_local_storage) ls_save_contacts(update_zeronet) ;
-                    return ;
-                }
-
-                // check:
-                // 1) messages in localStorage and not on Zeronet
-                // 2) messages on Zeronet and not in localStorage
-                sha256_hash = {} ;
-                // check data.json
-                for (i=0 ; i<data.msg.length ; i++) {
-                    if (data.msg[i].user_seq != user_seq) continue ;
-                    sha256 = data.msg[i].message_sha256 ;
-                    if (sha256_hash[sha256]) console.log(pgm + 'error. message_sha256 ' + sha256 + ' it not unique in data.msg array') ;
-                    else sha256_hash[sha256] = { z_index: i } ;
-                }
-                // check localStorage
-                for (i=0 ; i<ls_contacts.length ; i++) {
-                    contact = ls_contacts[i] ;
-                    if (!contact.messages) continue ;
-                    for (j=0 ; j<contact.messages.length ; j++) {
-                        message = contact.messages[j] ;
-                        if (message.folder != 'outbox') continue ;
-                        sha256 = message.zeronet_msg_id ;
-                        if (!sha256) continue ;
-                        if (!sha256_hash[sha256]) sha256_hash[sha256] = {} ;
-                        sha256_hash[sha256].ls_message = message ;
-                    } // for j (contact.messages)
-                } // for i (contacts)
-                // check sha256 values
-                ls_missing = 0 ;
-                z_missing = 0 ;
-                sha256_ok = 0 ;
-                for (sha256 in sha256_hash) {
-                    if (sha256_hash[sha256].hasOwnProperty('z_index') && sha256_hash[sha256].ls_message) {
-                        delete sha256_hash[sha256];
-                        sha256_ok++ ;
-                    }
-                    else if (sha256_hash[sha256].ls_message) z_missing++ ;
-                    else ls_missing++ ;
-                }
-                if (sha256_ok) console.log(pgm + sha256_ok + ' ok sha256 addresses') ;
-                if (ls_missing) console.log(pgm + ls_missing + ' sha256 addresses from data.json are missing i localStorage') ;
-                if (z_missing) console.log(pgm + z_missing + ' sha256 addresses from localStorage are missing i data.json') ;
-                if (!correct_errors) {
-                    if (update_local_storage) ls_save_contacts(update_zeronet) ;
-                    return ;
-                }
-
-                delete_msg_rows = [] ;
-                now = new Date().getTime() ;
-                for (sha256 in sha256_hash) {
-                    if (sha256_hash[sha256].ls_message) {
-                        // only in localStorage. remove reference to zeronet
-                        message = sha256_hash[sha256].ls_message ;
-                        delete message.zeronet_msg_id ;
-                        delete message.zeronet_msg_size ;
-                        message.cleanup_at = now ;
-                        update_local_storage = true ;
-                    }
-                    else delete_msg_rows.push(sha256_hash[sha256].z_index) ;
-                }
-                delete_msg_rows.sort() ;
-                for (i=delete_msg_rows.length-1 ; i >= 0 ; i--) {
-                    data.msg.splice(delete_msg_rows[i]) ;
-                }
-                if (delete_msg_rows.length) update_zeronet = true ;
-
-                if (update_zeronet) {
-                    // data.json was updated. update and publish1
-                    write_data_json(function (res) {
-                        var pgm = service + '.check_sha256_addresses write_data_json callback: ' ;
-                        // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                        if (res === "ok") {
-                            if (update_local_storage) ls_save_contacts(false) ;
-                            zeronet_site_publish() ;
-                        }
-                        else {
-                            ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
-                            console.log(pgm + 'Error. Failed to post: ' + res.error) ;
-                        }
-                    }); // write_data_json
-
-                }
-                else if (update_local_storage) ls_save_contacts(false) ;
-
-            }) ; // end fileGet callback (check data.json)
-
-        } // check_sha256_addresses
+            return moneyNetworkHubService.check_sha256_addresses (context, update_local_storage, correct_errors) ;
+        }
 
 
         // get contacts stored in localStorage
@@ -5537,7 +5184,7 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.download_json_image_file fileGet callback 2: ' ;
                     var data, actions, action, error ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                    if (!image || (user_setup.test && user_setup.test.image_timeout)) { // test: force download error
+                    if (!image || (z_cache.user_setup.test && z_cache.user_setup.test.image_timeout)) { // test: force download error
                         console.log(pgm + 'Error. image download timeout for ' + image_path) ;
                         if (cb) cb(false) ;
                         return ;
@@ -5751,21 +5398,21 @@ angular.module('MoneyNetwork')
 
             // check spam filters block_guests and block_ignored from user setup
             if (contact.type == 'guest') {
-                if (user_setup.block_guests) {
+                if (z_cache.user_setup.block_guests) {
                     debug('spam_filter', pgm + 'blocking quests and ignoring message from guest ' + JSON.stringify(contact));
                     return false ;
                 }
-                if (user_setup.block_guests_at && (res.timestamp < user_setup.block_guests_at)) {
+                if (z_cache.user_setup.block_guests_at && (res.timestamp < z_cache.user_setup.block_guests_at)) {
                     debug('spam_filter', pgm + 'no longer blocking quests but ignoring old blocked message from guest ' + JSON.stringify(contact));
                     return false ;
                 }
             }
             if (contact.type == 'ignored') {
-                if (user_setup.block_ignored) {
+                if (z_cache.user_setup.block_ignored) {
                     debug('spam_filter', pgm + 'blocking message from contact on ignored list ' + JSON.stringify(contact));
                     return false ;
                 }
-                if (user_setup.block_ignored_at && (res.timestamp < user_setup.block_ignored_at)) {
+                if (z_cache.user_setup.block_ignored_at && (res.timestamp < z_cache.user_setup.block_ignored_at)) {
                     debug('spam_filter', pgm + 'no longer blocking messages from ignored list but ignoring old blocked message from contact ' + JSON.stringify(contact));
                     return false ;
                 }
@@ -6143,7 +5790,7 @@ angular.module('MoneyNetwork')
                                 encryption: 1, // symmetric encrypt
                                 password: password
                             };
-                            if ((user_setup.test && user_setup.test.image_timeout)) ls_save_contacts(false);
+                            if ((z_cache.user_setup.test && z_cache.user_setup.test.image_timeout)) ls_save_contacts(false);
                         }
                         else {
                             // received a chat message with an image.
@@ -6407,7 +6054,7 @@ angular.module('MoneyNetwork')
                                     if (user_reactions[i].unicode == unicode) title = user_reactions[i].title ;
                                 }
                                 if (!title) title = is_emoji[new_reaction] ;
-                                emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+                                emoji_folder = z_cache.user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
                                 obj_of_reaction.reactions.push({
                                     unicode: unicode,
                                     title: title,
@@ -6431,10 +6078,10 @@ angular.module('MoneyNetwork')
                     else {
                         // public outbox chat message was not found in memory. check list of optional -chat files
                         debug('reaction', pgm + 'public chat message with timestamp ' + decrypted_message.timestamp + ' was not found in public chat outbox messages') ;
-                        debug('reaction', pgm + 'my_files_optional = ' + JSON.stringify(my_files_optional)) ;
+                        debug('reaction', pgm + 'my_files_optional = ' + JSON.stringify(z_cache.my_files_optional)) ;
                         // - public chat : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
                         cache_filename = null ;
-                        for (key in my_files_optional) {
+                        for (key in z_cache.my_files_optional) {
                             if (!key.match(/-chat/)) continue ;
                             key_a = key.split('-') ;
                             if (decrypted_message.timestamp > parseInt(key_a[0])) continue ; // to timestamp
@@ -6447,7 +6094,7 @@ angular.module('MoneyNetwork')
                         if (cache_filename) {
                             // maybe OK. timestamp within start and end timestamp for -chat.json file
                             get_and_load_callback = function () {
-                                get_and_load_chat_file(cache_filename, my_files_optional[key].size, decrypted_message.timestamp, function (status) {
+                                get_and_load_chat_file(cache_filename, z_cache.my_files_optional[key].size, decrypted_message.timestamp, function (status) {
                                     var pgm = service + '.process_incoming_message get_and_load_chat_file callback 1: ' ;
                                     var obj_of_reaction ;
                                     debug('reaction', pgm + 'status = ' + status) ;
@@ -7302,7 +6949,7 @@ angular.module('MoneyNetwork')
                     if (watch_like_json[res[i].auth_address].indexOf(msg_id) == -1) watch_like_json[res[i].auth_address].push(msg_id) ;
                 }
 
-                emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+                emoji_folder = z_cache.user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
                 user_reactions = get_user_reactions() ;
                 sum = 0 ;
                 for (emoji in count) {
@@ -7333,7 +6980,7 @@ angular.module('MoneyNetwork')
             if (!message_with_envelope.reaction_info) return ;
             emojis = message_with_envelope.reaction_info.emojis ;
             users = message_with_envelope.reaction_info.users ;
-            emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+            emoji_folder = z_cache.user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
             user_reactions = get_user_reactions() ;
             sum = 0 ;
             fixed_old_error = false ;
@@ -7923,29 +7570,10 @@ angular.module('MoneyNetwork')
 
         } // remove_msg
 
-        var my_files_optional = {} ;
+        // z_cache.my_files_optional = {} ;
         function save_my_files_optional (files_optional) {
-            var pgm = service + '.save_my_files_optional: ' ;
-            // console.log(pgm + 'files_optional = ' + JSON.stringify(files_optional));
-            get_user_seq(function(user_seq) {
-                var key, key_a, optional_regexp, now ;
-                // console.log(pgm + 'user_seq = ' + user_seq) ;
-                // ready. update z_cache.files_optional (full list) and my_files_optional (filter with user_seq)
-                for (key in my_files_optional) delete my_files_optional[key] ;
-                z_cache.files_optional = files_optional || {} ;
-                if (!files_optional) return ;
-                optional_regexp = new RegExp('^' + CONTENT_OPTIONAL + '$') ;
-                now = new Date().getTime() ;
-                for (key in files_optional) {
-                    key_a = key.split('-') ;
-                    if (!key.match(optional_regexp)) console.log(pgm + 'invalid files_optional key ' + key) ; // invalid optional file name
-                    else if (key_a[0] > '' + now) console.log(pgm + 'invalid files_optional key ' + key) ; // timestamp in the future
-                    else if (files_optional[key].size <= 2) null ; // debug('public_chat', pgm + 'ignoring empty logical deleted json file ' + key) ;
-                    else if (!user_seq || ('' + user_seq == key_a[2])) my_files_optional[key] = files_optional[key] ; // ok
-                } // for key
-                // console.log(pgm + 'user_seq = ' + user_seq + ', my_files_optional = ' + JSON.stringify(my_files_optional)) ;
-            }) ; // get_user_seq
-        } // save_my_files_optional
+            moneyNetworkHubService.save_my_files_optional(files_optional);
+        }
 
         // return avatar for user or assign a random avatar to user
         var avatar = { src: "public/images/avatar1.png", loaded: false } ;
@@ -7955,9 +7583,9 @@ angular.module('MoneyNetwork')
 
             // set previous avatar from setup before checking zeronet
             // console.log(pgm + 'user_setup.avatar = ' + user_setup.avatar) ;
-            if (user_setup.avatar && (['jpg','png'].indexOf(user_setup.avatar) == -1)) {
+            if (z_cache.user_setup.avatar && (['jpg','png'].indexOf(z_cache.user_setup.avatar) == -1)) {
                 // public avatar found in user setup
-                avatar.src = 'public/images/avatar' + user_setup.avatar ;
+                avatar.src = 'public/images/avatar' + z_cache.user_setup.avatar ;
                 // console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
             }
             // check ZeroFrame status
@@ -7981,9 +7609,9 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.load_avatar get_my_user_hub callback 1: ';
                 var debug_seq ;
 
-                if (user_setup.avatar && (['jpg','png'].indexOf(user_setup.avatar) != -1)) {
+                if (z_cache.user_setup.avatar && (['jpg','png'].indexOf(z_cache.user_setup.avatar) != -1)) {
                     // uploaded avatar found in user setup
-                    avatar.src = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/avatar.' + user_setup.avatar ;
+                    avatar.src = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/avatar.' + z_cache.user_setup.avatar ;
                     // console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
                 }
 
@@ -8017,7 +7645,7 @@ angular.module('MoneyNetwork')
                         return ;
                     }
                     // 2) no user avatar found - use previous selection in localStorage
-                    ls_avatar = user_setup.avatar ;
+                    ls_avatar = z_cache.user_setup.avatar ;
                     if (ls_avatar && (['jpg','png'].indexOf(ls_avatar) == -1)) {
                         // console.log(pgm + 'found from user_setup. ls_avatar = ' + JSON.stringify(ls_avatar)) ;
                         avatar.src = "public/images/avatar" + ls_avatar;
@@ -8032,7 +7660,7 @@ angular.module('MoneyNetwork')
                     avatar.src = "public/images/avatar" + public_avatars[index] ;
                     avatar.loaded = true ;
                     $rootScope.$apply() ;
-                    user_setup.avatar = public_avatars[index] ;
+                    z_cache.user_setup.avatar = public_avatars[index] ;
                     MoneyNetworkHelper.ls_save();
                 }); // fileGet callback 2
 
@@ -8119,7 +7747,7 @@ angular.module('MoneyNetwork')
                     // content.json - any optional files (public chat) with actual chat page context?
                     (function() {
                         var key, cache_filename, within_page_context, prefix, prefix_lng ;
-                        if (!user_setup.public_chat) return ; // public chat disabled
+                        if (!z_cache.user_setup.public_chat) return ; // public chat disabled
                         if ($location.path().substr(0,5) != '/chat') return ; // not chat page
                         // check chat page context. is any of the optional files relevant for actual context?
                         within_page_context = false ;
@@ -8678,19 +8306,19 @@ angular.module('MoneyNetwork')
         } // get_files_optional
 
 
-        // hash with download status for optional chat json files
-        // index is inner_path data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
-        // properties:
-        // - no_processes: number of running get_public_chat processes.
-        // - is_downloaded: true or false. true after OK fileGet request with expected size
-        // - is_pending: true or false. true between fileGet and fileGet result/callback
-        // - is_deleted: received logical deleted json file that has also physical deleted
-        // - timestamps: list with timestamps for messages not yet loaded into JS
-        // - size: physical size from last fileGet request. Must match size from files_optional in content.json files
-        // - download_failed_at: array with timestamps for failed (timeout) download.
-        var files_optional_cache = { } ;
+        //// hash with download status for optional chat json files
+        //// index is inner_path data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
+        //// properties:
+        //// - no_processes: number of running get_public_chat processes.
+        //// - is_downloaded: true or false. true after OK fileGet request with expected size
+        //// - is_pending: true or false. true between fileGet and fileGet result/callback
+        //// - is_deleted: received logical deleted json file that has also physical deleted
+        //// - timestamps: list with timestamps for messages not yet loaded into JS
+        //// - size: physical size from last fileGet request. Must match size from files_optional in content.json files
+        //// - download_failed_at: array with timestamps for failed (timeout) download.
+        var files_optional_cache = moneyNetworkHubService.get_files_optional_cache() ;
         function clear_files_optional_cache() {
-            for (var key in files_optional_cache) delete files_optional_cache[key] ;
+            moneyNetworkHubService.clear_files_optional_cache() ;
         }
 
 
@@ -8747,7 +8375,7 @@ angular.module('MoneyNetwork')
                 (old_chat_page_context.first_top_timestamp == chat_page_context.first_top_timestamp) &&
                 (old_chat_page_context.last_bottom_timestamp == chat_page_context.last_bottom_timestamp) &&
                 (old_chat_page_context.end_of_page == chat_page_context.end_of_page) &&
-                (old_chat_page_context.chat_sort == user_setup.chat_sort)) {
+                (old_chat_page_context.chat_sort == z_cache.user_setup.chat_sort)) {
                 debug('infinite_scroll', pgm + 'stop. unchanged chat page context.') ;
                 return ;
             }
@@ -8758,7 +8386,7 @@ angular.module('MoneyNetwork')
                 first_top_timestamp: chat_page_context.first_top_timestamp,
                 last_bottom_timestamp: chat_page_context.last_bottom_timestamp,
                 end_of_page: chat_page_context.end_of_page,
-                chat_sort: user_setup.chat_sort
+                chat_sort: z_cache.user_setup.chat_sort
             };
             chat_page_context.failures = [] ;
 
@@ -8823,7 +8451,7 @@ angular.module('MoneyNetwork')
                 ', last_bottom_timestamp = ' + chat_page_context.last_bottom_timestamp +
                 ', end_of_page = ' + chat_page_context.end_of_page +
                 ', no_processes = ' + chat_page_context.no_processes +
-                ', chat_sort = ' + user_setup.chat_sort);
+                ', chat_sort = ' + z_cache.user_setup.chat_sort);
             debug('infinite_scroll', pgm + 'chat_page_context = ' + JSON.stringify(chat_page_context)) ;
             debug('infinite_scroll', pgm + 'old_chat_page_context = ' + JSON.stringify(old_chat_page_context)) ;
 
@@ -8832,7 +8460,7 @@ angular.module('MoneyNetwork')
                 debug('infinite_scroll', pgm + 'stop. group chat') ;
                 return ;
             } // group chat
-            if ((user_setup.chat_sort != 'Last message') && !chat_page_context.end_of_page) {
+            if ((z_cache.user_setup.chat_sort != 'Last message') && !chat_page_context.end_of_page) {
                 // sort by size and not end of page. public chat with size 0 at end of page
                 debug('infinite_scroll', pgm + 'stop. sort by size and not end of page. public chat with size 0 at end of page') ;
                 return ;
@@ -8872,7 +8500,7 @@ angular.module('MoneyNetwork')
             var my_auth_address ;
             debug('public_chat', pgm + 'top row timestamp = ' + chat_page_context.first_top_timestamp +
                 ', bottom row timestamp = ' + chat_page_context.last_bottom_timestamp +
-                ', end_of_page = ' + chat_page_context.end_of_page + ', chat_sort = ' + user_setup.chat_sort);
+                ', end_of_page = ' + chat_page_context.end_of_page + ', chat_sort = ' + z_cache.user_setup.chat_sort);
             if (!chat_page_is_ready() && !chat_page_is_empty()) {
                 debug('public_chat', pgm + 'stopping. chat page is not ready') ;
                 return cb('done') ;
@@ -8880,7 +8508,7 @@ angular.module('MoneyNetwork')
 
             // public chat not relevant for:
             if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return cb('done') ; // not relevant for group chat
-            if (user_setup.chat_sort != 'Last message') {
+            if (z_cache.user_setup.chat_sort != 'Last message') {
                 // sort by message size. public chat size = 0 always in bottom of page
                 if (!chat_page_context.end_of_page) return cb('done') ;
             }
@@ -8918,7 +8546,7 @@ angular.module('MoneyNetwork')
                         "and data_json.file_name = 'data.json' " +
                         "and users.json_id = data_json.json_id " +
                         "and users.user_seq = cast(substr( substr(files_optional.filename,29),1,instr(substr(files_optional.filename,29),'-')-1) as integer) " ;
-                    if (user_setup.block_guests) query += "and users.guest is null " ; // check spam filter: guests
+                    if (z_cache.user_setup.block_guests) query += "and users.guest is null " ; // check spam filter: guests
                     query += "order by files_optional.filename desc" ;
                     debug('select', pgm + 'query 15 = ' + query) ;
                     debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 15') ;
@@ -9214,7 +8842,7 @@ angular.module('MoneyNetwork')
                             }
                         }
                         // check spam filter: ignored contacts
-                        if (user_setup.block_ignored) for (i=res.length-1 ; i >= 0 ; i--) {
+                        if (z_cache.user_setup.block_ignored) for (i=res.length-1 ; i >= 0 ; i--) {
                             unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
                             contact = get_contact_by_unique_id(unique_id) ;
                             if (contact && (contact.type == 'ignored')) res.splice(i,1) ;
@@ -9411,7 +9039,7 @@ angular.module('MoneyNetwork')
         // - check to unixtimestamp (timestamp for last row on chat page)
         function file_within_chat_page_context(filename) {
             var pgm = service + '.file_within_chat_page_context: ' ;
-            if (!user_setup.public_chat) return false ; // public chat disabled. Ignore all optional files
+            if (!z_cache.user_setup.public_chat) return false ; // public chat disabled. Ignore all optional files
             // filename = data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
             if (chat_page_context.contact) {
                 auth_address = filename.split('/')[2] ;
@@ -9480,7 +9108,7 @@ angular.module('MoneyNetwork')
         function get_and_load_chat_file(cache_filename, expected_size, read_timestamp, cb) {
             var pgm = service + '.get_and_load_chat_file: ';
             var my_auth_address ;
-            if (!user_setup.public_chat && !read_timestamp) {
+            if (!z_cache.user_setup.public_chat && !read_timestamp) {
                 console.log(pgm + 'error. ignoring get_and_load_chat_file call for ' + cache_filename + '. public chat is disabled');
                 return cb('done') ;
             }
@@ -9623,7 +9251,7 @@ angular.module('MoneyNetwork')
                             return cb2();
                         }
                         // is file still within page chat context?
-                        if (!user_setup.public_chat && !read_timestamp) {
+                        if (!z_cache.user_setup.public_chat && !read_timestamp) {
                             debug('public_chat', pgm + 'ignoring get_and_load_chat_file call for ' + cache_filename + '. public chat has been disabled');
                             return cb2('done') ;
                         }
@@ -9817,7 +9445,7 @@ angular.module('MoneyNetwork')
         var admin_auth_address = ['16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH', '18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ', '1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF'] ;
         function is_admin () {
             var pgm = service + '.is_admin: ' ;
-            if (user_setup.guest) return false ;
+            if (z_cache.user_setup.guest) return false ;
             var admin =  (admin_auth_address.indexOf(ZeroFrame.site_info.auth_address) != -1) ;
             // console.log(pgm + 'admin = ' + admin) ;
             return admin ;
@@ -10041,13 +9669,13 @@ angular.module('MoneyNetwork')
             for (key in ignore_zeronet_msg_id) delete ignore_zeronet_msg_id[key] ;
             avatar.src = "public/images/avatar1.png" ;
             avatar.loaded = false;
-            for (key in my_files_optional) delete my_files_optional[key] ;
             for (key in z_cache) delete z_cache[key] ;
+            z_cache.my_files_optional = {} ;
             z_cache.user_id = 0 ;
             my_unique_id = null ;
             user_contents_max_size = null ;
             admin_key = null ;
-            for (key in user_setup) delete user_setup[key] ;
+            z_cache.user_setup = {} ;
             for (key in chat_page_context) delete chat_page_context[key] ;
             chat_page_context.no_processes = 0 ;
             chat_page_context.end_of_page = true ;
@@ -10104,7 +9732,7 @@ angular.module('MoneyNetwork')
         // small file(s) for quick distribution in ZeroNet
         function i_am_online () {
             var pgm, info, user_path;
-            if (user_setup.not_online) pgm = service + '.i_am_not_online: ';
+            if (z_cache.user_setup.not_online) pgm = service + '.i_am_not_online: ';
             else pgm = service + '.i_am_online: ';
             info = '. Skipping status.json update';
             // check Zeronet status
@@ -10258,7 +9886,7 @@ angular.module('MoneyNetwork')
                                 status_updated = true ;
                             }
                         }
-                        if ((user_setup.not_online) && my_user_seq_found && !status_updated) {
+                        if ((z_cache.user_setup.not_online) && my_user_seq_found && !status_updated) {
                             // Account setup - user has selected not to update online timestamp
                             check_pubkey2_cb() ;
                             return ;
@@ -10514,23 +10142,23 @@ angular.module('MoneyNetwork')
             //for (i=0 ; i<arguments.length ; i++) console.log(pgm + 'argument[' + i + '] = ' + JSON.stringify(arguments[i])) ;
             sort = 0 ;
             unix_timestamp = false ;
-            if (user_setup.contact_sort== 'Last online') {
+            if (z_cache.user_setup.contact_sort== 'Last online') {
                 unix_timestamp = true ;
                 sort = -get_last_online(contact) ;
             }
-            if (user_setup.contact_sort== 'User name') {
+            if (z_cache.user_setup.contact_sort== 'User name') {
                 sort = user_name ;
             }
-            if (user_setup.contact_sort== 'Last chat msg') {
+            if (z_cache.user_setup.contact_sort== 'Last chat msg') {
                 unix_timestamp = true;
                 if (contact.messages && (contact.messages.length > 0)) {
                     sort = -contact.messages[contact.messages.length - 1].sent_at;
                 }
             }
-            if (user_setup.contact_sort== 'Number chat msg') {
+            if (z_cache.user_setup.contact_sort== 'Number chat msg') {
                 if (contact.messages) sort = -contact.messages.length ;
             }
-            if (user_setup.contact_sort== 'ZeroNet disk usage') {
+            if (z_cache.user_setup.contact_sort== 'ZeroNet disk usage') {
                 if (contact.messages) {
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
@@ -10538,7 +10166,7 @@ angular.module('MoneyNetwork')
                     }
                 }
             }
-            if (user_setup.contact_sort== 'Browser disk usage') { // localStorage
+            if (z_cache.user_setup.contact_sort== 'Browser disk usage') { // localStorage
                 if (contact.messages) {
                     for (i=0 ; i<contact.messages.length ; i++) {
                         message = contact.messages[i] ;
@@ -10546,7 +10174,7 @@ angular.module('MoneyNetwork')
                     }
                 }
             }
-            message = pgm + user_setup.contact_sort + ' = ' + sort ;
+            message = pgm + z_cache.user_setup.contact_sort + ' = ' + sort ;
             message += ' (' + typeof sort + ')' ;
             if (unix_timestamp) {
                 short_date  = date(-sort*1000, 'short') ;
@@ -10588,17 +10216,17 @@ angular.module('MoneyNetwork')
             sort1 = 0 ;
             unix_timestamp = false ;
             // console.log(pgm + 'chat_sort = ' + self.chat_sort);
-            if (user_setup.chat_sort== 'Last message') {
+            if (z_cache.user_setup.chat_sort== 'Last message') {
                 sort1 = sort2 ;
                 unix_timestamp = true ;
             }
-            if (user_setup.chat_sort== 'ZeroNet disk usage') {
+            if (z_cache.user_setup.chat_sort== 'ZeroNet disk usage') {
                 if (message.message.zeronet_msg_size) sort1 = message.message.zeronet_msg_size ;
             }
-            if (user_setup.chat_sort== 'Browser disk usage') {
+            if (z_cache.user_setup.chat_sort== 'Browser disk usage') {
                 if (message.message.ls_msg_size) sort1 = message.message.ls_msg_size ;
             }
-            debug_msg = pgm + user_setup.chat_sort + ' = ' + JSON.stringify(sort1) ;
+            debug_msg = pgm + z_cache.user_setup.chat_sort + ' = ' + JSON.stringify(sort1) ;
             debug_msg += ' (' + typeof sort1 + ')' ;
             if (unix_timestamp) debug_msg += ', unix timestamp = ' + short_date ;
             debug('chat_order_by', debug_msg) ;
@@ -10609,49 +10237,49 @@ angular.module('MoneyNetwork')
         } // chat_order_by
 
         // user setup: avatar, alias, contact sort, contact filters, chat sort, spam filters
-        var user_setup = {} ;
+        z_cache.user_setup = {} ;
         function load_user_setup (keysize) {
             var new_user_setup, key, guest_id, guest, alias ;
             new_user_setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
-            for (key in user_setup) delete user_setup[key] ;
-            for (key in new_user_setup) user_setup[key] = new_user_setup[key] ;
+            for (key in z_cache.user_setup) delete z_cache.user_setup[key] ;
+            for (key in new_user_setup) z_cache.user_setup[key] = new_user_setup[key] ;
             // add missing defaults
             guest_id = MoneyNetworkHelper.getItem('guestid');
             guest = (guest_id == '' + z_cache.user_id) ;
-            if (guest) user_setup.guest = guest ;
-            if (!user_setup.contact_filters) user_setup.contact_filters = {
+            if (guest) z_cache.user_setup.guest = guest ;
+            if (!z_cache.user_setup.contact_filters) z_cache.user_setup.contact_filters = {
                 all: 'green',
                 new: 'green',
                 unverified: 'green',
                 verified: 'green',
                 ignore: 'green'
             } ;
-            if (!user_setup.contact_filters.hasOwnProperty('guest')) {
-                user_setup.contact_filters.guest = 'green' ;
+            if (!z_cache.user_setup.contact_filters.hasOwnProperty('guest')) {
+                z_cache.user_setup.contact_filters.guest = 'green' ;
             }
-            if (!user_setup.contact_sort) user_setup.contact_sort = contact_sort_options[0] ;
-            if (user_setup.contact_sort == 'Last updated') user_setup.contact_sort = 'Last online' ;
-            if (!user_setup.chat_sort) user_setup.chat_sort = chat_sort_options[0] ;
-            if (!user_setup.hasOwnProperty('block_guests')) user_setup.block_guests = false ; // !guest ; todo:
-            if (!user_setup.hasOwnProperty('block_ignored')) user_setup.block_ignored = false ;
-            if (!user_setup.hasOwnProperty('public_chat')) user_setup.public_chat = true; // guest ; todo:
-            if (!user_setup.hasOwnProperty('two_panel_chat')) user_setup.two_panel_chat = true ;
-            if (!user_setup.alias) user_setup.alias = 'Me';
-            if (!user_setup.encryption) user_setup.encryption = keysize == 256 ? '2' : '1' ;
+            if (!z_cache.user_setup.contact_sort) z_cache.user_setup.contact_sort = contact_sort_options[0] ;
+            if (z_cache.user_setup.contact_sort == 'Last updated') z_cache.user_setup.contact_sort = 'Last online' ;
+            if (!z_cache.user_setup.chat_sort) z_cache.user_setup.chat_sort = chat_sort_options[0] ;
+            if (!z_cache.user_setup.hasOwnProperty('block_guests')) z_cache.user_setup.block_guests = false ; // !guest ; todo:
+            if (!z_cache.user_setup.hasOwnProperty('block_ignored')) z_cache.user_setup.block_ignored = false ;
+            if (!z_cache.user_setup.hasOwnProperty('public_chat')) z_cache.user_setup.public_chat = true; // guest ; todo:
+            if (!z_cache.user_setup.hasOwnProperty('two_panel_chat')) z_cache.user_setup.two_panel_chat = true ;
+            if (!z_cache.user_setup.alias) z_cache.user_setup.alias = 'Me';
+            if (!z_cache.user_setup.encryption) z_cache.user_setup.encryption = keysize == 256 ? '2' : '1' ;
         }
         function save_user_setup () {
             var i ;
-            if (user_setup.reactions) {
-                for (i=0 ; i<user_setup.length ; i++) {
-                    delete user_setup[i].src ;
-                    delete user_setup[i]["$$hashKey"] ;
+            if (z_cache.user_setup.reactions) {
+                for (i=0 ; i<z_cache.user_setup.length ; i++) {
+                    delete z_cache.user_setup[i].src ;
+                    delete z_cache.user_setup[i]["$$hashKey"] ;
                 }
             }
-            MoneyNetworkHelper.setItem('setup', JSON.stringify(user_setup));
+            MoneyNetworkHelper.setItem('setup', JSON.stringify(z_cache.user_setup));
             MoneyNetworkHelper.ls_save();
         }
         function get_user_setup () {
-            return user_setup ;
+            return z_cache.user_setup ;
         }
 
         // start chat. notification or confirm dialog if chat with old contact (Last online timestamp)
@@ -10809,8 +10437,8 @@ angular.module('MoneyNetwork')
             var pgm = service + '.init_emojis_short_list: ' ;
             var src, emoji_folder, lng, filename, hexcodes, hexcodes_a, i, hexcode, node, max_lng ;
             for (src in emojis_short_list) delete emojis_short_list[src] ;
-            if (!user_setup.emoji_folder || ([emoji_folders[0], emoji_folders[1]].indexOf(user_setup.emoji_folder) != -1)) emoji_folder = 'emoji/twitter' ;
-            else emoji_folder = user_setup.emoji_folder ;
+            if (!z_cache.user_setup.emoji_folder || ([emoji_folders[0], emoji_folders[1]].indexOf(z_cache.user_setup.emoji_folder) != -1)) emoji_folder = 'emoji/twitter' ;
+            else emoji_folder = z_cache.user_setup.emoji_folder ;
             // console.log(pgm + 'emojis_full_list = ' + JSON.stringify(emojis_full_list)) ;
             // console.log(pgm + 'emoji_folder = ' + emoji_folder) ;
             lng = emoji_folder.length ;
@@ -10842,15 +10470,15 @@ angular.module('MoneyNetwork')
 
             // apply current emoji folder to reactions
             if (!emoji_folders) console.log(pgm + 'issue #134 emoji_folders is undefined. emoji_folders = ' + JSON.stringify(emoji_folders));
-            var emoji_folder = user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
+            var emoji_folder = z_cache.user_setup.emoji_folder || emoji_folders[0] ; // current emoji folder
             if (emoji_folder[emoji_folder.length-1] != '/') emoji_folder += '/' ;
             for (i=0 ; i<standard_reactions.length ; i++) {
                 standard_reactions[i].src = emoji_folder + standard_reactions[i].unicode + '.png' ;
             }
             // console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions));
-            if (user_setup.reactions) {
-                for (i=0 ; i<user_setup.reactions.length ; i++) {
-                    user_setup.reactions[i].src = emoji_folder + user_setup.reactions[i].unicode + '.png' ;
+            if (z_cache.user_setup.reactions) {
+                for (i=0 ; i<z_cache.user_setup.reactions.length ; i++) {
+                    z_cache.user_setup.reactions[i].src = emoji_folder + z_cache.user_setup.reactions[i].unicode + '.png' ;
                 }
                 // console.log(pgm + 'user_reactions = ' + JSON.stringify(user_setup.reactions));
             }
@@ -10886,11 +10514,11 @@ angular.module('MoneyNetwork')
 
             // 1: check urls created by markdown-it twemoji parse.
             // Only relevant if user as selected other emoji folder than https://twemoji.maxcdn.com/2/72x72
-            if (user_setup.emoji_folder && (user_setup.emoji_folder != emoji_folders[0])) {
+            if (z_cache.user_setup.emoji_folder && (z_cache.user_setup.emoji_folder != emoji_folders[0])) {
                 str = str.replace(/https:\/\/twemoji\.maxcdn\.com\/2\/72x72\/[0-9a-f]+\.png/gm, function (match) {
                     var pgm = service + '.check_twemojis replace callback: ' ;
                     // console.log(pgm + 'match = ' + match) ;
-                    new_url = user_setup.emoji_folder + '/' + match.split('/').pop() ;
+                    new_url = z_cache.user_setup.emoji_folder + '/' + match.split('/').pop() ;
                     if (!emojis_full_list.hasOwnProperty(new_url)) {
                         debug('emoji', pgm + 'Unknown emojis ' + match) ;
                         emojis_full_list[new_url] = false ;
@@ -10953,7 +10581,7 @@ angular.module('MoneyNetwork')
                     continue ;
                 }
                 // also ignore if using https://twemoji.maxcdn.com/2/72x72 and emoji is not available online
-                if (!user_setup.emoji_folder || (user_setup.emoji_folder == emoji_folders[0])) {
+                if (!z_cache.user_setup.emoji_folder || (z_cache.user_setup.emoji_folder == emoji_folders[0])) {
                     if (missing_twemojis.indexOf(best_src) != -1) {
                         // keep unicode character
                         i2 = best_i1 ;
@@ -10964,7 +10592,7 @@ angular.module('MoneyNetwork')
 
                 // replace emoji symbol with <img class="emoji" draggable="false" alt="<symbol>" src="<src>">
                 img_str_start = '<img class="emoji" draggable="false" alt="' ;
-                img_str_end = '" src="' + (user_setup.emoji_folder || emoji_folders[0]) + '/' + best_src + '.png">';
+                img_str_end = '" src="' + (z_cache.user_setup.emoji_folder || emoji_folders[0]) + '/' + best_src + '.png">';
                 debug('emoji', pgm + 'img tag = ' + img_str_start + '<emoji>' + img_str_end) ;
                 img_symbols_start = punycode.ucs2.decode(img_str_start) ;
                 img_symbols_end = punycode.ucs2.decode(img_str_end) ;
