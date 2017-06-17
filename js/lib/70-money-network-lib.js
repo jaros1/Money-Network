@@ -303,7 +303,8 @@ var MoneyNetworkHelper = (function () {
                         emojis_keys.splice(pos,1) ;
                     }
 
-                    cb4(text) ;
+                    // download remaining emojis
+                    if (emojis_keys.length) cb4(text) ;
                 })
 
             }; // step_3_check_optional_file_list

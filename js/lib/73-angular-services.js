@@ -10482,17 +10482,21 @@ angular.module('MoneyNetwork')
         var reaction_list = [] ;
         var reaction_list_full_support = null ;
         function get_reaction_list (full_emoji_support) {
-            var i, code, hex_codes, j, symbols, prefix, postfix ;
+            var i, code, j, missing ;
             if (reaction_list.length && (reaction_list_full_support == full_emoji_support)) return reaction_list ;
             reaction_list.splice(0,reaction_list.length) ;
             for (i=0 ; i<emoji_names.length ; i++) {
                 code = emoji_names[i].code ;
                 if (full_emoji_support) {
-                    // check if emoji is supported by all emoji providersfull supported
-                    if (missin_twemojis.indexOf(code) != -1) continue ; // not available at https://twemoji.maxcdn.com
+                    // check if emoji is supported by all emoji providers
+                    if (missing_twemojis.indexOf(code) != -1) continue ; // not available at https://twemoji.maxcdn.com
+                    missing = false ;
                     for (j=1 ; j<emoji_folders.length ; j++) {
-                        if (!emoji_folders[j] + '/' + code + '.png') continue ; // not found in optional files for provider
+                        if (emojis[emoji_folders[j] + '/' + code + '.png']) continue ; // OK for provider
+                        missing = true ; // missing for provider
+                        break ;
                     }
+                    if (missing) continue ;
                 }
                 reaction_list.push((i+1) + ': ' + unicode_to_symbol(emoji_names[i].code) + ' ' + emoji_names[i].name + ' (' + emoji_names[i].code + ')') ;
             }
