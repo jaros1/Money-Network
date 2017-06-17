@@ -199,6 +199,7 @@ var MoneyNetworkHelper = (function () {
         var debug_seq = debug_z_api_operation_start('z_file_get', pgm + 'content.json fileGet') ;
         ZeroFrame.cmd("fileGet", ['content.json', false], function (res) {
             var pgm = module + '.load_public_avatars fileGet callback: ';
+            var folders, key, step_1_read_sub_content, step_2_check_context, step_3_download_emojis, emojis_keys ;
             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
             if (res) res = JSON.parse(res) ;
             else res = { files: {} } ;
@@ -211,9 +212,106 @@ var MoneyNetworkHelper = (function () {
                 if (key.substr(0,6) != 'emoji/') continue ;
                 emojis[key] = true ;
             }
-             //console.log(pgm + 'public_avatars = ' + JSON.stringify(public_avatars));
-             //console.log(pgm + 'emojis = ' + JSON.stringify(emojis)) ;
-        })
+            //console.log(pgm + 'public_avatars = ' + JSON.stringify(public_avatars));
+            // console.log(pgm + 'emojis = ' + JSON.stringify(emojis)) ;
+            if (Object.keys(emojis).length) return ; // OK - list of emojis loaded from MoneyNetwork content.json file
+            // console.log(pgm + 'includes = ' + JSON.stringify(res.includes)) ;
+            if (!res.includes) return ;
+            if (!Object.keys(res.includes).length) return ;
+            folders = [] ;
+            for (key in res.includes) {
+                if (!key.match(/^emoji/)) continue ;
+                folders.push(key) ;
+            }
+            // console.log(pgm + 'folders = ' + JSON.stringify(folders));
+            //folders = ["emoji/apple/content.json", "emoji/facebook/content.json", "emoji/google/content.json", "emoji/messenger/content.json", "emoji/one/content.json", "emoji/samsung/content.json", "emoji/twitter/content.json", "emoji/windows/content.json"];
+
+            // find emojis in all sub content.json in main content.json. One folder for each emoji provider
+            step_1_read_sub_content = function (cb2) {
+                var pgm = module + '.load_public_avatars.step_1_read_sub_content: ';
+                var debug_seq, inner_path ;
+                if (!folders.length) {
+                    // console.log(pgm + 'emojis = ' + JSON.stringify(emojis)) ;
+                    emojis_keys = Object.keys(emojis) ;
+                    // done. continue with get_all_emojis
+                    return cb2() ;
+                }
+                inner_path = folders.shift() ;
+                debug_seq = debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+                ZeroFrame.cmd("fileGet", [inner_path, false], function (res) {
+                    var pgm = module + '.load_public_avatars.read_sub_content fileGet callback: ';
+                    var folder, key ;
+                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    if (!res) {
+                        console.log(pgm + 'fileGet ' + inner_path + ' failed') ;
+                        return step_1_read_sub_content(cb2) ;
+                    }
+                    res = JSON.parse(res) ;
+                    if (!res.files_optional || (Object.keys(res.files_optional).length == 0)) {
+                        console.log(pgm + 'No optional files found in ' + inner_path) ;
+                        console.log(pgm + 'res = ' + JSON.stringify(res));
+                        return step_1_read_sub_content(cb2) ;
+                    }
+                    folder = inner_path.substr(0,inner_path.length-12) ;
+                    for (key in res.files_optional) {
+                        emojis[folder+key] = true ;
+                    }
+                    // next emoji folder
+                    step_1_read_sub_content(cb2)
+                }) ; // fileGet callback
+
+            }; // read_sub_content ;
+
+            // download emojis?
+            // - ok for Money Network developer localhost
+            // - ok for proxy servers
+            step_2_check_context = function (cb3) {
+                var pgm = module + '.load_public_avatars.step_2_check_context: ';
+                var debug_seq ;
+
+                // money network developer?
+                // console.log(pgm + 'ZeroFrame.site_info.cert_user_id = ' + ZeroFrame.site_info.cert_user_id);
+                if (ZeroFrame.site_info.cert_user_id == 'jro@zeroid.bit') return cb3() ;
+
+                // is proxy server?
+                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_server_info', pgm + 'serverInfo') ;
+                ZeroFrame.cmd("serverInfo", {}, function (server_info) {
+                    var pgm = module + '.load_public_avatars.step_2_check_context serverInfo callback: ';
+                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    console.log(pgm + 'server_info = '+ JSON.stringify(server_info));
+                    if (!server_info.ip_external) return ; // not a proxy server
+                    if (server_info.plugins.indexOf('Multiuser') == -1) return  ; // not a proxy server
+                    // external ip and Multiuser plugin. Must be a proxy server. download emojis
+                    cb3() ;
+                }) ; // serverInfo
+
+            }; // step_2_check_context
+
+            // loop for each emoji and download
+            step_3_download_emojis = function() {
+                var pgm = module + '.load_public_avatars.step_3_download_emojis: ';
+                var inner_path, debug_seq ;
+                if (!emojis_keys.length) return ; // done
+                inner_path = emojis_keys.shift() ;
+                debug_seq = debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+                ZeroFrame.cmd("fileGet", [inner_path, true, 'base64'], function (res) {
+                    var pgm = module + '.load_public_avatars.step_3_download_emojis fileGet callback: ';
+                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    if (!res) console.log(pgm + 'fileGet ' + inner_path + ' failed') ;
+                    // next emoji
+                    step_3_download_emojis() ;
+                }) ; // fileGet callback
+
+            }; // step_3_download_emojis
+
+            // start callback chain
+            step_1_read_sub_content(function () {
+                step_2_check_context(function() {
+                    step_3_download_emojis() ;
+                });
+            }) ;
+
+        }); // fileGet callback 1
     } // load_public_avatars
     load_public_avatars() ;
     function get_public_avatars () {

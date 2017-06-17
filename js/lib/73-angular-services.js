@@ -7675,7 +7675,7 @@ angular.module('MoneyNetwork')
         function event_file_done (hub, event, filename) {
             var pgm = service + '.event_file_done: ' ;
             var debug_seq, merged_filename ;
-            console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename) + ', hub = ' + hub);
+            // console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename) + ', hub = ' + hub);
             if (event != 'file_done') return ;
             if (!z_cache.user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
             // process user files:
@@ -10488,8 +10488,8 @@ angular.module('MoneyNetwork')
             for (i=0 ; i<emoji_names.length ; i++) {
                 code = emoji_names[i].code ;
                 if (full_emoji_support) {
-                    // check if emoji is full supported
-                    if (missing_twemojis.indexOf(code) != -1) continue ; // not available at https://twemoji.maxcdn.com
+                    // check if emoji is supported by all emoji providersfull supported
+                    if (missin_twemojis.indexOf(code) != -1) continue ; // not available at https://twemoji.maxcdn.com
                     for (j=1 ; j<emoji_folders.length ; j++) {
                         if (!emoji_folders[j] + '/' + code + '.png') continue ; // not found in optional files for provider
                     }
