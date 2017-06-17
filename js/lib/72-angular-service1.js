@@ -1668,6 +1668,168 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.debug(keys, text) ;
         } // debug
 
+        // admin only: delete files for inactive users
+        var days_before_cleanup_users = 30;
+        function get_no_days_before_cleanup () {
+            return days_before_cleanup_users ;
+        }
+
+
+        // administrator helpers. cleanup old inactive users. delete test users etc
+        var admin_auth_address = ['16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH', '18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ', '1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF'] ;
+        function is_admin () {
+            var pgm = service + '.is_admin: ' ;
+            if (z_cache.user_setup.guest) return false ;
+            var admin =  (admin_auth_address.indexOf(ZeroFrame.site_info.auth_address) != -1) ;
+            // console.log(pgm + 'admin = ' + admin) ;
+            return admin ;
+        }
+        var admin_key ;
+        function get_admin_key() {
+            return admin_key ;
+        }
+        function confirm_admin_task (text, task) {
+            if (!is_admin()) return ;
+            if (admin_key) {
+                // confirm dialog
+                ZeroFrame.cmd("wrapperConfirm", [text, "OK"], function (confirm) {
+                    if (confirm) task(admin_key) ;
+                }) ;
+            }
+            else {
+                // enter private key dialog
+                ZeroFrame.cmd("wrapperPrompt", [text + "<br>Enter private key to continue", "key"], function (key) {
+                    if (key) {
+                        admin_key = key;
+                        task(key);
+                    }
+                }); // wrapperPrompt
+            }
+        } // confirm_admin_job
+        function clear_admin_key() {
+            admin_key = null ;
+        }
+
+
+        function cleanup_inactive_users() {
+            var pgm = service + '.cleanup_inactive_users: ';
+            var info, query, debug_seq ;
+            info = '. Skipping cleanup_inactive_users check';
+            // check Zeronet status
+            if (!z_cache.user_id) {
+                console.log(pgm + 'No client login' + info);
+                return;
+            }
+            if (!ZeroFrame.site_info) {
+                console.log(pgm + 'ZeroFrame is not ready' + info);
+                return;
+            }
+            if (!ZeroFrame.site_info.cert_user_id) {
+                console.log(pgm + 'No ZeroNet login' + info);
+                return;
+            }
+            if (!is_admin()) {
+                // console.log(pgm + 'not administrator');
+                return;
+            }
+
+            // find files for inactive user accounts
+            query =
+                "select" +
+                "  keyvalue.value as timestamp," +
+                "  json.json_id," +
+                "  json.directory," +
+                "  files.filename," +
+                "  files.size " +
+                "from keyvalue, json, " +
+                "  (select filename, sha512, size,  'N' as optional, json_id from files" +
+                "     union all" +
+                "   select filename, sha512, size,  'Y' as optional, json_id from files_optional) as files " +
+                "where keyvalue.key = 'modified' " +
+                "and keyvalue.value <  strftime('%s','now')-60*60*24*" + days_before_cleanup_users + " " +
+                "and json.json_id = keyvalue.json_id " +
+                "and files.json_id = keyvalue.json_id " +
+                "order by keyvalue.value, keyvalue.json_id";
+            debug('select', pgm + 'query 16 (MS OK) = ' + query);
+            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 16') ;
+            ZeroFrame.cmd("dbQuery", [query], function (res) {
+                var pgm = service + '.cleanup_inactive_users dbQuery callback: ';
+                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                if (res.error) {
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for inactive users: " + res.error, 5000]);
+                    console.log(pgm + "Search for inactive users failed: " + res.error);
+                    console.log(pgm + 'query = ' + query);
+                    return;
+                }
+                if (res.length == 0) return; // no more inactive users to cleanup
+
+                console.log(pgm + 'todo: old user account cleanup is no longer working after adding merger site feature. users are on different sites with different admin private keys');
+                console.log(pgm + 'res = ' + JSON.stringify(res));
+                return ;
+
+                var json_ids = [] ;
+                var bytes = 0 ;
+                for (var i=0 ; i<res.length ; i++) {
+                    bytes += res[i].size ;
+                    if (json_ids.indexOf(res[i].json_id) == -1) json_ids.push(res[i].json_id) ;
+                }
+
+                // 1CCiJ97XHgVeJ@moneynetwork auth_address is in "signers", not this is not working as expected
+                // use zite private key instead
+                var users = (json_ids.length == 1 ? '1 user' : json_ids.length + ' users') + '. ' ;
+                var files = (res.length == 1 ? '1 file' : res.length + ' files') + '. ' ;
+
+                confirm_admin_task("Cleanup old user accounts? " + users + files + "Total " + bytes + " bytes.", function (privatekey) {
+                    if (!privatekey) return;
+
+                    // sign/publish is not working. 1CCiJ97XHgVeJ@moneynetwork should be moderator and allowed to delete old user files
+                    // http://127.0.0.1:43110/Blog.ZeroNetwork.bit/?Post:46:ZeroNet+site+development+tutorial+2#Comments
+                    var sign_and_publish = function (directory) {
+                        var filename = 'merged-MoneyNetwork/' + directory + '/content.json';
+                        var debug_seq ;
+                        // console.log(pgm + 'sign and publish. filename = ' + filename);
+                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + filename + ' sitePublish') ;
+                        ZeroFrame.cmd("sitePublish", {privatekey: privatekey, inner_path: filename}, function (res) {
+                            var pgm = service + '.cleanup_inactive_users sitePublish callback: ', error;
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                            if (res != "ok") {
+                                error = "Failed to publish " + filename + " : " + res.error;
+                                console.log(pgm + error);
+                                ZeroFrame.cmd("wrapperNotification", ["error", error, 3000]);
+                            }
+                        }); // sitePublish
+                    }; // sign_and_publish
+
+                    // delete files and publish content.json for each user
+                    var last_directory = res[0].directory, i, filename;
+                    for (i = 0; i < res.length; i++) {
+                        if (res[i].directory != last_directory) {
+                            sign_and_publish(last_directory);
+                            last_directory = res[i].directory;
+                        }
+                        filename = "merged-MoneyNetwork/" + res[i].directory + "/" + res[i].filename;
+                        if (res[i].optional == 'N') {
+                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + filename + ' fileDelete') ;
+                            ZeroFrame.cmd("fileDelete", filename, function (res) {
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                            });
+                        }
+                        else {
+                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + filename + ' optionalFileDelete') ;
+                            ZeroFrame.cmd("optionalFileDelete", filename, function (res) {
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                            });
+                        }
+                    } // for i (res)
+                    sign_and_publish(last_directory);
+
+                }); // confirm_admin_task
+
+            }); // dbQuery
+
+        } // cleanup_inactive_users
+
+
         // export MoneyNetworkHubService
         return {
             get_user_seq: get_user_seq,
@@ -1687,7 +1849,12 @@ angular.module('MoneyNetwork')
             write_empty_chat_file: write_empty_chat_file,
             save_my_files_optional: save_my_files_optional,
             get_files_optional_cache: get_files_optional_cache,
-            clear_files_optional_cache: clear_files_optional_cache
+            clear_files_optional_cache: clear_files_optional_cache,
+            is_admin: is_admin,
+            get_admin_key: get_admin_key,
+            clear_admin_key: clear_admin_key,
+            cleanup_inactive_users: cleanup_inactive_users,
+            get_no_days_before_cleanup: get_no_days_before_cleanup
         };
 
         // end MoneyNetworkHubService
