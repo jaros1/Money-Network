@@ -199,12 +199,12 @@ var MoneyNetworkHelper = (function () {
         var debug_seq = debug_z_api_operation_start('z_file_get', pgm + 'content.json fileGet') ;
         ZeroFrame.cmd("fileGet", ['content.json', false], function (res) {
             var pgm = module + '.load_public_avatars fileGet callback: ';
-            var folders, key, emojis_keys,
+            var folders, key, emojis_keys, emojis_total_no, emojis_total_bytes, emojis_total_mb,
                 step_1_read_sub_content, step_2_check_context, step_3_check_optional_file_list, step_4_download_emojis ;
             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
             if (res) res = JSON.parse(res) ;
             else res = { files: {} } ;
-            for (var key in res.files) {
+            for (key in res.files) {
                 if (!res.files.hasOwnProperty(key)) continue ;
                 if (key.substr(0,20) == 'public/images/avatar') public_avatars.push(key.substr(20,key.length-20)) ;
             } // for key
@@ -234,6 +234,7 @@ var MoneyNetworkHelper = (function () {
                 if (!folders.length) {
                     // console.log(pgm + 'emojis = ' + JSON.stringify(emojis)) ;
                     emojis_keys = Object.keys(emojis) ;
+                    emojis_total_no = emojis_keys.length ;
                     // done. continue with get_all_emojis
                     return cb2() ;
                 }
@@ -254,8 +255,10 @@ var MoneyNetworkHelper = (function () {
                         return step_1_read_sub_content(cb2) ;
                     }
                     folder = inner_path.substr(0,inner_path.length-12) ;
+                    if (!emojis_total_bytes) emojis_total_bytes = 0 ;
                     for (key in res.files_optional) {
                         emojis[folder+key] = true ;
+                        emojis_total_bytes += res.files_optional[key].size ;
                     }
                     // next emoji folder
                     step_1_read_sub_content(cb2)
@@ -264,7 +267,7 @@ var MoneyNetworkHelper = (function () {
             }; // read_sub_content ;
 
             // download emojis?
-            // - ok for Money Network developer localhost
+            // - ok for Money developer localhost
             // - ok for proxy servers
             step_2_check_context = function (cb3) {
                 var pgm = module + '.load_public_avatars.step_2_check_context: ';
@@ -312,7 +315,29 @@ var MoneyNetworkHelper = (function () {
             // loop for each emoji and download
             step_4_download_emojis = function(text) {
                 var pgm = module + '.load_public_avatars.step_4_download_emojis: ';
-                if (text) console.log(pgm + 'Is ' + text + '. Starting emojis download. Up to ' + emojis_keys.length + ' emoji files may be downloaded') ;
+                var emojis_remaining_no, emojis_remaining_pct, emojis_remaining_mb, emojis_downloaded_no,
+                    emojis_downloaded_pct, emojis_downloaded_mb ;
+                if (text) {
+                    emojis_remaining_no = emojis_keys.length ;
+                    emojis_remaining_pct = emojis_remaining_no / emojis_total_no * 100 ;
+                    emojis_total_mb = emojis_total_bytes / 1048576 ;
+                    emojis_remaining_mb = emojis_total_mb * emojis_remaining_pct / 100 ;
+                    emojis_downloaded_no = emojis_total_no - emojis_remaining_no ;
+                    emojis_downloaded_pct = emojis_downloaded_no / emojis_total_no * 100 ;
+                    emojis_downloaded_mb = emojis_total_mb * emojis_downloaded_pct / 100 ;
+                    // round
+                    emojis_total_mb = Math.round(emojis_total_mb*10)/10;
+                    emojis_downloaded_pct = Math.round(emojis_downloaded_pct*10)/10;
+                    emojis_downloaded_mb = Math.round(emojis_downloaded_mb*10)/10;
+                    emojis_remaining_mb = Math.round(emojis_remaining_mb*10)/10;
+                    console.log(pgm +
+                        'Is ' + text + '. Downloading emojis (optional files). ' +
+                        'Total ' + emojis_total_no + ' emoji files (' + emojis_total_mb + ' Mb). ' +
+                        emojis_downloaded_pct + '% already downloaded (' + emojis_downloaded_mb + ' Mb). ' +
+                        'Up to ' + emojis_remaining_no + ' more emoji files (' + emojis_remaining_mb + ' Mb) may be downloaded on this server. ' +
+                        'Thank you for your support.') ;
+                    // Is proxy server. Downloading emojis (optional files). Total 13763 emoji files (19.1 Mb). 94.6% already downloaded (18.1 Mb). Up to 744 more emoji files (1 Mb) may be downloaded on this server. Thank you for your support.
+                }
                 var inner_path, debug_seq ;
                 if (!emojis_keys.length) {
                     console.log(pgm + 'Thank you. Emojis download finished') ;

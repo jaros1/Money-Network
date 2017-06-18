@@ -1,11 +1,14 @@
 angular.module('MoneyNetwork')
 
+    // MoneyNetworkEmojiService:
+    // - emojis helpers (emojis in messages and reactions)
+    // - user_info helpers
+
     .factory('MoneyNetworkEmojiService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService',
                              function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService)
     {
         var service = 'MoneyNetworkEmojiService' ;
         console.log(service + ' loaded') ;
-
 
         // cache some important informations from zeronet files
         // - user_seq: from users array in data.json file. using "pubkey" as index to users array
@@ -13,6 +16,10 @@ angular.module('MoneyNetwork')
         // - files_optional: from content.json file. loaded at startup and updated after every sign and publish
         //   todo: add option to enable/disable files_optional cache. must be disabled if multiple users are using same zeronet cert at the same time
         var z_cache = moneyNetworkHubService.get_z_cache() ;
+
+        //
+        // Emojis helpers
+        //
 
         var standard_reactions = [
             { unicode: "1f603", title: "Like"},
@@ -46,6 +53,9 @@ angular.module('MoneyNetwork')
             'emoji/facebook', 'emoji/messenger', 'emoji/one', 'emoji/samsung', 'emoji/windows'] ;
         function get_emoji_folders () {
             return emoji_folders ;
+        }
+        function get_emoji_folder() {
+            return z_cache.user_setup.emoji_folder || emoji_folders[0] ;
         }
 
         // fuld emoji list - from content.files_optional
@@ -261,16 +271,116 @@ angular.module('MoneyNetwork')
             return reaction_list ;
         } // get_reaction_list
 
+        //
+        // user info helpers
+        //
+
+        // user info. Array with tag, value and privacy.
+        // saved in localStorage. Shared with contacts depending on privacy choice
+        z_cache.user_info = [] ;
+        function empty_user_info_line() {
+            return { tag: '', value: '', privacy: ''} ;
+        }
+        function is_user_info_empty () {
+            var user_info_clone, empty_user_info_line_str, i, row ;
+            if (z_cache.user_info.length == 0) return true ;
+            empty_user_info_line_str = JSON.stringify(empty_user_info_line()) ;
+            user_info_clone = JSON.parse(JSON.stringify(z_cache.user_info)) ;
+            for (i=0 ; i<user_info_clone.length ; i++) {
+                row = user_info_clone[i] ;
+                delete row['$$hashKey'] ;
+                if (JSON.stringify(row) != empty_user_info_line_str) return false ;
+            }
+            return true ;
+        } //  is_user_info_empty
+
+
+        function guest_account_user_info() {
+            var pgm = service + '.guest_account_user_info: ' ;
+            // todo: add more info to new guest account
+            var timezone = (new Date()).getTimezoneOffset()/60 ;
+            var language = navigator.languages ? navigator.languages[0] : navigator.language;
+            return [
+                { tag: 'Name', value: 'Guest', privacy: 'Search'},
+                { tag: '%', value: '%', privacy: 'Search'},
+                { tag: 'Timezone', value: '' + timezone, privacy: 'Hidden'},
+                { tag: 'Language', value: '' + language, privacy: 'Hidden'}
+            ] ;
+        }
+
+        function new_account_user_info() {
+            var pgm = service + '.new_account_user_info: ' ;
+            var cert_user_id, index, name, alias, timezone, language ;
+            cert_user_id = ZeroFrame.site_info.cert_user_id ;
+            if (!cert_user_id) name = MoneyNetworkHelper.get_fake_name() ;
+            else {
+                index = cert_user_id.indexOf('@') ;
+                if (cert_user_id.substr(index) == '@moneynetwork') name = MoneyNetworkHelper.get_fake_name() ;
+                else name = cert_user_id.substr(0,index) ;
+            }
+            index = name.indexOf(' ') ;
+            if (index == -1) alias = name ;
+            else alias = name.substr(0,index);
+            z_cache.user_setup.alias = alias ;
+            timezone = (new Date()).getTimezoneOffset()/60 ;
+            language = navigator.languages ? navigator.languages[0] : navigator.language;
+            return [
+                { tag: 'Name', value: name, privacy: 'Search'},
+                { tag: '%', value: '%', privacy: 'Search'},
+                { tag: 'Timezone', value: '' + timezone, privacy: 'Hidden'},
+                { tag: 'Language', value: '' + language, privacy: 'Hidden'}
+            ] ;
+        }
+        function load_user_info (create_new_account, guest) {
+            var pgm = service + '.load_user_info: ';
+            // load user info from local storage
+            var user_info_str, new_user_info ;
+            if (create_new_account) {
+                if (guest) new_user_info = guest_account_user_info();
+                else new_user_info = new_account_user_info() ;
+            }
+            else {
+                user_info_str = MoneyNetworkHelper.getItem('user_info') ;
+                if (user_info_str) new_user_info = JSON.parse(user_info_str) ;
+                else new_user_info = [empty_user_info_line()] ;
+            }
+            z_cache.user_info.splice(0,z_cache.user_info.length) ;
+            for (var i=0 ; i<new_user_info.length ; i++) z_cache.user_info.push(new_user_info[i]) ;
+            if (create_new_account) save_user_info() ;
+        }
+        function get_user_info () {
+            return z_cache.user_info ;
+        }
+
+        function save_user_info (cb) {
+            var pgm = service + '.save_user_info: ';
+
+            // cleanup user_info before save
+            var user_info_clone = JSON.parse(JSON.stringify(z_cache.user_info)) ;
+            for (var i=0 ; i<user_info_clone.length ; i++) {
+                delete user_info_clone[i]['$$hashKey']
+            }
+            MoneyNetworkHelper.setItem('user_info', JSON.stringify(user_info_clone)) ;
+
+            $timeout(cb) ;
+        } // save_user_info
+
+
+
         // export MoneyNetworkEmojiService
         return {
             get_standard_reactions: get_standard_reactions,
             get_user_reactions: get_user_reactions,
             get_emoji_folders: get_emoji_folders,
+            get_emoji_folder: get_emoji_folder,
             init_emojis_short_list: init_emojis_short_list,
             replace_emojis: replace_emojis,
             get_reaction_list: get_reaction_list,
             unicode_to_symbol: unicode_to_symbol,
-            symbol_to_unicode: symbol_to_unicode
+            symbol_to_unicode: symbol_to_unicode,
+            is_user_info_empty: is_user_info_empty,
+            load_user_info: load_user_info,
+            save_user_info: save_user_info
         };
 
         // end MoneyNetworkEmojiService
