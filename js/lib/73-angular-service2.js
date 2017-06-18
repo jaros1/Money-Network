@@ -2,7 +2,8 @@ angular.module('MoneyNetwork')
 
     // MoneyNetworkEmojiService:
     // - emojis helpers (emojis in messages and reactions)
-    // - user_info helpers
+    // - user_info and user_setup helpers
+    // - contact and message sort
 
     .factory('MoneyNetworkEmojiService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService',
                              function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService)
@@ -372,7 +373,7 @@ angular.module('MoneyNetwork')
         // user setup: avatar, alias, contact sort, contact filters, chat sort, spam filters
         z_cache.user_setup = {} ;
         function load_user_setup (keysize) {
-            var new_user_setup, key, guest_id, guest, alias ;
+            var new_user_setup, key, guest_id, guest ;
             new_user_setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
             for (key in z_cache.user_setup) delete z_cache.user_setup[key] ;
             for (key in new_user_setup) z_cache.user_setup[key] = new_user_setup[key] ;
@@ -412,6 +413,133 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.ls_save();
         }
 
+        //
+        // sort helpers
+        //
+
+        // sort used in network and chat pages
+        var contact_sort_options = ['Last online', 'User name', 'Last chat msg', 'Number chat msg', 'ZeroNet disk usage', 'Browser disk usage'];
+        function get_contact_sort_options () {
+            return contact_sort_options ;
+        }
+        function get_contact_sort_title () {
+            var contact_sort_title = contact_sort_options[0];
+            for (var i=1 ; i<contact_sort_options.length ; i++) {
+                if (i<contact_sort_options.length-1) contact_sort_title += ", " ;
+                else contact_sort_title += " or " ;
+                contact_sort_title += contact_sort_options[i] ;
+            }
+            return contact_sort_title ;
+        }
+        function contact_order_by (contact) {
+            var user_name, pgm, sort, i, message, unix_timestamp, short_date ;
+            // find user name. for sort and debug
+            if (contact.alias) user_name = contact.alias ;
+            else if (contact.type == 'group') user_name = contact.unique_id.substr(0,13) ;
+            else user_name = contact.cert_user_id ;
+            while (user_name.length < 26) user_name += ' ' ;
+            pgm = service + '. contact_order_by: user_name = ' + user_name + ', ' ;
+            // check angularJS orderBy params
+            //console.log(pgm + 'arguments.length = ' + arguments.length );
+            //for (i=0 ; i<arguments.length ; i++) console.log(pgm + 'argument[' + i + '] = ' + JSON.stringify(arguments[i])) ;
+            sort = 0 ;
+            unix_timestamp = false ;
+            if (z_cache.user_setup.contact_sort== 'Last online') {
+                unix_timestamp = true ;
+                sort = -MoneyNetworkHelper.get_last_online(contact) ;
+            }
+            if (z_cache.user_setup.contact_sort== 'User name') {
+                sort = user_name ;
+            }
+            if (z_cache.user_setup.contact_sort== 'Last chat msg') {
+                unix_timestamp = true;
+                if (contact.messages && (contact.messages.length > 0)) {
+                    sort = -contact.messages[contact.messages.length - 1].sent_at;
+                }
+            }
+            if (z_cache.user_setup.contact_sort== 'Number chat msg') {
+                if (contact.messages) sort = -contact.messages.length ;
+            }
+            if (z_cache.user_setup.contact_sort== 'ZeroNet disk usage') {
+                if (contact.messages) {
+                    for (i=0 ; i<contact.messages.length ; i++) {
+                        message = contact.messages[i] ;
+                        if ((message.folder == 'outbox') && message.zeronet_msg_size) sort -= message.zeronet_msg_size ;
+                    }
+                }
+            }
+            if (z_cache.user_setup.contact_sort== 'Browser disk usage') { // localStorage
+                if (contact.messages) {
+                    for (i=0 ; i<contact.messages.length ; i++) {
+                        message = contact.messages[i] ;
+                        if (message.ls_msg_size) sort -= message.ls_msg_size ;
+                    }
+                }
+            }
+            message = pgm + z_cache.user_setup.contact_sort + ' = ' + sort ;
+            message += ' (' + typeof sort + ')' ;
+            if (unix_timestamp) {
+                short_date  = date(-sort*1000, 'short') ;
+                if (short_date == 'Invalid Date') {
+                    sort = 0 ;
+                    short_date  = date(-sort*1000, 'short')
+                }
+                message += ', unix timestamp = ' + short_date ;
+            }
+            debug('contact_order_by', message) ;
+            return sort ;
+        } // contact_order_by
+
+        var chat_sort_options = ['Last message', 'ZeroNet disk usage', 'Browser disk usage'] ;
+        function get_chat_sort_options () {
+            return chat_sort_options ;
+        }
+        function get_chat_sort_title () {
+            var chat_sort_title = chat_sort_options[0];
+            for (var i=1 ; i<chat_sort_options.length ; i++) {
+                if (i<chat_sort_options.length-1) chat_sort_title += ", " ;
+                else chat_sort_title += " or " ;
+                chat_sort_title += chat_sort_options[i] ;
+            }
+            return chat_sort_title ;
+        }
+
+        // chat message order by.
+        function chat_order_by (message) {
+            var pgm = service + '.chat_order_by: ';
+            var sort1, sort2, short_date, unix_timestamp, debug_msg, padding ;
+            // 2. sort condition - always Last message unix timestamp
+            sort2 = message.message.sent_at || message.message.created_at ;
+            short_date  = date(sort2*1000, 'short') ;
+            if (short_date == 'Invalid Date') {
+                sort2 = 0 ;
+                short_date  = date(sort2*1000, 'short')
+            }
+            // 1. sort condition - Last message, ZeroNet disk usage or Browser disk usage
+            sort1 = 0 ;
+            unix_timestamp = false ;
+            // console.log(pgm + 'chat_sort = ' + self.chat_sort);
+            if (z_cache.user_setup.chat_sort== 'Last message') {
+                sort1 = sort2 ;
+                unix_timestamp = true ;
+            }
+            if (z_cache.user_setup.chat_sort== 'ZeroNet disk usage') {
+                if (message.message.zeronet_msg_size) sort1 = message.message.zeronet_msg_size ;
+            }
+            if (z_cache.user_setup.chat_sort== 'Browser disk usage') {
+                if (message.message.ls_msg_size) sort1 = message.message.ls_msg_size ;
+            }
+            debug_msg = pgm + z_cache.user_setup.chat_sort + ' = ' + JSON.stringify(sort1) ;
+            debug_msg += ' (' + typeof sort1 + ')' ;
+            if (unix_timestamp) debug_msg += ', unix timestamp = ' + short_date ;
+            debug('chat_order_by', debug_msg) ;
+            if (unix_timestamp) return sort1 ; // simple unix timestamp sort
+            // sort by 1. size and 2. unix timestamp
+            padding = '              ' ;
+            return (padding + sort1).slice(-13) + (padding + sort2).slice(-13) ;
+        } // chat_order_by
+
+
 
 
 
@@ -430,7 +558,13 @@ angular.module('MoneyNetwork')
             load_user_info: load_user_info,
             save_user_info: save_user_info,
             load_user_setup: load_user_setup,
-            save_user_setup: save_user_setup
+            save_user_setup: save_user_setup,
+            get_contact_sort_options: get_contact_sort_options,
+            get_contact_sort_title: get_contact_sort_title,
+            contact_order_by: contact_order_by,
+            get_chat_sort_options: get_chat_sort_options,
+            get_chat_sort_title: get_chat_sort_title,
+            chat_order_by: chat_order_by
         };
 
         // end MoneyNetworkEmojiService
