@@ -10016,46 +10016,11 @@ angular.module('MoneyNetwork')
         } // chat_order_by
 
         // user setup: avatar, alias, contact sort, contact filters, chat sort, spam filters
-        z_cache.user_setup = {} ;
         function load_user_setup (keysize) {
-            var new_user_setup, key, guest_id, guest, alias ;
-            new_user_setup = JSON.parse(MoneyNetworkHelper.getItem('setup')) ;
-            for (key in z_cache.user_setup) delete z_cache.user_setup[key] ;
-            for (key in new_user_setup) z_cache.user_setup[key] = new_user_setup[key] ;
-            // add missing defaults
-            guest_id = MoneyNetworkHelper.getItem('guestid');
-            guest = (guest_id == '' + z_cache.user_id) ;
-            if (guest) z_cache.user_setup.guest = guest ;
-            if (!z_cache.user_setup.contact_filters) z_cache.user_setup.contact_filters = {
-                all: 'green',
-                new: 'green',
-                unverified: 'green',
-                verified: 'green',
-                ignore: 'green'
-            } ;
-            if (!z_cache.user_setup.contact_filters.hasOwnProperty('guest')) {
-                z_cache.user_setup.contact_filters.guest = 'green' ;
-            }
-            if (!z_cache.user_setup.contact_sort) z_cache.user_setup.contact_sort = contact_sort_options[0] ;
-            if (z_cache.user_setup.contact_sort == 'Last updated') z_cache.user_setup.contact_sort = 'Last online' ;
-            if (!z_cache.user_setup.chat_sort) z_cache.user_setup.chat_sort = chat_sort_options[0] ;
-            if (!z_cache.user_setup.hasOwnProperty('block_guests')) z_cache.user_setup.block_guests = false ; // !guest ; todo:
-            if (!z_cache.user_setup.hasOwnProperty('block_ignored')) z_cache.user_setup.block_ignored = false ;
-            if (!z_cache.user_setup.hasOwnProperty('public_chat')) z_cache.user_setup.public_chat = true; // guest ; todo:
-            if (!z_cache.user_setup.hasOwnProperty('two_panel_chat')) z_cache.user_setup.two_panel_chat = true ;
-            if (!z_cache.user_setup.alias) z_cache.user_setup.alias = 'Me';
-            if (!z_cache.user_setup.encryption) z_cache.user_setup.encryption = keysize == 256 ? '2' : '1' ;
+            moneyNetworkEmojiService.load_user_setup(keysize) ;
         }
         function save_user_setup () {
-            var i ;
-            if (z_cache.user_setup.reactions) {
-                for (i=0 ; i<z_cache.user_setup.length ; i++) {
-                    delete z_cache.user_setup[i].src ;
-                    delete z_cache.user_setup[i]["$$hashKey"] ;
-                }
-            }
-            MoneyNetworkHelper.setItem('setup', JSON.stringify(z_cache.user_setup));
-            MoneyNetworkHelper.ls_save();
+            moneyNetworkEmojiService.save_user_setup() ;
         }
         function get_user_setup () {
             return z_cache.user_setup ;
