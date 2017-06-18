@@ -1661,6 +1661,73 @@ angular.module('MoneyNetwork')
         function get_ls_contacts () {
             return ls_contacts ;
         }
+        var ls_contacts_index = { //
+            unique_id: {}, // from unique_id to contract
+            password_sha256: {}, // from group password sha256 value to group contact
+            cert_user_id: {} // from cert_user_id to array with contacts
+        } ;
+        var ls_contacts_deleted_sha256 = {} ; // hash with sender_sha256 addresses for deleted contacts (deleted outbox messages)
+        function get_ls_contacts_deleted_sha256 () {
+            return ls_contacts_deleted_sha256 ;
+        }
+
+        // contacts array helper functions
+        function clear_contacts () {
+            var key ;
+            ls_contacts.splice(0, ls_contacts.length) ;
+            for (key in ls_contacts_index.unique_id) delete ls_contacts_index.unique_id[key] ;
+            for (key in ls_contacts_index.password_sha256) delete ls_contacts_index.password_sha256[key] ;
+            for (key in ls_contacts_index.cert_user_id) delete ls_contacts_index.cert_user_id[key] ;
+            for (key in ls_contacts_deleted_sha256) delete ls_contacts_deleted_sha256[key] ;
+        }
+        function add_contact (contact) {
+            var password_sha256 ;
+            ls_contacts.push(contact) ;
+            ls_contacts_index.unique_id[contact.unique_id] = contact ;
+            if (contact.password) password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
+            if (password_sha256) ls_contacts_index.password_sha256[password_sha256] = contact ;
+            if (!ls_contacts_index.cert_user_id[contact.cert_user_id]) ls_contacts_index.cert_user_id[contact.cert_user_id] = [] ;
+            ls_contacts_index.cert_user_id[contact.cert_user_id].push(contact) ;
+        }
+        function remove_contact (index) {
+            var pgm = service + '.remove_contact: ' ;
+            var contact, password_sha256, sender_sha256, index2 ;
+            contact = ls_contacts[index] ;
+            ls_contacts.splice(index,1) ;
+            delete ls_contacts_index.unique_id[contact.unique_id] ;
+            if (contact.password) {
+                password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
+                ls_contacts_index.password_sha256[password_sha256] ;
+            }
+            index2 = ls_contacts_index.cert_user_id[contact.cert_user_id].indexOf(contact) ;
+            ls_contacts_index.cert_user_id[contact.cert_user_id].splice(index2,1) ;
+            // any sender_sha256 addresses to keep? may receive ingoing messages to this sha256 address later
+            if (!contact.outbox_sender_sha256) return ;
+            for (sender_sha256 in contact.outbox_sender_sha256) {
+                ls_contacts_deleted_sha256[sender_sha256] = contact.outbox_sender_sha256[sender_sha256] ;
+                debug('lost_message', pgm + 'added sender_sha256 ' + sender_sha256 + ' to ls_contacts_deleted_sha256 list') ;
+            }
+        }
+        function update_contact_add_password (contact) { // added password to existing pseudo group chat contact
+            var pgm = service + '.update_contact_add_password: ' ;
+            var password_sha256 ;
+            password_sha256 = CryptoJS.SHA256(contact.password).toString();
+            ls_contacts_index.password_sha256[password_sha256] = contact ;
+            watch_receiver_sha256.push(password_sha256) ;
+            // console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
+        }
+        function get_contact_by_unique_id (unique_id) {
+            return ls_contacts_index.unique_id[unique_id] ;
+        }
+        function get_contact_by_password_sha256 (password_sha256) {
+            return ls_contacts_index.password_sha256[password_sha256] ;
+        }
+        function get_contacts_by_cert_user_id (cert_user_id) {
+            return ls_contacts_index.cert_user_id[cert_user_id] ;
+        }
+
+
+
 
         // output debug info in log. For key, see user page and setup.debug hash
         // keys: simple expressions are supported. For example inbox && unencrypted
@@ -1843,6 +1910,14 @@ angular.module('MoneyNetwork')
             get_z_cache: get_z_cache,
             check_merger_permission: check_merger_permission,
             get_ls_contacts: get_ls_contacts,
+            get_ls_contacts_deleted_sha256: get_ls_contacts_deleted_sha256,
+            clear_contacts: clear_contacts,
+            add_contact: add_contact,
+            remove_contact: remove_contact,
+            update_contact_add_password: update_contact_add_password,
+            get_contact_by_unique_id: get_contact_by_unique_id,
+            get_contact_by_password_sha256: get_contact_by_password_sha256,
+            get_contacts_by_cert_user_id: get_contacts_by_cert_user_id,
             check_sha256_addresses: check_sha256_addresses,
             get_content_optional: get_content_optional,
             zeronet_site_publish: zeronet_site_publish,

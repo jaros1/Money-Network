@@ -3509,70 +3509,19 @@ angular.module('MoneyNetwork')
         }
 
 
-        // array and indexes with contacts from localStorage
-        // array for angularUI. hash with indexes for fast access
+        // arrays with contacts from localStorage
         var ls_contacts = moneyNetworkHubService.get_ls_contacts() ; // array with contacts
-        var ls_contacts_index = { //
-            unique_id: {}, // from unique_id to contract
-            password_sha256: {}, // from group password sha256 value to group contact
-            cert_user_id: {} // from cert_user_id to array with contacts
-        } ;
-        var ls_contacts_deleted_sha256 = {} ; // hash with sender_sha256 addresses for deleted contacts (deleted outbox messages)
+        var ls_contacts_deleted_sha256 = moneyNetworkHubService.get_ls_contacts_deleted_sha256() ; // hash with sender_sha256 addresses for deleted contacts (deleted outbox messages)
 
         // contacts array helper functions
-        function clear_contacts () {
-            var key ;
-            ls_contacts.splice(0, ls_contacts.length) ;
-            for (key in ls_contacts_index.unique_id) delete ls_contacts_index.unique_id[key] ;
-            for (key in ls_contacts_index.password_sha256) delete ls_contacts_index.password_sha256[key] ;
-            for (key in ls_contacts_index.cert_user_id) delete ls_contacts_index.cert_user_id[key] ;
-            for (key in ls_contacts_deleted_sha256) delete ls_contacts_deleted_sha256[key] ;
-        }
-        function add_contact (contact) {
-            var password_sha256 ;
-            ls_contacts.push(contact) ;
-            ls_contacts_index.unique_id[contact.unique_id] = contact ;
-            if (contact.password) password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
-            if (password_sha256) ls_contacts_index.password_sha256[password_sha256] = contact ;
-            if (!ls_contacts_index.cert_user_id[contact.cert_user_id]) ls_contacts_index.cert_user_id[contact.cert_user_id] = [] ;
-            ls_contacts_index.cert_user_id[contact.cert_user_id].push(contact) ;
-        }
-        function remove_contact (index) {
-            var pgm = service + '.remove_contact: ' ;
-            var contact, password_sha256, sender_sha256, index2 ;
-            contact = ls_contacts[index] ;
-            ls_contacts.splice(index,1) ;
-            delete ls_contacts_index.unique_id[contact.unique_id] ;
-            if (contact.password) {
-                password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
-                ls_contacts_index.password_sha256[password_sha256] ;
-            }
-            index2 = ls_contacts_index.cert_user_id[contact.cert_user_id].indexOf(contact) ;
-            ls_contacts_index.cert_user_id[contact.cert_user_id].splice(index2,1) ;
-            // any sender_sha256 addresses to keep? may receive ingoing messages to this sha256 address later
-            if (!contact.outbox_sender_sha256) return ;
-            for (sender_sha256 in contact.outbox_sender_sha256) {
-                ls_contacts_deleted_sha256[sender_sha256] = contact.outbox_sender_sha256[sender_sha256] ;
-                debug('lost_message', pgm + 'added sender_sha256 ' + sender_sha256 + ' to ls_contacts_deleted_sha256 list') ;
-            }
-        }
-        function update_contact_add_password (contact) { // added password to existing pseudo group chat contact
-            var pgm = service + '.update_contact_add_password: ' ;
-            var password_sha256 ;
-            password_sha256 = CryptoJS.SHA256(contact.password).toString();
-            ls_contacts_index.password_sha256[password_sha256] = contact ;
-            watch_receiver_sha256.push(password_sha256) ;
-            // console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
-        }
-        function get_contact_by_unique_id (unique_id) {
-            return ls_contacts_index.unique_id[unique_id] ;
-        }
-        function get_contact_by_password_sha256 (password_sha256) {
-            return ls_contacts_index.password_sha256[password_sha256] ;
-        }
-        function get_contacts_by_cert_user_id (cert_user_id) {
-            return ls_contacts_index.cert_user_id[cert_user_id] ;
-        }
+        function clear_contacts () { return moneyNetworkHubService.clear_contacts() }
+        function add_contact (contact) { return moneyNetworkHubService.add_contact(contact) }
+        function remove_contact (index) { return moneyNetworkHubService.remove_contact(index) }
+        function update_contact_add_password (contact) { return moneyNetworkHubService.update_contact_add_password(contact) }
+        function get_contact_by_unique_id (unique_id) { return moneyNetworkHubService.get_contact_by_unique_id(unique_id)}
+        function get_contact_by_password_sha256 (password_sha256) {return moneyNetworkHubService.get_contact_by_password_sha256 (password_sha256) }
+        function get_contacts_by_cert_user_id (cert_user_id) {return moneyNetworkHubService.get_contacts_by_cert_user_id (cert_user_id) }
+
         function get_contact_name (contact) {
             var i ;
             if (contact.alias) return contact.alias ;
