@@ -1867,7 +1867,7 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
                                     console.log(pgm + 'deleting message') ;
                                     // delete invalid message
-                                    js_messages_row = js_messages_index.seq[message.seq] ;
+                                    js_messages_row = get_message_by_seq(message.seq) ;
                                     if (js_messages_row) remove_message(js_messages_row) ; // new cleanup method
                                     else {
                                         // old cleanup method (if seq is null)
@@ -1894,14 +1894,16 @@ angular.module('MoneyNetwork')
                             }
                             else {
                                 local_msg_seq = next_local_msg_seq() ;
-                                message_with_envelope.local_msg_seq = local_msg_seq;
-                                js_messages_row = js_messages_index.seq[message_with_envelope.seq] ;
+                                // message_with_envelope.local_msg_seq = local_msg_seq;
+                                // js_messages_row = js_messages_index.seq[message_with_envelope.seq] ;
+                                js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
                                 //console.log(pgm + 'test - adding missing js_messages_index.local_msg_seq index. ' +
                                 //    'message_with_envelope.seq = ' + message_with_envelope.seq +
                                 //    ', js_messages_row = ' + JSON.stringify(js_messages_row) +
                                 //    ', js_messages_index.local_msg_seq[' + local_msg_seq + '] = ' + js_messages_index.local_msg_seq[local_msg_seq] +
                                 //    ' (should be null)');
-                                js_messages_index.local_msg_seq[local_msg_seq] = js_messages_row ;
+                                message_add_local_msg_seq(js_messages_row, local_msg_seq) ;
+                                // js_messages_index.local_msg_seq[local_msg_seq] = js_messages_row ;
                                 sent_at = new Date().getTime() ;
                                 parent = 'todo' ;
                                 resend = false ;
@@ -1926,10 +1928,11 @@ angular.module('MoneyNetwork')
                                 message.sender_sha256 = sender_sha256 ;
                                 // update js_messages_index.sender_sha256
                                 seq = message_with_envelope.seq ;
-                                if (seq) js_messages_row = js_messages_index.seq[seq] ;
+                                if (seq) js_messages_row = get_message_by_seq(seq) ;
                                 if (js_messages_row) {
                                     // console.log(pgm + 'adding sender_sha256 address ' + sender_sha256 + ' to js_messages sender_sha256 index') ;
-                                    js_messages_index.sender_sha256[sender_sha256] = js_messages_row ;
+                                    message_add_sender_sha256(js_messages_row, sender_sha256) ;
+                                    //js_messages_index.sender_sha256[sender_sha256] = js_messages_row ;
                                 }
                                 else if (seq) {
                                     console.log(pgm + 'error: not no js_messages_row with seq ' + seq + '. cannot add sender_sha256 address ' + sender_sha256 + ' to js_messages sender_sha256 index') ;
@@ -3114,8 +3117,9 @@ angular.module('MoneyNetwork')
                                             message_with_envelope.ls_msg_size = JSON.stringify(message_with_envelope).length ;
                                             debug('public_chat', pgm + 'done. message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
                                             // update js_messages_index with new local_msg_seq
-                                            js_message_row = js_messages_index.seq[message_with_envelope.seq] ;
-                                            js_messages_index.local_msg_seq[message_with_envelope.local_msg_seq] = js_message_row ;
+                                            js_message_row = get_message_by_seq(message_with_envelope.seq) ;
+                                            message_add_local_msg_seq(js_message_row, message_with_envelope.local_msg_seq) ;
+                                            //js_messages_index.local_msg_seq[message_with_envelope.local_msg_seq] = js_message_row ;
                                             //debug('public_chat', pgm + 'message_with_envelope.seq = ' + message_with_envelope.seq +
                                             //    ', js_message_row = ' + JSON.stringify(js_message_row));
                                             z_update_5_public_chat(true) ;
@@ -3479,34 +3483,13 @@ angular.module('MoneyNetwork')
         }
 
 
-        // hash with private reactions
-        var ls_reactions = {} ;
-        function ls_load_reactions () {
-            var new_reactions, key ;
-            new_reactions = MoneyNetworkHelper.getItem('reactions') ;
-            if (new_reactions) new_reactions = JSON.parse(new_reactions) ;
-            else new_reactions = {} ;
-            for (key in ls_reactions) delete ls_reactions[key] ;
-            for (key in new_reactions) ls_reactions[key] = new_reactions[key] ;
-        } // load_reactions
+        //// hash with private reactions
+        var ls_reactions = moneyNetworkHubService.get_ls_reactions() ;
+        function ls_load_reactions () { return moneyNetworkHubService.ls_load_reactions() }
         function ls_save_reactions (update_zeronet) {
-            var pgm = service + '.save_reactions: ' ;
-            MoneyNetworkHelper.setItem('reactions', JSON.stringify(ls_reactions)) ;
-            if (update_zeronet) {
-                // update localStorage and zeronet
-                $timeout(function () {
-                    MoneyNetworkHelper.ls_save() ;
-                    z_update_1_data_json(pgm) ;
-                })
-            }
-            else {
-                // update only localStorage
-                $timeout(function () {
-                    MoneyNetworkHelper.ls_save() ;
-                })
-            }
-
-        }
+            var cb = update_zeronet ? z_update_1_data_json : false ;
+            moneyNetworkHubService.ls_save_reactions(cb) ;
+        } // ls_save_reactions
 
 
         // arrays with contacts from localStorage
@@ -3525,357 +3508,27 @@ angular.module('MoneyNetwork')
         function get_public_chat_outbox_msg (timestamp) { return moneyNetworkHubService.get_public_chat_outbox_msg (timestamp) }
 
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
-        var js_messages_seq = 0 ; // internal seq to rows in js_messages.
-        var js_messages = [] ; // array with { :contact => contact, :message => message } - one row for each message
-        var js_messages_index = { //
-            seq: {}, // // from seq to row in js_message. always present and link between js_message_row and message objects
-            sender_sha256: {}, // from sender_sha256 to row in js_messages
-            local_msg_seq: {}, // from local_msg_seq in message to row in js_messages
-            parent: {}         // from parent ("<sent_at>,<auth4>") to row in js_messages
-        } ;
-        var js_orphan_messages = {} ; // from parent ("<sent_at>,<auth4>") to an array of orphan comments
+        var js_messages = moneyNetworkHubService.get_js_messages() ; // array with { :contact => contact, :message => message } - one row for each message
 
-        function clear_messages () {
-            var key ;
-            js_messages.splice(0, js_messages.length);
-            js_messages_seq = 0 ;
-            for (key in js_messages_index.seq) delete js_messages_index.seq[key] ;
-            for (key in js_messages_index.sender_sha256) delete js_messages_index.sender_sha256[key] ;
-            for (key in js_messages_index.local_msg_seq) delete js_messages_index.local_msg_seq[key] ;
-            for (key in js_messages_index.parent) delete js_messages_index.parent[key] ;
-            for (key in js_orphan_messages) delete js_orphan_messages[key] ;
-        } // clear_messages
+        function clear_messages () { moneyNetworkHubService.clear_messages() }
 
-        function get_standard_reactions () { return moneyNetworkEmojiService.get_standard_reactions() }
         function get_user_reactions () { return moneyNetworkEmojiService.get_user_reactions() }
 
-        // validate child parent context.
-        function is_child_parent (child, parent) {
-            var pgm = service + '.is_child_parent: ' ;
-            var ok ;
-            var public_child_message = (child.message.z_filename || (child.contact.type == 'public')) ;
-            var public_parent_message = (parent.message.z_filename || (parent.contact.type == 'public')) ;
-            if (public_child_message && public_parent_message) return true ; // public chat. no restrictions
-            if (public_child_message || public_parent_message) {
-                console.log(pgm + 'invalid child parent relation. mixed public private chat. ' +
-                    'public_child_message = ' + public_child_message + ', public_parent_message = ' + public_parent_message) ;
-                // invalid child parent relation. mixed public private chat. child.z_filename = false, parent.z_filename = true
-                console.log(pgm + 'child = ' + JSON.stringify(child)) ;
-                //child = {
-                //    "contact": {
-                //        "unique_id": "591935b15b1c88e2d5f6be0a054604fcf36f0585a6f51098fa3803826fff278c",
-                //        "cert_user_id": "591935b15b1c8@moneynetwork",
-                //        "type": "public",
-                //        "search": [{"tag": "World", "value": "World", "privacy": "Search", "row": 1}],
-                //        "messages": [...],
-                //        "avatar": "z.png",
-                //        "alias": "World"
-                //    },
-                //    "message": {
-                //        "folder": "outbox",
-                //        "message": {"msgtype": "chat msg", "message": "test", "parent": "1489336737531,17ZG"},
-                //        "created_at": 1489937759848
-                //    }
-                //};
-                delete child.message.message.parent ;
-                return false ;
-            } // mixed public/private. not allowed
-            // private or group chat. contact must be identical for child and parent
-            ok = (child.contact.unique_id == parent.contact.unique_id) ;
-            if (!ok) {
-                console.log(pgm + 'invalid child parent relation. invalid child parent contact. ' +
-                    'child.unique_id = ' + child.contact.unique_id + ', parent.unique_id = ' + parent.contact.unique_id) ;
-            }
-            return ok ;
-        } // is_child_parent
-
-        function add_message_parent_index (message) {
-            var pgm = service + '.add_message_parent_index: ' ;
-            var js_messages_row, contact, auth4, unique_id, sender, parent ;
-            if (!message.sent_at) {
-                console.log(pgm + 'wait with parent index. No sent_at timestamp in message. message = ' + JSON.stringify(message)) ;
-                return ;
-            }
-            js_messages_row = get_message_by_seq(message.seq) ;
-            contact = js_messages_row.contact ;
-            // parent index. "<sent_at>,<auth4>". special unique id used for comments
-            if (message.folder == 'outbox') auth4 = ZeroFrame.site_info.auth_address.substr(0, 4) ;
-            else if (contact.type != 'group') auth4 = contact.auth_address.substr(0,4) ; // public chat inbox or private chat inbox message from contact
-            else {
-                // group chat. find sender from contact.participants and message.participant
-                unique_id = contact.participants[message.participant-1] ;
-                sender = get_contact_by_unique_id(unique_id) ;
-                console.log(pgm + 'parent index for group chat. message.participant = ' + message.participant +
-                    ', contact.participants = ' + JSON.stringify(contact.participants) + ', unique_id = ' + unique_id + ', sender = ' + (sender ? true : false)) ;
-                if (sender) auth4 = sender.auth_address.substr(0,4) ;
-            }
-            if (auth4) parent = message.sent_at + ',' + auth4 ;
-            if (parent) {
-                if (js_messages_index.parent[parent]) {
-                    console.log(pgm + 'parent index does already exist for ' + parent + ' and message ' + JSON.stringify(message.message)) ;
-                    return ;
-                }
-                js_messages_index.parent[parent] = js_messages_row ;
-                    // any orphan js_messages_rows (comments) waiting for this new parent message?
-                    if (js_orphan_messages[parent]) {
-                        console.log(pgm + 'loading ' + js_orphan_messages[parent].length + ' old orphan comment(s)');
-                        if (!js_messages_row.messages) js_messages_row.messages = [] ;
-                        while (js_orphan_messages[parent].length) {
-                            js_child_messages_row = js_orphan_messages[parent].shift() ;
-                            if (is_child_parent(js_child_messages_row, js_messages_row)) js_messages_row.messages.push(js_child_messages_row) ;
-                            else {
-                                // error. invalid child parent relation. ignoring parent and inserting comment as a normal message
-                                console.log(pgm + 'deleting invalid parent from message ' + JSON.stringify(js_child_messages_row.message)) ;
-                                delete js_child_messages_row.message.message.parent ;
-                                js_messages.push(js_child_messages_row) ;
-                            }
-                        }
-                        delete js_orphan_messages[parent] ;
-                    }
-            }
-            else console.log(pgm + 'error. could not create parent index for ' + JSON.stringify(message)) ;
-        }
+        function add_message_parent_index (message) { return moneyNetworkHubService.add_message_parent_index (message) }
 
         // add message to 1) contact, 2) js_messages and 3) js_messages_index
         // load_contacts:
         // - true: called from ls_load_contacts or load_public_chat
         // - false: do not add message to contact.messages array (already there)
         function add_message(contact, message, load_contacts) {
-            // read like.json file with public reactions
-            get_like_json(function (like, like_index, empty) {
-                var pgm = service + '.add_message: ' ;
-                var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id, auth_address,
-                    like_index_p, k, auth4, sender, parent, js_parent_messages_row, js_child_messages_row ;
-                if (!contact && !z_cache.user_info.block_public) contact = get_public_contact(true) ;
-                if (!contact.messages) contact.messages = [] ;
-                if (!load_contacts) contact.messages.push(message) ;
-                js_messages_row = {
-                    contact: contact,
-                    message: message,
-                    reactions: JSON.parse(JSON.stringify(get_user_reactions()))
-                } ;
-                if (message.z_filename) {
-                    // public chat. not saved in localStorage.
-                    // load message reactions from ls_reactions (private localStorage) or like.json (public ZeroNet)
-                    // Check for any private reaction stored in ls_reactions hash
-                    reactions_index = message.sent_at ;
-                    if (reactions_index && (message.folder == 'inbox')) {
-                        if (contact.auth_address) reactions_index += ',' + contact.auth_address.substr(0,4) ;
-                        else reactions_index = null ;
-                    }
-                    if (reactions_index) {
-                        reaction_info = ls_reactions[reactions_index] ;
-                        if (reaction_info) {
-                            unique_id = get_my_unique_id() ;
-                            if (reaction_info.users.hasOwnProperty(unique_id)) {
-                                // found private reaction
-                                message.reaction = reaction_info.users[unique_id] ;
-                            }
-                        }
-                    }
-                    // check for any public reaction stored in like.json file
-                    auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
-                    like_index_p = message.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
-                    if (like_index.hasOwnProperty(like_index_p)) {
-                        // found public reaction
-                        k = like_index[like_index_p] ;
-                        message.reaction = like.like[k].emoji ;
-                    }
-                    //debug('reaction', pgm + 'message.z_filename = ' + message.z_filename +
-                    //    ', reactions_index = ' + reactions_index +
-                    //    ', reaction_info = ' + JSON.stringify(reaction_info) + ', message.reaction = ' + message.reaction);
-                }
-                if (message.reaction) {
-                    // reaction from localStorage. Mark reaction as selected in reactions array
-                    unicode = symbol_to_unicode(message.reaction) ;
-                    index = -1 ;
-                    for (i=0 ; i<js_messages_row.reactions.length ; i++) if (js_messages_row.reactions[i].unicode == unicode) index = i ;
-                    // console.log(pgm + 'message.reaction = ' + message.reaction + ', unicode = ' + unicode + ', index = ' + index);
-                    if (index == -1) {
-                        // reaction was not found in current user reactions. use full list of emojis as fallback
-                        title = is_emoji[message.reaction] ;
-                        if (title) js_messages_row.reactions.push({
-                            unicode: unicode,
-                            title: title,
-                            selected: true
-                        }) ;
-                    }
-                    else js_messages_row.reactions[index].selected = true ;
-                    // console.log(pgm + 'js_messages_row.reactions = ' + JSON.stringify(js_messages_row.reactions));
-                }
-
-                // save js_messages_row in 1) js_messages, 2) under an existing row in js_messages or 3) as an orphan in js_orphan_messages
-                if (!message.message.parent) {
-                    // 1) normal message
-                    js_messages.push(js_messages_row) ;
-                }
-                else {
-                    // 2) or 3) comment
-                    console.log(pgm + 'loading comment = ' + JSON.stringify(message)) ;
-                    // has parent message been loaded?
-                    js_parent_messages_row = js_messages_index.parent[message.message.parent] ;
-                    if (js_parent_messages_row) {
-                        // 2) under a existing row in js_messages
-                        if (is_child_parent(js_messages_row, js_parent_messages_row)) {
-                            console.log(pgm + 'parent row has already been loaded. inserting new js_messages_row under existing parent (three structure)') ;
-                            if (!js_parent_messages_row.messages) js_parent_messages_row.messages = [] ;
-                            js_parent_messages_row.messages.push(js_messages_row) ;
-                        }
-                        else {
-                            // error. invalid child parent relation. ignoring parent and inserting comment as a normal message
-                            console.log(pgm + 'deleting invalid parent from message ' + JSON.stringify(message)) ;
-                            delete message.message.parent ;
-                            js_messages.push(js_messages_row) ;
-                        }
-                    }
-                    else {
-                        // 3) as a orphan js_messages_row
-                        console.log(pgm + 'parent row has not yet been loaded. saving new js_messages_row in js_orphan_messages and wait for parent row to be loaded') ;
-                        if (!js_orphan_messages[message.message.parent]) js_orphan_messages[message.message.parent] = [] ;
-                        js_orphan_messages[message.message.parent].push(js_messages_row) ;
-                    }
-                }
-
-                // add indexes to js_messages_row
-                // seq index
-                js_messages_seq++ ;
-                message.seq = js_messages_seq ;
-                js_messages_index.seq[message.seq] = js_messages_row ;
-                // sender_sha256 index
-                if (message.sender_sha256) {
-                    js_messages_index.sender_sha256[message.sender_sha256] = js_messages_row ;
-                    // console.log(pgm + 'inserted sender_sha256 address ' + message.sender_sha256 + ' into js_messages sender_sha256 index') ;
-                }
-                // local_msg_seq index
-                if (message.local_msg_seq) {
-                    js_messages_index.local_msg_seq[message.local_msg_seq] = js_messages_row ;
-                    // console.log(pgm + 'inserted local_msg_seq address ' + message.local_msg_seq + ' into js_messages local_msg_seq index') ;
-                }
-                if (message.sent_at) add_message_parent_index(message) ;
-                if (load_contacts) check_overflow() ;
-                // if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
-
-            }) ; // get_like_json callback 1
-        } // add_message
-
-        function remove_message (js_messages_row) {
-            var pgm = service + '.remove_message' ;
-            var contact, message, i, seq ;
-            if (!js_messages_row) {
-                console.log(pgm + 'invalid call. js_message_row is null') ;
-                return ;
-            }
-            contact = js_messages_row.contact ;
-            message = js_messages_row.message ;
-            seq = message.seq ;
-            // remove from contact.messages
-            for (i=0 ; i<contact.messages.length ; i++) {
-                if (contact.messages[i].seq == seq) {
-                    contact.messages.splice(i,1) ;
-                    break ;
-                }
-            }
-            // remove from js_messages
-            for (i=0 ; i<js_messages.length ; i++) {
-                if (js_messages[i].message.seq == seq) {
-                    js_messages.splice(i,1) ;
-                    break ;
-                }
-            }
-            // remove from indexes
-            delete js_messages_index.seq[seq] ;
-            if (message.sender_sha256) delete js_messages_index.sender_sha256[message.sender_sha256] ;
-            if (message.local_msg_seq) delete js_messages_index.local_msg_seq[message.local_msg_seq] ;
-            // remove from chat filter cache - used in ctrlCtrl
-            js_messages_row.chat_filter = false ;
-        } // remove_message
-
-        function get_message_by_seq (seq) {
-            var pgm = service + '.get_message_by_seq: ' ;
-            var js_messages_row = js_messages_index.seq[seq] ;
-            return js_messages_row ;
+            // inject get_user_reactions function into moneyNetworkHubService
+            moneyNetworkHubService.add_message(contact, message, load_contacts, get_user_reactions)
         }
-        function get_message_by_sender_sha256 (sender_sha256) {
-            var pgm = service + '.get_message_by_sender_sha256: ' ;
-            var js_messages_row = js_messages_index.sender_sha256[sender_sha256] ;
-            //if (js_messages_row) console.log(pgm + 'found sender_sha256 address ' + sender_sha256 + ' in js_messages sender_sha256 index') ;
-            //else console.log(pgm + 'did not find sender_sha256 address ' + sender_sha256 + ' in js_messages sender_sha256 index') ;
-            return js_messages_row ;
-        } // get_message_by_sender_sha256
-        function get_message_by_local_msg_seq (local_msg_seq) {
-            var pgm = service + '.get_message_by_local_msg_seq: ' ;
-            var js_messages_row = js_messages_index.local_msg_seq[local_msg_seq] ;
-            return js_messages_row ;
-        }
-
-        // recursive delete message and any child messages (comments)
-        function recursive_delete_message (message) {
-            var pgm = service + '.recursive_delete_message: ' ;
-            var delete_message, error, update_zeronet, i, action ;
-            update_zeronet = false ;
-            if (message.message.deleted_at) return update_zeronet ; // already deleted
-            if (message.message.folder == 'outbox') {
-                // check for not sent messages
-                if (!message.message.sent_at) {
-                    console.log(pgm + 'error cleanup. deleting message without a sent_at timestamp. message.message = ' + JSON.stringify(message.message)) ;
-                    remove_message(message) ;
-                    action = 1.1 ;
-                }
-                else if (message.contact.type == 'public') {
-                    // public unencrypted outbox message. just delete
-                    delete message.edit_chat_message;
-                    debug('public_chat', pgm + 'deleted public outbox message ' + JSON.stringify(message.message)) ;
-                    update_zeronet = true ;
-                    action = 1.2 ;
-                }
-                else if (message.message.message.msgtype == 'chat msg') {
-                    // private or group chat outbox message. must send an empty delete chat message message
-                    delete message.message.message.original_image ;
-                    // outbox: send delete chat message. note empty chat message
-                    delete_message = {
-                        msgtype: 'chat msg',
-                        old_local_msg_seq: message.message.local_msg_seq
-                    };
-                    // console.log(pgm + 'delete_message = ' + JSON.stringify(delete_message));
-                    // validate json
-                    error = MoneyNetworkHelper.validate_json(pgm, delete_message, delete_message.msgtype, 'Could not send delete chat message');
-                    if (error) {
-                        ZeroFrame.cmd("wrapperNotification", ["Error", error]);
-                        return update_zeronet;
-                    }
-                    // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
-                    // send message
-                    update_zeronet = true ;
-                    add_msg(message.contact, delete_message, false);
-                    js_messages[js_messages.length-1].chat_filter = false ;
-                    // delete old message
-                    delete message.edit_chat_message;
-                    delete message.message.image;
-                    action = 1.3 ;
-                    // save localStorage and update ZeroNet
-                }
-                else {
-                    // other private or group chat outbox message. Just delete
-                    if (message.message.zeronet_msg_id) update_zeronet = true ;
-                    action = 1.4 ;
-                }
-            }
-            else {
-                // inbox messages. just delete
-                action = 2 ;
-            }
-            message.message.deleted_at = new Date().getTime(); // logical delete
-            message.chat_filter = false ;
-            console.log(pgm + 'action = ' + action + ', deleted message ' + JSON.stringify(message.message)) ;
-
-            // recursive delete any child messages (nested comments)
-            if (!message.messages) return update_zeronet ;
-            console.log(pgm + 'recursive deleting ' + message.messages.length + ' message(s)') ;
-            for (i=0 ; i<message.messages ; i++) {
-                if (recursive_delete_message (message.messages[i])) update_zeronet = true ;
-            }
-            return update_zeronet ;
-        } // recursive_delete_message
+        function get_message_by_seq (seq) { return moneyNetworkHubService.get_message_by_seq (seq) }
+        function get_message_by_sender_sha256 (sender_sha256) { return moneyNetworkHubService.get_message_by_sender_sha256 (sender_sha256) }
+        function get_message_by_local_msg_seq (local_msg_seq) { return moneyNetworkHubService.get_message_by_local_msg_seq (local_msg_seq) }
+        function remove_message (js_messages_row) { moneyNetworkHubService.remove_message (js_messages_row) }
+        function recursive_delete_message (message) { moneyNetworkHubService.recursive_delete_message (message) }
 
         // wrappers
         function get_last_online (contact) {
@@ -9740,22 +9393,16 @@ angular.module('MoneyNetwork')
             return moneyNetworkEmojiService.get_emoji_folder() ;
         }
 
-        //// initialize short emoji list - only for current emoji folder selection
-        //// call after client_login and when changing emoji folder in Account page
+        // initialize short emoji list - only for current emoji folder selection
+        // call after client_login and when changing emoji folder in Account page
         function init_emojis_short_list () {
             moneyNetworkEmojiService.init_emojis_short_list() ;
         }
 
-        //// helper. string to unicode symbols
-        //// https://mathiasbynens.be/notes/javascript-unicode
+        // helper. string to unicode symbols
+        // https://mathiasbynens.be/notes/javascript-unicode
         function symbol_to_unicode(str) {
             return moneyNetworkEmojiService.symbol_to_unicode(str);
-        }
-        function replace_emojis (str) {
-            return moneyNetworkEmojiService.replace_emojis(str);
-        }
-        function get_reaction_list (full_emoji_support) {
-            return moneyNetworkEmojiService.get_reaction_list (full_emoji_support);
         }
 
         // moneyNetworkService ready.
@@ -9868,12 +9515,12 @@ angular.module('MoneyNetwork')
             event_file_done: event_file_done,
             get_chat_notifications: get_chat_notifications,
             update_chat_notifications: update_chat_notifications,
-            get_standard_reactions: get_standard_reactions,
+            get_standard_reactions: moneyNetworkEmojiService.get_standard_reactions,
             get_user_reactions: get_user_reactions,
             get_emoji_folders: get_emoji_folders,
             init_emojis_short_list: init_emojis_short_list,
-            replace_emojis: replace_emojis,
-            get_reaction_list: get_reaction_list,
+            replace_emojis: moneyNetworkEmojiService.replace_emojis,
+            get_reaction_list: moneyNetworkEmojiService.get_reaction_list,
             load_server_info: load_server_info,
             is_proxy_server: is_proxy_server,
             check_reactions: check_reactions,
