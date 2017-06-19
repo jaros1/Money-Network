@@ -1532,6 +1532,8 @@ angular.module('MoneyNetwork')
         } // check_sha256_addresses
 
 
+
+
         //// get user_seq from z_cache or read from data.json file
         function get_user_seq (cb) {
             var pgm = service + '.get_user_seq: ' ;
@@ -1697,7 +1699,7 @@ angular.module('MoneyNetwork')
             delete ls_contacts_index.unique_id[contact.unique_id] ;
             if (contact.password) {
                 password_sha256 = CryptoJS.SHA256(contact.password).toString() ;
-                ls_contacts_index.password_sha256[password_sha256] ;
+                delete ls_contacts_index.password_sha256[password_sha256] ;
             }
             index2 = ls_contacts_index.cert_user_id[contact.cert_user_id].indexOf(contact) ;
             ls_contacts_index.cert_user_id[contact.cert_user_id].splice(index2,1) ;
@@ -1708,14 +1710,6 @@ angular.module('MoneyNetwork')
                 debug('lost_message', pgm + 'added sender_sha256 ' + sender_sha256 + ' to ls_contacts_deleted_sha256 list') ;
             }
         }
-        function update_contact_add_password (contact) { // added password to existing pseudo group chat contact
-            var pgm = service + '.update_contact_add_password: ' ;
-            var password_sha256 ;
-            password_sha256 = CryptoJS.SHA256(contact.password).toString();
-            ls_contacts_index.password_sha256[password_sha256] = contact ;
-            watch_receiver_sha256.push(password_sha256) ;
-            // console.log(pgm + 'listening to group chat address ' + CryptoJS.SHA256(contact.password).toString()) ;
-        }
         function get_contact_by_unique_id (unique_id) {
             return ls_contacts_index.unique_id[unique_id] ;
         }
@@ -1725,6 +1719,53 @@ angular.module('MoneyNetwork')
         function get_contacts_by_cert_user_id (cert_user_id) {
             return ls_contacts_index.cert_user_id[cert_user_id] ;
         }
+        function get_contact_name (contact) {
+            var i ;
+            if (contact.alias) return contact.alias ;
+            else if (contact.cert_user_id) {
+                i = contact.cert_user_id.indexOf('@') ;
+                return contact.cert_user_id.substr(0,i) ;
+            }
+            else return contact.unique_id.substr(0,13) ;
+        } // get_contact_name
+        function get_public_contact (create) {
+            var pgm = service + '.get_public_contact: ' ;
+            var unique_id, contact, last_online, online, i ;
+            unique_id = CryptoJS.SHA256('Public').toString();
+            contact = get_contact_by_unique_id(unique_id);
+            if (contact) return contact ;
+            if (!create) return null ;
+            contact = {
+                unique_id: unique_id,
+                cert_user_id: unique_id.substr(0,13) + '@moneynetwork',
+                type: 'public',
+                search: [],
+                messages: [],
+                avatar: 'z.png', // zeronet logo,
+                alias: 'World'
+            };
+            // add search info
+            contact.search.push({
+                tag: 'World',
+                value: 'World',
+                privacy: 'Search',
+                row: 1
+            });
+            add_contact(contact) ;
+            return contact ;
+        } // get_public_contact
+        function get_public_chat_outbox_msg (timestamp) {
+            var pgm = service + '.get_public_chat_outbox_msg: ' ;
+            var public_contact, i ;
+            debug('reaction', pgm + 'received a reaction for public chat message with timestamp ' + timestamp + '. check already loaded public outbox messages') ;
+            public_contact = get_public_contact(true) ;
+            for (i=0 ; i<public_contact.messages.length ; i++) {
+                if (public_contact.messages[i].sent_at == timestamp) {
+                    return public_contact.messages[i] ;
+                }
+            } // for i (messages)
+            return null ;
+        } // get_public_chat_outbox_msg
 
 
 
@@ -1914,10 +1955,12 @@ angular.module('MoneyNetwork')
             clear_contacts: clear_contacts,
             add_contact: add_contact,
             remove_contact: remove_contact,
-            update_contact_add_password: update_contact_add_password,
             get_contact_by_unique_id: get_contact_by_unique_id,
             get_contact_by_password_sha256: get_contact_by_password_sha256,
             get_contacts_by_cert_user_id: get_contacts_by_cert_user_id,
+            get_contact_name: get_contact_name,
+            get_public_contact: get_public_contact,
+            get_public_chat_outbox_msg: get_public_chat_outbox_msg,
             check_sha256_addresses: check_sha256_addresses,
             get_content_optional: get_content_optional,
             zeronet_site_publish: zeronet_site_publish,

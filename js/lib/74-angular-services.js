@@ -3517,58 +3517,12 @@ angular.module('MoneyNetwork')
         function clear_contacts () { return moneyNetworkHubService.clear_contacts() }
         function add_contact (contact) { return moneyNetworkHubService.add_contact(contact) }
         function remove_contact (index) { return moneyNetworkHubService.remove_contact(index) }
-        function update_contact_add_password (contact) { return moneyNetworkHubService.update_contact_add_password(contact) }
         function get_contact_by_unique_id (unique_id) { return moneyNetworkHubService.get_contact_by_unique_id(unique_id)}
         function get_contact_by_password_sha256 (password_sha256) {return moneyNetworkHubService.get_contact_by_password_sha256 (password_sha256) }
         function get_contacts_by_cert_user_id (cert_user_id) {return moneyNetworkHubService.get_contacts_by_cert_user_id (cert_user_id) }
-
-        function get_contact_name (contact) {
-            var i ;
-            if (contact.alias) return contact.alias ;
-            else if (contact.cert_user_id) {
-                i = contact.cert_user_id.indexOf('@') ;
-                return contact.cert_user_id.substr(0,i) ;
-            }
-            else return contact.unique_id.substr(0,13) ;
-        } // get_contact_name
-        function get_public_contact (create) {
-            var pgm = service + '.get_public_contact: ' ;
-            var unique_id, contact, last_online, online, i ;
-            unique_id = CryptoJS.SHA256('Public').toString();
-            contact = get_contact_by_unique_id(unique_id);
-            if (contact) return contact ;
-            if (!create) return null ;
-            contact = {
-                unique_id: unique_id,
-                cert_user_id: unique_id.substr(0,13) + '@moneynetwork',
-                type: 'public',
-                search: [],
-                messages: [],
-                avatar: 'z.png', // zeronet logo,
-                alias: 'World'
-            };
-            // add search info
-            contact.search.push({
-                tag: 'World',
-                value: 'World',
-                privacy: 'Search',
-                row: 1
-            });
-            add_contact(contact) ;
-            return contact ;
-        } // get_public_contact
-        function get_public_chat_outbox_msg (timestamp) {
-            var pgm = service + '.get_public_chat_outbox_msg: ' ;
-            var public_contact, i ;
-            debug('reaction', pgm + 'received a reaction for public chat message with timestamp ' + timestamp + '. check already loaded public outbox messages') ;
-            public_contact = get_public_contact(true) ;
-            for (i=0 ; i<public_contact.messages.length ; i++) {
-                if (public_contact.messages[i].sent_at == timestamp) {
-                    return public_contact.messages[i] ;
-                }
-            } // for i (messages)
-            return null ;
-        } // get_public_chat_outbox_msg
+        function get_contact_name (contact) { return moneyNetworkHubService.get_contact_name (contact) }
+        function get_public_contact (create) { return moneyNetworkHubService.get_public_contact (create)}
+        function get_public_chat_outbox_msg (timestamp) { return moneyNetworkHubService.get_public_chat_outbox_msg (timestamp) }
 
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
         var js_messages_seq = 0 ; // internal seq to rows in js_messages.
@@ -3592,12 +3546,8 @@ angular.module('MoneyNetwork')
             for (key in js_orphan_messages) delete js_orphan_messages[key] ;
         } // clear_messages
 
-        function get_standard_reactions () {
-            return moneyNetworkEmojiService.get_standard_reactions();
-        }
-        function get_user_reactions () {
-            return moneyNetworkEmojiService.get_user_reactions();
-        }
+        function get_standard_reactions () { return moneyNetworkEmojiService.get_standard_reactions() }
+        function get_user_reactions () { return moneyNetworkEmojiService.get_user_reactions() }
 
         // validate child parent context.
         function is_child_parent (child, parent) {
@@ -4377,9 +4327,7 @@ angular.module('MoneyNetwork')
             }) ; // end dbQuery callback 1 (get public, user_seq and timestamp)
 
         } // end ls_load_contacts
-        function get_contacts() {
-            return ls_contacts ;
-        }
+
         function ls_save_contacts (update_zeronet) {
             var pgm = service + '.ls_save_contacts: ' ;
 
@@ -10075,13 +10023,12 @@ angular.module('MoneyNetwork')
             load_user_info: load_user_info,
             get_user_info: get_user_info,
             save_user_info: save_user_info,
-            get_contacts: get_contacts,
-            get_contact_by_unique_id: get_contact_by_unique_id,
-            get_contact_by_password_sha256: get_contact_by_password_sha256,
+            get_contacts: moneyNetworkHubService.get_ls_contacts,
+            get_contact_by_unique_id: moneyNetworkHubService.get_contact_by_unique_id,
+            get_contact_by_password_sha256: moneyNetworkHubService.get_contact_by_password_sha256,
             get_contact_name: get_contact_name,
             get_last_online: get_last_online,
             add_contact: add_contact,
-            update_contact_add_password: update_contact_add_password,
             z_contact_search: z_contact_search,
             ls_save_contacts: ls_save_contacts,
             js_get_messages: js_get_messages,
