@@ -7084,7 +7084,7 @@ angular.module('MoneyNetwork')
                 var unique_id ;
                 for (i=res.length-1 ; i>=0 ; i--) {
                     unique_id = CryptoJS.SHA256(res[i].auth_address + '/'  + res[i].pubkey).toString();
-                    if (unique_id == my_unique_id) {
+                    if (unique_id == z_cache.my_unique_id) {
                         // my group chat outbox messages
                         // console.log(pgm + 'ignoring my outbox group chat message ' + JSON.stringify(res[i])) ;
                         res.splice(i,1) ;
@@ -9282,8 +9282,6 @@ angular.module('MoneyNetwork')
 
         } // cleanup_non_merger_site_data
 
-        var user_id = 0 ;
-        var my_unique_id ;
         function client_login(password, create_new_account, guest, keysize) {
             var login, passwords, password_sha256, i ;
             // login/register with a empty password?
@@ -9349,7 +9347,7 @@ angular.module('MoneyNetwork')
             z_cache.my_files_optional = {} ;
             z_cache.user_id = 0 ;
             z_cache.user_info = [] ;
-            my_unique_id = null ;
+            z_cache.my_unique_id = null ;
             user_contents_max_size = null ;
             clear_admin_key() ;
             z_cache.user_setup = {} ;
@@ -9368,16 +9366,7 @@ angular.module('MoneyNetwork')
             ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]) ;
         } // client_logout
 
-        function get_my_unique_id () {
-            if (my_unique_id) my_unique_id ;
-            if (!ZeroFrame.site_info) return null ; // ZeroFrame not ready - loading
-            var my_auth_address = ZeroFrame.site_info.auth_address ;
-            if (!my_auth_address) return null ; // not logged in on ZeroNet
-            var my_pubkey = MoneyNetworkHelper.getItem('pubkey');
-            my_unique_id = CryptoJS.SHA256(my_auth_address + '/'  + my_pubkey).toString();
-            return my_unique_id ;
-        } // get_my_unique_id
-
+        function get_my_unique_id() { return moneyNetworkHubService.get_my_unique_id() }
 
         // get server info. Used in auth page. warning when using cryptMessage on a proxy server
         var server_info = {} ;
@@ -9407,205 +9396,9 @@ angular.module('MoneyNetwork')
         // update timestamp in status.json file and modified in content.json.
         // will allow users to communicate with active contacts and ignoring old and inactive contacts
         // small file(s) for quick distribution in ZeroNet
-        function i_am_online () {
-            var pgm, info, user_path;
-            if (z_cache.user_setup.not_online) pgm = service + '.i_am_not_online: ';
-            else pgm = service + '.i_am_online: ';
-            info = '. Skipping status.json update';
-            // check Zeronet status
-            if (!z_cache.user_id) {
-                console.log(pgm + 'No client login' + info);
-                return;
-            }
-            if (!ZeroFrame.site_info) {
-                console.log(pgm + 'ZeroFrame is not ready' + info);
-                return;
-            }
-            if (!ZeroFrame.site_info.cert_user_id) {
-                console.log(pgm + 'No ZeroNet login' + info);
-                return;
-            }
-
-            // get user hub
-            get_my_user_hub(function (hub) {
-                var pgm = service + '.i_am_online get_my_user_hub callback 1: ';
-
-                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
-
-                // some information nice to have when debugging
-                console.log(
-                    pgm + 'My cert_user_id is ' + ZeroFrame.site_info.cert_user_id +
-                    ', my auth address is ' + ZeroFrame.site_info.auth_address +
-                    ', my unique id ' + get_my_unique_id() +
-                    ' and my user data hub is ' + hub) ;
-                debug('site_info', pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info));
-
-                get_data_json(function (data, empty) {
-                    var pgm = service + '.i_am_online get_data_json callback 2: ';
-                    var my_user_seq, data_user_seqs, i, pubkey, pubkey2, ls, compare, key, count, in_both,
-                        check_pubkey2_cb, debug_seq ;
-                    if (detected_client_log_out(pgm)) return ;
-                    pubkey = MoneyNetworkHelper.getItem('pubkey') ;
-                    pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
-                    // console.log(pgm + 'data = ' + JSON.stringify(data));
-                    if (empty) {
-                        if (is_user_info_empty()) console.log(pgm + 'New empty user account. No data.json file' + info) ;
-                        else {
-                            // non empty user account. Must be changed ZeroNet certificate.
-                            // create missing data.json file. will also add a status.json file with a last online timestamp
-                            console.log(pgm + 'Changed ZeroNet certificate. Creating data.json file') ;
-                            z_update_1_data_json(pgm) ;
-                        }
-                        return ;
-                    }
-                    if (!data.users || (data.users.length == 0)) {
-                        // issue #108 : new user - invalid content in data.json (=content.json)
-                        console.log(pgm + 'System error. No users in data.json. Updating data.json file. data = ' + JSON.stringify(data)) ;
-                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + user_path + '/' + 'data.json fileDelete') ;
-                        ZeroFrame.cmd("fileDelete", user_path + '/' + 'data.json', function () {
-                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                        }) ;
-                        delete z_cache.data_json ;
-                        z_update_1_data_json(pgm) ;
-                        return ;
-                    }
-                    my_user_seq = null ;
-                    data_user_seqs = [] ;
-                    for (i=0 ; i<data.users.length ; i++) {
-                        data_user_seqs.push(data.users[i].user_seq) ;
-                        if (data.users[i].pubkey == pubkey) {
-                            my_user_seq = data.users[i].user_seq ;
-                            // just a check. is pubkey2 in data.json = pubkey2 in localStorage. user can have changed ZeroNet cert
-                            // pubkey2 in localStorage is updated after login. See MoneyNetworkHelper.client_login
-                            // pubkey2 in data.json is updated in z_update_1_data_json
-                            // see above: Changed ZeroNet certificate. Creating data.json file
-                            if (pubkey2 != data.users[i].pubkey2) {
-                                console.log(pgm + 'warning. user must have switched ZeroNet certificate. ' +
-                                    'pubkey2 from localStorage is ' + pubkey2 +
-                                    ', pubkey2 in data.json file is ' + data.users[i].pubkey2) ;
-                            }
-                        }
-                    }
-                    // console.log(pgm + 'user_seq = ' + user_seq) ;
-                    if (!my_user_seq) {
-                        console.log(pgm + 'User was not found in data.json. Updating data.json file') ;
-                        z_update_1_data_json(pgm) ;
-                        return ;
-                    }
-                    console.log(pgm + 'my_user_seq = ' + my_user_seq + ', user_id = ' + z_cache.user_id) ;
-                    //my_user_seq = 1
-
-                    // check that pubkey2 values are correct. generated from ZeroNet cert and user_id
-                    compare = {} ;
-                    for (i=0 ; i<data.users.length ; i++) {
-                        compare[data.users[i].pubkey] = { z_pubkey2: data.users[i].pubkey2, z_user_seq: data.users[i].user_seq }
-                    }
-                    ls = MoneyNetworkHelper.ls_get() ;
-                    for (key in ls) {
-                        if (!key.match(/^[0-9]+_pubkey$/)) continue ;
-                        pubkey = MoneyNetworkHelper.decompress1(ls[key].substr(1)) ;
-                        pubkey2 = MoneyNetworkHelper.decompress1(ls[key + '2'].substr(1)) ;
-                        if (!compare[pubkey]) compare[pubkey] = {} ;
-                        compare[pubkey].l_pubkey2 = pubkey2 ;
-                        compare[pubkey].l_userid = parseInt(key.split('_')[0]) ;
-                    }
-                    // console.log(pgm + 'compare = ' + JSON.stringify(compare)) ;
-                    count = { in_l: 0, in_z: 0, in_both: 0} ;
-                    in_both = [] ;
-                    for (pubkey in compare) {
-                        if (compare[pubkey].l_pubkey2 && compare[pubkey].z_pubkey2) {
-                            count.in_both++ ;
-                            in_both.push(compare[pubkey]) ;
-                        }
-                        else if (compare[pubkey].l_pubkey2) count.in_l++ ;
-                        else count.in_z++ ;
-                    }
-                    // console.log(pgm + 'count = ' + JSON.stringify(count)) ;
-                    // check pubkey2. loop for each row in in_both match between localStorage user and ZeroNet user in data.json file
-                    // pubkey2 check takes some time. done after publish. see zeronet_site_publish call
-                    check_pubkey2_cb = function () {
-                        var rec, debug_seq ;
-                        if (!in_both.length) return ;
-                        rec = in_both.pop() ;
-                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + ' userPublickey') ;
-                        ZeroFrame.cmd("userPublickey", [rec.l_userid], function (pubkey2) {
-                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                            if ((pubkey2 == rec.l_pubkey2) && (pubkey2 == rec.z_pubkey2)) {
-                                // console.log(pgm + 'pubkey2 is OK. rec = ' + JSON.stringify(rec));
-                                check_pubkey2_cb() ;
-                                return ;
-                            }
-                            rec.control = pubkey2 ;
-                            console.log(pgm + 'Error. pubkey2 is invalid. rec = ' + JSON.stringify(rec)) ;
-                            check_pubkey2_cb() ;
-                        }); // userPublickey
-                    };
-
-                    // delete any old users in status.json and publish
-                    get_status_json(function (status) {
-                        var pgm = service + '.i_am_online get_status_json callback 3: ';
-                        var my_user_seq_found, status_updated, error ;
-                        if (detected_client_log_out(pgm)) return ;
-                        // console.log(pgm + 'data = ' + JSON.stringify(data));
-                        // remove deleted users from status.json
-                        my_user_seq_found = false ;
-                        status_updated = false ;
-
-                        if (!status.hub) {
-                            status.hub = ZeroFrame.site_info.address ;
-                            status_updated = true ;
-                        }
-
-                        for (i=status.status.length-1 ; i >= 0 ; i--) {
-                            if (status.status[i].user_seq == my_user_seq) my_user_seq_found = true ;
-                            else if (data_user_seqs.indexOf(status.status[i].user_seq) == -1) {
-                                status.status.splice(i,1);
-                                status_updated = true ;
-                            }
-                        }
-                        if ((z_cache.user_setup.not_online) && my_user_seq_found && !status_updated) {
-                            // Account setup - user has selected not to update online timestamp
-                            check_pubkey2_cb() ;
-                            return ;
-                        }
-                        // validate status.json before write
-                        error = MoneyNetworkHelper.validate_json (pgm, status, 'status.json', 'Invalid json file') ;
-                        if (error) {
-                            error = 'Cannot write invalid status.json file: ' + error;
-                            console.log(pgm + error);
-                            console.log(pgm + 'status = ' + JSON.stringify(status));
-                            ZeroFrame.cmd("wrapperNotification", ["error", error]);
-                            return ;
-                        }
-                        // write status.json
-                        write_status_json(function (res) {
-                            var pgm = service + '.i_am_online write_status_json callback 4: ' ;
-                            // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                            if (detected_client_log_out(pgm)) return ;
-                            if (res === "ok") {
-                                // update timestamp in status.json and publish
-                                // console.log(pgm + 'calling zeronet_site_publish to update timestamp. user_seq = ' + user_seq) ;
-                                zeronet_site_publish(check_pubkey2_cb) ;
-                            }
-                            else {
-                                ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
-                                console.log(pgm + 'Error. Failed to post: ' + res.error) ;
-                            }
-
-                        }); // write_status_json callback 4
-
-                    }); // get_status_json callback 3
-
-                }); // get_data_json callback 2
-
-            }); // get_my_user_hub callback 1
-
-
-        } // i_am_online
-
+        function i_am_online() {moneyNetworkHubService.i_am_online(z_update_1_data_json) }
 
         // contact actions: add, remove, ignore, unplonk, verify. Used in NetWork and Chat controllers
-
         function contact_add (contact) {
             var pgm = service + '.contact_add: ' ;
             // console.log(pgm + 'click');
@@ -9797,9 +9590,6 @@ angular.module('MoneyNetwork')
         function load_user_setup (keysize) {
             moneyNetworkEmojiService.load_user_setup(keysize) ;
         }
-        function save_user_setup () {
-            moneyNetworkEmojiService.save_user_setup() ;
-        }
         function get_user_setup () {
             return z_cache.user_setup ;
         }
@@ -9961,9 +9751,6 @@ angular.module('MoneyNetwork')
         function symbol_to_unicode(str) {
             return moneyNetworkEmojiService.symbol_to_unicode(str);
         }
-        function unicode_to_symbol (unicode) {
-            return moneyNetworkEmojiService.unicode_to_symbol(unicode);
-        }
         function replace_emojis (str) {
             return moneyNetworkEmojiService.replace_emojis(str);
         }
@@ -10059,7 +9846,7 @@ angular.module('MoneyNetwork')
             get_no_days_before_cleanup: get_no_days_before_cleanup,
             load_user_setup: load_user_setup,
             get_user_setup: get_user_setup,
-            save_user_setup: save_user_setup,
+            save_user_setup: moneyNetworkEmojiService.save_user_setup,
             get_contact_sort_options: moneyNetworkEmojiService.get_contact_sort_options,
             get_contact_sort_title: moneyNetworkEmojiService.get_contact_sort_title,
             contact_order_by: moneyNetworkEmojiService.contact_order_by,
@@ -10090,7 +9877,7 @@ angular.module('MoneyNetwork')
             load_server_info: load_server_info,
             is_proxy_server: is_proxy_server,
             check_reactions: check_reactions,
-            unicode_to_symbol: unicode_to_symbol,
+            unicode_to_symbol: moneyNetworkEmojiService.unicode_to_symbol,
             symbol_to_unicode: symbol_to_unicode,
             get_my_user_hub: get_my_user_hub
         };
