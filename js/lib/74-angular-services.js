@@ -3506,7 +3506,7 @@ angular.module('MoneyNetwork')
         function get_contact_name (contact) { return moneyNetworkHubService.get_contact_name (contact) }
         function get_public_contact (create) { return moneyNetworkHubService.get_public_contact (create)}
         function get_public_chat_outbox_msg (timestamp) { return moneyNetworkHubService.get_public_chat_outbox_msg (timestamp) }
-
+        
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
         var js_messages = moneyNetworkHubService.get_js_messages() ; // array with { :contact => contact, :message => message } - one row for each message
 
@@ -3524,10 +3524,12 @@ angular.module('MoneyNetwork')
             // inject get_user_reactions function into moneyNetworkHubService
             moneyNetworkHubService.add_message(contact, message, load_contacts, get_user_reactions)
         }
+        function message_add_local_msg_seq(js_messages_row, local_msg_seq) { moneyNetworkHubService.message_add_local_msg_seq(js_messages_row, local_msg_seq)}
+        function message_add_sender_sha256(js_messages_row, sender_sha256) { moneyNetworkHubService.message_add_sender_sha256(js_messages_row, sender_sha256)}
         function get_message_by_seq (seq) { return moneyNetworkHubService.get_message_by_seq (seq) }
         function get_message_by_sender_sha256 (sender_sha256) { return moneyNetworkHubService.get_message_by_sender_sha256 (sender_sha256) }
         function get_message_by_local_msg_seq (local_msg_seq) { return moneyNetworkHubService.get_message_by_local_msg_seq (local_msg_seq) }
-        function remove_message (js_messages_row) { moneyNetworkHubService.remove_message (js_messages_row) }
+        function remove_message (js_messages_row) { moneyNetworkHubService.remove_message (js_messages_row) } 
         function recursive_delete_message (message) { moneyNetworkHubService.recursive_delete_message (message) }
 
         // wrappers
