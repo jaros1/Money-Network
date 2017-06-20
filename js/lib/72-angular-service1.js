@@ -2619,6 +2619,7 @@ angular.module('MoneyNetwork')
             write_status_json: write_status_json,
             get_like_json: get_like_json,
             write_like_json: write_like_json,
+            update_like_index: update_like_index,
             get_my_user_hub: get_my_user_hub,
             get_z_cache: get_z_cache,
             check_merger_permission: check_merger_permission,
