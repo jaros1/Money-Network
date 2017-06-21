@@ -1,5 +1,8 @@
 angular.module('MoneyNetwork')
 
+    // MoneyNetworkZService:
+    // - update user directory in ZeroNet (z_update_xxx functions)
+
     .factory('MoneyNetworkZService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService', 'MoneyNetworkEmojiService',
                              function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService, moneyNetworkEmojiService)
     {
@@ -27,8 +30,24 @@ angular.module('MoneyNetwork')
         function get_watch_receiver_sha256 () {
             return watch_receiver_sha256 ;
         }
+        function debug (keys, text) {
+            MoneyNetworkHelper.debug(keys, text) ;
+        } // debug
 
 
+        //// wrappers for data.json, status.json and like.json fileGet and fileWrite operations
+        function get_data_json (cb) {
+            moneyNetworkHubService.get_data_json(cb) ;
+        }
+        function write_data_json (cb) {
+            moneyNetworkHubService.write_data_json(cb) ;
+        }
+        function get_status_json (cb) {
+            moneyNetworkHubService.get_status_json(cb) ;
+        }
+        function write_status_json (cb) {
+            moneyNetworkHubService.write_status_json(cb) ;
+        }
         function get_like_json(cb) {
             moneyNetworkHubService.get_like_json(cb);
         }
@@ -38,14 +57,25 @@ angular.module('MoneyNetwork')
         function update_like_index (like, like_index) {
             moneyNetworkHubService.update_like_index(like, like_index);
         }
-
         function get_my_user_hub (cb) {
             moneyNetworkHubService.get_my_user_hub(cb) ;
         }
+        function save_my_files_optional (files_optional) {
+            moneyNetworkHubService.save_my_files_optional(files_optional) ;
+        }
+
+            //// optional files format:
+        //// - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
+        //// - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
+        //// - new encrypted image: <unix timestamp>-<user seq>-image.json
+        var CONTENT_OPTIONAL = moneyNetworkHubService.get_content_optional() ;
 
 
         // find max size of user directory
         var user_contents_max_size = null ; // max size of user directory. from data/users/content
+        function clear_user_contents_max_size() {
+            user_contents_max_size = null
+        }
         function load_user_contents_max_size (lock_pgm) {
 
             get_my_user_hub(function (hub) {
@@ -379,6 +409,107 @@ angular.module('MoneyNetwork')
             }
 
         } // add_feedback_info
+
+
+
+
+        // return avatar for user or assign a random avatar to user
+        var avatar = { src: "public/images/avatar1.png", loaded: false } ;
+        function load_avatar () {
+            var pgm = service + '.load_avatar: ';
+            if (avatar.loaded) return ; // already loaded
+
+            // set previous avatar from setup before checking zeronet
+            // console.log(pgm + 'user_setup.avatar = ' + user_setup.avatar) ;
+            if (z_cache.user_setup.avatar && (['jpg','png'].indexOf(z_cache.user_setup.avatar) == -1)) {
+                // public avatar found in user setup
+                avatar.src = 'public/images/avatar' + z_cache.user_setup.avatar ;
+                // console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
+            }
+            // check ZeroFrame status
+            var retry_load_avatar = function () {
+                load_avatar();
+            };
+            if (!ZeroFrame.site_info) {
+                // ZeroFrame websocket connection not ready. Try again in 5 seconds
+                console.log(pgm + 'ZeroFrame.site_info is not ready. Try again in 5 seconds. Refresh page (F5) if problem continues') ;
+                $timeout(retry_load_avatar, 5000);
+                return ;
+            }
+            if (!ZeroFrame.site_info.cert_user_id) {
+                console.log(pgm + 'Auto login process to ZeroNet not finished. Maybe user forgot to select cert. Recheck avatar in 1 minute');
+                ZeroFrame.cmd("certSelect", [["moneynetwork.bit", "nanasi", "zeroid.bit", "kaffie.bit", "moneynetwork"]]);
+                $timeout(retry_load_avatar,60000);
+                return ;
+            }
+
+            get_my_user_hub(function(hub) {
+                var pgm = service + '.load_avatar get_my_user_hub callback 1: ';
+                var debug_seq ;
+
+                if (z_cache.user_setup.avatar && (['jpg','png'].indexOf(z_cache.user_setup.avatar) != -1)) {
+                    // uploaded avatar found in user setup
+                    avatar.src = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/avatar.' + z_cache.user_setup.avatar ;
+                    // console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
+                }
+
+                // 1) get content.json - check if user already has uploaded an avatar
+                var user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
+                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + "/content.json fileGet") ;
+                ZeroFrame.cmd("fileGet", [user_path + "/content.json", false], function (content) {
+                    var pgm = service + '.load_avatar fileGet callback 2: ';
+                    var ls_avatar, public_avatars, index ;
+                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    if (content) content = JSON.parse(content);
+                    else content = { files: {} } ;
+                    // console.log(pgm + 'content = ' + JSON.stringify(content));
+
+                    // remember actual list of actual files. Used in public chat
+                    if (content.optional == CONTENT_OPTIONAL) save_my_files_optional(content.files_optional || {}) ;
+
+                    // console.log(pgm + 'res = ' + JSON.stringify(res));
+                    if (content.files["avatar.jpg"]) {
+                        // console.log(pgm + 'found avatar.jpg') ;
+                        avatar.src = user_path + '/avatar.jpg';
+                        avatar.loaded = true ;
+                        $rootScope.$apply() ;
+                        return ;
+                    }
+                    if (content.files["avatar.png"]) {
+                        // console.log(pgm + 'found avatar.png') ;
+                        avatar.src = user_path + '/avatar.png';
+                        avatar.loaded = true ;
+                        $rootScope.$apply() ;
+                        return ;
+                    }
+                    // 2) no user avatar found - use previous selection in localStorage
+                    ls_avatar = z_cache.user_setup.avatar ;
+                    if (ls_avatar && (['jpg','png'].indexOf(ls_avatar) == -1)) {
+                        // console.log(pgm + 'found from user_setup. ls_avatar = ' + JSON.stringify(ls_avatar)) ;
+                        avatar.src = "public/images/avatar" + ls_avatar;
+                        avatar.loaded = true ;
+                        $rootScope.$apply() ;
+                        return ;
+                    }
+                    // 3) assign random avatar from public/images/avatar
+                    // console.log(pgm + 'assigned random avatar') ;
+                    public_avatars = MoneyNetworkHelper.get_public_avatars() ;
+                    index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                    avatar.src = "public/images/avatar" + public_avatars[index] ;
+                    avatar.loaded = true ;
+                    $rootScope.$apply() ;
+                    z_cache.user_setup.avatar = public_avatars[index] ;
+                    MoneyNetworkHelper.ls_save();
+                }); // fileGet callback 2
+
+            }) ; // get_my_user_hub callback 1
+
+        } // load_avatar
+
+        function get_avatar () {
+            return avatar ;
+        }
+
 
 
         // action table used when updating group chat reaction.
@@ -2735,10 +2866,13 @@ angular.module('MoneyNetwork')
         // export MoneyNetworkZService API
         return {
             get_watch_receiver_sha256: get_watch_receiver_sha256,
+            clear_user_contents_max_size: clear_user_contents_max_size,
             load_user_contents_max_size: load_user_contents_max_size,
             get_max_image_size: get_max_image_size,
             z_update_1_data_json: z_update_1_data_json,
-            cleanup_my_image_json: cleanup_my_image_json
+            cleanup_my_image_json: cleanup_my_image_json,
+            load_avatar: load_avatar,
+            get_avatar: get_avatar
         };
 
         // end MoneyNetworkZService

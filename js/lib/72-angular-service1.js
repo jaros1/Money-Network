@@ -190,7 +190,7 @@ angular.module('MoneyNetwork')
             // get a list of MoneyNetwork User data hubs
             ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
                 var pgm = service + '.get_my_hub mergerSiteList callback 1: ' ;
-                var user_data_hubs, hub, query, debug_seq, i ;
+                var user_data_hubs, hub, query, debug_seq, i, optional_values ;
                 user_data_hubs = [] ;
                 if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites)) ;
                 else for (hub in merger_sites) {
@@ -199,25 +199,58 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
                 // user_data_hubs = ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh","1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc"]
 
-                // Use content.modified timestamp as sort condition if multiple user data hub. data.json file must exists.
+                // Use content.modified timestamp as sort condition if multiple user data hub.
+                // todo: data.json file must exists.
+                //query =
+                //    "select substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
+                //    "from json, keyvalue " +
+                //    "where " ;
+                //if (user_data_hubs.length) {
+                //    for (i=0 ; i<user_data_hubs.length ; i++) {
+                //        hub = user_data_hubs[i] ;
+                //        if (i == 0) query += "(" ; else query += "or " ;
+                //        query += "json.directory = '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' "
+                //    }
+                //    query += ") " ;
+                //}
+                //else query += "(1 = 2) " ;
+                //query +=
+                //    "and json.file_name = 'content.json' " +
+                //    "and keyvalue.json_id = json.json_id " +
+                //    "and keyvalue.key = 'modified' " +
+                //    "order by keyvalue.key desc" ;
+
+                // issue: Id user data hubs #178
+                // new query 17 using "optional" pattern to identified MoneyNetwork user data hubs
+                // data.json file must also exist
+                optional_values = [
+                    // actual optional pattern
+                    CONTENT_OPTIONAL,
+                    // old optional patterns
+                    '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json)',
+                    '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json)',
+                    '([0-9]{13}-[0-9]+-chat.json)'
+                ] ;
                 query =
-                    "select substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
-                    "from json, keyvalue " +
-                    "where " ;
-                if (user_data_hubs.length) {
-                    for (i=0 ; i<user_data_hubs.length ; i++) {
-                        hub = user_data_hubs[i] ;
-                        if (i == 0) query += "(" ; else query += "or " ;
-                        query += "json.directory = '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' "
-                    }
-                    query += ") " ;
-                }
-                else query += "(1 = 2) " ;
+                    "select hub " +
+                    "from (" +
+                    "  select " +
+                    "    substr(json.directory, 1, instr(json.directory,'/')-1) as hub," +
+                    "    case optional.value ";
+                for (i=0 ; i<optional_values.length ; i++) query += "    when '" + optional_values[i] + "' then " + i + " " ;
                 query +=
-                    "and json.file_name = 'content.json' " +
-                    "and keyvalue.json_id = json.json_id " +
-                    "and keyvalue.key = 'modified' " +
-                    "order by keyvalue.key desc" ;
+                    "    else " + optional_values.length + " end as priority, " +
+                    "    modified.value as modified " +
+                    "  from keyvalue as optional, keyvalue as modified, json, files " +
+                    "  where optional.key = 'optional' " +
+                    "  and json.json_id = optional.json_id " +
+                    "  and json.directory like '%/" + ZeroFrame.site_info.auth_address + "' " +
+                    "  and modified.json_id = json.json_id " +
+                    "  and modified.key = 'modified' " +
+                    "  and files.json_id = json.json_id " +
+                    "  and files.filename = 'data.json') " +
+                    "where priority < " + optional_values.length + " " +
+                    "order by priority, modified desc";
 
                 debug('select', pgm + 'query 17 (MS OK) = ' + query);
                 debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
@@ -1987,8 +2020,9 @@ angular.module('MoneyNetwork')
         // update timestamp in status.json file and modified in content.json.
         // will allow users to communicate with active contacts and ignoring old and inactive contacts
         // small file(s) for quick distribution in ZeroNet
-        // z_update_1_data_json: callback function injected from calling service
-        function i_am_online (z_update_1_data_json) {
+        // - z_update_1_data_json: callback function injected from calling service
+        // - is_user_info_empty: callback function injected from calling service
+        function i_am_online (z_update_1_data_json, is_user_info_empty) {
             var pgm, info, user_path;
             if (z_cache.user_setup.not_online) pgm = service + '.i_am_not_online: ';
             else pgm = service + '.i_am_online: ';
@@ -2148,6 +2182,12 @@ angular.module('MoneyNetwork')
                             // Account setup - user has selected not to update online timestamp
                             check_pubkey2_cb() ;
                             return ;
+                        }
+                        if (!my_user_seq_found) {
+                            status.status.push({
+                                user_seq: my_user_seq,
+                                timestamp: new Date().getTime()
+                            });
                         }
                         // validate status.json before write
                         error = MoneyNetworkHelper.validate_json (pgm, status, 'status.json', 'Invalid json file') ;
