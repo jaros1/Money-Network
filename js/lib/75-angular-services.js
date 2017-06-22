@@ -806,7 +806,7 @@ angular.module('MoneyNetwork')
             return moneyNetworkEmojiService.is_user_info_empty() ;
         }
         function load_user_info (create_new_account, guest) {
-            moneyNetworkEmojiService.load_user_info() ;
+            moneyNetworkEmojiService.load_user_info(create_new_account, guest) ;
         }
         function get_user_info () {
             return z_cache.user_info ;
@@ -1481,6 +1481,7 @@ angular.module('MoneyNetwork')
                 })
             }
         } // ls_save_contacts
+        moneyNetworkZService.inject_functions({ls_save_contacts: ls_save_contacts});
 
 
         // update last updated for group chat pseudo contacts

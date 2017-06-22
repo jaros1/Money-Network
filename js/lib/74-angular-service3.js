@@ -63,12 +63,22 @@ angular.module('MoneyNetwork')
         function save_my_files_optional (files_optional) {
             moneyNetworkHubService.save_my_files_optional(files_optional) ;
         }
+        function get_public_contact (create) {
+            return moneyNetworkHubService.get_public_contact(create) ;
+        }
+        function zeronet_site_publish(cb) { moneyNetworkHubService.zeronet_site_publish(cb)} ;
 
-            //// optional files format:
+         /// optional files format:
         //// - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
         //// - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
         //// - new encrypted image: <unix timestamp>-<user seq>-image.json
         var CONTENT_OPTIONAL = moneyNetworkHubService.get_content_optional() ;
+
+        // inject functions from calling services
+        var ls_save_contacts ;
+        function inject_functions (hash) {
+            if (hash.ls_save_contacts) ls_save_contacts = hash.ls_save_contacts ;
+        }
 
 
         // find max size of user directory
@@ -562,682 +572,694 @@ angular.module('MoneyNetwork')
             }
             // console.log(pgm + 'user_contents_max_size = ' + user_contents_max_size) ;
 
-            // cache like.json file. Check for old public reactions
-            get_like_json(function (like, like_index, empty) {
-                var pgm = service + '.z_update_1_data_json get_like_json callback 1: ';
-                var debug_seq ;
+
+            // find current user data hub
+            get_my_user_hub(function (hub, random_other_hub) {
+                var pgm = service + '.z_update_1_data_json get_my_user_hub callback 1: ';
                 if (detected_client_log_out(pgm)) return ;
-                // check current user disk usage. must keep total file usage <= user_contents_max_size
-                // console.log(pgm + 'todo: should check user disk usage for current hub. site_info = ' + JSON.stringify(ZeroFrame.site_info));
-                query =
-                    "select files.filename, files.size " +
-                    "from json, files " +
-                    "where json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
-                    "and json.file_name = 'content.json' " +
-                    "and files.json_id = json.json_id" ;
-                debug('select', pgm + 'query 1 = ' + query);
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 1') ;
-                ZeroFrame.cmd("dbQuery", [query], function (res) {
-                    var pgm = service + '.z_update_1_data_json dbQuery callback 2: ';
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                console.log(pgm + 'hub = ' + hub + ', random_other_hub = ' + random_other_hub) ;
+
+                // cache like.json file. Check for old public reactions
+                get_like_json(function (like, like_index, empty) {
+                    var pgm = service + '.z_update_1_data_json get_like_json callback 2: ';
+                    var debug_seq ;
                     if (detected_client_log_out(pgm)) return ;
-                    // console.log(pgm + 'res = ' + JSON.stringify(res));
-                    var data_json_max_size, i ;
-                    // calculate data.json max size - reserve 1700 (2200 * 0.75) bytes for avatar - reserve 100 bytes for status
-                    data_json_max_size = user_contents_max_size - 1800;
-                    for (i=0 ; i<res.length ; i++) {
-                        if (['data.json','avatar.png','avatar.jpg'].indexOf(res[i].filename) != -1) continue ;
-                        data_json_max_size = data_json_max_size - res[i].size ;
-                    }
-                    // console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
 
-                    // update json table with public key and search words
-                    // console.log(pgm + 'calling fileGet');
-                    get_data_json(function (data) {
-                        var pgm = service + '.z_update_1_data_json get_data_json callback 2: ' ;
-                        var local_storage_updated, data_str, row, pubkey, pubkey2, short_avatar, max_user_seq, i,
-                            my_user_i, my_user_seq, new_user_row, guest_id, guest, old_guest_user_seq, old_guest_user_index ;
+                    // check current user disk usage. must keep total file usage <= user_contents_max_size
+                    query =
+                        "select files.filename, files.size " +
+                        "from json, files " +
+                        "where json.directory = '" + hub + "/" + ZeroFrame.site_info.auth_address + "' " +
+                        "and json.file_name = 'content.json' " +
+                        "and files.json_id = json.json_id" ;
+                    debug('select', pgm + 'query 1 (MS OK) = ' + query);
+                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 1') ;
+                    ZeroFrame.cmd("dbQuery", [query], function (res) {
+                        var pgm = service + '.z_update_1_data_json dbQuery callback 3: ';
+                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                         if (detected_client_log_out(pgm)) return ;
+                        // console.log(pgm + 'res = ' + JSON.stringify(res));
+                        var data_json_max_size, i ;
+                        // calculate data.json max size - reserve 1700 (2200 * 0.75) bytes for avatar - reserve 100 bytes for status
+                        data_json_max_size = user_contents_max_size - 1800;
+                        for (i=0 ; i<res.length ; i++) {
+                            if (['data.json','avatar.png','avatar.jpg'].indexOf(res[i].filename) != -1) continue ;
+                            data_json_max_size = data_json_max_size - res[i].size ;
+                        }
+                        // console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
 
-                        // keep track of updates.
-                        local_storage_updated = false ; // write localStorage?
-                        data_str = JSON.stringify(data) ; // write data.json?
-                        if (!data.hub) data.hub = ZeroFrame.site_info.address ;
+                        // update json table with public key and search words
+                        // console.log(pgm + 'calling fileGet');
+                        get_data_json(function (data) {
+                            var pgm = service + '.z_update_1_data_json get_data_json callback 4: ' ;
+                            var local_storage_updated, data_str, row, pubkey, pubkey2, short_avatar, max_user_seq, i,
+                                my_user_i, my_user_seq, new_user_row, guest_id, guest, old_guest_user_seq, old_guest_user_index ;
+                            if (detected_client_log_out(pgm)) return ;
 
-                        // check avatar. Full path in avatar.src. short path in data.users array in ZeroNet
-                        // src:
-                        // - data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/avatar.jpg => jpg
-                        // - data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/avatar.png => png
-                        // - public/images/avatar1.png                                => 1.png
-                        // - public/images/avatar1.png                                => 1.png
-                        // uploaded avatars will be found in files table (from contents.json files)
-                        // random assigned avatar in data.users array
-                        if (avatar.src.substr(0,20) == 'public/images/avatar') short_avatar = avatar.src.substr(20,avatar.src.length-20);
+                            // keep track of updates.
+                            local_storage_updated = false ; // write localStorage?
+                            data_str = JSON.stringify(data) ; // write data.json?
 
-                        pubkey = MoneyNetworkHelper.getItem('pubkey') ; // used in JSEncrypt
-                        pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ; // used in ZeroNet CryptMessage plugin
-                        // console.log(pgm + 'pubkey = ' + pubkey, ', pubkey2 = ' + pubkey);
+                            // for list of user hubs
+                            if (!data.hub || (data.hub == "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk")) data.hub = random_other_hub ;
+                            console.log(pgm + 'data.hub = ' + data.hub) ;
 
-                        // find current user in users array
-                        max_user_seq = 0 ;
-                        for (i=0 ; i<data.users.length ; i++) {
-                            if (pubkey == data.users[i].pubkey) {
-                                my_user_i = i ;
-                                my_user_seq = data.users[my_user_i].user_seq
+                            // check avatar. Full path in avatar.src. short path in data.users array in ZeroNet
+                            // src:
+                            // - data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/avatar.jpg => jpg
+                            // - data/users/1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF/avatar.png => png
+                            // - public/images/avatar1.png                                => 1.png
+                            // - public/images/avatar1.png                                => 1.png
+                            // uploaded avatars will be found in files table (from contents.json files)
+                            // random assigned avatar in data.users array
+                            if (avatar.src.substr(0,20) == 'public/images/avatar') short_avatar = avatar.src.substr(20,avatar.src.length-20);
+
+                            pubkey = MoneyNetworkHelper.getItem('pubkey') ; // used in JSEncrypt
+                            pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ; // used in ZeroNet CryptMessage plugin
+                            // console.log(pgm + 'pubkey = ' + pubkey, ', pubkey2 = ' + pubkey);
+
+                            // find current user in users array
+                            max_user_seq = 0 ;
+                            for (i=0 ; i<data.users.length ; i++) {
+                                if (pubkey == data.users[i].pubkey) {
+                                    my_user_i = i ;
+                                    my_user_seq = data.users[my_user_i].user_seq
+                                }
+                                else if (data.users[i].user_seq > max_user_seq) max_user_seq = data.users[i].user_seq ;
                             }
-                            else if (data.users[i].user_seq > max_user_seq) max_user_seq = data.users[i].user_seq ;
-                        }
-                        if (my_user_seq) {
-                            data.users[my_user_i].pubkey2 = pubkey2 ;
-                            data.users[my_user_i].encryption = z_cache.user_setup.encryption ;
-                            if (short_avatar) data.users[my_user_i].avatar = short_avatar ;
-                        }
-                        else {
-                            // add current user to data.users array
-                            my_user_seq = max_user_seq + 1 ;
-                            new_user_row = {
-                                user_seq: my_user_seq,
-                                pubkey: pubkey,
-                                pubkey2: pubkey2,
-                                encryption: z_cache.user_setup.encryption
-                            };
-                            if (short_avatar) new_user_row.avatar = short_avatar ;
-                            guest_id = MoneyNetworkHelper.getItem('guestid');
-                            guest = (guest_id == '' + z_cache.user_id) ;
-                            if (guest) {
-                                new_user_row.guest = true;
-                                old_guest_user_index = -1 ;
-                                for (i=0 ; i<data.users.length ; i++) if (data.users[i].guest) old_guest_user_index = i ;
-                                if (old_guest_user_index != -1) {
-                                    old_guest_user_seq = data.users[old_guest_user_index].user_seq ;
-                                    data.users.splice(old_guest_user_index,1);
+                            if (my_user_seq) {
+                                data.users[my_user_i].pubkey2 = pubkey2 ;
+                                data.users[my_user_i].encryption = z_cache.user_setup.encryption ;
+                                if (short_avatar) data.users[my_user_i].avatar = short_avatar ;
+                            }
+                            else {
+                                // add current user to data.users array
+                                my_user_seq = max_user_seq + 1 ;
+                                new_user_row = {
+                                    user_seq: my_user_seq,
+                                    pubkey: pubkey,
+                                    pubkey2: pubkey2,
+                                    encryption: z_cache.user_setup.encryption
+                                };
+                                if (short_avatar) new_user_row.avatar = short_avatar ;
+                                guest_id = MoneyNetworkHelper.getItem('guestid');
+                                guest = (guest_id == '' + z_cache.user_id) ;
+                                if (guest) {
+                                    new_user_row.guest = true;
+                                    old_guest_user_index = -1 ;
+                                    for (i=0 ; i<data.users.length ; i++) if (data.users[i].guest) old_guest_user_index = i ;
+                                    if (old_guest_user_index != -1) {
+                                        old_guest_user_seq = data.users[old_guest_user_index].user_seq ;
+                                        data.users.splice(old_guest_user_index,1);
+                                    }
+                                }
+                                data.users.push(new_user_row) ;
+                                // console.log(pgm + 'added user to data.users. data = ' + JSON.stringify(data)) ;
+                            }
+                            // save user_seq and user_seqs in cache
+                            z_cache.user_seq = my_user_seq ;
+                            if (!z_cache.user_seqs) z_cache.user_seqs = [] ;
+                            z_cache.user_seqs.splice(0,z_cache.user_seqs.length) ;
+                            for (i=0 ; i<data.users.length ; i++) z_cache.user_seqs.push(data.users[i].user_seq) ;
+
+                            // remove old search words from search array
+                            var user_no_search_words = {} ;
+                            for (i=data.search.length-1 ; i>=0 ; i--) {
+                                row = data.search[i] ;
+                                if (row.user_seq == my_user_seq || (row.user_seq == old_guest_user_seq)) data.search.splice(i,1);
+                                else {
+                                    if (!user_no_search_words.hasOwnProperty(row.user_seq)) user_no_search_words[row.user_seq] = 0 ;
+                                    user_no_search_words[row.user_seq]++ ;
                                 }
                             }
-                            data.users.push(new_user_row) ;
-                            // console.log(pgm + 'added user to data.users. data = ' + JSON.stringify(data)) ;
-                        }
-                        // save user_seq and user_seqs in cache
-                        z_cache.user_seq = my_user_seq ;
-                        if (!z_cache.user_seqs) z_cache.user_seqs = [] ;
-                        z_cache.user_seqs.splice(0,z_cache.user_seqs.length) ;
-                        for (i=0 ; i<data.users.length ; i++) z_cache.user_seqs.push(data.users[i].user_seq) ;
+                            // add new search words to search array
+                            user_no_search_words[my_user_seq] = 0 ;
+                            for (i=0 ; i<z_cache.user_info.length ; i++) {
+                                if (z_cache.user_info[i].privacy != 'Search') continue ;
+                                row = {
+                                    user_seq: my_user_seq,
+                                    tag: z_cache.user_info[i].tag,
+                                    value: z_cache.user_info[i].value
+                                };
+                                data.search.push(row);
+                                user_no_search_words[my_user_seq]++ ;
+                            } // for i
+                            // console.log(pgm + 'user_no_search_words = ' + JSON.stringify(user_no_search_words));
 
-                        // remove old search words from search array
-                        var user_no_search_words = {} ;
-                        for (i=data.search.length-1 ; i>=0 ; i--) {
-                            row = data.search[i] ;
-                            if (row.user_seq == my_user_seq || (row.user_seq == old_guest_user_seq)) data.search.splice(i,1);
-                            else {
-                                if (!user_no_search_words.hasOwnProperty(row.user_seq)) user_no_search_words[row.user_seq] = 0 ;
-                                user_no_search_words[row.user_seq]++ ;
-                            }
-                        }
-                        // add new search words to search array
-                        user_no_search_words[my_user_seq] = 0 ;
-                        for (i=0 ; i<z_cache.user_info.length ; i++) {
-                            if (z_cache.user_info[i].privacy != 'Search') continue ;
-                            row = {
-                                user_seq: my_user_seq,
-                                tag: z_cache.user_info[i].tag,
-                                value: z_cache.user_info[i].value
-                            };
-                            data.search.push(row);
-                            user_no_search_words[my_user_seq]++ ;
-                        } // for i
-                        // console.log(pgm + 'user_no_search_words = ' + JSON.stringify(user_no_search_words));
+                            var j, k, contact, group_chat ;
+                            for (i=data.msg.length-1 ; i>=0 ; i--) {
+                                // fix problem with false/0 keys in msg array / messages table (cannot be decrypted). See also "insert new message" below
+                                // "null" keys are allowed in group chat
+                                if (!data.msg[i].key) {
+                                    // cleanup zeronet_msg_id references in localStorage
+                                    group_chat = false ;
+                                    for (j=0 ; j<ls_contacts.length ; j++) {
+                                        contact = ls_contacts[j] ;
+                                        for (k=0 ; k<contact.messages.length ; k++) {
+                                            if (contact.messages[k].folder != 'outbox') continue ;
+                                            if (contact.messages[k].zeronet_msg_id == data.msg[i].message_sha256) {
+                                                if (contact.type == 'group') group_chat = true ;
+                                                else {
+                                                    delete contact.messages[k].zeronet_msg_id;
+                                                    delete contact.messages[k].zeronet_msg_size;
+                                                    local_storage_updated = true;
+                                                }
+                                            }
+                                        } // for k (messages)
+                                    } // for j (contacts)
+                                    if (!group_chat) {
+                                        console.log(pgm + 'deleting message with invalid key. data.msg[' + i + '] = ' + JSON.stringify(data.msg[i]));
+                                        data.msg.splice(i,1);
+                                    }
+                                    continue ;
+                                } // if
+                                // delete any messages from deleted guest account
+                                if (data.msg[i].user_seq == old_guest_user_seq) data.msg.splice(i,1);
+                            } // for i (data.msg)
 
-                        var j, k, contact, group_chat ;
-                        for (i=data.msg.length-1 ; i>=0 ; i--) {
-                            // fix problem with false/0 keys in msg array / messages table (cannot be decrypted). See also "insert new message" below
-                            // "null" keys are allowed in group chat
-                            if (!data.msg[i].key) {
-                                // cleanup zeronet_msg_id references in localStorage
-                                group_chat = false ;
-                                for (j=0 ; j<ls_contacts.length ; j++) {
-                                    contact = ls_contacts[j] ;
-                                    for (k=0 ; k<contact.messages.length ; k++) {
-                                        if (contact.messages[k].folder != 'outbox') continue ;
-                                        if (contact.messages[k].zeronet_msg_id == data.msg[i].message_sha256) {
-                                            if (contact.type == 'group') group_chat = true ;
-                                            else {
-                                                delete contact.messages[k].zeronet_msg_id;
-                                                delete contact.messages[k].zeronet_msg_size;
-                                                local_storage_updated = true;
+                            // remove deleted outbox messages from data.json
+                            var encrypt, key, message_with_envelope, message, message_deleted, error, image_path ;
+                            for (i=0 ; i<ls_contacts.length ; i++) {
+                                contact = ls_contacts[i] ;
+                                if (contact.type == 'public') continue ;
+                                encrypt = null ;
+                                for (j=contact.messages.length-1 ; j >= 0 ; j--) {
+                                    message_with_envelope = contact.messages[j] ;
+                                    if (message_with_envelope.folder != 'outbox') continue ;
+
+                                    // delete outgoing messages (delete before insert - some messages are logical deleted after being sent)
+                                    if (contact.messages[j].zeronet_msg_id && contact.messages[j].deleted_at) {
+                                        // delete message requested by client (active delete)
+                                        // console.log(pgm + 'debug: delete message requested by client (active delete)') ;
+                                        // console.log(pgm + 'local_storage_messages[' + i + '] = ' + JSON.stringify(contact.messages[j])) ;
+                                        message_deleted = false ;
+                                        // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
+                                        for (k=data.msg.length-1 ; k>=0 ; k--) {
+                                            // console.log(pgm + 'debug: data.msg[' + k + '] = ' + JSON.stringify(data.msg[k])) ;
+                                            if ((data.msg[k].user_seq == my_user_seq) && (data.msg[k].message_sha256 == contact.messages[j].zeronet_msg_id)) {
+                                                message_deleted = true ;
+                                                data.msg.splice(k,1) ;
+                                                break ;
+                                            }
+                                        } // for k (data.msg)
+                                        // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
+                                        if (!message_deleted) {
+                                            if (!is_admin() || !get_admin_key()) { // ignore delete errors for admin task!
+                                                error = "Could not delete message from Zeronet. Maybe posted on ZeroNet from an other ZeroNet id" ;
+                                                console.log(pgm + 'error = ' + error) ;
+                                                console.log(pgm + 'user_seq = ' + my_user_seq) ;
+                                                console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
+                                                // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
+                                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
                                             }
                                         }
-                                    } // for k (messages)
-                                } // for j (contacts)
-                                if (!group_chat) {
-                                    console.log(pgm + 'deleting message with invalid key. data.msg[' + i + '] = ' + JSON.stringify(data.msg[i]));
-                                    data.msg.splice(i,1);
-                                }
-                                continue ;
-                            } // if
-                            // delete any messages from deleted guest account
-                            if (data.msg[i].user_seq == old_guest_user_seq) data.msg.splice(i,1);
-                        } // for i (data.msg)
-
-                        // remove deleted outbox messages from data.json
-                        var encrypt, key, message_with_envelope, message, message_deleted, error, image_path ;
-                        for (i=0 ; i<ls_contacts.length ; i++) {
-                            contact = ls_contacts[i] ;
-                            if (contact.type == 'public') continue ;
-                            encrypt = null ;
-                            for (j=contact.messages.length-1 ; j >= 0 ; j--) {
-                                message_with_envelope = contact.messages[j] ;
-                                if (message_with_envelope.folder != 'outbox') continue ;
-
-                                // delete outgoing messages (delete before insert - some messages are logical deleted after being sent)
-                                if (contact.messages[j].zeronet_msg_id && contact.messages[j].deleted_at) {
-                                    // delete message requested by client (active delete)
-                                    // console.log(pgm + 'debug: delete message requested by client (active delete)') ;
-                                    // console.log(pgm + 'local_storage_messages[' + i + '] = ' + JSON.stringify(contact.messages[j])) ;
-                                    message_deleted = false ;
-                                    // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
-                                    for (k=data.msg.length-1 ; k>=0 ; k--) {
-                                        // console.log(pgm + 'debug: data.msg[' + k + '] = ' + JSON.stringify(data.msg[k])) ;
-                                        if ((data.msg[k].user_seq == my_user_seq) && (data.msg[k].message_sha256 == contact.messages[j].zeronet_msg_id)) {
-                                            message_deleted = true ;
-                                            data.msg.splice(k,1) ;
-                                            break ;
+                                        if (message_with_envelope.message.image && (message_with_envelope.message.image != true)) {
+                                            // deleted a message from data.msg with an image <timestamp>-<user_seq>-image.json file attachment
+                                            // logical delete - overwrite with empty json as a delete marked optional file.
+                                            cleanup_my_image_json(message_with_envelope.sent_at, true, function (cleanup) {
+                                                // force publish to update files_optional information
+                                                // todo: is z_cache.publish variable updated correct?
+                                                if (cleanup) z_cache.publish = true ;
+                                            }) ;
                                         }
-                                    } // for k (data.msg)
-                                    // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
-                                    if (!message_deleted) {
-                                        if (!is_admin() || !get_admin_key()) { // ignore delete errors for admin task!
-                                            error = "Could not delete message from Zeronet. Maybe posted on ZeroNet from an other ZeroNet id" ;
-                                            console.log(pgm + 'error = ' + error) ;
-                                            console.log(pgm + 'user_seq = ' + my_user_seq) ;
-                                            console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
-                                            // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
-                                            ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                        delete contact.messages[j].zeronet_msg_id ;
+                                        delete contact.messages[j].zeronet_msg_size ;
+                                        local_storage_updated = true ;
+                                        continue
+                                    } // if
+
+                                    // lost message. note sent_at timestamp inside message. resending outbox messages that still is in data.json file.
+                                    // can be messages sent to a sha256 address that contact was not listening to (this problem should have been fixed now)
+                                    // can be messages where contact did get a cryptMessage decrypt error (encrypted to an other ZeroNet certificate)
+                                    if (contact.messages[j].zeronet_msg_id && contact.messages[j].message.sent_at) {
+                                        message_deleted = false ;
+                                        // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
+                                        for (k=data.msg.length-1 ; k>=0 ; k--) {
+                                            // console.log(pgm + 'debug: data.msg[' + k + '] = ' + JSON.stringify(data.msg[k])) ;
+                                            if ((data.msg[k].user_seq == my_user_seq) && (data.msg[k].message_sha256 == contact.messages[j].zeronet_msg_id)) {
+                                                message_deleted = true ;
+                                                data.msg.splice(k,1) ;
+                                                break ;
+                                            }
+                                        } // for k (data.msg)
+                                        // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
+                                        if (!message_deleted) {
+                                            if (!is_admin() || !get_admin_key()) { // ignore delete errors for admin task!
+                                                error = "Could not remove and resend message. Maybe posted in ZeroNet from an other ZeroNet id" ;
+                                                console.log(pgm + 'error = ' + error) ;
+                                                console.log(pgm + 'user_seq = ' + my_user_seq) ;
+                                                console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
+                                                // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
+                                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                            }
+                                            continue ;
                                         }
+                                        // OK. message removed from data.json file. ready for resend
+                                        debug('lost_message', pgm + 'resend: message with local_msg_seq ' + contact.messages[j].local_msg_seq + ' was removed from data.json file and is now ready for resend') ;
+                                        delete contact.messages[j].zeronet_msg_id ;
+                                        delete contact.messages[j].sent_at ;
+                                        delete contact.messages[j].cleanup_at ;
+                                        delete contact.messages[j].feedback ;
+                                        local_storage_updated = true ;
                                     }
-                                    if (message_with_envelope.message.image && (message_with_envelope.message.image != true)) {
-                                        // deleted a message from data.msg with an image <timestamp>-<user_seq>-image.json file attachment
-                                        // logical delete - overwrite with empty json as a delete marked optional file.
-                                        cleanup_my_image_json(message_with_envelope.sent_at, true, function (cleanup) {
-                                            // force publish to update files_optional information
-                                            // todo: is z_cache.publish variable updated correct?
-                                            if (cleanup) z_cache.publish = true ;
-                                        }) ;
-                                    }
-                                    delete contact.messages[j].zeronet_msg_id ;
-                                    delete contact.messages[j].zeronet_msg_size ;
-                                    local_storage_updated = true ;
-                                    continue
-                                } // if
 
-                                // lost message. note sent_at timestamp inside message. resending outbox messages that still is in data.json file.
-                                // can be messages sent to a sha256 address that contact was not listening to (this problem should have been fixed now)
-                                // can be messages where contact did get a cryptMessage decrypt error (encrypted to an other ZeroNet certificate)
-                                if (contact.messages[j].zeronet_msg_id && contact.messages[j].message.sent_at) {
-                                    message_deleted = false ;
-                                    // console.log(pgm + 'old data.msg.length = ' + data.msg.length) ;
-                                    for (k=data.msg.length-1 ; k>=0 ; k--) {
-                                        // console.log(pgm + 'debug: data.msg[' + k + '] = ' + JSON.stringify(data.msg[k])) ;
-                                        if ((data.msg[k].user_seq == my_user_seq) && (data.msg[k].message_sha256 == contact.messages[j].zeronet_msg_id)) {
-                                            message_deleted = true ;
-                                            data.msg.splice(k,1) ;
-                                            break ;
-                                        }
-                                    } // for k (data.msg)
-                                    // console.log(pgm + 'new data.msg.length = ' + data.msg.length) ;
-                                    if (!message_deleted) {
-                                        if (!is_admin() || !get_admin_key()) { // ignore delete errors for admin task!
-                                            error = "Could not remove and resend message. Maybe posted in ZeroNet from an other ZeroNet id" ;
-                                            console.log(pgm + 'error = ' + error) ;
-                                            console.log(pgm + 'user_seq = ' + my_user_seq) ;
-                                            console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
-                                            // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
-                                            ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
-                                        }
+                                } // for j (contact.messages)
+                            } // for i (contacts)
+
+                            // create private reaction messages before encrypt and send (z_update_2a_data_json_encrypt)
+                            // and update private reaction hash in localStorage
+                            // can be (reaction_grp):
+                            //  1) a private reaction to a public chat message
+                            //  2) a reaction in a group chat to all members in group chat
+                            //  3) a private reaction to a group chat message
+                            //  4) a private reaction to a private chat message
+                            var unique_id, message_receiver1, message_receiver2, update_reaction_info, send_message_reaction_grp1,
+                                send_message_reaction_grp2, update_like_json, reactions_index, message_receiver_clone,
+                                message_sender, reaction_info, old_reaction, reaction_at, new_reaction, reaction1, reaction2,
+                                js_messages_row, check_reactions_job, old_private_group_reaction, new_private_group_reaction,
+                                send_msg, count1, count2, unique_id2, no_msg, action1, action2, action3, group_reactions,
+                                old_action, new_action, prepare_msg, auth_address, like_index_p, my_private_reaction;
+                            for (i=0 ; i<ls_contacts.length ; i++) {
+                                contact = ls_contacts[i];
+                                for (j=contact.messages.length-1 ; j >= 0 ; j--) {
+                                    message_with_envelope = contact.messages[j] ;
+                                    if (!message_with_envelope.reaction_at) continue ;
+                                    message = message_with_envelope.message ;
+                                    reaction1 = null ;
+                                    reaction2 = message_with_envelope.reaction ;
+                                    reaction_at = message_with_envelope.reaction_at ;
+                                    if (['lost msg', 'lost msg2'].indexOf(message.msgtype) != -1) {
+                                        // no action for lost message notifications in UI (dummy messages)
+                                        // todo: disable reaction in UI
+                                        console.log(pgm + 'todo: disable reaction to lost message notifications') ;
+                                        delete message_with_envelope.reaction_at ;
+                                        local_storage_updated = true ;
                                         continue ;
                                     }
-                                    // OK. message removed from data.json file. ready for resend
-                                    debug('lost_message', pgm + 'resend: message with local_msg_seq ' + contact.messages[j].local_msg_seq + ' was removed from data.json file and is now ready for resend') ;
-                                    delete contact.messages[j].zeronet_msg_id ;
-                                    delete contact.messages[j].sent_at ;
-                                    delete contact.messages[j].cleanup_at ;
-                                    delete contact.messages[j].feedback ;
-                                    local_storage_updated = true ;
-                                }
+                                    // set action flags. one or more actions for each message
+                                    update_reaction_info = false ; // true/false: update reactions hash in localStorage (private non anonymous reactions)
+                                    my_private_reaction = false ; // mark new private reactions in ls_reactions hash
+                                    send_message_reaction_grp1 = 0 ; // 0..4: 0: no message, 1..4: see text above
+                                    send_message_reaction_grp2 = 0 ; // 0..4: 0: no message, 1..4: see text above
+                                    update_like_json = false ; // true/false: update like.json file. see z_update_6_like_json
+                                    message_sender = null ; // sender/creator of chat message
+                                    message_receiver1 = null ; // receiver of any private or group message.
+                                    message_receiver2 = null ; // receiver of any private or group message.
+                                    count1 = null ; // special case. only used for anonymous group chat reactions
+                                    count2 = null ; // special case. only used for anonymous group chat reactions
 
-                            } // for j (contact.messages)
-                        } // for i (contacts)
-
-                        // create private reaction messages before encrypt and send (z_update_2a_data_json_encrypt)
-                        // and update private reaction hash in localStorage
-                        // can be (reaction_grp):
-                        //  1) a private reaction to a public chat message
-                        //  2) a reaction in a group chat to all members in group chat
-                        //  3) a private reaction to a group chat message
-                        //  4) a private reaction to a private chat message
-                        var unique_id, message_receiver1, message_receiver2, update_reaction_info, send_message_reaction_grp1,
-                            send_message_reaction_grp2, update_like_json, reactions_index, message_receiver_clone,
-                            message_sender, reaction_info, old_reaction, reaction_at, new_reaction, reaction1, reaction2,
-                            js_messages_row, check_reactions_job, old_private_group_reaction, new_private_group_reaction,
-                            send_msg, count1, count2, unique_id2, no_msg, action1, action2, action3, group_reactions,
-                            old_action, new_action, prepare_msg, auth_address, like_index_p, my_private_reaction;
-                        for (i=0 ; i<ls_contacts.length ; i++) {
-                            contact = ls_contacts[i];
-                            for (j=contact.messages.length-1 ; j >= 0 ; j--) {
-                                message_with_envelope = contact.messages[j] ;
-                                if (!message_with_envelope.reaction_at) continue ;
-                                message = message_with_envelope.message ;
-                                reaction1 = null ;
-                                reaction2 = message_with_envelope.reaction ;
-                                reaction_at = message_with_envelope.reaction_at ;
-                                if (['lost msg', 'lost msg2'].indexOf(message.msgtype) != -1) {
-                                    // no action for lost message notifications in UI (dummy messages)
-                                    // todo: disable reaction in UI
-                                    console.log(pgm + 'todo: disable reaction to lost message notifications') ;
-                                    delete message_with_envelope.reaction_at ;
-                                    local_storage_updated = true ;
-                                    continue ;
-                                }
-                                // set action flags. one or more actions for each message
-                                update_reaction_info = false ; // true/false: update reactions hash in localStorage (private non anonymous reactions)
-                                my_private_reaction = false ; // mark new private reactions in ls_reactions hash
-                                send_message_reaction_grp1 = 0 ; // 0..4: 0: no message, 1..4: see text above
-                                send_message_reaction_grp2 = 0 ; // 0..4: 0: no message, 1..4: see text above
-                                update_like_json = false ; // true/false: update like.json file. see z_update_6_like_json
-                                message_sender = null ; // sender/creator of chat message
-                                message_receiver1 = null ; // receiver of any private or group message.
-                                message_receiver2 = null ; // receiver of any private or group message.
-                                count1 = null ; // special case. only used for anonymous group chat reactions
-                                count2 = null ; // special case. only used for anonymous group chat reactions
-
-                                // public, group or private message? some initial parameter setup
-                                if (message_with_envelope.z_filename) {
-                                    // public chat
-                                    if (message_with_envelope.folder == 'inbox') message_sender = contact ;
-                                    if (!z_cache.user_setup.private_reactions) {
-                                        // a: public reaction to public chat. no message and add non anonymous info to my like.json fil
-                                        // check for any old private reaction and send a private cancel reaction message if any
-                                        reactions_index = message_with_envelope.sent_at ;
-                                        if (message_with_envelope.folder == 'inbox') {
-                                            // add ",<auth>" to index
-                                            if (!message_sender || !message_sender.auth_address) reactions_index = null ;
-                                            else reactions_index += ',' + message_sender.auth_address.substr(0,4) ;
-                                        }
-                                        if (reactions_index) {
-                                            reaction_info = ls_reactions[reactions_index] ;
-                                            unique_id = get_my_unique_id() ;
-                                        }
-                                        else reaction_info = null ;
-                                        if (reaction_info) old_reaction = reaction_info.users[unique_id] ;
-                                        else old_reaction = null ;
-                                        if (old_reaction) {
-                                            // found old private reaction.
-                                            // remove old private reaction from ls_reactions
-                                            delete reaction_info.users[unique_id] ;
-                                            reaction_info.emojis[old_reaction]-- ;
-                                            if (reaction_info.emojis[old_reaction] <= 0) delete reaction_info.emojis[old_reaction] ;
-                                            // mark private reaction info as updated. z_update_6_like_json must update public AND anonymous like information
-                                            reaction_info.reaction_at = new Date().getTime() ;
+                                    // public, group or private message? some initial parameter setup
+                                    if (message_with_envelope.z_filename) {
+                                        // public chat
+                                        if (message_with_envelope.folder == 'inbox') message_sender = contact ;
+                                        if (!z_cache.user_setup.private_reactions) {
+                                            // a: public reaction to public chat. no message and add non anonymous info to my like.json fil
+                                            // check for any old private reaction and send a private cancel reaction message if any
+                                            reactions_index = message_with_envelope.sent_at ;
                                             if (message_with_envelope.folder == 'inbox') {
-                                                // sent cancel private reaction message
-                                                send_message_reaction_grp2 = 1 ; // reaction grp 1 - a private reaction to a public chat message
-                                                reaction2 = null ;
+                                                // add ",<auth>" to index
+                                                if (!message_sender || !message_sender.auth_address) reactions_index = null ;
+                                                else reactions_index += ',' + message_sender.auth_address.substr(0,4) ;
                                             }
-                                        }
-                                        update_like_json = true ;
-                                    }
-                                    else {
-                                        // private reaction.
-
-                                        // remove any old public reaction from like.json (set my_private_reaction flag)
-                                        auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
-                                        like_index_p = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
-                                        update_like_json = like_index.hasOwnProperty(like_index_p) ;
-                                        if (update_like_json) {
-                                            k = like_index[like_index_p] ;
-                                            debug('reaction', pgm + 'private reaction. todo: remove old public reaction in z_update_6_like_json. ' +
-                                                'k = ' + k + ', like.like[k] = ' + JSON.stringify(like.like[k])) ;
-                                            my_private_reaction = true ;
-                                        }
-
-                                        if (message_with_envelope.folder == 'outbox') {
-                                            // b: private reaction to public chat outbox message.
-                                            // update info in ls_reactions, no message and add anonymous info to my like.json file
-                                            update_reaction_info = true ;
-                                            update_like_json = true ; // update anonymous public reactions and also remove any old public reaction
+                                            if (reactions_index) {
+                                                reaction_info = ls_reactions[reactions_index] ;
+                                                unique_id = get_my_unique_id() ;
+                                            }
+                                            else reaction_info = null ;
+                                            if (reaction_info) old_reaction = reaction_info.users[unique_id] ;
+                                            else old_reaction = null ;
+                                            if (old_reaction) {
+                                                // found old private reaction.
+                                                // remove old private reaction from ls_reactions
+                                                delete reaction_info.users[unique_id] ;
+                                                reaction_info.emojis[old_reaction]-- ;
+                                                if (reaction_info.emojis[old_reaction] <= 0) delete reaction_info.emojis[old_reaction] ;
+                                                // mark private reaction info as updated. z_update_6_like_json must update public AND anonymous like information
+                                                reaction_info.reaction_at = new Date().getTime() ;
+                                                if (message_with_envelope.folder == 'inbox') {
+                                                    // sent cancel private reaction message
+                                                    send_message_reaction_grp2 = 1 ; // reaction grp 1 - a private reaction to a public chat message
+                                                    reaction2 = null ;
+                                                }
+                                            }
+                                            update_like_json = true ;
                                         }
                                         else {
-                                            // c: private reaction to public chat inbox message
-                                            // update info in ls_reactions and send reaction message. other user will update like.json file
+                                            // private reaction.
+
+                                            // remove any old public reaction from like.json (set my_private_reaction flag)
+                                            auth_address = contact.type == 'public' ? ZeroFrame.site_info.auth_address : contact.auth_address ;
+                                            like_index_p = message_with_envelope.sent_at + ',' + auth_address.substr(0,4) + ',p' ;
+                                            update_like_json = like_index.hasOwnProperty(like_index_p) ;
+                                            if (update_like_json) {
+                                                k = like_index[like_index_p] ;
+                                                debug('reaction', pgm + 'private reaction. todo: remove old public reaction in z_update_6_like_json. ' +
+                                                    'k = ' + k + ', like.like[k] = ' + JSON.stringify(like.like[k])) ;
+                                                my_private_reaction = true ;
+                                            }
+
+                                            if (message_with_envelope.folder == 'outbox') {
+                                                // b: private reaction to public chat outbox message.
+                                                // update info in ls_reactions, no message and add anonymous info to my like.json file
+                                                update_reaction_info = true ;
+                                                update_like_json = true ; // update anonymous public reactions and also remove any old public reaction
+                                            }
+                                            else {
+                                                // c: private reaction to public chat inbox message
+                                                // update info in ls_reactions and send reaction message. other user will update like.json file
+                                                update_reaction_info = true ;
+                                                send_message_reaction_grp2 = 1 ; // reaction grp 1 - a private reaction to a public chat message
+                                                message_receiver2 = contact ;
+
+                                            }
+                                        }
+
+                                    }
+                                    else if (contact.type == 'group') {
+                                        // group chat
+                                        // find sender/creator of group chat message
+                                        if (message_with_envelope.folder == 'inbox') {
+                                            // find sender/creator of group chat message
+                                            unique_id = contact.participants[message_with_envelope.participant-1] ;
+                                            message_sender = get_contact_by_unique_id(unique_id) ;
+                                        }
+                                        // initial group message setup. see more details in update reaction info section (a bit complicated)
+                                        if (!z_cache.user_setup.private_reactions) {
+                                            // group chat a: group reaction to a group chat message.
                                             update_reaction_info = true ;
-                                            send_message_reaction_grp2 = 1 ; // reaction grp 1 - a private reaction to a public chat message
+                                            send_message_reaction_grp2 = 2 ; // reaction grp 2 - a reaction in a group chat to all members in group chat
                                             message_receiver2 = contact ;
 
                                         }
-                                    }
-
-                                }
-                                else if (contact.type == 'group') {
-                                    // group chat
-                                    // find sender/creator of group chat message
-                                    if (message_with_envelope.folder == 'inbox') {
-                                        // find sender/creator of group chat message
-                                        unique_id = contact.participants[message_with_envelope.participant-1] ;
-                                        message_sender = get_contact_by_unique_id(unique_id) ;
-                                    }
-                                    // initial group message setup. see more details in update reaction info section (a bit complicated)
-                                    if (!z_cache.user_setup.private_reactions) {
-                                        // group chat a: group reaction to a group chat message.
-                                        update_reaction_info = true ;
-                                        send_message_reaction_grp2 = 2 ; // reaction grp 2 - a reaction in a group chat to all members in group chat
-                                        message_receiver2 = contact ;
-
-                                    }
-                                    else if (message_with_envelope.folder == 'outbox') {
-                                        // group chat b: private reaction to a group chat outbox message
-                                        // send ANONYMOUS reaction information to group chat members
-                                        update_reaction_info = true ;
-                                        send_message_reaction_grp2 = 2 ; // reaction grp 2 - a reaction in a group chat to all members in group chat
-                                        message_receiver2 = contact ;
-                                    }
-                                    else {
-                                        // group chat c: private reaction to a group chat inbox message
-                                        // send NON ANONYMOUS reaction information to sender/creator of group chat message
-                                        update_reaction_info = true ;
-                                        send_message_reaction_grp2 = 3 ; // reaction grp 3 - a private reaction to a group chat message
-                                        message_receiver2 = message_sender ;
-                                    }
-                                    debug('reaction', pgm + 'folder = ' + message_with_envelope.folder +
-                                        ', private_reactions = ' + z_cache.user_setup.private_reactions +
-                                        ', send_message_reaction_grp2 = ' + send_message_reaction_grp2) ;
-                                    // update reaction info.
-                                    if (!message_with_envelope.reactions) message_with_envelope.reactions = [] ;
-                                    js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
-                                    if (js_messages_row) {
-                                        check_reactions_job = function () {
-                                            check_reactions(js_messages_row)
-                                        } ;
-                                        $timeout(check_reactions_job) ; // lookup reactions
-                                    }
-                                    else debug('reaction', pgm + 'could not found js_messages_row with seq ' + message_with_envelope.seq) ;
-                                }
-                                else {
-                                    // private chat. always send a private message
-                                    update_reaction_info = true ;
-                                    send_message_reaction_grp2 = 4 ;
-                                    if (message_with_envelope.folder == 'inbox') message_sender = contact ;
-                                    message_receiver2 = contact ;
-                                    // update reaction info.
-                                    if (!message_with_envelope.reactions) message_with_envelope.reactions = [] ;
-                                    js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
-                                    if (js_messages_row) {
-                                        check_reactions_job = function () {
-                                            check_reactions(js_messages_row)
-                                        } ;
-                                        $timeout(check_reactions_job) ; // lookup reactions
-                                    }
-                                    else debug('reaction', pgm + 'could not found js_messages_row with seq ' + message_with_envelope.seq) ;
-                                }
-
-                                message_receiver_clone = JSON.parse(JSON.stringify(message_receiver2)) ;
-                                if (message_receiver_clone) {
-                                    message_receiver_clone.messages = '...' ;
-                                    if (message_receiver_clone.inbox_zeronet_msg_id) message_receiver_clone.inbox_zeronet_msg_id = '...' ;
-                                    if (message_receiver_clone.deleted_inbox_messages) message_receiver_clone.deleted_inbox_messages = '...';
-                                    if (message_receiver_clone.search) message_receiver_clone.search = '...' ;
-                                    if (message_receiver_clone.outbox_sender_sha256) message_receiver_clone.outbox_sender_sha256 = '...' ;
-                                }
-                                debug('reaction', pgm + 'sent_at = ' + message_with_envelope.sent_at +
-                                    ', folder = ' + message_with_envelope.folder +
-                                    ', reaction = ' + reaction2 +
-                                    ', update_ls_reaction = ' + update_reaction_info +
-                                    ', send_message_reaction_grp = ' + send_message_reaction_grp2 +
-                                    ', update_like_json = ' + update_like_json +
-                                    ', message_receiver = ' + JSON.stringify(message_receiver_clone)) ;
-
-                                // update reaction information in localStorage. Either in reactions hash or in contact.messages.reaction_info hash
-                                if (update_reaction_info) {
-                                    // public chat            - use ls_reactions hash with private reactions (reactions_index: <timestamp> (outbox messages) or <timestamp>,<auth> (inbox messages))
-                                    // group and private chat - use message_with_envelope.reaction_info hash
-                                    // with
-                                    // - my private reactions to ingoing and outgoing chat messages
-                                    // - other users private reactions to my chat outbox messages
-                                    if (message_with_envelope.z_filename) {
-                                        // public chat - chat message only stored on ZeroNet / not in localStorage - use ls_reactions hash for reactions
-                                        reactions_index = message_with_envelope.sent_at ;
-                                        if (message_with_envelope.folder == 'inbox') {
-                                            if (!message_sender || !message_sender.auth_address) reactions_index = null ;
-                                            else reactions_index += ',' + message_sender.auth_address.substr(0,4) ;
-                                        }
-                                        if (reactions_index) {
-                                            if (!ls_reactions[reactions_index]) ls_reactions[reactions_index] = {} ;
-                                            reaction_info = ls_reactions[reactions_index]
+                                        else if (message_with_envelope.folder == 'outbox') {
+                                            // group chat b: private reaction to a group chat outbox message
+                                            // send ANONYMOUS reaction information to group chat members
+                                            update_reaction_info = true ;
+                                            send_message_reaction_grp2 = 2 ; // reaction grp 2 - a reaction in a group chat to all members in group chat
+                                            message_receiver2 = contact ;
                                         }
                                         else {
-                                            // error
-                                            reaction_info = null ;
-                                            debug('reaction', pgm + 'error. cannot save private reaction for deleted contact');
-                                            update_reaction_info = false ;
+                                            // group chat c: private reaction to a group chat inbox message
+                                            // send NON ANONYMOUS reaction information to sender/creator of group chat message
+                                            update_reaction_info = true ;
+                                            send_message_reaction_grp2 = 3 ; // reaction grp 3 - a private reaction to a group chat message
+                                            message_receiver2 = message_sender ;
                                         }
+                                        debug('reaction', pgm + 'folder = ' + message_with_envelope.folder +
+                                            ', private_reactions = ' + z_cache.user_setup.private_reactions +
+                                            ', send_message_reaction_grp2 = ' + send_message_reaction_grp2) ;
+                                        // update reaction info.
+                                        if (!message_with_envelope.reactions) message_with_envelope.reactions = [] ;
+                                        js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
+                                        if (js_messages_row) {
+                                            check_reactions_job = function () {
+                                                check_reactions(js_messages_row)
+                                            } ;
+                                            $timeout(check_reactions_job) ; // lookup reactions
+                                        }
+                                        else debug('reaction', pgm + 'could not found js_messages_row with seq ' + message_with_envelope.seq) ;
                                     }
                                     else {
-                                        // group or private chat - use message_with_envelope.reaction_info hash for reactions
-                                        if (!message_with_envelope.reaction_info) message_with_envelope.reaction_info = {} ;
-                                        reactions_index = 'n/a' ;
-                                        reaction_info = message_with_envelope.reaction_info ;
-                                    }
-                                    if (reaction_info) {
-                                        if (!reaction_info.users) reaction_info.users = {} ; // unique_id => emoji (anonymous reactions)
-                                        if (!reaction_info.emojis) reaction_info.emojis = {} ; // emoji => count (anonymous reactions)
-                                        debug('reaction', pgm + 'reactions_index = ' + reactions_index + ', old reaction_info = ' + JSON.stringify(reaction_info)) ;
-                                        unique_id = get_my_unique_id() ;
-                                        old_reaction = reaction_info.users[unique_id] ; // emoji or [emoji]
-                                        new_reaction = reaction2 ;
-                                        // group chat only. private or group chat reaction. note special syntacs [emoji] for private group chat reactions
-                                        old_private_group_reaction = false ;
-                                        new_private_group_reaction = false ;
-                                        if ([2,3].indexOf(send_message_reaction_grp2) != -1) {
-                                            if (typeof old_reaction == 'object') {
-                                                // note special notification for private group reaction [emoji] in group chat
-                                                old_reaction = old_reaction[0] ;
-                                                old_private_group_reaction = true ;
-                                            }
-                                            new_private_group_reaction = z_cache.user_setup.private_reactions ;
+                                        // private chat. always send a private message
+                                        update_reaction_info = true ;
+                                        send_message_reaction_grp2 = 4 ;
+                                        if (message_with_envelope.folder == 'inbox') message_sender = contact ;
+                                        message_receiver2 = contact ;
+                                        // update reaction info.
+                                        if (!message_with_envelope.reactions) message_with_envelope.reactions = [] ;
+                                        js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
+                                        if (js_messages_row) {
+                                            check_reactions_job = function () {
+                                                check_reactions(js_messages_row)
+                                            } ;
+                                            $timeout(check_reactions_job) ; // lookup reactions
                                         }
-                                        if ((old_reaction == new_reaction) && (old_private_group_reaction == new_private_group_reaction)) {
-                                            debug('reaction', pgm + 'no update. old reaction = new reaction in ls_reactions.') ;
-                                            update_reaction_info = false ;
+                                        else debug('reaction', pgm + 'could not found js_messages_row with seq ' + message_with_envelope.seq) ;
+                                    }
+
+                                    message_receiver_clone = JSON.parse(JSON.stringify(message_receiver2)) ;
+                                    if (message_receiver_clone) {
+                                        message_receiver_clone.messages = '...' ;
+                                        if (message_receiver_clone.inbox_zeronet_msg_id) message_receiver_clone.inbox_zeronet_msg_id = '...' ;
+                                        if (message_receiver_clone.deleted_inbox_messages) message_receiver_clone.deleted_inbox_messages = '...';
+                                        if (message_receiver_clone.search) message_receiver_clone.search = '...' ;
+                                        if (message_receiver_clone.outbox_sender_sha256) message_receiver_clone.outbox_sender_sha256 = '...' ;
+                                    }
+                                    debug('reaction', pgm + 'sent_at = ' + message_with_envelope.sent_at +
+                                        ', folder = ' + message_with_envelope.folder +
+                                        ', reaction = ' + reaction2 +
+                                        ', update_ls_reaction = ' + update_reaction_info +
+                                        ', send_message_reaction_grp = ' + send_message_reaction_grp2 +
+                                        ', update_like_json = ' + update_like_json +
+                                        ', message_receiver = ' + JSON.stringify(message_receiver_clone)) ;
+
+                                    // update reaction information in localStorage. Either in reactions hash or in contact.messages.reaction_info hash
+                                    if (update_reaction_info) {
+                                        // public chat            - use ls_reactions hash with private reactions (reactions_index: <timestamp> (outbox messages) or <timestamp>,<auth> (inbox messages))
+                                        // group and private chat - use message_with_envelope.reaction_info hash
+                                        // with
+                                        // - my private reactions to ingoing and outgoing chat messages
+                                        // - other users private reactions to my chat outbox messages
+                                        if (message_with_envelope.z_filename) {
+                                            // public chat - chat message only stored on ZeroNet / not in localStorage - use ls_reactions hash for reactions
+                                            reactions_index = message_with_envelope.sent_at ;
+                                            if (message_with_envelope.folder == 'inbox') {
+                                                if (!message_sender || !message_sender.auth_address) reactions_index = null ;
+                                                else reactions_index += ',' + message_sender.auth_address.substr(0,4) ;
+                                            }
+                                            if (reactions_index) {
+                                                if (!ls_reactions[reactions_index]) ls_reactions[reactions_index] = {} ;
+                                                reaction_info = ls_reactions[reactions_index]
+                                            }
+                                            else {
+                                                // error
+                                                reaction_info = null ;
+                                                debug('reaction', pgm + 'error. cannot save private reaction for deleted contact');
+                                                update_reaction_info = false ;
+                                            }
                                         }
                                         else {
-                                            if (old_reaction) {
-                                                if (!reaction_info.emojis[old_reaction]) reaction_info.emojis[old_reaction] = 1 ;
-                                                reaction_info.emojis[old_reaction]-- ;
-                                                if (reaction_info.emojis[old_reaction] <= 0) delete reaction_info.emojis[old_reaction] ;
-                                            }
-                                            if (new_reaction) {
-                                                if (!reaction_info.emojis[new_reaction]) reaction_info.emojis[new_reaction] = 0 ;
-                                                reaction_info.emojis[new_reaction]++ ;
-                                                reaction_info.users[unique_id] = new_private_group_reaction ? [new_reaction] : new_reaction ;
-                                                if (new_private_group_reaction) count2 = reaction_info.emojis[new_reaction] ;
-                                            }
-                                            else delete reaction_info.users[unique_id] ;
-
-                                            // if (!send_message_reaction_grp || (send_message_reaction_grp == 2)) reaction_info.reaction_at = new Date().getTime() ;
-                                            // if (update_like_json) reaction_info.reaction_at = new Date().getTime() ;
-                                            reaction_info.reaction_at = update_like_json ?  new Date().getTime() : null ;
-                                            if (my_private_reaction) {
-                                                // new private reaction - must remove old public reaction in z_update_6_like_json
-                                                message_with_envelope.my_private_reaction_at = reaction_info.reaction_at ;
-                                            }
-
+                                            // group or private chat - use message_with_envelope.reaction_info hash for reactions
+                                            if (!message_with_envelope.reaction_info) message_with_envelope.reaction_info = {} ;
+                                            reactions_index = 'n/a' ;
+                                            reaction_info = message_with_envelope.reaction_info ;
+                                        }
+                                        if (reaction_info) {
+                                            if (!reaction_info.users) reaction_info.users = {} ; // unique_id => emoji (anonymous reactions)
+                                            if (!reaction_info.emojis) reaction_info.emojis = {} ; // emoji => count (anonymous reactions)
+                                            debug('reaction', pgm + 'reactions_index = ' + reactions_index + ', old reaction_info = ' + JSON.stringify(reaction_info)) ;
+                                            unique_id = get_my_unique_id() ;
+                                            old_reaction = reaction_info.users[unique_id] ; // emoji or [emoji]
+                                            new_reaction = reaction2 ;
+                                            // group chat only. private or group chat reaction. note special syntacs [emoji] for private group chat reactions
+                                            old_private_group_reaction = false ;
+                                            new_private_group_reaction = false ;
                                             if ([2,3].indexOf(send_message_reaction_grp2) != -1) {
-                                                // message(s) with group reactions. a little complicated. 1-2 messages (group, private or anonymous message).
-                                                action1 = message_with_envelope.folder ;
-                                                action2 = !old_reaction ? 'none' : (old_private_group_reaction ? 'private' : 'group') ;
-                                                action3 = !new_reaction ? 'none' : (new_private_group_reaction ? 'private' : 'group') ;
-                                                group_reactions = grp_reaction_action_table[action1][action2][action3];
-                                                old_action = group_reactions[0] ;
-                                                new_action = group_reactions[1] ;
-
-                                                // action for old reaction = message 1
-                                                if (!old_action) send_message_reaction_grp1 = 0 ;
-                                                else if (old_action.substr(0,1) == 'g') {
-                                                    send_message_reaction_grp1 = 2 ;
-                                                    message_receiver1 = contact ;
-                                                    reaction1 = old_action == 'g' ? old_reaction : null ;
-                                                    count1 = null ;
+                                                if (typeof old_reaction == 'object') {
+                                                    // note special notification for private group reaction [emoji] in group chat
+                                                    old_reaction = old_reaction[0] ;
+                                                    old_private_group_reaction = true ;
                                                 }
-                                                else if (old_action.substr(0,1) == 'a') {
-                                                    send_message_reaction_grp1 = 2 ;
-                                                    message_receiver1 = contact ;
-                                                    reaction1 = old_reaction ;
-                                                    count1 = 0 ;
-                                                    for (unique_id2 in reaction_info.users) {
-                                                        if (typeof reaction_info.users[unique_id2] != 'object') continue ;
-                                                        if (reaction_info.users[unique_id2][0] == old_reaction) count1++ ;
-                                                    }
-                                                }
-                                                else {
-                                                    // p (private message) or p0 (cancel private message)
-                                                    send_message_reaction_grp1 = 3 ;
-                                                    message_receiver1 = message_sender ;
-                                                    reaction1 = old_action == 'p' ? old_reaction : null ;
-                                                    count1 = null ;
-                                                    if (old_reaction) {
-                                                        // special for private reactions to group chat inbox messages. doublet reaction count.
-                                                        // private reaction to inbox messages is both in users and in anonymous hashes
-                                                        // update now and receive more correct anonymous reaction update later
-                                                        if (!reaction_info.anonymous) reaction_info.anonymous = {} ;
-                                                        if (!reaction_info.anonymous[old_reaction]) reaction_info.anonymous[old_reaction] = 1 ;
-                                                        reaction_info.anonymous[old_reaction]-- ;
-                                                        if (reaction_info.anonymous[old_reaction] == 0) delete reaction_info.anonymous[old_reaction] ;
-                                                    }
-                                                }
-
-                                                // action for new reaction = message 2
-                                                if (!new_action) send_message_reaction_grp2 = 0 ;
-                                                else if (new_action.substr(0,1) == 'g') {
-                                                    send_message_reaction_grp2 = 2 ;
-                                                    message_receiver2 = contact ;
-                                                    reaction2 = new_action == 'g' ? new_reaction : null ;
-                                                    count2 = null ;
-                                                }
-                                                else if (new_action.substr(0,1) == 'a') {
-                                                    send_message_reaction_grp2 = 2 ;
-                                                    message_receiver2 = contact ;
-                                                    reaction2 = new_reaction ;
-                                                    count2 = 0 ;
-                                                    for (unique_id2 in reaction_info.users) if (reaction_info.users[unique_id2] == new_reaction) count2++ ;
-                                                }
-                                                else {
-                                                    // p (private message) or p0 (cancel private message)
-                                                    send_message_reaction_grp2 = 3 ;
-                                                    message_receiver2 = message_sender ;
-                                                    reaction2 = new_action == 'p' ? new_reaction : null ;
-                                                    count2 = null ;
-                                                    if (new_reaction) {
-                                                        // special for private reactions to group chat inbox messages. doublet reaction count.
-                                                        // private reaction to inbox messages is both in users and in anonymous hashes
-                                                        // update now and receive more correct anonymous reaction update later
-                                                        if (!reaction_info.anonymous) reaction_info.anonymous = {} ;
-                                                        if (!reaction_info.anonymous[new_reaction]) reaction_info.anonymous[new_reaction] = 0 ;
-                                                        reaction_info.anonymous[new_reaction]++ ;
-                                                    }
-                                                }
-
+                                                new_private_group_reaction = z_cache.user_setup.private_reactions ;
                                             }
+                                            if ((old_reaction == new_reaction) && (old_private_group_reaction == new_private_group_reaction)) {
+                                                debug('reaction', pgm + 'no update. old reaction = new reaction in ls_reactions.') ;
+                                                update_reaction_info = false ;
+                                            }
+                                            else {
+                                                if (old_reaction) {
+                                                    if (!reaction_info.emojis[old_reaction]) reaction_info.emojis[old_reaction] = 1 ;
+                                                    reaction_info.emojis[old_reaction]-- ;
+                                                    if (reaction_info.emojis[old_reaction] <= 0) delete reaction_info.emojis[old_reaction] ;
+                                                }
+                                                if (new_reaction) {
+                                                    if (!reaction_info.emojis[new_reaction]) reaction_info.emojis[new_reaction] = 0 ;
+                                                    reaction_info.emojis[new_reaction]++ ;
+                                                    reaction_info.users[unique_id] = new_private_group_reaction ? [new_reaction] : new_reaction ;
+                                                    if (new_private_group_reaction) count2 = reaction_info.emojis[new_reaction] ;
+                                                }
+                                                else delete reaction_info.users[unique_id] ;
 
-                                            local_storage_updated = true ;
-                                            debug('reaction', pgm + 'reactions_index = ' + reactions_index + ', new reaction_info = ' + JSON.stringify(reaction_info)) ;
+                                                // if (!send_message_reaction_grp || (send_message_reaction_grp == 2)) reaction_info.reaction_at = new Date().getTime() ;
+                                                // if (update_like_json) reaction_info.reaction_at = new Date().getTime() ;
+                                                reaction_info.reaction_at = update_like_json ?  new Date().getTime() : null ;
+                                                if (my_private_reaction) {
+                                                    // new private reaction - must remove old public reaction in z_update_6_like_json
+                                                    message_with_envelope.my_private_reaction_at = reaction_info.reaction_at ;
+                                                }
+
+                                                if ([2,3].indexOf(send_message_reaction_grp2) != -1) {
+                                                    // message(s) with group reactions. a little complicated. 1-2 messages (group, private or anonymous message).
+                                                    action1 = message_with_envelope.folder ;
+                                                    action2 = !old_reaction ? 'none' : (old_private_group_reaction ? 'private' : 'group') ;
+                                                    action3 = !new_reaction ? 'none' : (new_private_group_reaction ? 'private' : 'group') ;
+                                                    group_reactions = grp_reaction_action_table[action1][action2][action3];
+                                                    old_action = group_reactions[0] ;
+                                                    new_action = group_reactions[1] ;
+
+                                                    // action for old reaction = message 1
+                                                    if (!old_action) send_message_reaction_grp1 = 0 ;
+                                                    else if (old_action.substr(0,1) == 'g') {
+                                                        send_message_reaction_grp1 = 2 ;
+                                                        message_receiver1 = contact ;
+                                                        reaction1 = old_action == 'g' ? old_reaction : null ;
+                                                        count1 = null ;
+                                                    }
+                                                    else if (old_action.substr(0,1) == 'a') {
+                                                        send_message_reaction_grp1 = 2 ;
+                                                        message_receiver1 = contact ;
+                                                        reaction1 = old_reaction ;
+                                                        count1 = 0 ;
+                                                        for (unique_id2 in reaction_info.users) {
+                                                            if (typeof reaction_info.users[unique_id2] != 'object') continue ;
+                                                            if (reaction_info.users[unique_id2][0] == old_reaction) count1++ ;
+                                                        }
+                                                    }
+                                                    else {
+                                                        // p (private message) or p0 (cancel private message)
+                                                        send_message_reaction_grp1 = 3 ;
+                                                        message_receiver1 = message_sender ;
+                                                        reaction1 = old_action == 'p' ? old_reaction : null ;
+                                                        count1 = null ;
+                                                        if (old_reaction) {
+                                                            // special for private reactions to group chat inbox messages. doublet reaction count.
+                                                            // private reaction to inbox messages is both in users and in anonymous hashes
+                                                            // update now and receive more correct anonymous reaction update later
+                                                            if (!reaction_info.anonymous) reaction_info.anonymous = {} ;
+                                                            if (!reaction_info.anonymous[old_reaction]) reaction_info.anonymous[old_reaction] = 1 ;
+                                                            reaction_info.anonymous[old_reaction]-- ;
+                                                            if (reaction_info.anonymous[old_reaction] == 0) delete reaction_info.anonymous[old_reaction] ;
+                                                        }
+                                                    }
+
+                                                    // action for new reaction = message 2
+                                                    if (!new_action) send_message_reaction_grp2 = 0 ;
+                                                    else if (new_action.substr(0,1) == 'g') {
+                                                        send_message_reaction_grp2 = 2 ;
+                                                        message_receiver2 = contact ;
+                                                        reaction2 = new_action == 'g' ? new_reaction : null ;
+                                                        count2 = null ;
+                                                    }
+                                                    else if (new_action.substr(0,1) == 'a') {
+                                                        send_message_reaction_grp2 = 2 ;
+                                                        message_receiver2 = contact ;
+                                                        reaction2 = new_reaction ;
+                                                        count2 = 0 ;
+                                                        for (unique_id2 in reaction_info.users) if (reaction_info.users[unique_id2] == new_reaction) count2++ ;
+                                                    }
+                                                    else {
+                                                        // p (private message) or p0 (cancel private message)
+                                                        send_message_reaction_grp2 = 3 ;
+                                                        message_receiver2 = message_sender ;
+                                                        reaction2 = new_action == 'p' ? new_reaction : null ;
+                                                        count2 = null ;
+                                                        if (new_reaction) {
+                                                            // special for private reactions to group chat inbox messages. doublet reaction count.
+                                                            // private reaction to inbox messages is both in users and in anonymous hashes
+                                                            // update now and receive more correct anonymous reaction update later
+                                                            if (!reaction_info.anonymous) reaction_info.anonymous = {} ;
+                                                            if (!reaction_info.anonymous[new_reaction]) reaction_info.anonymous[new_reaction] = 0 ;
+                                                            reaction_info.anonymous[new_reaction]++ ;
+                                                        }
+                                                    }
+
+                                                }
+
+                                                local_storage_updated = true ;
+                                                debug('reaction', pgm + 'reactions_index = ' + reactions_index + ', new reaction_info = ' + JSON.stringify(reaction_info)) ;
+                                            }
                                         }
+                                        if (z_cache.user_setup.private_reactions) delete message_with_envelope.reaction_at ;
                                     }
-                                    if (z_cache.user_setup.private_reactions) delete message_with_envelope.reaction_at ;
-                                }
 
-                                // send 1-2 private messages. normally only one message. two messages in some special cases
-                                if (send_message_reaction_grp1 || send_message_reaction_grp2) {
-                                    send_msg = function (send_message_reaction_grp, message_receiver, reaction, count) {
-                                        var message ;
-                                        // check receiver
-                                        if (send_message_reaction_grp == 3) {
-                                            // private reaction to a group chat inbox message. check sender/creator of message
-                                            if (!message_receiver) {
-                                                console.log(pgm + 'private reaction was not sent. Group chat contact with unique id ' +
-                                                    unique_id + ' was not found. message_with_envelope.participant = ' + message_with_envelope.participant +
-                                                    ', contact.participants = ' + JSON.stringify(contact.participants)) ;
+                                    // send 1-2 private messages. normally only one message. two messages in some special cases
+                                    if (send_message_reaction_grp1 || send_message_reaction_grp2) {
+                                        send_msg = function (send_message_reaction_grp, message_receiver, reaction, count) {
+                                            var message ;
+                                            // check receiver
+                                            if (send_message_reaction_grp == 3) {
+                                                // private reaction to a group chat inbox message. check sender/creator of message
+                                                if (!message_receiver) {
+                                                    console.log(pgm + 'private reaction was not sent. Group chat contact with unique id ' +
+                                                        unique_id + ' was not found. message_with_envelope.participant = ' + message_with_envelope.participant +
+                                                        ', contact.participants = ' + JSON.stringify(contact.participants)) ;
+                                                    delete message_with_envelope.reaction_at ;
+                                                    local_storage_updated = true ;
+                                                    return ;
+                                                }
+                                            }
+                                            else message_receiver = contact ;
+                                            if (send_message_reaction_grp == 2) {
+                                                // group chat message - receiver must have a group chat password
+                                                if (!message_receiver.password) {
+                                                    console.log(pgm + 'public group reaction was not sent. group chat password was not found for contact with unique id ' + contact.unique_id) ;
+                                                    delete message_with_envelope.reaction_at ;
+                                                    local_storage_updated = true ;
+                                                    return ;
+                                                }
+                                            }
+                                            else {
+                                                // private message - receiver must have a public key
+                                                if (!message_receiver.pubkey) {
+                                                    console.log(pgm + 'private reaction was not sent. public key was not found for contact with unique id ' + contact.unique_id) ;
+                                                    delete message_with_envelope.reaction_at ;
+                                                    local_storage_updated = true ;
+                                                    return ;
+                                                }
+                                            }
+                                            // add private reaction message
+                                            debug('reaction', pgm + 'send_message_reaction_grp = ' + send_message_reaction_grp +
+                                                ', z_filename = ' + message_with_envelope.z_filename +
+                                                ', contact.type = ' + contact.type +
+                                                ', user_setup.private_reactions = ' + z_cache.user_setup.private_reactions);
+                                            message = {
+                                                msgtype: 'reaction',
+                                                timestamp: message_with_envelope.sent_at,
+                                                reaction: reaction,
+                                                count: count,
+                                                reaction_at: reaction_at,
+                                                reaction_grp: send_message_reaction_grp
+                                            } ;
+                                            if (!message.reaction) delete message.reaction ;
+                                            if (typeof message.count != 'number') delete message.count ; // null or undefined
+                                            debug('reaction', pgm + 'message = ' + JSON.stringify(message)) ;
+                                            // validate json
+                                            error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send private reaction message');
+                                            if (error) {
+                                                console.log(pgm + 'System error: ' + error) ;
+                                                console.log(pgm + 'message = ' + JSON.stringify(message)) ;
                                                 delete message_with_envelope.reaction_at ;
                                                 local_storage_updated = true ;
                                                 return ;
                                             }
-                                        }
-                                        else message_receiver = contact ;
-                                        if (send_message_reaction_grp == 2) {
-                                            // group chat message - receiver must have a group chat password
-                                            if (!message_receiver.password) {
-                                                console.log(pgm + 'public group reaction was not sent. group chat password was not found for contact with unique id ' + contact.unique_id) ;
-                                                delete message_with_envelope.reaction_at ;
-                                                local_storage_updated = true ;
-                                                return ;
-                                            }
-                                        }
-                                        else {
-                                            // private message - receiver must have a public key
-                                            if (!message_receiver.pubkey) {
-                                                console.log(pgm + 'private reaction was not sent. public key was not found for contact with unique id ' + contact.unique_id) ;
-                                                delete message_with_envelope.reaction_at ;
-                                                local_storage_updated = true ;
-                                                return ;
-                                            }
-                                        }
-                                        // add private reaction message
-                                        debug('reaction', pgm + 'send_message_reaction_grp = ' + send_message_reaction_grp +
-                                            ', z_filename = ' + message_with_envelope.z_filename +
-                                            ', contact.type = ' + contact.type +
-                                            ', user_setup.private_reactions = ' + z_cache.user_setup.private_reactions);
-                                        message = {
-                                            msgtype: 'reaction',
-                                            timestamp: message_with_envelope.sent_at,
-                                            reaction: reaction,
-                                            count: count,
-                                            reaction_at: reaction_at,
-                                            reaction_grp: send_message_reaction_grp
-                                        } ;
-                                        if (!message.reaction) delete message.reaction ;
-                                        if (typeof message.count != 'number') delete message.count ; // null or undefined
-                                        debug('reaction', pgm + 'message = ' + JSON.stringify(message)) ;
-                                        // validate json
-                                        error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send private reaction message');
-                                        if (error) {
-                                            console.log(pgm + 'System error: ' + error) ;
-                                            console.log(pgm + 'message = ' + JSON.stringify(message)) ;
-                                            delete message_with_envelope.reaction_at ;
+                                            // OK. add message
+                                            add_msg(message_receiver, message);
                                             local_storage_updated = true ;
-                                            return ;
-                                        }
-                                        // OK. add message
-                                        add_msg(message_receiver, message);
-                                        local_storage_updated = true ;
-                                    } ; // send_msg
-                                    if (send_message_reaction_grp1) send_msg(send_message_reaction_grp1, message_receiver1, reaction1, count1) ;
-                                    if (send_message_reaction_grp2) send_msg(send_message_reaction_grp2, message_receiver2, reaction2, count2) ;
-                                }
+                                        } ; // send_msg
+                                        if (send_message_reaction_grp1) send_msg(send_message_reaction_grp1, message_receiver1, reaction1, count1) ;
+                                        if (send_message_reaction_grp2) send_msg(send_message_reaction_grp2, message_receiver2, reaction2, count2) ;
+                                    }
 
-                                if (!update_like_json) delete message_with_envelope.reaction_at ;
+                                    if (!update_like_json) delete message_with_envelope.reaction_at ;
 
-                                // if (message_with_envelope.sent_at == 1487507580448) debug('reaction', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope));
+                                    // if (message_with_envelope.sent_at == 1487507580448) debug('reaction', pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope));
 
-                            } // for j (messages)
-                        } // for i (contacts)
+                                } // for j (messages)
+                            } // for i (contacts)
 
-                        // insert and encrypt new outgoing messages into data.json
-                        // using callback technique (not required for JSEncrypt but used in cryptMessage plugin)
-                        // will call data cleanup, write and publish when finished encrypting messages
-                        debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
-                        z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
+                            // insert and encrypt new outgoing messages into data.json
+                            // using callback technique (not required for JSEncrypt but used in cryptMessage plugin)
+                            // will call data cleanup, write and publish when finished encrypting messages
+                            debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
+                            z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
-                    }); // fileGet callback 2
+                        }); // fileGet callback 4
 
-                }); // dbQuery callback 2
+                    }); // dbQuery callback 3
 
-            }) ; // get_like_json callback 1
+                }) ; // get_like_json callback 2
+
+            }) ; // get_my_user_hub callback 1
 
         } // z_update_1_data_json
 
@@ -2872,7 +2894,8 @@ angular.module('MoneyNetwork')
             z_update_1_data_json: z_update_1_data_json,
             cleanup_my_image_json: cleanup_my_image_json,
             load_avatar: load_avatar,
-            get_avatar: get_avatar
+            get_avatar: get_avatar,
+            inject_functions: inject_functions
         };
 
         // end MoneyNetworkZService

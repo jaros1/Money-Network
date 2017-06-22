@@ -184,12 +184,12 @@ angular.module('MoneyNetwork')
                 get_my_user_hub_cbs.push(cb) ;
                 return ;
             }
-            if (z_cache.my_user_hub) return cb(z_cache.my_user_hub) ;
+            if (z_cache.my_user_hub) return cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
             z_cache.my_user_hub = true ;
 
-            // get a list of MoneyNetwork User data hubs
+            // get a list of MoneyNetwork User data hubs. title /user data hub/i. used for new MoneyNetwork users
             ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
-                var pgm = service + '.get_my_hub mergerSiteList callback 1: ' ;
+                var pgm = service + '.get_my_user_hub mergerSiteList callback 1: ' ;
                 var user_data_hubs, hub, query, debug_seq, i, optional_values ;
                 user_data_hubs = [] ;
                 if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites)) ;
@@ -197,32 +197,11 @@ angular.module('MoneyNetwork')
                     if (merger_sites[hub].content.title.match(/user data hub/i)) user_data_hubs.push(hub);
                 }
                 // console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
-                // user_data_hubs = ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh","1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc"]
 
-                // Use content.modified timestamp as sort condition if multiple user data hub.
-                // todo: data.json file must exists.
-                //query =
-                //    "select substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
-                //    "from json, keyvalue " +
-                //    "where " ;
-                //if (user_data_hubs.length) {
-                //    for (i=0 ; i<user_data_hubs.length ; i++) {
-                //        hub = user_data_hubs[i] ;
-                //        if (i == 0) query += "(" ; else query += "or " ;
-                //        query += "json.directory = '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' "
-                //    }
-                //    query += ") " ;
-                //}
-                //else query += "(1 = 2) " ;
-                //query +=
-                //    "and json.file_name = 'content.json' " +
-                //    "and keyvalue.json_id = json.json_id " +
-                //    "and keyvalue.key = 'modified' " +
-                //    "order by keyvalue.key desc" ;
-
-                // issue: Id user data hubs #178
-                // new query 17 using "optional" pattern to identified MoneyNetwork user data hubs
-                // data.json file must also exist
+                // find current user data hub(s)
+                // - check content.optional pattern to id relavant user directories
+                // - must have a data.json file
+                // - use latest updated content.json as user hub
                 optional_values = [
                     // actual optional pattern
                     CONTENT_OPTIONAL,
@@ -255,29 +234,66 @@ angular.module('MoneyNetwork')
                 debug('select', pgm + 'query 17 (MS OK) = ' + query);
                 debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
-                    var pgm = service + '.get_my_hub dbQuery callback 2: ' ;
-                    var i, merge_job ;
+                    var pgm = service + '.get_my_user_hub dbQuery callback 2: ' ;
+                    var i, merge_job, run_callbacks, user_hub_selected ;
                     // if (detected_client_log_out(pgm)) return ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                    var execute_pending_callbacks = function () {
-                        while (get_my_user_hub_cbs.length) { cb = get_my_user_hub_cbs.shift() ; cb(z_cache.my_user_hub)}
-                    };
+                    run_callbacks = function () {
+                        var pgm = service + '.get_my_user_hub.run_callbacks: ' ;
+                        console.log(pgm + 'my_user_hub = ' + z_cache.my_user_hub + ', other_user_hub = ' + z_cache.other_user_hub) ;
+                        cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
+                        while (get_my_user_hub_cbs.length) {
+                            cb = get_my_user_hub_cbs.shift() ;
+                            cb(z_cache.my_user_hub, z_cache.other_user_hub)
+                        }
+                    }; // run_callbacks
+                    user_hub_selected = function () {
+                        // user data hub was selected. find a random other user data hub. For user data hub list
+                        var pgm = service + '.get_my_user_hub.user_hub_selected: ' ;
+                        var query, debug_seq ;
+                        query =
+                            "select distinct substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
+                            "from keyvalue as optional, json, files " +
+                            "where optional.key = 'optional' " +
+                            "and optional.value = '" + CONTENT_OPTIONAL + "' " +
+                            "and json.json_id = optional.json_id " +
+                            "and files.json_id = json.json_id " +
+                            "and files.filename = 'data.json'" ;
+                        debug('select', pgm + 'query ?? = ' + query);
+                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ??') ;
+                        ZeroFrame.cmd("dbQuery", [query], function (res) {
+                            var pgm = service + '.get_my_user_hub.user_hub_selected dbQuery callback: ';
+                            var i, other_user_data_hubs;
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                            z_cache.other_user_hub = z_cache.my_user_hub ;
+                            if (res.error) {
+                                console.log(pgm + "find other user data hub failed: " + res.error);
+                                console.log(pgm + 'query = ' + query);
+                                return run_callbacks() ;
+                            }
+                            other_user_data_hubs = [] ;
+                            for (i=0 ; i<res.length ; i++) if (res[i].hub != z_cache.my_user_hub) other_user_data_hubs.push(res[i].hub);
+                            if (!other_user_data_hubs.length) return run_callbacks() ;
+                            console.log(pgm + 'other_hubs = ' + JSON.stringify(other_user_data_hubs));
+                            i = Math.floor(Math.random() * other_user_data_hubs.length);
+                            z_cache.other_user_hub = other_user_data_hubs[i] ;
+                            return run_callbacks() ;
+
+                        }) ; // dbQuery callback
+
+                    }; // user_hub_selected
                     if (res.error) {
                         console.log(pgm + "user data hub lookup failed: " + res.error);
                         console.log(pgm + 'query = ' + query);
                         z_cache.my_user_hub = get_default_user_hub() ;
-                        cb(z_cache.my_user_hub) ;
-                        return;
+                        return user_hub_selected() ;
                     }
                     if (res.length) {
-                        // old user found
+                        // user data hub(s) found
                         z_cache.my_user_hub = res[0].hub ; // return hub for last updated content.json
                         console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
-                        cb(z_cache.my_user_hub) ;
-                        execute_pending_callbacks() ;
                         if (res.length > 1) {
-                            // possible doublet or conflicting user information.
-                            // allow data loading for current process to finish before starting merge and delete operation
+                            // user with data on more than one user data hub. merge and delete user data from other user data hubs
                             merge_job = function() {
                                 var i, hubs ;
                                 hubs = [] ;
@@ -289,19 +305,19 @@ angular.module('MoneyNetwork')
                             } ;
                             $timeout(merge_job, 5000) ;
                         }
-                        return ;
+                        return user_hub_selected() ;
                     }
                     // new user. get user data hub from
                     // 1) list of MoneyNetwork merger sites (mergerSiteList)
                     // 2) default_hubs from site_info.content.sessions.default_hubs
                     if (user_data_hubs.length) {
+                        // select random user data hub from mergerSiteList
                         i = Math.floor(Math.random() * user_data_hubs.length);
                         z_cache.my_user_hub = user_data_hubs[i] ;
                     }
-                    else z_cache.my_user_hub = get_default_user_hub() ;
+                    else z_cache.my_user_hub = get_default_user_hub() ; // from site_info.content.sessions.default_hubs
                     console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
-                    cb(z_cache.my_user_hub) ;
-                    execute_pending_callbacks() ;
+                    user_hub_selected() ;
                 }) ; // dbQuery callback 2
 
             }) ; // mergerSiteList callback 1
