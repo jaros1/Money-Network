@@ -27,7 +27,7 @@ angular.module('MoneyNetwork')
         }
 
         //// convert data.json file to newest version / structure
-        var dbschema_version = 9 ;
+        var dbschema_version = 10 ;
         function zeronet_migrate_data (json) {
             var pgm = service + '.zeronet_migrate_data: ' ;
             var i ;
@@ -119,6 +119,10 @@ angular.module('MoneyNetwork')
             if (json.version == 8) {
                 // only change to like.json (added count)
                 json.version = 9 ;
+            }
+            if (json.version == 9) {
+                // hub (data.json) moved from json to keyvalue
+                json.version = 10 ;
             }
             // any updates to data.json file?
             return true ;
@@ -2182,8 +2186,8 @@ angular.module('MoneyNetwork')
                         my_user_seq_found = false ;
                         status_updated = false ;
 
-                        if (!status.hub) {
-                            status.hub = ZeroFrame.site_info.address ;
+                        if (status.hub) {
+                            delete status.hub ;
                             status_updated = true ;
                         }
 

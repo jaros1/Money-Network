@@ -8,7 +8,7 @@
         { "node": "search", "table": "search" },
         { "node": "users",  "table": "users" },
         { "node": "msg",    "table": "messages" } ],
-      "to_json_table": [ "hub" ]
+      "to_keyvalue": [ "hub" ]
     },
     ".+/data/users/.+/content.json": {
       "to_keyvalue": [ "cert_user_id", "modified", "optional" ],
@@ -20,14 +20,12 @@
     ".+/data/users/.+/status.json": {
       "to_table": [
         { "node": "status", "table": "status"}
-      ],
-      "to_json_table": [ "hub" ]
+      ]
     },
     ".+/data/users/.+/like.json": {
       "to_table": [
         { "node": "like", "table": "like"}
-      ],
-      "to_json_table": [ "hub" ]
+      ]
     },
     ".+/data/users/.+/wallet.json": {
       "to_keyvalue": [ "sessionid_sha256", "session_at", "pubkey2" ]
@@ -38,11 +36,10 @@
       "cols": [
         ["json_id", "INTEGER PRIMARY KEY AUTOINCREMENT"],
         ["directory", "TEXT"],
-        ["file_name", "TEXT"],
-        ["hub", "TEXT"]
+        ["file_name", "TEXT"]
       ],
       "indexes": ["CREATE INDEX path ON json(directory, file_name)"],
-      "schema_changed": 4
+      "schema_changed": 5
     },
     "search": {
       "cols": [
@@ -52,7 +49,7 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX search_i1 ON search(value, tag)"],
-      "schema_changed": 9
+      "schema_changed": 10
     },
     "users": {
       "cols": [
@@ -69,7 +66,7 @@
         "CREATE INDEX users_i2 ON users(json_id)",
         "CREATE INDEX json_i1 ON json(directory)"
       ],
-      "schema_changed": 9
+      "schema_changed": 10
     },
     "files": {
       "cols": [
@@ -79,7 +76,7 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX files_i1 ON files(json_id)"],
-      "schema_changed": 9
+      "schema_changed": 10
     },
     "files_optional": {
       "cols": [
@@ -89,7 +86,7 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX files_optional_i1 ON files_optional(json_id)"],
-      "schema_changed": 9
+      "schema_changed": 10
     },
     "messages": {
       "cols": [
@@ -104,7 +101,7 @@
       "indexes": [
         "CREATE INDEX messages_i1 ON messages(user_seq, message_sha256)",
         "CREATE INDEX messages_i2 ON messages(receiver_sha256)"],
-      "schema_changed": 9
+      "schema_changed": 10
     },
     "status": {
       "cols": [
@@ -113,7 +110,7 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX status_i1 ON status(json_id)"],
-      "schema_changed": 9
+      "schema_changed": 10
     },
     "like": {
       "cols": [
@@ -125,7 +122,7 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX like_i1 ON like(timestamp)"],
-      "schema_changed": 9
+      "schema_changed": 10
     }
   }
 }

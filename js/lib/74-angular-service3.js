@@ -2666,10 +2666,11 @@ angular.module('MoneyNetwork')
                 like_updated = false ;
                 like_index_updated = false ;
 
-                if (!like.hub) {
-                    like.hub = ZeroFrame.site_info.address ;
+                if (like.hub) {
+                    delete like.hub ;
                     like_updated = true ;
                 }
+
 
                 // debug('reaction', pgm + 'keep traq of messages with updated reactions. must refresh reactions info after fileWrite and publish. See like.json processing in event_file_done') ;
                 refresh_reactions = {} ;
