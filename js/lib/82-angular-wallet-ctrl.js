@@ -22,7 +22,8 @@ angular.module('MoneyNetwork')
         // - wallet messages: sha256.last(10).timestamp
         // messages between MoneyNetwork and MoneyNetwork wallet will be encrypted with cryptMessage, JSEncrypt and/or sessionid
         // messages will be deleted when read and processed
-        MoneyNetworkAPI.setup_encryption({
+        var encrypt2 = new MoneyNetworkAPI ;
+        encrypt2.setup_encryption({
             prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
             userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
         }) ;
@@ -30,7 +31,7 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.new_sessionid: ' ;
             var sha256 ;
             test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
-            MoneyNetworkAPI.setup_encryption({sessionid: test_sessionid, debug: true});
+            encrypt2.setup_encryption({sessionid: test_sessionid, debug: true});
             sha256 = CryptoJS.SHA256(test_sessionid).toString() ;
             this_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
             other_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
@@ -345,7 +346,7 @@ angular.module('MoneyNetwork')
                                 if (!json_str) return (cb({ error: 'File ' + inner_path + ' was not found'})) ;
                                 console.log(pgm + 'encrypted_str = ' + JSON.stringify(json_str));
                                 json = JSON.parse(json_str) ;
-                                MoneyNetworkAPI.decrypt_json(json, function (json) {
+                                encrypt2.decrypt_json(json, function (json) {
                                     console.log(pgm + 'json = ' + JSON.stringify(json)) ;
                                     cb(json) ;
                                 }) ;
