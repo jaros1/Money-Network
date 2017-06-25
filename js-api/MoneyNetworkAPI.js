@@ -1,33 +1,60 @@
 //
 //  API for MoneyNetwork <=> MoneyNetwork wallet communication
+//  Requirements:
+// - JSEncrypt: https://github.com/travist/jsencrypt
+// - cryptMessage: ZeroNet build-in plugin
+// - CryptoJS: code.google.com/p/crypto-js
 //
 var MoneyNetworkAPI = function (options) {
+    var sha256, moneynetwork_session_filename, wallet_session_filename ;
     options = options || {};
+    this.wallet = options.hasOwnProperty('wallet') ? options.wallet : true ; // wallet session? false for MoneyNetwork. true for MoneyNetwork wallets. default true
     this.sessionid = options.sessionid || null ;           // MoneyNetwork sessionid. Shared between MoneyNetwork and MoneyNetwork wallet session
     this.other_session_pubkey = options.pubkey || null ;   // JSEncrypt pubkey from other session (encrypt outgoing messages)
     this.other_session_pubkey2 = options.pubkey2 || null ; // cryptMessage public key from other session (encrypt outgoing messages)
     this.this_session_prvkey = options.prvkey || null ;    // JSEncrypt private key for this session (decrypt ingoing messages)
-    this.this_session_userid2 = options.userid2||0 ;       // cryptMessage "userid" for this session (decrypt ingoing messages)
+    this.this_session_userid2 = options.userid2||0 ;       // cryptMessage "userid" for this session (decrypt ingoing messages). default 0
+    this.this_user_path = options.user_path ;              // user_path for this session. required for sending encrypted messages to other session
+    this.this_optional = options.optional ;                // optional files pattern. add only if MoneyNetworkAPI should ensure optional files support in content.json file before sending message to other session
     this.debug = options.hasOwnProperty('debug') ? options.debug : false ;
     this.module = 'MoneyNetworkAPI' ; // for debug messages
+    if (this.sessionid) {
+        // setup filenames used in MoneyNetwork <=> MoneyNetwork wallet communication
+        sha256 = CryptoJS.SHA256(this.sessionid).toString() ;
+        moneynetwork_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
+        wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
+        this.this_session_filename = this.wallet ? wallet_session_filename : moneynetwork_session_filename ;
+        this.other_session_filename = this.wallet ? moneynetwork_session_filename : wallet_session_filename ;
+    }
 } ; // MoneyNetworkAPI
 
 MoneyNetworkAPI.prototype.setup_encryption = function (options) {
     var pgm = this.module + '.setup_encryption: ' ;
-    var key, missing_keys ;
+    var key, missing_keys, sha256, moneynetwork_session_filename, wallet_session_filename ;
+    if (options.hasOwnProperty('wallet'))  this.wallet = options.wallet ;
     if (options.sessionid) this.sessionid = options.sessionid ;
     if (options.pubkey)    this.other_session_pubkey = options.pubkey ;
     if (options.pubkey2)   this.other_session_pubkey2 = options.pubkey2 ;
     if (options.prvkey)    this.this_session_prvkey = options.prvkey ;
     if (options.hasOwnProperty('userid2')) this.this_session_userid2 = options.userid2 ;
+    if (options.user_path) this.this_user_path = options.user_path ;
+    if (options.optional)  this.this_optional = options.optional ;
     if (options.hasOwnProperty('debug'))  this.debug = options.debug ;
+    if (this.sessionid) {
+        // setup filenames used in MoneyNetwork <=> MoneyNetwork wallet communication
+        sha256 = CryptoJS.SHA256(this.sessionid).toString() ;
+        moneynetwork_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
+        wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
+        this.this_session_filename = this.wallet ? wallet_session_filename : moneynetwork_session_filename ;
+        this.other_session_filename = this.wallet ? moneynetwork_session_filename : wallet_session_filename ;
+    }
     if (!this.debug) return ;
-    // debug: encryption setup status:
+    // debug: check encryption setup status:
     missing_keys = [] ;
     for (key in this) {
         if (['sessionid', 'other_session_pubkey', 'other_session_pubkey2', 'this_session_prvkey', 'this_session_userid2'].indexOf(key) == -1) continue ;
         if (this[key] == null) missing_keys.push(key) ;
-        else if (this.debug) console.log(pgm + key + ' = ' + this[key]) ;
+        // else if (this.debug) console.log(pgm + key + ' = ' + this[key]) ;
     }
     if (missing_keys.length == 0) console.log(pgm + 'Encryption setup done') ;
     else console.log(pgm + 'Encryption setup: waiting for ' + missing_keys.join(', ')) ;
@@ -107,7 +134,8 @@ MoneyNetworkAPI.prototype.encrypt_2 = function (encrypted_text_1, cb) {
 }; // encrypt_2
 MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     var pgm = this.module + '.decrypt_1: ' ;
-    var encrypted_array, key, iv, encrypted_text ;
+    var self, encrypted_array, key, iv, encrypted_text ;
+    self = this ;
     if (this.debug) console.log(pgm + 'encrypted_text_2 = ' + encrypted_text_2) ;
     encrypted_array = JSON.parse(encrypted_text_2) ;
     key = encrypted_array[0] ;
@@ -116,11 +144,11 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     // 1a. decrypt key = password
     if (this.debug) console.log(pgm + 'calling eciesDecrypt') ;
     ZeroFrame.cmd("eciesDecrypt", [key, this.this_session_userid2], function(password) {
-        if (!password) throw pgm + 'key eciesDecrypt failed. userid2 = ' + this.this_session_userid2 ;
+        if (!password) throw pgm + 'key eciesDecrypt failed. userid2 = ' + self.this_session_userid2 ;
         // 1b. decrypt encrypted_text
-        if (this.debug) console.log(pgm + 'eciesDecrypt OK. calling aesDecrypt') ;
+        if (self.debug) console.log(pgm + 'eciesDecrypt OK. calling aesDecrypt') ;
         ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (encrypted_text_1) {
-            if (this.debug) console.log(pgm + 'aesDecrypt OK') ;
+            if (self.debug) console.log(pgm + 'aesDecrypt OK') ;
             cb(encrypted_text_1) ;
         }) ; // aesDecrypt callback 2
     }) ; // eciesDecrypt callback 1
@@ -187,15 +215,6 @@ MoneyNetworkAPI.prototype.encrypt_json = function(json, encryptions, cb) {
         console.log(pgm + 'Unsupported encryption ' + encryption);
         return cb(json);
     }
-    //encrypt(JSON.stringify(json), (function(_this) {
-    //    return function (encrypted_text) {
-    //        json = {
-    //            encryption: encryption,
-    //            message: encrypted_text
-    //        };
-    //        _this.encrypt_json(json, encryptions, cb);
-    //    };
-    //})(this));
 }; // encrypt_json
 MoneyNetworkAPI.prototype.decrypt_json = function (json, cb) {
     var pgm = this.module + '.decrypt_json: ' ;
@@ -231,5 +250,187 @@ MoneyNetworkAPI.prototype.decrypt_json = function (json, cb) {
         return cb(json);
     }
 }; // decrypt_json
+
+// helper: get and write content.json file
+MoneyNetworkAPI.prototype.get_content_json = function (cb) {
+    var pgm = this.module + '.get_content_json: ' ;
+    var self, inner_path ;
+    self = this ;
+    if (!this.this_user_path) return cb() ; // error. user_path is required
+    inner_path = this.this_user_path + 'content.json' ;
+    // 1: fileGet
+    ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (content_str) {
+        var content, json_raw;
+        if (content_str) {
+            content = JSON.parse(content_str);
+            return cb(content) ;
+        }
+        else content = {} ;
+        if (!self.this_optional) return cb(content) ; // maybe an error but optional files support was not requested
+        // 2: fileWrite (empty content.json file)
+        // new content.json file and optional files support requested. write + sign + get
+        json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
+        ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+            var pgm = self.module + '.get_content_json fileWrite callback 2: ';
+            if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
+            if (res != 'ok') return cb(); // error: fileWrite failed
+            // 3: siteSign
+            ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+                var pgm = self.module + '.get_content_json siteSign callback 3: ' ;
+                if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                if (res != 'ok') return cb(); // error: siteSign failed
+                // 4: fileGet
+                ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (content_str) {
+                    var content;
+                    if (!content_str) return cb() ; // error. second fileGet failed
+                    content = JSON.parse(content_str);
+                    cb(content);
+                }) ; // fileGet callback 4
+            }) ; // siteSign callback 3
+        }) ; // fileWrite callback 2
+    }); // fileGet callback 1
+}; // get_content_json
+
+// add optional files support to content.json file
+MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
+    var pgm = this.module + '.add_optional_files_support: ' ;
+    var self ;
+    self = this ;
+    if (!this.this_optional) return cb({}) ; // not checked. optional files support must be added by calling code
+    // check ZeroNet state
+    if (!ZeroFrame.site_info) return cb({error: 'Cannot add optional files support to content.json. ZeroFrame is not finished loading'}) ;
+    if (!ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot add optional files support to content.json. No cert_user_id. ZeroNet certificate is missing'}) ;
+    if (!this.this_user_path) return cb({error: 'Cannot add optional files support to content.json. user_path is missing in setup'}) ;
+    // ready for checking/adding optional files support in/to content.json file
+    // 1: get content.json. will create empty signed content.json if content.json is missing
+    this.get_content_json(function (content) {
+        var json_raw ;
+        if (!content) return cb({error: 'fileGet content.json failed'}) ;
+        if (content.optional == self.this_optional) cb({}) ; // optional files support already OK
+        // add optional files support
+        content.optional = self.this_optional ;
+        // 2: write content.json
+        json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
+        ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+            var pgm = self.module + '.add_optional_files_support fileWrite callback 2: ';
+            if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
+            if (res != 'ok') return cb({error: 'fileWrite failed. error = ' + res}); // error: fileWrite failed
+            // 3: siteSign
+            ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+                var pgm = self.module + '.add_optional_files_support siteSign callback 3: ' ;
+                if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                if (res != 'ok') return cb({error: 'siteSign failed. error = ' + res}); // error: siteSign failed
+                // optional files support added
+                cb({}) ;
+            }) ; // siteSign callback 3
+        }) ; // fileWrite callback 2
+    }); // get_content_json callback 1
+}; // add_optional_files_support
+
+// send json message encrypted to other session and optional wait for response
+MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
+    var self, request_at, month, year ;
+    self = this ;
+    // check ZeroNet state
+    if (!ZeroFrame.site_info) return cb({error: 'Cannot send message. ZeroFrame is not finished loading'}) ;
+    if (!ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot send message. No cert_user_id. ZeroNet certificate is missing'}) ;
+    // check outgoing encryption setup
+    if (!this.other_session_pubkey) return cb({error: 'Cannot JSEncrypt encrypt outgoing message. pubkey is missing in encryption setup'}) ; // encrypt_1
+    if (!this.other_session_pubkey2) return cb({error: 'Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'}) ; // encrypt_2
+    if (!this.sessionid) return cb({error: 'Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'}) ; // encrypt_3
+    if (!this.this_user_path) return cb({error: 'Cannot send message. user_path is missing in setup'});
+    if (receipt) {
+        // check encryption setup for ingoing encryption
+        if (!this.this_session_prvkey) return cb({error: 'Cannot JSEncrypt expected ingoing receipt. prvkey is missing in encryption setup'}) ; // decrypt_1
+        // decrypt_2 OK. cert_user_id already checked
+        // decrypt_3 OK. sessionid already checked
+    }
+    // setup OK for send message
+    request_at = new Date().getTime();
+    if (receipt) {
+        // receipt requested. use a random timestamp 1 year ago as receipt filename
+        year = 1000 * 60 * 60 * 24 * 365.2425 ;
+        month = year / 12 ;
+        receipt = request_at - 11 * month - Math.floor(Math.random() * month * 2) ;
+        json = JSON.parse(JSON.stringify(json)) ;
+        json.receipt = receipt ;
+    }
+
+    // 1: encrypt json
+    this.encrypt_json(json, [1, 2, 3], function (encrypted_json) {
+        var pgm = self.module + '.send_message encrypt_json callback 1: ';
+        var user_path;
+        if (self.debug) console.log(pgm + 'encrypted_json = ' + JSON.stringify(encrypted_json));
+        // 2: get user_path
+        user_path = self.this_user_path;
+        // 3: add optional files support
+        self.add_optional_files_support(function (res) {
+            var pgm = self.module + '.send_message add_optional_files_support callback 3: ';
+            var inner_path3, json_raw;
+            if (!res || res.error) return cb({error: 'Cannot send message. Add optional files support failed. ' + JSON.stringify(res)}) ;
+            // 4: write file
+            inner_path3 = user_path + self.this_session_filename + '.' + request_at;
+            json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
+            if (self.debug) console.log(pgm + 'writing optional file ' + inner_path3);
+            ZeroFrame.cmd("fileWrite", [inner_path3, btoa(json_raw)], function (res) {
+                var pgm = self.module + '.send_message fileWrite callback 4: ';
+                var inner_path4;
+                if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
+                // 5: siteSign. publish not needed for within client communication
+                inner_path4 = user_path + 'content.json';
+                console.log(pgm + 'sign content.json with new optional file ' + inner_path3);
+                ZeroFrame.cmd("siteSign", {inner_path: inner_path4}, function (res) {
+                    var pgm = self.module + '.send_message siteSign callback 5: ';
+                    var receipt_filename, wait_for_receipt, query ;
+                    if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
+                    if (!receipt) return cb({});
+                    // 6: wait for response. loop. wait max 60 seconds
+                    receipt_filename = self.other_session_filename + '.' + receipt ;
+                    query =
+                        "select 'merged-MoneyNetwork' || '/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
+                        "from files_optional, json " +
+                        "where files_optional.filename = '" + receipt_filename + "' " +
+                        "and json.json_id = files_optional.json_id" ;
+
+                    // loop
+                    wait_for_receipt = function () {
+                        var pgm = self.module + '.send_message.wait_for_receipt 6: ';
+                        var now, elapsed ;
+                        now = new Date().getTime();
+                        elapsed = Math.floor((now-request_at) / 1000) ;
+                        if (elapsed >= 30) return cb({error: 'Timeout while waiting for receipt. Json message was ' + JSON.stringify(json) + '. Expected receipt filename was ' + receipt_filename}) ;
+                        // 7: dbQuery
+                        ZeroFrame.cmd("dbQuery", [query], function (res) {
+                            var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 7: ';
+                            var inner_path7
+                            if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(json) + '. dbQuery error was ' + res.error}) ;
+                            if (!res.length) {
+                                setTimeout(wait_for_receipt, 500) ;
+                                return ;
+                            }
+                            inner_path7 = res[0].inner_path ;
+                            // 8: fileGet
+                            ZeroFrame.cmd("fileGet", {inner_path: inner_path7, required: true}, function (receipt_str) {
+                                var encrypted_receipt;
+                                if (!encrypted_receipt) return cb({error: 'fileGet for receipt failed. Json message was ' + JSON.stringify(json) + '. inner_path was ' + inner_path7}) ;
+                                encrypted_receipt = JSON.parse(receipt_str);
+                                // decrypt receipt
+                                self.decrypt_json(encrypted_receipt, function (receipt) {
+                                    // return decrypted receipt
+                                    cb(receipt) ;
+                                });
+                            }) ; // fileGet callback 8
+
+                        }) ; // dbQuery callback 7
+
+                    } ; // wait_for_receipt 6
+                    // start loop
+                    setTimeout(wait_for_receipt, 1000) ;
+
+                }); // siteSign callback 5 (content.json)
+            }); // writeFile callback 4 (request)
+        }); // add_optional_files_support callback 3
+    }); // encrypt_json callback 1
+}; // send_message
 
 // end MoneyNetworkAPI

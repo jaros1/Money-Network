@@ -33,17 +33,17 @@ angular.module('MoneyNetwork')
             test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
             encrypt2.setup_encryption({sessionid: test_sessionid, debug: true});
             sha256 = CryptoJS.SHA256(test_sessionid).toString() ;
-            this_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
-            other_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
-            console.log(pgm + 'this_session_filename = ' + this_session_filename);
-            console.log(pgm + 'other_session_filename = ' + other_session_filename);
+            moneynetwork_session_filename = sha256.substr(0,10) ; // first 10 characters of sha256 signature
+            wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
+            console.log(pgm + 'moneynetwork_session_filename = ' + moneynetwork_session_filename);
+            console.log(pgm + 'wallet_session_filename = ' + wallet_session_filename);
         } // new_sessionid
 
         self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?
         var tested_wallet_url = null ; // last tested url
         var test_sessionid ;
-        var this_session_filename ; // MoneyNetwork (main windows/this session)
-        var other_session_filename ; // MoneyNetwork wallet session (popup window)
+        var moneynetwork_session_filename ; // MoneyNetwork (main windows/this session)
+        var wallet_session_filename ; // MoneyNetwork wallet session (popup window)
         var test_session_at = null ;
         new_sessionid () ;
 
@@ -169,7 +169,7 @@ angular.module('MoneyNetwork')
                         // todo: validate json. API with msgtypes and validating rules
                         json_raw = unescape(encodeURIComponent(JSON.stringify(json, null, "\t")));
                         user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
-                        inner_path = user_path + this_session_filename + '.' + (new Date().getTime()) ;
+                        inner_path = user_path + moneynetwork_session_filename + '.' + (new Date().getTime()) ;
                         // write file
                         debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                         ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
@@ -310,7 +310,7 @@ angular.module('MoneyNetwork')
                     query =
                         "select json.directory, files_optional.filename, keyvalue.value as modified " +
                         "from files_optional, json, keyvalue " +
-                        "where files_optional.filename like '" + other_session_filename + ".%' " +
+                        "where files_optional.filename like '" + wallet_session_filename + ".%' " +
                         "and json.json_id = files_optional.json_id " +
                         "and keyvalue.json_id = json.json_id " +
                         "and keyvalue.key = 'modified' " +

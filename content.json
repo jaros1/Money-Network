@@ -22,8 +22,8 @@
    "size": 415280
   },
   "dbschema.json": {
-   "sha512": "1ebfc043d16830cd38d4e10e4a11c07967a0f87d12201722680b8ff9c0733668",
-   "size": 3818
+   "sha512": "2657ae5795b01d617206446447bd94ef5f0788dca2a5bc59e467246d7a0aa917",
+   "size": 3730
   },
   "favicon.ico": {
    "sha512": "b1b7e2667c8ed0376d756fdb27ab0aeb9881275cf29b0ef7510aa47271b9ec4e",
@@ -34,8 +34,8 @@
    "size": 125141
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "310da5522aca676b07e18df777e43c33ee2db7a8d8748d6e897328343522371b",
-   "size": 10339
+   "sha512": "e3e799c8382ac19c12a9e3ae8de3f1ae9fe3035305714945c792886041f27710",
+   "size": 11810
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -178,12 +178,12 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "1b688ccf19bcbb3f1757aecd5aab42a4bf6fba7f5b1f51fcff50d10f5debe52f",
-   "size": 1236508
+   "sha512": "8ac50120cf788f3a69af41ea6a3726df0f557695c4c29853b81e29343f936a2e",
+   "size": 1236636
   },
   "js/all.js.zip": {
-   "sha512": "5f6af4c00b5b330a93cdd72513b4b9da81a45fb990749d0d16c82e1b5638cd2d",
-   "size": 212895
+   "sha512": "3792d4ea4365c25b7d151b54345c15bb8e28069612cf1420bd020b96456a2032",
+   "size": 212932
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -302,7 +302,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1498123935,
+ "modified": 1498230804,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -314,7 +314,7 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HBzB0s9D6icpwA6Q7OvsaY4j+g+qWNIcGL2aNaW9+XuHdVMJl6JHxniNe+oEKHf6Pqtwpd/mlUN1a548zi/+M0U="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "GxVnmycmwl/8GG6Lu7fZcbzHE0zASFr48xllE9XJxT1XV69F7HZiAT+Zl7rO+e7smB+RVn6IB9hQxgFkKrbRF+k="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",
