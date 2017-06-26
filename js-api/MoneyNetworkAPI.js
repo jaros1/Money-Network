@@ -8,6 +8,8 @@
 var MoneyNetworkAPI = function (options) {
     var sha256, moneynetwork_session_filename, wallet_session_filename ;
     options = options || {};
+    this.ZeroFrame = options.ZeroFrame ;                   // inject ZeroFrame API class
+    // todo: wallet true/false - could be set in a siteInfo callback. site_info.address != '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk'
     this.wallet = options.hasOwnProperty('wallet') ? options.wallet : true ; // wallet session? false for MoneyNetwork. true for MoneyNetwork wallets. default true
     this.sessionid = options.sessionid || null ;           // MoneyNetwork sessionid. Shared between MoneyNetwork and MoneyNetwork wallet session
     this.other_session_pubkey = options.pubkey || null ;   // JSEncrypt pubkey from other session (encrypt outgoing messages)
@@ -31,6 +33,7 @@ var MoneyNetworkAPI = function (options) {
 MoneyNetworkAPI.prototype.setup_encryption = function (options) {
     var pgm = this.module + '.setup_encryption: ' ;
     var key, missing_keys, sha256, moneynetwork_session_filename, wallet_session_filename ;
+    if (options.ZeroFrame) this.ZeroFrame = options.ZeroFrame ;
     if (options.hasOwnProperty('wallet'))  this.wallet = options.wallet ;
     if (options.sessionid) this.sessionid = options.sessionid ;
     if (options.pubkey)    this.other_session_pubkey = options.pubkey ;
@@ -110,15 +113,15 @@ MoneyNetworkAPI.prototype.encrypt_2 = function (encrypted_text_1, cb) {
     if (!this.other_session_pubkey2) throw pgm + 'encryption failed. Pubkey2 is missing in encryption setup' ;
     // 1a. get random password
     if (this.debug) console.log(pgm + 'calling aesEncrypt') ;
-    ZeroFrame.cmd("aesEncrypt", [""], function (res1) {
+    this.ZeroFrame.cmd("aesEncrypt", [""], function (res1) {
         var password ;
         password = res1[0];
         if (self.debug) console.log(pgm + 'aesEncrypt OK. calling eciesEncrypt') ;
         // 1b. encrypt password
-        ZeroFrame.cmd("eciesEncrypt", [password, self.other_session_pubkey2], function (key) {
+        self.ZeroFrame.cmd("eciesEncrypt", [password, self.other_session_pubkey2], function (key) {
             // 1c. encrypt text
             if (self.debug) console.log(pgm + 'eciesEncrypt OK. calling aesEncrypt') ;
-            ZeroFrame.cmd("aesEncrypt", [encrypted_text_1, password], function (res3) {
+            self.ZeroFrame.cmd("aesEncrypt", [encrypted_text_1, password], function (res3) {
                 var iv, encrypted_text, encrypted_array, encrypted_text_2 ;
                 if (self.debug) console.log(pgm + 'aesEncrypt OK') ;
                 // forward encrypted result to next function in encryption chain
@@ -143,11 +146,11 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     encrypted_text = encrypted_array[2] ;
     // 1a. decrypt key = password
     if (this.debug) console.log(pgm + 'calling eciesDecrypt') ;
-    ZeroFrame.cmd("eciesDecrypt", [key, this.this_session_userid2], function(password) {
+    this.ZeroFrame.cmd("eciesDecrypt", [key, this.this_session_userid2], function(password) {
         if (!password) throw pgm + 'key eciesDecrypt failed. userid2 = ' + self.this_session_userid2 ;
         // 1b. decrypt encrypted_text
         if (self.debug) console.log(pgm + 'eciesDecrypt OK. calling aesDecrypt') ;
-        ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (encrypted_text_1) {
+        self.ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (encrypted_text_1) {
             if (self.debug) console.log(pgm + 'aesDecrypt OK') ;
             cb(encrypted_text_1) ;
         }) ; // aesDecrypt callback 2
@@ -259,7 +262,7 @@ MoneyNetworkAPI.prototype.get_content_json = function (cb) {
     if (!this.this_user_path) return cb() ; // error. user_path is required
     inner_path = this.this_user_path + 'content.json' ;
     // 1: fileGet
-    ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (content_str) {
+    this.ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (content_str) {
         var content, json_raw;
         if (content_str) {
             content = JSON.parse(content_str);
@@ -270,17 +273,17 @@ MoneyNetworkAPI.prototype.get_content_json = function (cb) {
         // 2: fileWrite (empty content.json file)
         // new content.json file and optional files support requested. write + sign + get
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
-        ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+        self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
             var pgm = self.module + '.get_content_json fileWrite callback 2: ';
             if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
             if (res != 'ok') return cb(); // error: fileWrite failed
             // 3: siteSign
-            ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+            self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
                 var pgm = self.module + '.get_content_json siteSign callback 3: ' ;
                 if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                 if (res != 'ok') return cb(); // error: siteSign failed
                 // 4: fileGet
-                ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (content_str) {
+                self.ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (content_str) {
                     var content;
                     if (!content_str) return cb() ; // error. second fileGet failed
                     content = JSON.parse(content_str);
@@ -298,8 +301,8 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
     self = this ;
     if (!this.this_optional) return cb({}) ; // not checked. optional files support must be added by calling code
     // check ZeroNet state
-    if (!ZeroFrame.site_info) return cb({error: 'Cannot add optional files support to content.json. ZeroFrame is not finished loading'}) ;
-    if (!ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot add optional files support to content.json. No cert_user_id. ZeroNet certificate is missing'}) ;
+    if (!this.ZeroFrame.site_info) return cb({error: 'Cannot add optional files support to content.json. ZeroFrame is not finished loading'}) ;
+    if (!this.ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot add optional files support to content.json. No cert_user_id. ZeroNet certificate is missing'}) ;
     if (!this.this_user_path) return cb({error: 'Cannot add optional files support to content.json. user_path is missing in setup'}) ;
     // ready for checking/adding optional files support in/to content.json file
     // 1: get content.json. will create empty signed content.json if content.json is missing
@@ -311,12 +314,12 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
         content.optional = self.this_optional ;
         // 2: write content.json
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
-        ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+        self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
             var pgm = self.module + '.add_optional_files_support fileWrite callback 2: ';
             if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
             if (res != 'ok') return cb({error: 'fileWrite failed. error = ' + res}); // error: fileWrite failed
             // 3: siteSign
-            ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+            self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
                 var pgm = self.module + '.add_optional_files_support siteSign callback 3: ' ;
                 if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                 if (res != 'ok') return cb({error: 'siteSign failed. error = ' + res}); // error: siteSign failed
@@ -332,8 +335,8 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
     var self, request_at, month, year ;
     self = this ;
     // check ZeroNet state
-    if (!ZeroFrame.site_info) return cb({error: 'Cannot send message. ZeroFrame is not finished loading'}) ;
-    if (!ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot send message. No cert_user_id. ZeroNet certificate is missing'}) ;
+    if (!this.ZeroFrame.site_info) return cb({error: 'Cannot send message. ZeroFrame is not finished loading'}) ;
+    if (!this.ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot send message. No cert_user_id. ZeroNet certificate is missing'}) ;
     // check outgoing encryption setup
     if (!this.other_session_pubkey) return cb({error: 'Cannot JSEncrypt encrypt outgoing message. pubkey is missing in encryption setup'}) ; // encrypt_1
     if (!this.other_session_pubkey2) return cb({error: 'Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'}) ; // encrypt_2
@@ -372,14 +375,14 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
             inner_path3 = user_path + self.this_session_filename + '.' + request_at;
             json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
             if (self.debug) console.log(pgm + 'writing optional file ' + inner_path3);
-            ZeroFrame.cmd("fileWrite", [inner_path3, btoa(json_raw)], function (res) {
+            self.ZeroFrame.cmd("fileWrite", [inner_path3, btoa(json_raw)], function (res) {
                 var pgm = self.module + '.send_message fileWrite callback 4: ';
                 var inner_path4;
                 if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
                 // 5: siteSign. publish not needed for within client communication
                 inner_path4 = user_path + 'content.json';
                 console.log(pgm + 'sign content.json with new optional file ' + inner_path3);
-                ZeroFrame.cmd("siteSign", {inner_path: inner_path4}, function (res) {
+                self.ZeroFrame.cmd("siteSign", {inner_path: inner_path4}, function (res) {
                     var pgm = self.module + '.send_message siteSign callback 5: ';
                     var receipt_filename, wait_for_receipt, query ;
                     if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
@@ -400,9 +403,9 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
                         elapsed = Math.floor((now-request_at) / 1000) ;
                         if (elapsed >= 30) return cb({error: 'Timeout while waiting for receipt. Json message was ' + JSON.stringify(json) + '. Expected receipt filename was ' + receipt_filename}) ;
                         // 7: dbQuery
-                        ZeroFrame.cmd("dbQuery", [query], function (res) {
+                        self.ZeroFrame.cmd("dbQuery", [query], function (res) {
                             var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 7: ';
-                            var inner_path7
+                            var inner_path7;
                             if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(json) + '. dbQuery error was ' + res.error}) ;
                             if (!res.length) {
                                 setTimeout(wait_for_receipt, 500) ;
@@ -410,7 +413,7 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
                             }
                             inner_path7 = res[0].inner_path ;
                             // 8: fileGet
-                            ZeroFrame.cmd("fileGet", {inner_path: inner_path7, required: true}, function (receipt_str) {
+                            self.ZeroFrame.cmd("fileGet", {inner_path: inner_path7, required: true}, function (receipt_str) {
                                 var encrypted_receipt;
                                 if (!encrypted_receipt) return cb({error: 'fileGet for receipt failed. Json message was ' + JSON.stringify(json) + '. inner_path was ' + inner_path7}) ;
                                 encrypted_receipt = JSON.parse(receipt_str);
@@ -432,5 +435,40 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
         }); // add_optional_files_support callback 3
     }); // encrypt_json callback 1
 }; // send_message
+
+// todo: Monitor incoming json messages from other session(s)
+// - a never ending loop checking dbQuery once every <n> milliseconds
+// - listen to known sessionids send by MoneyNetwork or received from MoneyNetwork wallet
+// - this session private key / userid for decrypt incoming message must exist
+// - optional must other session public keys exist for optional response to incoming request (get_data request)
+// - must register callback function(s) to handle decrypted incoming messages
+
+
+// demon. Monitor and process incoming messages from other session
+// MoneyNetwork: receive and process incoming messages from MoneyNetwork wallets
+// MoneyNetwork wallets: receive and process incoming messages from MoneyNetwork
+var MoneyNetworkAPIDemon = (function () {
+
+    var ZeroFrame ;
+    function init (options) {
+        if (options.ZeroFrame) ZeroFrame = options.ZeroFrame ;
+        if (ZeroFrame) check_wallet() ;
+    }
+
+    // wallet: false; MoneyNetwork, true: MoneyNetwork wallet
+    var wallet = true ;
+    function check_wallet() {
+        ZeroFrame.cmd("siteInfo", {}, function (site_info) {
+            wallet = (site_info.address != '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk') ;
+            console.log('wallet = ' + wallet) ;
+        }) ;
+    }
+    
+    // export MoneyNetworkAPIDemon helpers
+    return {
+        init: init
+    };
+
+})(); // MoneyNetworkAPIDemon
 
 // end MoneyNetworkAPI

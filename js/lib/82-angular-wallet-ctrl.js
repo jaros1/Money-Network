@@ -22,7 +22,7 @@ angular.module('MoneyNetwork')
         // - wallet messages: sha256.last(10).timestamp
         // messages between MoneyNetwork and MoneyNetwork wallet will be encrypted with cryptMessage, JSEncrypt and/or sessionid
         // messages will be deleted when read and processed
-        var encrypt2 = new MoneyNetworkAPI ;
+        var encrypt2 = new MoneyNetworkAPI({ZeroFrame: ZeroFrame}) ;
         encrypt2.setup_encryption({
             prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
             userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
@@ -372,14 +372,11 @@ angular.module('MoneyNetwork')
                         }
                         console.log(pgm + 'check_session. res = ' + JSON.stringify(res)) ;
                         //res = {
-                        //    "sessionid_sha256": "2be2c9a124cfb85c307aa771d906c5c316f02ac22d61a43e1c6806b6c65c057a",
-                        //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                        //    "session_at": 1496332540922,
-                        //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                        //    "wallet_title": "MoneyNetworkW2",
-                        //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro"
+                        //    "msgtype": "pubkeys",
+                        //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCIsVzGN462DlwPYxJ+ZvLKWxIL\ndEYLhjMOrwRA91yd/9toIlBMjGy4wEvYgSn2bZKcymiCOHBl63Zx8o7XDBrM+v4e\nl6iHVeGPyui+vYneCY+4dez+DJeZFyAGvYuELXaEJCCmeXItQdpZgZZC9Kx7QmrB\nXA2/72e63uKPI47gfQIDAQAB\n-----END PUBLIC KEY-----",
+                        //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R"
                         //};
-                        $rootScope.$apply() ;
+                        //$rootScope.$apply();
                     }) ; // check_session callback
                 } // end if else
             } // run
