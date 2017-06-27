@@ -110,6 +110,7 @@ MoneyNetworkAPI.prototype.decrypt_1 = function (encrypted_text_1, cb) {
 MoneyNetworkAPI.prototype.encrypt_2 = function (encrypted_text_1, cb) {
     var pgm = this.module + '.encrypt_2: ' ;
     var self = this ;
+    if (!this.ZeroFrame) throw pgm + 'encryption failed. ZeroFrame is missing in encryption setup';
     if (!this.other_session_pubkey2) throw pgm + 'encryption failed. Pubkey2 is missing in encryption setup' ;
     // 1a. get random password
     if (this.debug) console.log(pgm + 'calling aesEncrypt') ;
@@ -139,6 +140,7 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     var pgm = this.module + '.decrypt_1: ' ;
     var self, encrypted_array, key, iv, encrypted_text ;
     self = this ;
+    if (!this.ZeroFrame) throw pgm + 'decryption failed. ZeroFrame is missing in encryption setup';
     if (this.debug) console.log(pgm + 'encrypted_text_2 = ' + encrypted_text_2) ;
     encrypted_array = JSON.parse(encrypted_text_2) ;
     key = encrypted_array[0] ;
@@ -301,6 +303,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
     self = this ;
     if (!this.this_optional) return cb({}) ; // not checked. optional files support must be added by calling code
     // check ZeroNet state
+    if (!this.ZeroFrame) return cb({error: 'Cannot add optional files support to content.json. ZeroFrame is missing in setup'}) ;
     if (!this.ZeroFrame.site_info) return cb({error: 'Cannot add optional files support to content.json. ZeroFrame is not finished loading'}) ;
     if (!this.ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot add optional files support to content.json. No cert_user_id. ZeroNet certificate is missing'}) ;
     if (!this.this_user_path) return cb({error: 'Cannot add optional files support to content.json. user_path is missing in setup'}) ;
@@ -335,6 +338,7 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
     var self, request_at, month, year ;
     self = this ;
     // check ZeroNet state
+    if (!this.ZeroFrame) return cb({error: 'Cannot send message. ZeroFrame is missing in setup'}) ;
     if (!this.ZeroFrame.site_info) return cb({error: 'Cannot send message. ZeroFrame is not finished loading'}) ;
     if (!this.ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot send message. No cert_user_id. ZeroNet certificate is missing'}) ;
     // check outgoing encryption setup
@@ -449,24 +453,103 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
 // MoneyNetwork wallets: receive and process incoming messages from MoneyNetwork
 var MoneyNetworkAPIDemon = (function () {
 
-    var ZeroFrame ;
+    var module = 'MoneyNetworkAPIDemon' ;
+
+    // init: inject ZeroFrame API into demon process
+    var debug, ZeroFrame, this_session_prvkey, this_session_userid2, process_message_cb ;
     function init (options) {
-        if (options.ZeroFrame) ZeroFrame = options.ZeroFrame ;
-        if (ZeroFrame) check_wallet() ;
-    }
+        var pgm = module + '.init: ' ;
+        if (options.hasOwnProperty('debug')) debug = options.debug ; // true or false
+        if (options.ZeroFrame) ZeroFrame = options.ZeroFrame ; // inject ZeroFrame API into demon process
+        if (options.prvkey) this_session_prvkey = options.prvkey ; // JSEncrypt. decrypt incoming messages
+        if (options.hasOwnProperty('userid2')) this_session_userid2 = options.userid2 ; // cryptMessage. decrypt incoming messages
+        if (options.cb) process_message_cb = options.cb ; // callback to handle any incoming messages
+    } // init
 
     // wallet: false; MoneyNetwork, true: MoneyNetwork wallet
-    var wallet = true ;
-    function check_wallet() {
+    var wallet ;
+    var get_wallet_cbs = [] ;
+    function get_wallet (cb) {
+        var pgm = module + '.get: ' ;
+        if (!cb) cb = function () {} ;
+        if (wallet == 'x') {
+            // wait. first get_wallet request is pending
+            get_wallet_cbs.push(cb) ;
+            return ;
+        }
+        if ([true,false].indexOf(wallet) != -1) return cb(wallet) ; // ready
+        // check site address and set wallet = true or false. x while executing
+        wallet = 'x' ;
         ZeroFrame.cmd("siteInfo", {}, function (site_info) {
             wallet = (site_info.address != '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk') ;
-            console.log('wallet = ' + wallet) ;
+            cb(wallet) ;
+            while (get_wallet_cbs.length) { cb = get_wallet_cbs.shift() ; cb(wallet) }
         }) ;
-    }
+    } // get_wallet
+
+    // add session to watch list, First add session call will start a demon process checking for incoming messages
+    // - session: hash with session info or api client returned from new MoneyNetworkAPI() call
+    // - optional cb: function to handle incoming message. cb function must be supplied in init or
+    var sessions = {} ;
+    var done = {} ; // filename => true
+    function add_session (sessionid) {
+        var pgm = module + '.add_session: ' ;
+        var sha256, other_session_filename, start_demon ;
+        sha256 = CryptoJS.SHA256(sessionid).toString() ;
+        get_wallet(function(wallet) {
+            other_session_filename = wallet ? sha256.substr(0,10) : sha256.substr(sha256.length-10) ;
+            if (debug) console.log(pgm + 'sessionid = ' + sessionid + ', sha256 = ' + sha256 + ', wallet = ' + wallet + ', other_session_filename = ' + other_session_filename) ;
+            if (sessions[other_session_filename]) return null ; // known sessionid
+            start_demon = (Object.keys(sessions).length == 0) ;
+            sessions[other_session_filename] = { sessionid: sessionid, session_at: new Date().getTime() } ;
+            if (start_demon) {
+                demon_id = setInterval(demon, 2000) ;
+                if (debug) console.log(pgm + 'Started demon. process id = ' + demon_id) ;
+            }
+        }) ; // get_wallet callback
+    } // add_session
+
+    var demon_id ;
+    function demon() {
+        var pgm = module + '.demon: ' ;
+        var query, session_filename, first ;
+        if (!process_message_cb) return ; // no callback function found
+        first = true ;
+        query =
+            "select json.directory, files_optional.filename " +
+            "from files_optional, json " +
+            "where " ;
+        for (session_filename in sessions) {
+            query += first ? "(" : " or " ;
+            query += "files_optional.filename like '" + session_filename + ".%'"
+        }
+        query +=
+            ") and json.json_id = files_optional.json_id " +
+            "order by substr(files_optional.filename, 12)" ;
+        if (debug) console.log(pgm + 'query = ' + query) ;
+        ZeroFrame.cmd("dbQuery", [query], function (res) {
+            var pgm = module + '.demon dbQuery callback: ' ;
+            var i ;
+            if (res.error) {
+                console.log(pgm + 'query failed. error = ' + res.error) ;
+                clearInterval(demon_id);
+                return ;
+            }
+            if (!res.length) return ;
+            for (i=0 ; i<res.length ; i++) {
+                if (done[res[i].filename]) continue ;
+                process_message_cb('merged-MoneyNetwork/' + res[i].directory + '/' + res[i].filename ) ;
+                done[res[i].filename] = true ;
+            } // for i
+
+        }) ; // dbQuery callback
+
+    } // demon
     
     // export MoneyNetworkAPIDemon helpers
     return {
-        init: init
+        init: init,
+        add_session: add_session
     };
 
 })(); // MoneyNetworkAPIDemon

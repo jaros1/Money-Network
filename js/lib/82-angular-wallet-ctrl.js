@@ -20,13 +20,6 @@ angular.module('MoneyNetwork')
         // message filenames:
         // - my messages: sha256.first(10).timestamp
         // - wallet messages: sha256.last(10).timestamp
-        // messages between MoneyNetwork and MoneyNetwork wallet will be encrypted with cryptMessage, JSEncrypt and/or sessionid
-        // messages will be deleted when read and processed
-        var encrypt2 = new MoneyNetworkAPI({ZeroFrame: ZeroFrame}) ;
-        encrypt2.setup_encryption({
-            prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
-            userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
-        }) ;
         function new_sessionid () {
             var pgm = controller + '.new_sessionid: ' ;
             var sha256 ;
@@ -37,7 +30,24 @@ angular.module('MoneyNetwork')
             wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
             console.log(pgm + 'moneynetwork_session_filename = ' + moneynetwork_session_filename);
             console.log(pgm + 'wallet_session_filename = ' + wallet_session_filename);
+            // monitor incoming messages from this wallet session
+            MoneyNetworkAPIDemon.add_session(test_sessionid) ;
         } // new_sessionid
+
+        // messages between MoneyNetwork and MoneyNetwork wallet (session) will be encrypted with cryptMessage, JSEncrypt and sessionid
+        // todo: messages will be deleted when read and processed
+        var encrypt2 = new MoneyNetworkAPI({ZeroFrame: ZeroFrame}) ;
+        encrypt2.setup_encryption({
+            prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
+            userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
+        }) ;
+
+        // start demon. listen for incoming messages from wallet sessions
+        function process_incoming_message (filename) {
+            var pgm = controller + '.process_incoming_message: ' ;
+            console.log(pgm + 'filename = ' + filename) ;
+        }
+        MoneyNetworkAPIDemon.init({debug: true, ZeroFrame: ZeroFrame, cb: process_incoming_message}) ;
 
         self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?
         var tested_wallet_url = null ; // last tested url
