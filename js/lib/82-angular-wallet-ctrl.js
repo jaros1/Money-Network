@@ -42,11 +42,34 @@ angular.module('MoneyNetwork')
             userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
         }) ;
 
-        // start demon. listen for incoming messages from wallet sessions
+        // callback function to handle incoming messages from wallet session(s):
+        // - save_data message. save (encrypted) data in MoneyNetwork localStorage
+        // - get_data message. return (encrypted) data saved in MoneyNetwork localStorage
+        // - delete_data message. delete data saved in MoneyNetwork localStorage
         function process_incoming_message (filename) {
             var pgm = controller + '.process_incoming_message: ' ;
+            var debug_seq ;
             console.log(pgm + 'filename = ' + filename) ;
-        }
+
+
+            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + ' fileGet') ;
+            ZeroFrame.cmd("fileGet", {inner_path: filename, required: false}, function (json_str) {
+                var pgm = controller + '.process_incoming_message fileGet callback 1: ';
+                var encrypted_json;
+                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                if (!json_str) {
+                    console.log(pgm + 'fileGet ' + filename + ' failed') ;
+                    return ;
+                }
+                encrypted_json = JSON.parse(json_str) ;
+                encrypt2.decrypt_json(encrypted_json, function (json) {
+                    var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
+                    console.log(pgm + 'json = ' + JSON.stringify(json)) ;
+                }) ; // decrypt_json callback 2
+            }) ; // fileGet callback 1
+        } // process_incoming_message
+
+        // start demon. listen for incoming messages from wallet sessions
         MoneyNetworkAPIDemon.init({debug: true, ZeroFrame: ZeroFrame, cb: process_incoming_message}) ;
 
         self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?

@@ -467,18 +467,18 @@ var MoneyNetworkAPIDemon = (function () {
     } // init
 
     // wallet: false; MoneyNetwork, true: MoneyNetwork wallet
-    var wallet ;
-    var get_wallet_cbs = [] ;
+    var wallet ; // null, x, true or false
+    var get_wallet_cbs = [] ; // callbacks waiting for get_wallet response
     function get_wallet (cb) {
         var pgm = module + '.get: ' ;
         if (!cb) cb = function () {} ;
         if (wallet == 'x') {
-            // wait. first get_wallet request is pending
+            // wait. first get_wallet request is executing
             get_wallet_cbs.push(cb) ;
             return ;
         }
         if ([true,false].indexOf(wallet) != -1) return cb(wallet) ; // ready
-        // check site address and set wallet = true or false. x while executing
+        // first get_wallet request. check site address and set wallet = true or false. x while executing
         wallet = 'x' ;
         ZeroFrame.cmd("siteInfo", {}, function (site_info) {
             wallet = (site_info.address != '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk') ;
