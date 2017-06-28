@@ -36,10 +36,16 @@ angular.module('MoneyNetwork')
 
         // messages between MoneyNetwork and MoneyNetwork wallet (session) will be encrypted with cryptMessage, JSEncrypt and sessionid
         // todo: messages will be deleted when read and processed
-        var encrypt2 = new MoneyNetworkAPI({ZeroFrame: ZeroFrame}) ;
+        var encrypt2 = new MoneyNetworkAPI({ZeroFrame: ZeroFrame, wallet: false, debug: true}) ;
         encrypt2.setup_encryption({
             prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
             userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
+        }) ;
+        // get user_path for encrypt2 setup. used for receipts to ingoing messages
+        moneyNetworkService.get_my_user_hub(function (hub) {
+            var user_path ;
+            user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
+            encrypt2.setup_encryption({user_path: user_path});
         }) ;
 
         // callback function to handle incoming messages from wallet session(s):
@@ -50,7 +56,6 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.process_incoming_message: ' ;
             var debug_seq ;
             console.log(pgm + 'filename = ' + filename) ;
-
 
             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + ' fileGet') ;
             ZeroFrame.cmd("fileGet", {inner_path: filename, required: false}, function (json_str) {
@@ -64,7 +69,31 @@ angular.module('MoneyNetwork')
                 encrypted_json = JSON.parse(json_str) ;
                 encrypt2.decrypt_json(encrypted_json, function (json) {
                     var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
-                    console.log(pgm + 'json = ' + JSON.stringify(json)) ;
+                    var error, receipt ;
+
+                    // process message
+                    error = null ;
+                    if (!json.msgtype) error = 'msgtype is missing' ;
+                    else if (json.msgtype == 'pubkeys') {
+                        // received public keys from wallet session (test5)
+                        if (encrypt2.other_session_pubkey || encrypt2.other_session_pubkey2) {
+                            error = 'Public keys have already been received. Keeping old public keys' ;
+                        }
+                        else {
+                            encrypt2.setup_encryption({pubkey: json.pubkey, pubkey2: json.pubkey2}) ;
+                        }
+                    }
+                    else error = 'Unknown msgtype ' + json.msgtype ;
+                    console.log(pgm + 'json = ' + JSON.stringify(json) + ', status = ' + error) ;
+
+                    // send receipt
+                    if (!json.receipt) return ; // exit. no receipt requested
+                    receipt = { error: error } ;
+                    encrypt2.send_message(receipt, {timestamp: json.receipt}, function (res)  {
+                        var pgm = controller + '.process_incoming_message send_message callback 3: ';
+                        console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                    }) ; // send_message callback 3
+
                 }) ; // decrypt_json callback 2
             }) ; // fileGet callback 1
         } // process_incoming_message
@@ -190,15 +219,22 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'url = ' + url) ;
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
 
-                    // msg 1: MoneyNetwork: send my public keys to MoneyNetwork wallet session
+                    // msg 1: MoneyNetwork: send my public keys unencrypted to MoneyNetwork wallet session
                     moneyNetworkService.get_my_user_hub(function (hub) {
                         var pgm = controller + '.test1.run get_my_user_hub callback 1: ' ;
-                        var user_path, json, inner_path, json_raw, debug_seq1 ;
+                        var user_path, json, inner_path, json_raw, debug_seq1, userid ;
                         json = {
                             msgtype: 'pubkeys',
                             pubkey: MoneyNetworkHelper.getItem('pubkey'), // for JSEncrypt
                             pubkey2: MoneyNetworkHelper.getItem('pubkey2') // for cryptMessage
                         } ;
+
+                        // debug. output userid2, pubkey2 and get pubkey2 from cryptmessage. pubkey2 must be correct!
+                        userid =  MoneyNetworkHelper.getUserId() ;
+                        ZeroFrame.cmd("userPublickey", [userid], function (pubkey2) {
+                            console.log(pgm + 'userid = ' + userid + ', pubkey2 (ls) = ' + json.pubkey2 + ', pubkey2 (userPublickey) = ' + pubkey2) ;
+                        }) ;
+
                         // todo: validate json. API with msgtypes and validating rules
                         json_raw = unescape(encodeURIComponent(JSON.stringify(json, null, "\t")));
                         user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;

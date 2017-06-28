@@ -6,6 +6,7 @@
 // - CryptoJS: code.google.com/p/crypto-js
 //
 var MoneyNetworkAPI = function (options) {
+    var pgm = 'new MoneyNetworkAPI: ' ;
     var sha256, moneynetwork_session_filename, wallet_session_filename ;
     options = options || {};
     this.ZeroFrame = options.ZeroFrame ;                   // inject ZeroFrame API class
@@ -28,6 +29,7 @@ var MoneyNetworkAPI = function (options) {
         this.this_session_filename = this.wallet ? wallet_session_filename : moneynetwork_session_filename ;
         this.other_session_filename = this.wallet ? moneynetwork_session_filename : wallet_session_filename ;
     }
+    console.log(pgm + 'other_session_pubkey2 = ' + this.other_session_pubkey2) ;
 } ; // MoneyNetworkAPI
 
 MoneyNetworkAPI.prototype.setup_encryption = function (options) {
@@ -51,6 +53,7 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
         this.this_session_filename = this.wallet ? wallet_session_filename : moneynetwork_session_filename ;
         this.other_session_filename = this.wallet ? moneynetwork_session_filename : wallet_session_filename ;
     }
+    console.log(pgm + 'other_session_pubkey2 = ' + this.other_session_pubkey2) ;
     if (!this.debug) return ;
     // debug: check encryption setup status:
     missing_keys = [] ;
@@ -113,13 +116,14 @@ MoneyNetworkAPI.prototype.encrypt_2 = function (encrypted_text_1, cb) {
     if (!this.ZeroFrame) throw pgm + 'encryption failed. ZeroFrame is missing in encryption setup';
     if (!this.other_session_pubkey2) throw pgm + 'encryption failed. Pubkey2 is missing in encryption setup' ;
     // 1a. get random password
-    if (this.debug) console.log(pgm + 'calling aesEncrypt') ;
+    if (this.debug) console.log(pgm + 'encrypted_text_1 = ' + encrypted_text_1 + '. calling aesEncrypt') ;
     this.ZeroFrame.cmd("aesEncrypt", [""], function (res1) {
         var password ;
         password = res1[0];
-        if (self.debug) console.log(pgm + 'aesEncrypt OK. calling eciesEncrypt') ;
+        if (self.debug) console.log(pgm + 'aesEncrypt OK. password = ' + password + '. calling eciesEncrypt') ;
         // 1b. encrypt password
         self.ZeroFrame.cmd("eciesEncrypt", [password, self.other_session_pubkey2], function (key) {
+            console.log(pgm + 'self.other_session_pubkey2 = ' + self.other_session_pubkey2 + ', key = ' + key) ;
             // 1c. encrypt text
             if (self.debug) console.log(pgm + 'eciesEncrypt OK. calling aesEncrypt') ;
             self.ZeroFrame.cmd("aesEncrypt", [encrypted_text_1, password], function (res3) {
@@ -130,14 +134,14 @@ MoneyNetworkAPI.prototype.encrypt_2 = function (encrypted_text_1, cb) {
                 encrypted_text = res3[2];
                 encrypted_array = [key, iv, encrypted_text] ;
                 encrypted_text_2 = JSON.stringify(encrypted_array) ;
-                if (self.debug) console.log(pgm + 'encrypted_text_1 = ' + encrypted_text_2) ;
+                if (self.debug) console.log(pgm + 'encrypted_text_2 = ' + encrypted_text_2) ;
                 cb(encrypted_text_2) ;
             }) ; // aesEncrypt callback 3
         }) ; // eciesEncrypt callback 2
     }) ; // aesEncrypt callback 1
 }; // encrypt_2
 MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
-    var pgm = this.module + '.decrypt_1: ' ;
+    var pgm = this.module + '.decrypt_2: ' ;
     var self, encrypted_array, key, iv, encrypted_text ;
     self = this ;
     if (!this.ZeroFrame) throw pgm + 'decryption failed. ZeroFrame is missing in encryption setup';
@@ -149,11 +153,11 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     // 1a. decrypt key = password
     if (this.debug) console.log(pgm + 'calling eciesDecrypt') ;
     this.ZeroFrame.cmd("eciesDecrypt", [key, this.this_session_userid2], function(password) {
-        if (!password) throw pgm + 'key eciesDecrypt failed. userid2 = ' + self.this_session_userid2 ;
+        if (!password) throw pgm + 'key eciesDecrypt failed. key = ' + key + ', userid2 = ' + JSON.stringify(self.this_session_userid2) ;
         // 1b. decrypt encrypted_text
-        if (self.debug) console.log(pgm + 'eciesDecrypt OK. calling aesDecrypt') ;
+        if (self.debug) console.log(pgm + 'eciesDecrypt OK. password = ' + password + ', calling aesDecrypt') ;
         self.ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (encrypted_text_1) {
-            if (self.debug) console.log(pgm + 'aesDecrypt OK') ;
+            if (self.debug) console.log(pgm + 'aesDecrypt OK. encrypted_text_1 = ' + encrypted_text_1) ;
             cb(encrypted_text_1) ;
         }) ; // aesDecrypt callback 2
     }) ; // eciesDecrypt callback 1
@@ -334,9 +338,21 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
 }; // add_optional_files_support
 
 // send json message encrypted to other session and optional wait for response
-MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
-    var self, request_at, month, year ;
+// params:
+// - json: message to send. should include a msgtype
+// - options. hash with options for send_message operation
+//   - receipt: wait for receipt? null, true, false or timeout (=true) in milliseconds
+//   - timestamp: timestamp to be used in filename for outgoing message. Only used when sending receipts.
+// - cb: callback. returns an empty hash, hash with an error messsage or receipt
+MoneyNetworkAPI.prototype.send_message = function (json, options, cb) {
+    var pgm = this.module + '.send_message: ';
+    var self, receipt, timestamp, request_at, timeout_at, month, year ;
     self = this ;
+    // get params
+    if (!options) options = {} ;
+    receipt = options.receipt ;
+    timestamp = options.timestamp ;
+    if (!cb) cb = function(){} ;
     // check ZeroNet state
     if (!this.ZeroFrame) return cb({error: 'Cannot send message. ZeroFrame is missing in setup'}) ;
     if (!this.ZeroFrame.site_info) return cb({error: 'Cannot send message. ZeroFrame is not finished loading'}) ;
@@ -346,6 +362,7 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
     if (!this.other_session_pubkey2) return cb({error: 'Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'}) ; // encrypt_2
     if (!this.sessionid) return cb({error: 'Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'}) ; // encrypt_3
     if (!this.this_user_path) return cb({error: 'Cannot send message. user_path is missing in setup'});
+    console.log(pgm + 'this.other_session_pubkey2 = ' + this.other_session_pubkey2) ;
     if (receipt) {
         // check encryption setup for ingoing encryption
         if (!this.this_session_prvkey) return cb({error: 'Cannot JSEncrypt expected ingoing receipt. prvkey is missing in encryption setup'}) ; // decrypt_1
@@ -356,6 +373,8 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
     request_at = new Date().getTime();
     if (receipt) {
         // receipt requested. use a random timestamp 1 year ago as receipt filename
+        if (typeof receipt == 'number') timeout_at = request_at + receipt ;
+        else timeout_at = request_at + 10000 ; // timeout = 10 seconds
         year = 1000 * 60 * 60 * 24 * 365.2425 ;
         month = year / 12 ;
         receipt = request_at - 11 * month - Math.floor(Math.random() * month * 2) ;
@@ -376,7 +395,7 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
             var inner_path3, json_raw;
             if (!res || res.error) return cb({error: 'Cannot send message. Add optional files support failed. ' + JSON.stringify(res)}) ;
             // 4: write file
-            inner_path3 = user_path + self.this_session_filename + '.' + request_at;
+            inner_path3 = user_path + self.this_session_filename + '.' + (timestamp || request_at);
             json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
             if (self.debug) console.log(pgm + 'writing optional file ' + inner_path3);
             self.ZeroFrame.cmd("fileWrite", [inner_path3, btoa(json_raw)], function (res) {
@@ -402,10 +421,9 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
                     // loop
                     wait_for_receipt = function () {
                         var pgm = self.module + '.send_message.wait_for_receipt 6: ';
-                        var now, elapsed ;
+                        var now ;
                         now = new Date().getTime();
-                        elapsed = Math.floor((now-request_at) / 1000) ;
-                        if (elapsed >= 30) return cb({error: 'Timeout while waiting for receipt. Json message was ' + JSON.stringify(json) + '. Expected receipt filename was ' + receipt_filename}) ;
+                        if (now > timeout_at) return cb({error: 'Timeout while waiting for receipt. Json message was ' + JSON.stringify(json) + '. Expected receipt filename was ' + receipt_filename}) ;
                         // 7: dbQuery
                         self.ZeroFrame.cmd("dbQuery", [query], function (res) {
                             var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 7: ';
@@ -418,34 +436,31 @@ MoneyNetworkAPI.prototype.send_message = function (json, receipt, cb) {
                             inner_path7 = res[0].inner_path ;
                             // 8: fileGet
                             self.ZeroFrame.cmd("fileGet", {inner_path: inner_path7, required: true}, function (receipt_str) {
+                                var pgm = self.module + '.send_message.wait_for_receipt fileGet callback 8: ';
                                 var encrypted_receipt;
-                                if (!encrypted_receipt) return cb({error: 'fileGet for receipt failed. Json message was ' + JSON.stringify(json) + '. inner_path was ' + inner_path7}) ;
+                                if (!receipt_str) return cb({error: 'fileGet for receipt failed. Json message was ' + JSON.stringify(json) + '. inner_path was ' + inner_path7}) ;
                                 encrypted_receipt = JSON.parse(receipt_str);
                                 // decrypt receipt
                                 self.decrypt_json(encrypted_receipt, function (receipt) {
+                                    var pgm = self.module + '.send_message.wait_for_receipt decrypt_json callback 9: ';
                                     // return decrypted receipt
+                                    if (self.debug) console.log(pgm + 'receipt = ' + JSON.stringify(receipt)) ;
                                     cb(receipt) ;
-                                });
+                                }); // decrypt_json callback 9
+
                             }) ; // fileGet callback 8
 
                         }) ; // dbQuery callback 7
 
                     } ; // wait_for_receipt 6
                     // start loop
-                    setTimeout(wait_for_receipt, 1000) ;
+                    setTimeout(wait_for_receipt, 250) ;
 
                 }); // siteSign callback 5 (content.json)
             }); // writeFile callback 4 (request)
         }); // add_optional_files_support callback 3
     }); // encrypt_json callback 1
 }; // send_message
-
-// todo: Monitor incoming json messages from other session(s)
-// - a never ending loop checking dbQuery once every <n> milliseconds
-// - listen to known sessionids send by MoneyNetwork or received from MoneyNetwork wallet
-// - this session private key / userid for decrypt incoming message must exist
-// - optional must other session public keys exist for optional response to incoming request (get_data request)
-// - must register callback function(s) to handle decrypted incoming messages
 
 
 // demon. Monitor and process incoming messages from other session
@@ -456,7 +471,7 @@ var MoneyNetworkAPIDemon = (function () {
     var module = 'MoneyNetworkAPIDemon' ;
 
     // init: inject ZeroFrame API into demon process
-    var debug, ZeroFrame, this_session_prvkey, this_session_userid2, process_message_cb ;
+    var debug, ZeroFrame, this_session_prvkey, this_session_userid2, process_message_cb, interval ;
     function init (options) {
         var pgm = module + '.init: ' ;
         if (options.hasOwnProperty('debug')) debug = options.debug ; // true or false
@@ -464,6 +479,7 @@ var MoneyNetworkAPIDemon = (function () {
         if (options.prvkey) this_session_prvkey = options.prvkey ; // JSEncrypt. decrypt incoming messages
         if (options.hasOwnProperty('userid2')) this_session_userid2 = options.userid2 ; // cryptMessage. decrypt incoming messages
         if (options.cb) process_message_cb = options.cb ; // callback to handle any incoming messages
+        if (options.interval) interval = options.interval ; // milliseconds between each demon check. default 500 milliseconds
     } // init
 
     // wallet: false; MoneyNetwork, true: MoneyNetwork wallet
@@ -503,7 +519,7 @@ var MoneyNetworkAPIDemon = (function () {
             start_demon = (Object.keys(sessions).length == 0) ;
             sessions[other_session_filename] = { sessionid: sessionid, session_at: new Date().getTime() } ;
             if (start_demon) {
-                demon_id = setInterval(demon, 2000) ;
+                demon_id = setInterval(demon, (interval || 500)) ;
                 if (debug) console.log(pgm + 'Started demon. process id = ' + demon_id) ;
             }
         }) ; // get_wallet callback
@@ -526,19 +542,24 @@ var MoneyNetworkAPIDemon = (function () {
         query +=
             ") and json.json_id = files_optional.json_id " +
             "order by substr(files_optional.filename, 12)" ;
-        if (debug) console.log(pgm + 'query = ' + query) ;
+        // if (debug) console.log(pgm + 'query = ' + query) ;
         ZeroFrame.cmd("dbQuery", [query], function (res) {
             var pgm = module + '.demon dbQuery callback: ' ;
-            var i ;
+            var i, inner_path ;
             if (res.error) {
                 console.log(pgm + 'query failed. error = ' + res.error) ;
                 clearInterval(demon_id);
                 return ;
             }
             if (!res.length) return ;
+            // process new incoming messages
             for (i=0 ; i<res.length ; i++) {
                 if (done[res[i].filename]) continue ;
-                process_message_cb('merged-MoneyNetwork/' + res[i].directory + '/' + res[i].filename ) ;
+                inner_path = 'merged-MoneyNetwork/' + res[i].directory + '/' + res[i].filename ;
+                try { process_message_cb(inner_path) }
+                catch (e) {
+                    console.log(pgm + 'Error when processing incomming message ' + inner_path + '. error = ' + e.message)
+                }
                 done[res[i].filename] = true ;
             } // for i
 
