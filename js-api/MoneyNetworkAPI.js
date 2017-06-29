@@ -454,8 +454,8 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, direction
     // validate json
     if (tv4.validate(json, json_schema, pgm)) return null; // json is OK
     // report json error
-    json_error = JSON.parse(JSON.stringify(tv4.error));
-    json_error.stack;
+    var json_error = JSON.parse(JSON.stringify(tv4.error));
+    delete json_error.stack;
     return 'Error in ' + json.msgtype + ' JSON. ' +  JSON.stringify(json_error);
 }; // validate_json
 

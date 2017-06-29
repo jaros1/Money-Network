@@ -52,6 +52,7 @@ angular.module('MoneyNetwork')
         // - save_data message. save (encrypted) data in MoneyNetwork localStorage
         // - get_data message. return (encrypted) data saved in MoneyNetwork localStorage
         // - delete_data message. delete data saved in MoneyNetwork localStorage
+        var todo_saved_data = {} ;
         function process_incoming_message (filename) {
             var pgm = controller + '.process_incoming_message: ' ;
             var debug_seq ;
@@ -69,7 +70,7 @@ angular.module('MoneyNetwork')
                 encrypted_json = JSON.parse(json_str) ;
                 encrypt2.decrypt_json(encrypted_json, function (json) {
                     var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
-                    var timestamp, error, response ;
+                    var timestamp, error, response, i, key, value ;
                     // get any response timestamp before validation
                     timestamp = json.response ; delete json.response ;
                     // validate and process incoming json message and process
@@ -82,6 +83,28 @@ angular.module('MoneyNetwork')
                         }
                         else {
                             encrypt2.setup_encryption({pubkey: json.pubkey, pubkey2: json.pubkey2}) ;
+                        }
+                    }
+                    else if (json.msgtype == 'save_data') {
+                        // received data_data request from wallet session.
+                        console.log(pgm + 'todo: save data in localStorage') ;
+                        if (!todo_saved_data[test_sessionid]) todo_saved_data[test_sessionid] = {} ;
+                        for (i=0 ; i<json.data.length ; i++) {
+                            key = json.data[i].key ;
+                            value = json.data[i].value ;
+                            todo_saved_data[test_sessionid][key] = value ;
+                        }
+                    }
+                    else if (json.msgtype == 'delete_data') {
+                        // received data_data request from wallet session.
+                        console.log(pgm + 'todo: save data in localStorage') ;
+                        if (!todo_saved_data[test_sessionid]) null ; // OK - no data
+                        else if (!json.keys) delete todo_saved_data[test_sessionid] ; // OK - no keys array - delete all data
+                        else {
+                            for (i=0 ; i<json.keys.length ; i++) {
+                                key = json.keys[i].key ;
+                                delete todo_saved_data[test_sessionid][key] ;
+                            }
                         }
                     }
                     else error = 'Unknown msgtype ' + json.msgtype ;
