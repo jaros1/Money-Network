@@ -335,54 +335,192 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
     }); // get_content_json callback 1
 }; // add_optional_files_support
 
+// minimum validate json before encrypt & send and after receive & decrypt using https://github.com/geraintluff/tv4
+// json messages between MoneyNetwork and MoneyNetwork wallet must be valid
+MoneyNetworkAPI.json_schemas = {
+
+    "pubkeys": {
+        "type": 'object',
+        "title": 'Send pubkeys (JSEncrypt and cryptMessage) to other session',
+        "description": 'MoneyNetwork: sends unencrypted pubkeys message to Wallet. Wallet: returns an encrypted pubkeys message to MoneyNetwork. pubkey is public key from JSEncrypt and pubkey2 is public key from cryptMessage',
+        "properties": {
+            "msgtype": { "type": 'string', "pattern": '^pubkeys$'},
+            "pubkey": { "type": 'string'},
+            "pubkey2": { "type": 'string'}
+        },
+        "required": ['msgtype', 'pubkey', 'pubkey2'],
+        "additionalProperties": false
+    }, // pubkeys
+
+    "save_data": {
+        "type": 'object',
+        "title": 'Wallet: Save encrypted wallet data in MoneyNetwork',
+        "description": "Optional message. Can be used to save encrypted data in an {key:value} object in MoneyNetwork localStorage.",
+        "properties": {
+            "msgtype": { "type": 'string', "pattern": '^save_data$'},
+            "data": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "key": { "type": 'string'},
+                        "value": { "type": 'string'}
+                    },
+                    "required": ['key'],
+                    "additionalProperties": false
+                },
+                "minItems": 1
+            }
+        },
+        "required": ['msgtype', 'data'],
+        "additionalProperties": false
+    }, // save_data
+
+    "get_data": {
+        "type": 'object',
+        "title": 'Wallet: Get encrypted data from MoneyNetwork',
+        "description": "Optional message. Can be used to request encrypted wallet data from MoneyNetwork localStorage",
+        "properties": {
+            "msgtype": { "type": 'string', "pattern": '^get_data$'},
+            "keys": {
+                "type": 'array',
+                "items": { "type": 'string'},
+                "minItems": 1
+            }
+        },
+        "required": ['msgtype', 'keys'],
+        "additionalProperties": false
+    }, // get_data
+
+    "data": {
+        "type": 'object',
+        "title": 'MoneyNetwork: get_data response to with requested encrypted wallet data',
+        "description": "Optional message. Return requested encrypted data to wallet",
+        "properties": {
+            "msgtype": { "type": 'string', "pattern": '^data$'},
+            "data": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "key": { "type": 'string'},
+                        "value": { "type": 'string'}
+                    },
+                    "required": ['key'],
+                    "additionalProperties": false
+                }
+            }
+        }
+    }, // data
+
+    "delete_data": {
+        "type": 'object',
+        "title": 'Wallet: Delete encrypted data saved in MoneyNetwork',
+        "description": "Optional message. Delete encrypted wallet data from MoneyNetwork localStorage. No keys property = delete all data",
+        "properties": {
+            "msgtype": { "type": 'string', "pattern": '^delete_data$'},
+            "keys": {
+                "type": 'array',
+                "items": { "type": 'string'},
+                "minItems": 1
+            }
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    }, // delete_data
+
+    "response": {
+        "type": 'object',
+        "title": 'Generic response with an optional error message',
+        "properties": {
+            "msgtype": { "type": 'string', "pattern": '^response$'},
+            "error": { "type": 'string'}
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    } // receipt
+
+} ; // json_schemas
+MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, direction) {
+    var pgm = this.module + '.validate_json: ';
+    var json_schema, json_error ;
+    if (!json || !json.msgtype) return 'required msgtype is missing in json message' ;
+    json_schema = MoneyNetworkAPI.json_schemas[json.msgtype] ;
+    if (!json_schema) return 'Unknown msgtype ' + json.msgtype ;
+    if (typeof tv4 === 'undefined') {
+        if (this.debug) console.log(pgm + 'warning. skipping ' + json.msgtype + ' json validation. tv4 is not defined') ;
+        return ;
+    }
+    // validate json
+    if (tv4.validate(json, json_schema, pgm)) return null; // json is OK
+    // report json error
+    json_error = JSON.parse(JSON.stringify(tv4.error));
+    json_error.stack;
+    return 'Error in ' + json.msgtype + ' JSON. ' +  JSON.stringify(json_error);
+}; // validate_json
+
 // send json message encrypted to other session and optional wait for response
 // params:
 // - json: message to send. should include a msgtype
 // - options. hash with options for send_message operation
-//   - receipt: wait for receipt? null, true, false or timeout (=true) in milliseconds
+//   - response: wait for response? null, true, false or timeout (=true) in milliseconds
 //   - timestamp: timestamp to be used in filename for outgoing message. Only used when sending receipts.
-// - cb: callback. returns an empty hash, hash with an error messsage or receipt
-MoneyNetworkAPI.prototype.send_message = function (json, options, cb) {
+// - cb: callback. returns an empty hash, hash with an error messsage or response
+MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
-    var self, receipt, timestamp, request_at, timeout_at, month, year;
+    var self, response, timestamp, error, request_at, timeout_at, month, year;
     self = this;
+
     // get params
     if (!options) options = {};
-    receipt = options.receipt;
+    response = options.response;
     timestamp = options.timestamp;
-    if (!cb) cb = function () {
-    };
-    // check ZeroNet state
+    if (!cb) cb = function () {};
+
+    // check setup
+    // ZeroNet state
     if (!this.ZeroFrame) return cb({error: 'Cannot send message. ZeroFrame is missing in setup'});
     if (!this.ZeroFrame.site_info) return cb({error: 'Cannot send message. ZeroFrame is not finished loading'});
     if (!this.ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot send message. No cert_user_id. ZeroNet certificate is missing'});
-    // check outgoing encryption setup
+    // Outgoing encryption
     if (!this.other_session_pubkey) return cb({error: 'Cannot JSEncrypt encrypt outgoing message. pubkey is missing in encryption setup'}); // encrypt_1
     if (!this.other_session_pubkey2) return cb({error: 'Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'}); // encrypt_2
     if (!this.sessionid) return cb({error: 'Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'}); // encrypt_3
     if (!this.this_user_path) return cb({error: 'Cannot send message. user_path is missing in setup'});
-    if (this.debug) console.log(pgm + 'this.other_session_pubkey2 = ' + this.other_session_pubkey2);
-    if (receipt) {
-        // check encryption setup for ingoing encryption
+    if (response) {
+        // Ingoing encryption
         if (!this.this_session_prvkey) return cb({error: 'Cannot JSEncrypt expected ingoing receipt. prvkey is missing in encryption setup'}); // decrypt_1
         // decrypt_2 OK. cert_user_id already checked
         // decrypt_3 OK. sessionid already checked
     }
-    // setup OK for send message
+
+    // validate message. all messages are validated before send and after received
+    // messages: pubkeys, save_data, get_data, delete_data
+    error = this.validate_json(pgm, request, 'send') ;
+    if (error) {
+        error = 'Cannot send message. ' + error ;
+        if (this.debug) {
+            console.log(pgm + error);
+            console.log(pgm + 'request = ' + JSON.stringify(request));
+        }
+        cb({error: error}) ;
+    }
+
+    // receipt?
     request_at = new Date().getTime();
-    if (receipt) {
-        // receipt requested. use a random timestamp 1 year ago as receipt filename
-        if (typeof receipt == 'number') timeout_at = request_at + receipt;
+    if (response) {
+        // receipt requested. wait for receipt. use a random timestamp 1 year ago as receipt filename
+        if (typeof response == 'number') timeout_at = request_at + response;
         else timeout_at = request_at + 10000; // timeout = 10 seconds
         year = 1000 * 60 * 60 * 24 * 365.2425;
         month = year / 12;
-        receipt = request_at - 11 * month - Math.floor(Math.random() * month * 2);
-        json = JSON.parse(JSON.stringify(json));
-        json.receipt = receipt;
+        response = request_at - 11 * month - Math.floor(Math.random() * month * 2);
+        request = JSON.parse(JSON.stringify(request));
+        request.response = response;
     }
 
     // 1: encrypt json
-    this.encrypt_json(json, [1, 2, 3], function (encrypted_json) {
+    this.encrypt_json(request, [1, 2, 3], function (encrypted_json) {
         var pgm = self.module + '.send_message encrypt_json callback 1: ';
         var user_path;
         if (self.debug) console.log(pgm + 'encrypted_json = ' + JSON.stringify(encrypted_json));
@@ -407,7 +545,7 @@ MoneyNetworkAPI.prototype.send_message = function (json, options, cb) {
                 self.ZeroFrame.cmd("siteSign", {inner_path: inner_path4}, function (res) {
                     var pgm = self.module + '.send_message siteSign callback 5: ';
                     if (self.debug) console.log(pgm + 'res = ' + JSON.stringify(res));
-                    if (!receipt) return cb({});
+                    if (!response) return cb({}); // exit. receipt was not requested.
 
                     // 6: is MoneyNetworkAPIDemon monitoring incoming messages for this sessionid?
                     MoneyNetworkAPIDemon.is_session(self.sessionid, function (is_session) {
@@ -425,22 +563,34 @@ MoneyNetworkAPI.prototype.send_message = function (json, options, cb) {
                                 console.log(pgm + 'inner_path is not a string. inner_path = ' + JSON.stringify(inner_path)) ;
                                 return cb(inner_path);
                             }
-                            self.ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (receipt_str) {
+                            self.ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (response_str) {
                                 var pgm = self.module + '.send_message.get_and_decrypt fileGet callback 6.1: ';
-                                var encrypted_receipt;
-                                if (!receipt_str) return cb({error: 'fileGet for receipt failed. Json message was ' + JSON.stringify(json) + '. inner_path was ' + inner_path});
-                                encrypted_receipt = JSON.parse(receipt_str);
-                                // decrypt receipt
-                                self.decrypt_json(encrypted_receipt, function (receipt) {
+                                var encrypted_response, error;
+                                if (!response_str) return cb({error: 'fileGet for receipt failed. Request was ' + JSON.stringify(request) + '. inner_path was ' + inner_path});
+                                encrypted_response = JSON.parse(response_str);
+                                // decrypt response
+                                self.decrypt_json(encrypted_response, function (response) {
                                     var pgm = self.module + '.send_message.get_and_decrypt decrypt_json callback 6.2: ';
-                                    // return decrypted receipt
-                                    if (self.debug) console.log(pgm + 'receipt = ' + JSON.stringify(receipt));
-                                    cb(receipt);
+                                    // validate json
+                                    error = self.validate_json(pgm, response, 'receive') ;
+                                    if (error) {
+                                        error = request.msgtype + ' response is not valid. ' + error ;
+                                        if (self.debug) {
+                                            console.log(pgm + error) ;
+                                            console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                                            console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                                        }
+                                        return cb({error: error}) ;
+                                    }
+
+                                    // return decrypted response
+                                    if (self.debug) console.log(pgm + 'response = ' + JSON.stringify(response));
+                                    cb(response);
                                 }); // decrypt_json callback 6.2
                             }); // fileGet callback 6.1
                         }; // get_and_decrypt
 
-                        receipt_filename = self.other_session_filename + '.' + receipt;
+                        receipt_filename = self.other_session_filename + '.' + response;
                         if (is_session) {
                             // demon is running and is monitoring incoming messages for this sessionid
                             error = MoneyNetworkAPIDemon.wait_for_file(receipt_filename, timeout_at, get_and_decrypt);
@@ -461,12 +611,12 @@ MoneyNetworkAPI.prototype.send_message = function (json, options, cb) {
                                 var pgm = self.module + '.send_message.wait_for_receipt 7: ';
                                 var now;
                                 now = new Date().getTime();
-                                if (now > timeout_at) return cb({error: 'Timeout while waiting for receipt. Json message was ' + JSON.stringify(json) + '. Expected receipt filename was ' + receipt_filename});
+                                if (now > timeout_at) return cb({error: 'Timeout while waiting for receipt. Json message was ' + JSON.stringify(request) + '. Expected receipt filename was ' + receipt_filename});
                                 // 7: dbQuery
                                 self.ZeroFrame.cmd("dbQuery", [query], function (res) {
                                     var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 8: ';
                                     var inner_path8;
-                                    if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(json) + '. dbQuery error was ' + res.error});
+                                    if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error});
                                     if (!res.length) {
                                         setTimeout(wait_for_receipt, 500);
                                         return;

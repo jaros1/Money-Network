@@ -41,7 +41,7 @@ angular.module('MoneyNetwork')
             prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
             userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
         }) ;
-        // get user_path for encrypt2 setup. used for receipts to ingoing messages
+        // get user_path for encrypt2 setup. used for responses to ingoing requests
         moneyNetworkService.get_my_user_hub(function (hub) {
             var user_path ;
             user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
@@ -69,11 +69,12 @@ angular.module('MoneyNetwork')
                 encrypted_json = JSON.parse(json_str) ;
                 encrypt2.decrypt_json(encrypted_json, function (json) {
                     var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
-                    var error, receipt ;
-
-                    // process message
-                    error = null ;
-                    if (!json.msgtype) error = 'msgtype is missing' ;
+                    var timestamp, error, response ;
+                    // get any response timestamp before validation
+                    timestamp = json.response ; delete json.response ;
+                    // validate and process incoming json message and process
+                    error = encrypt2.validate_json(pgm, json, 'receive') ;
+                    if (error) error = 'message is invalid. ' + error ;
                     else if (json.msgtype == 'pubkeys') {
                         // received public keys from wallet session (test5)
                         if (encrypt2.other_session_pubkey || encrypt2.other_session_pubkey2) {
@@ -84,12 +85,13 @@ angular.module('MoneyNetwork')
                         }
                     }
                     else error = 'Unknown msgtype ' + json.msgtype ;
-                    console.log(pgm + 'json = ' + JSON.stringify(json) + ', status = ' + error) ;
+                    console.log(pgm + 'json = ' + JSON.stringify(json) + ', error = ' + error) ;
 
-                    // send receipt
-                    if (!json.receipt) return ; // exit. no receipt requested
-                    receipt = { error: error } ;
-                    encrypt2.send_message(receipt, {timestamp: json.receipt}, function (res)  {
+                    // send response
+                    if (!timestamp) return ; // exit. no response requested
+                    response = { msgtype: 'response' } ;
+                    if (error) response.error = error ;
+                    encrypt2.send_message(response, {timestamp: timestamp}, function (res)  {
                         var pgm = controller + '.process_incoming_message send_message callback 3: ';
                         console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     }) ; // send_message callback 3

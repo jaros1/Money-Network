@@ -2623,7 +2623,7 @@ angular.module('MoneyNetwork')
                             // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
                             var receipt = { msgtype: 'received', remote_msg_seq: decrypted_message.local_msg_seq };
                             // validate json
-                            var error = MoneyNetworkHelper.validate_json(pgm, receipt, receipt.msgtype, 'Cannot send receipt for chat message');
+                            var error = MoneyNetworkHelper.validate_json(pgm, response, response.msgtype, 'Cannot send receipt for chat message');
                             if (error) console(pgm + error) ;
                             else {
                                 // this callback can be called multiple times after log in or when receiving a data.json file
@@ -2631,7 +2631,7 @@ angular.module('MoneyNetwork')
                                 // process lock in z_update_1_data_json will output a warning in log
                                 // first receipt in first z_update_1_data_json call
                                 // other receipts in next z_update_1_data_json call in 30 seconds
-                                add_msg(contact, receipt) ;
+                                add_msg(contact, response) ;
                                 z_update_1_data_json(pgm);
                             }
 
@@ -2645,9 +2645,9 @@ angular.module('MoneyNetwork')
                     // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
                     var receipt = { msgtype: 'received', remote_msg_seq: decrypted_message.local_msg_seq };
                     // validate json
-                    error = MoneyNetworkHelper.validate_json(pgm, receipt, receipt.msgtype, 'Cannot send receipt for chat message');
+                    error = MoneyNetworkHelper.validate_json(pgm, response, response.msgtype, 'Cannot send receipt for chat message');
                     if (error) console(pgm + error) ;
-                    else new_outgoing_receipts.push({ contact: contact, message: receipt}) ;
+                    else new_outgoing_receipts.push({ contact: contact, message: response}) ;
                 }
             } // end chat msg
 
@@ -4807,7 +4807,7 @@ angular.module('MoneyNetwork')
                             // privacy issue - monitoring ZeroNet files will reveal who is chatting. Receipt makes this easier to trace.
                             var receipt = { msgtype: 'received', remote_msg_seq: message_with_envelope.message.local_msg_seq };
                             // validate json
-                            var error = MoneyNetworkHelper.validate_json(pgm, receipt, receipt.msgtype, 'Cannot send receipt for chat message');
+                            var error = MoneyNetworkHelper.validate_json(pgm, response, response.msgtype, 'Cannot send receipt for chat message');
                             if (error) console(pgm + error) ;
                             else {
                                 // this callback can be called multiple times after log in or when receiving a data.json file
@@ -4815,7 +4815,7 @@ angular.module('MoneyNetwork')
                                 // process lock in z_update_1_data_json will output a warning in log
                                 // first receipt in first z_update_1_data_json call
                                 // other receipts in next z_update_1_data_json call in 30 seconds
-                                add_msg(contact, receipt) ;
+                                add_msg(contact, response) ;
                                 ls_save_contacts(true);
                                 z_update_1_data_json(pgm);
                             }
