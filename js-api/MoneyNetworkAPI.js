@@ -225,10 +225,13 @@ MoneyNetworkAPI.prototype.encrypt_json = function(json, encryptions, cb) {
 }; // encrypt_json
 MoneyNetworkAPI.prototype.decrypt_json = function (json, cb) {
     var pgm = this.module + '.decrypt_json: ' ;
-    var self, decrypt_json, decrypt ;
+    var self ;
     self = this ;
-    decrypt_json = self.decrypt_json ;
-    if (json.encryption == 1) {
+    if (!json.hasOwnProperty('encryption')) {
+        if (this.debug && (json.msgtype != 'pubkeys')) console.log(pgm + 'Warning. received unencrypted json message ' + JSON.stringify(json)) ;
+        cb(json) ;
+    }
+    else if (json.encryption == 1) {
         this.decrypt_1(json.message, function (decrypted_text) {
             var json ;
             json = JSON.parse(decrypted_text) ;
@@ -312,12 +315,13 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
     // ready for checking/adding optional files support in/to content.json file
     // 1: get content.json. will create empty signed content.json if content.json is missing
     this.get_content_json(function (content) {
-        var json_raw ;
+        var inner_path, json_raw ;
         if (!content) return cb({error: 'fileGet content.json failed'}) ;
         if (content.optional == self.this_optional) cb({}) ; // optional files support already OK
         // add optional files support
         content.optional = self.this_optional ;
         // 2: write content.json
+        inner_path = this.this_user_path + 'content.json' ;
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
         self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
             var pgm = self.module + '.add_optional_files_support fileWrite callback 2: ';
@@ -335,8 +339,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
     }); // get_content_json callback 1
 }; // add_optional_files_support
 
-// minimum validate json before encrypt & send and after receive & decrypt using https://github.com/geraintluff/tv4
-// json messages between MoneyNetwork and MoneyNetwork wallet must be valid
+// Json schemas for json validation of ingoing and outgoing messages
 MoneyNetworkAPI.json_schemas = {
 
     "pubkeys": {
@@ -441,12 +444,27 @@ MoneyNetworkAPI.json_schemas = {
     } // receipt
 
 } ; // json_schemas
-MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, direction) {
+
+// minimum validate json before encrypt & send and after receive & decrypt using https://github.com/geraintluff/tv4
+// json messages between MoneyNetwork and MoneyNetwork wallet must be valid
+// params:
+// - calling_pgm: calling function. for debug messages
+// - json: request or response
+// - request_msgtype: request: null, response: request.msgtype
+MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, request_msgtype) {
     var pgm = this.module + '.validate_json: ';
     var json_schema, json_error ;
     if (!json || !json.msgtype) return 'required msgtype is missing in json message' ;
     json_schema = MoneyNetworkAPI.json_schemas[json.msgtype] ;
     if (!json_schema) return 'Unknown msgtype ' + json.msgtype ;
+    if (request_msgtype) {
+        // validate request => response combinations
+        if (request_msgtype == 'response') return 'Invalid request msgtype ' + request_msgtype ;
+        if (!MoneyNetworkAPI.json_schemas[request_msgtype]) return 'Unknown request msgtype ' + request_msgtype ;
+        if (json.msgtype == 'response') null ; // OK response for any request msgtype
+        else if ((request_msgtype == 'get_data') && (json.msgtype == 'data')) null ; // OK combination
+        else return 'Invalid ' + request_msgtype + ' request ' + json.msgtype + ' response combination' ;
+    }
     if (typeof tv4 === 'undefined') {
         if (this.debug) console.log(pgm + 'warning. skipping ' + json.msgtype + ' json validation. tv4 is not defined') ;
         return ;
@@ -454,7 +472,7 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, direction
     // validate json
     if (tv4.validate(json, json_schema, pgm)) return null; // json is OK
     // report json error
-    var json_error = JSON.parse(JSON.stringify(tv4.error));
+    json_error = JSON.parse(JSON.stringify(tv4.error));
     delete json_error.stack;
     return 'Error in ' + json.msgtype + ' JSON. ' +  JSON.stringify(json_error);
 }; // validate_json
@@ -465,16 +483,18 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, direction
 // - options. hash with options for send_message operation
 //   - response: wait for response? null, true, false or timeout (=true) in milliseconds
 //   - timestamp: timestamp to be used in filename for outgoing message. Only used when sending receipts.
+//   - msgtype: request msgtype. only used when sending response. Used for json validation
 // - cb: callback. returns an empty hash, hash with an error messsage or response
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
-    var self, response, timestamp, error, request_at, timeout_at, month, year;
+    var self, response, timestamp, msgtype, error, request_at, timeout_at, month, year;
     self = this;
 
     // get params
     if (!options) options = {};
     response = options.response;
     timestamp = options.timestamp;
+    msgtype = options.msgtype ;
     if (!cb) cb = function () {};
 
     // check setup
@@ -496,7 +516,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 
     // validate message. all messages are validated before send and after received
     // messages: pubkeys, save_data, get_data, delete_data
-    error = this.validate_json(pgm, request, 'send') ;
+    error = this.validate_json(pgm, request, msgtype) ;
     if (error) {
         error = 'Cannot send message. ' + error ;
         if (this.debug) {
@@ -551,10 +571,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                     MoneyNetworkAPIDemon.is_session(self.sessionid, function (is_session) {
                         var pgm = self.module + '.send_message is_session callback 6: ';
                         var get_and_decrypt, receipt_filename, error, query, wait_for_receipt ;
-
-                        console.log(pgm + 'todo: use demon if demon process is running');
                         if (self.debug) console.log(pgm + 'is_session = ' + is_session);
-                        // is_session = true
 
                         // fileGet and json_decrypt
                         get_and_decrypt = function (inner_path) {
@@ -571,8 +588,8 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                 // decrypt response
                                 self.decrypt_json(encrypted_response, function (response) {
                                     var pgm = self.module + '.send_message.get_and_decrypt decrypt_json callback 6.2: ';
-                                    // validate json
-                                    error = self.validate_json(pgm, response, 'receive') ;
+                                    // validate response
+                                    error = self.validate_json(pgm, response, request.msgtype) ;
                                     if (error) {
                                         error = request.msgtype + ' response is not valid. ' + error ;
                                         if (self.debug) {
@@ -582,6 +599,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                         }
                                         return cb({error: error}) ;
                                     }
+
 
                                     // return decrypted response
                                     if (self.debug) console.log(pgm + 'response = ' + JSON.stringify(response));
@@ -716,6 +734,8 @@ var MoneyNetworkAPIDemon = (function () {
     function wait_for_file(receipt_filename, timeout_at, cb) {
         var pgm = module + '.wait_for_message: ' ;
         if (done[receipt_filename]) return 'Error. ' + receipt_filename + ' already done or callback object already defined' ;
+        if (!timeout_at) timeout_at = (new Date().getTime()) + 30000 ;
+        if (!cb) cb = function() {} ;
         done[receipt_filename] = { timeout_at: timeout_at, cb: cb} ;
         if (debug) console.log(pgm + 'added a callback function for ' + receipt_filename) ;
         return null ;

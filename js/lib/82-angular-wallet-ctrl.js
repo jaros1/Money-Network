@@ -48,11 +48,13 @@ angular.module('MoneyNetwork')
             encrypt2.setup_encryption({user_path: user_path});
         }) ;
 
-        // callback function to handle incoming messages from wallet session(s):
+        // todo: save data received from wallet sessions in localStorage
+        var todo_saved_data = {} ;
+
+        // generic callback function to handle incoming messages from wallet session(s):
         // - save_data message. save (encrypted) data in MoneyNetwork localStorage
         // - get_data message. return (encrypted) data saved in MoneyNetwork localStorage
         // - delete_data message. delete data saved in MoneyNetwork localStorage
-        var todo_saved_data = {} ;
         function process_incoming_message (filename) {
             var pgm = controller + '.process_incoming_message: ' ;
             var debug_seq ;
@@ -68,53 +70,66 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 encrypted_json = JSON.parse(json_str) ;
-                encrypt2.decrypt_json(encrypted_json, function (json) {
+                encrypt2.decrypt_json(encrypted_json, function (request) {
                     var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
                     var timestamp, error, response, i, key, value ;
-                    // get any response timestamp before validation
-                    timestamp = json.response ; delete json.response ;
+                    // remove any response timestamp before validation (used in response filename)
+                    timestamp = request.response ; delete request.response ;
                     // validate and process incoming json message and process
-                    error = encrypt2.validate_json(pgm, json, 'receive') ;
-                    if (error) error = 'message is invalid. ' + error ;
-                    else if (json.msgtype == 'pubkeys') {
+                    response = { msgtype: 'response' } ;
+                    error = encrypt2.validate_json(pgm, request) ;
+                    if (error) response.error = 'message is invalid. ' + error ;
+                    else if (request.msgtype == 'pubkeys') {
                         // received public keys from wallet session (test5)
                         if (encrypt2.other_session_pubkey || encrypt2.other_session_pubkey2) {
-                            error = 'Public keys have already been received. Keeping old public keys' ;
+                            response.error = 'Public keys have already been received. Keeping old public keys' ;
                         }
                         else {
-                            encrypt2.setup_encryption({pubkey: json.pubkey, pubkey2: json.pubkey2}) ;
+                            encrypt2.setup_encryption({pubkey: request.pubkey, pubkey2: request.pubkey2}) ;
                         }
                     }
-                    else if (json.msgtype == 'save_data') {
+                    else if (request.msgtype == 'save_data') {
                         // received data_data request from wallet session.
                         console.log(pgm + 'todo: save data in localStorage') ;
                         if (!todo_saved_data[test_sessionid]) todo_saved_data[test_sessionid] = {} ;
-                        for (i=0 ; i<json.data.length ; i++) {
-                            key = json.data[i].key ;
-                            value = json.data[i].value ;
+                        for (i=0 ; i<request.data.length ; i++) {
+                            key = request.data[i].key ;
+                            value = request.data[i].value ;
                             todo_saved_data[test_sessionid][key] = value ;
                         }
                     }
-                    else if (json.msgtype == 'delete_data') {
-                        // received data_data request from wallet session.
-                        console.log(pgm + 'todo: save data in localStorage') ;
+                    else if (request.msgtype == 'delete_data') {
+                        // received delete_data request from wallet session.
+                        console.log(pgm + 'todo: delete data saved in localStorage') ;
                         if (!todo_saved_data[test_sessionid]) null ; // OK - no data
-                        else if (!json.keys) delete todo_saved_data[test_sessionid] ; // OK - no keys array - delete all data
+                        else if (!request.keys) delete todo_saved_data[test_sessionid] ; // OK - no keys array - delete all data
                         else {
-                            for (i=0 ; i<json.keys.length ; i++) {
-                                key = json.keys[i].key ;
+                            // keys array. deleted requested keys
+                            for (i=0 ; i<request.keys.length ; i++) {
+                                key = request.keys[i].key ;
                                 delete todo_saved_data[test_sessionid][key] ;
                             }
                         }
                     }
-                    else error = 'Unknown msgtype ' + json.msgtype ;
-                    console.log(pgm + 'json = ' + JSON.stringify(json) + ', error = ' + error) ;
+                    else if (request.msgtype == 'get_data') {
+                        // received get_data request from wallet session. return data response
+                        console.log(pgm + 'todo: get data saved in localStorage') ;
+                        response = { msgtype: 'data', data: []} ;
+                        for (i=0 ; i<request.keys.length ; i++) {
+                            key = request.keys[i].key ;
+                            if (!todo_saved_data[test_sessionid]) continue ; // OK - no data - return empty data array
+                            if (!todo_saved_data[test_sessionid].hasOwnProperty(key)) continue ; // OK - no data with this key
+                            value = todo_saved_data[test_sessionid][key] ;
+                            response.data.push({key: key, value: value}) ;
+                        } // for i
+                    }
+                    else error = 'Unknown msgtype ' + request.msgtype ;
+                    console.log(pgm + 'json = ' + JSON.stringify(request) + ', error = ' + error) ;
 
                     // send response
                     if (!timestamp) return ; // exit. no response requested
-                    response = { msgtype: 'response' } ;
                     if (error) response.error = error ;
-                    encrypt2.send_message(response, {timestamp: timestamp}, function (res)  {
+                    encrypt2.send_message(response, {timestamp: timestamp, msgtype: request.msgtype}, function (res)  {
                         var pgm = controller + '.process_incoming_message send_message callback 3: ';
                         console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     }) ; // send_message callback 3
@@ -396,7 +411,6 @@ angular.module('MoneyNetwork')
                 else {
                     // start test 5. wait for wallet feedback
                     info.status = 'Running' ;
-                    console.log(pgm + 'todo: try a test without publish. siteSign should update content.json and database');
 
                     // wait for session to start. expects a pubkeys message from MoneyNetwork wallet session
                     // no event file done event. wait for db update. max 1 minute
