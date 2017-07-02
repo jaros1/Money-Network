@@ -73,6 +73,7 @@ angular.module('MoneyNetwork')
                 encrypt2.decrypt_json(encrypted_json, function (request) {
                     var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
                     var timestamp, error, response, i, key, value ;
+                    console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                     // remove any response timestamp before validation (used in response filename)
                     timestamp = request.response ; delete request.response ;
                     // validate and process incoming json message and process

@@ -161,21 +161,30 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     }) ; // eciesDecrypt callback 1
 }; // decrypt_2
 
+
 // 3: symmetric encrypt/decrypt using sessionid
+MoneyNetworkAPI.prototype.aes_encrypt = function (text, password) {
+    var output_wa ;
+    output_wa = CryptoJS.AES.encrypt(text, password, {format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+    return output_wa.toString(CryptoJS.format.OpenSSL);
+} ; // aes_encrypt
 MoneyNetworkAPI.prototype.encrypt_3 = function (encrypted_text_2, cb) {
     var pgm = this.module + '.encrypt_3: ' ;
     if (!this.sessionid) throw pgm + 'encrypt_3 failed. sessionid is missing in encryption setup' ;
-    var output_wa, encrypted_text_3 ;
-    output_wa = CryptoJS.AES.encrypt(encrypted_text_2, this.sessionid, {format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-    encrypted_text_3 = output_wa.toString(CryptoJS.format.OpenSSL);
+    var encrypted_text_3 ;
+    encrypted_text_3 = this.aes_encrypt(encrypted_text_2, this.sessionid);
     cb(encrypted_text_3) ;
 }; // encrypt_3
+MoneyNetworkAPI.prototype.aes_decrypt = function (text, password) {
+    var output_wa ;
+    output_wa = CryptoJS.AES.decrypt(text, password, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+    return output_wa.toString(CryptoJS.enc.Utf8);
+}; // aes_decrypt
 MoneyNetworkAPI.prototype.decrypt_3 = function (encrypted_text_3, cb) {
     var pgm = this.module + '.decrypt_3: ' ;
-    var output_wa, encrypted_text_2 ;
+    var encrypted_text_2 ;
     if (!this.sessionid) throw pgm + 'decrypt_3 failed. sessionid is missing in encryption setup' ;
-    output_wa = CryptoJS.AES.decrypt(encrypted_text_3, this.sessionid, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-    encrypted_text_2 = output_wa.toString(CryptoJS.enc.Utf8);
+    encrypted_text_2 = this.aes_decrypt(encrypted_text_3, this.sessionid);
     cb(encrypted_text_2)
 }; // decrypt_3
 
@@ -345,11 +354,12 @@ MoneyNetworkAPI.json_schemas = {
     "pubkeys": {
         "type": 'object',
         "title": 'Send pubkeys (JSEncrypt and cryptMessage) to other session',
-        "description": 'MoneyNetwork: sends unencrypted pubkeys message to Wallet. Wallet: returns an encrypted pubkeys message to MoneyNetwork. pubkey is public key from JSEncrypt and pubkey2 is public key from cryptMessage',
+        "description": 'MoneyNetwork: sends unencrypted pubkeys message to Wallet. Wallet: returns an encrypted pubkeys message to MoneyNetwork including a session password. pubkey is public key from JSEncrypt. pubkey2 is public key from cryptMessage. Password used for session restore',
         "properties": {
             "msgtype": { "type": 'string', "pattern": '^pubkeys$'},
             "pubkey": { "type": 'string'},
-            "pubkey2": { "type": 'string'}
+            "pubkey2": { "type": 'string'},
+            "password": { "type": 'string'}
         },
         "required": ['msgtype', 'pubkey', 'pubkey2'],
         "additionalProperties": false
@@ -462,6 +472,7 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, request_m
         if (request_msgtype == 'response') return 'Invalid request msgtype ' + request_msgtype ;
         if (!MoneyNetworkAPI.json_schemas[request_msgtype]) return 'Unknown request msgtype ' + request_msgtype ;
         if (json.msgtype == 'response') null ; // OK response for any request msgtype
+        else if ((request_msgtype == 'pubkeys') && (json.msgtype == 'pubkeys')) null ; // OK combination
         else if ((request_msgtype == 'get_data') && (json.msgtype == 'data')) null ; // OK combination
         else return 'Invalid ' + request_msgtype + ' request ' + json.msgtype + ' response combination' ;
     }
