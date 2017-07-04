@@ -9,6 +9,9 @@ var MoneyNetworkAPI = function (options) {
     var pgm = 'new MoneyNetworkAPI: ' ;
     var sha256, moneynetwork_session_filename, wallet_session_filename ;
     options = options || {};
+    this.module = 'MoneyNetworkAPI' ; // for debug messages
+    this.version = '0.0.1' ; // very unstable
+    this.debug = options.hasOwnProperty('debug') ? options.debug : false ;
     this.ZeroFrame = options.ZeroFrame ;                   // inject ZeroFrame API class
     // todo: wallet true/false - could be set in a siteInfo callback. site_info.address != '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk'
     this.wallet = options.hasOwnProperty('wallet') ? options.wallet : true ; // wallet session? false for MoneyNetwork. true for MoneyNetwork wallets. default true
@@ -19,8 +22,6 @@ var MoneyNetworkAPI = function (options) {
     this.this_session_userid2 = options.userid2||0 ;       // cryptMessage "userid" for this session (decrypt ingoing messages). default 0
     this.this_user_path = options.user_path ;              // user_path for this session. required for sending encrypted messages to other session
     this.this_optional = options.optional ;                // optional files pattern. add only if MoneyNetworkAPI should ensure optional files support in content.json file before sending message to other session
-    this.debug = options.hasOwnProperty('debug') ? options.debug : false ;
-    this.module = 'MoneyNetworkAPI' ; // for debug messages
     if (this.sessionid) {
         // setup filenames used in MoneyNetwork <=> MoneyNetwork wallet communication
         sha256 = CryptoJS.SHA256(this.sessionid).toString() ;
@@ -29,12 +30,19 @@ var MoneyNetworkAPI = function (options) {
         this.this_session_filename = this.wallet ? wallet_session_filename : moneynetwork_session_filename ;
         this.other_session_filename = this.wallet ? moneynetwork_session_filename : wallet_session_filename ;
     }
+    else {
+        // unknown sessionid. used for get_password message (session restore)
+        if (options.this_session_filename) this.this_session_filename = options.this_session_filename ;
+        if (options.other_session_filename) this.other_session_filename = options.other_session_filename ;
+    }
 } ; // MoneyNetworkAPI
 
 MoneyNetworkAPI.prototype.setup_encryption = function (options) {
     var pgm = this.module + '.setup_encryption: ' ;
     var key, missing_keys, sha256, moneynetwork_session_filename, wallet_session_filename ;
+    if (options.hasOwnProperty('debug'))  this.debug = options.debug ;
     if (options.ZeroFrame) this.ZeroFrame = options.ZeroFrame ;
+    // todo: wallet true/false - could be set in a siteInfo callback. site_info.address != '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk'
     if (options.hasOwnProperty('wallet'))  this.wallet = options.wallet ;
     if (options.sessionid) this.sessionid = options.sessionid ;
     if (options.pubkey)    this.other_session_pubkey = options.pubkey ;
@@ -43,7 +51,6 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
     if (options.hasOwnProperty('userid2')) this.this_session_userid2 = options.userid2 ;
     if (options.user_path) this.this_user_path = options.user_path ;
     if (options.optional)  this.this_optional = options.optional ;
-    if (options.hasOwnProperty('debug'))  this.debug = options.debug ;
     if (this.sessionid) {
         // setup filenames used in MoneyNetwork <=> MoneyNetwork wallet communication
         sha256 = CryptoJS.SHA256(this.sessionid).toString() ;
@@ -51,6 +58,11 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
         wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
         this.this_session_filename = this.wallet ? wallet_session_filename : moneynetwork_session_filename ;
         this.other_session_filename = this.wallet ? moneynetwork_session_filename : wallet_session_filename ;
+    }
+    else {
+        // unknown sessionid. used for get_password message (session restore)
+        if (options.this_session_filename) this.this_session_filename = options.this_session_filename ;
+        if (options.other_session_filename) this.other_session_filename = options.other_session_filename ;
     }
     if (!this.debug) return ;
     // debug: check encryption setup status:
@@ -498,7 +510,7 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, request_m
 // - cb: callback. returns an empty hash, hash with an error messsage or response
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
-    var self, response, timestamp, msgtype, error, request_at, timeout_at, month, year;
+    var self, response, timestamp, msgtype, encryptions, error, request_at, timeout_at, month, year;
     self = this;
 
     // get params
@@ -506,6 +518,8 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     response = options.response;
     timestamp = options.timestamp;
     msgtype = options.msgtype ;
+    encryptions = options.hasOwnProperty('encryptions') ? options.encryptions : [1,2,3] ;
+    if (typeof encryptions == 'number') encryptions = [encryptions] ;
     if (!cb) cb = function () {};
 
     // check setup
@@ -514,13 +528,13 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     if (!this.ZeroFrame.site_info) return cb({error: 'Cannot send message. ZeroFrame is not finished loading'});
     if (!this.ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot send message. No cert_user_id. ZeroNet certificate is missing'});
     // Outgoing encryption
-    if (!this.other_session_pubkey) return cb({error: 'Cannot JSEncrypt encrypt outgoing message. pubkey is missing in encryption setup'}); // encrypt_1
-    if (!this.other_session_pubkey2) return cb({error: 'Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'}); // encrypt_2
-    if (!this.sessionid) return cb({error: 'Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'}); // encrypt_3
+    if (!this.other_session_pubkey && (encryptions.indexOf(1) != -1)) return cb({error: 'Cannot JSEncrypt encrypt outgoing message. pubkey is missing in encryption setup'}); // encrypt_1
+    if (!this.other_session_pubkey2 && (encryptions.indexOf(2) != -1)) return cb({error: 'Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'}); // encrypt_2
+    if (!this.sessionid && (encryptions.indexOf(3) != -1)) return cb({error: 'Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'}); // encrypt_3
     if (!this.this_user_path) return cb({error: 'Cannot send message. user_path is missing in setup'});
     if (response) {
         // Ingoing encryption
-        if (!this.this_session_prvkey) return cb({error: 'Cannot JSEncrypt expected ingoing receipt. prvkey is missing in encryption setup'}); // decrypt_1
+        if (!this.this_session_prvkey && (encryptions.indexOf(1) != -1)) return cb({error: 'Cannot JSEncrypt decrypt expected ingoing receipt. prvkey is missing in encryption setup'}); // decrypt_1
         // decrypt_2 OK. cert_user_id already checked
         // decrypt_3 OK. sessionid already checked
     }
@@ -551,7 +565,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     }
 
     // 1: encrypt json
-    this.encrypt_json(request, [1, 2, 3], function (encrypted_json) {
+    this.encrypt_json(request, encryptions, function (encrypted_json) {
         var pgm = self.module + '.send_message encrypt_json callback 1: ';
         var user_path;
         if (self.debug) console.log(pgm + 'encrypted_json = ' + JSON.stringify(encrypted_json));
