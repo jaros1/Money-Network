@@ -29,6 +29,7 @@ var MoneyNetworkAPI = function (options) {
         wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
         this.this_session_filename = this.wallet ? wallet_session_filename : moneynetwork_session_filename ;
         this.other_session_filename = this.wallet ? moneynetwork_session_filename : wallet_session_filename ;
+        this.unlock_pwd2 = sha256.substr(27,10) ; // for restore session. unlock password in get_password request
     }
     else {
         // unknown sessionid. used for get_password message (session restore)
@@ -58,6 +59,7 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
         wallet_session_filename = sha256.substr(sha256.length-10); // last 10 characters of sha256 signature
         this.this_session_filename = this.wallet ? wallet_session_filename : moneynetwork_session_filename ;
         this.other_session_filename = this.wallet ? moneynetwork_session_filename : wallet_session_filename ;
+        this.unlock_pwd2 = sha256.substr(27,10) ; // for restore session. unlock password in get_password request
     }
     else {
         // unknown sessionid. used for get_password message (session restore)
@@ -454,6 +456,31 @@ MoneyNetworkAPI.json_schemas = {
         "additionalProperties": false
     }, // delete_data
 
+    "get_password": {
+        "type": 'object',
+        "title": 'Wallet: Restore old session. Request pwd2 from MN',
+        "description": 'Pwd2 was sent to MN in first pubkeys message. Session restore. Unlock and return pwd2 to wallet session',
+        "properties": {
+            "msgtype": { "type": 'string', "pattern": '^get_password$'},
+            "pubkey": { "type": 'string'},
+            "pubkey2": { "type": 'string'},
+            "unlock_pwd2": { "type": 'string'}
+        },
+        "required": ["msgtype","pubkey","pubkey2","unlock_pwd2"],
+        "additionalProperties": false
+    }, // get_password
+
+    "password": {
+        "type": 'object',
+        "title": 'MN: Restore old session. Return unlocked password pwd2 to wallet session',
+        "properties": {
+            "msgtype": { "type": 'string', "pattern": '^password$'},
+            "password": { "type": 'string'}
+        },
+        "required": ["msgtype","password"],
+        "additionalProperties": false
+    }, // password
+
     "response": {
         "type": 'object',
         "title": 'Generic response with an optional error message',
@@ -463,7 +490,7 @@ MoneyNetworkAPI.json_schemas = {
         },
         "required": ['msgtype'],
         "additionalProperties": false
-    } // receipt
+    } // response
 
 } ; // json_schemas
 
@@ -486,6 +513,7 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, request_m
         if (json.msgtype == 'response') null ; // OK response for any request msgtype
         else if ((request_msgtype == 'pubkeys') && (json.msgtype == 'pubkeys')) null ; // OK combination
         else if ((request_msgtype == 'get_data') && (json.msgtype == 'data')) null ; // OK combination
+        else if ((request_msgtype == 'get_password') && (json.msgtype == 'password')) null ; // OK combination
         else return 'Invalid ' + request_msgtype + ' request ' + json.msgtype + ' response combination' ;
     }
     if (typeof tv4 === 'undefined') {
@@ -548,7 +576,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
             console.log(pgm + error);
             console.log(pgm + 'request = ' + JSON.stringify(request));
         }
-        cb({error: error}) ;
+        return cb({error: error}) ;
     }
 
     // receipt?
@@ -595,7 +623,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                     // 6: is MoneyNetworkAPIDemon monitoring incoming messages for this sessionid?
                     MoneyNetworkAPIDemon.is_session(self.sessionid, function (is_session) {
                         var pgm = self.module + '.send_message is_session callback 6: ';
-                        var get_and_decrypt, receipt_filename, error, query, wait_for_receipt ;
+                        var get_and_decrypt, response_filename, error, query, wait_for_response ;
                         if (self.debug) console.log(pgm + 'is_session = ' + is_session);
 
                         // fileGet and json_decrypt
@@ -633,10 +661,10 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             }); // fileGet callback 6.1
                         }; // get_and_decrypt
 
-                        receipt_filename = self.other_session_filename + '.' + response;
+                        response_filename = self.other_session_filename + '.' + response;
                         if (is_session) {
                             // demon is running and is monitoring incoming messages for this sessionid
-                            error = MoneyNetworkAPIDemon.wait_for_file(receipt_filename, timeout_at, get_and_decrypt);
+                            error = MoneyNetworkAPIDemon.wait_for_file(request, response_filename, timeout_at, get_and_decrypt);
                             if (error) return cb({error: error});
                         }
                         else {
@@ -646,22 +674,22 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             query =
                                 "select 'merged-MoneyNetwork' || '/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
                                 "from files_optional, json " +
-                                "where files_optional.filename = '" + receipt_filename + "' " +
+                                "where files_optional.filename = '" + response_filename + "' " +
                                 "and json.json_id = files_optional.json_id";
 
                             // loop
-                            wait_for_receipt = function () {
-                                var pgm = self.module + '.send_message.wait_for_receipt 7: ';
+                            wait_for_response = function () {
+                                var pgm = self.module + '.send_message.wait_for_response 7: ';
                                 var now;
                                 now = new Date().getTime();
-                                if (now > timeout_at) return cb({error: 'Timeout while waiting for receipt. Json message was ' + JSON.stringify(request) + '. Expected receipt filename was ' + receipt_filename});
+                                if (now > timeout_at) return cb({error: 'Timeout while waiting for response. Request was ' + JSON.stringify(request) + '. Expected response filename was ' + response_filename});
                                 // 7: dbQuery
                                 self.ZeroFrame.cmd("dbQuery", [query], function (res) {
                                     var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 8: ';
                                     var inner_path8;
                                     if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error});
                                     if (!res.length) {
-                                        setTimeout(wait_for_receipt, 500);
+                                        setTimeout(wait_for_response, 500);
                                         return;
                                     }
                                     inner_path8 = res[0].inner_path;
@@ -669,8 +697,8 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     get_and_decrypt(inner_path8);
 
                                 }); // dbQuery callback 8
-                            }; // wait_for_receipt 7
-                            setTimeout(wait_for_receipt, 250);
+                            }; // wait_for_response 7
+                            setTimeout(wait_for_response, 250);
                         } // else
 
                         }
@@ -756,13 +784,20 @@ var MoneyNetworkAPIDemon = (function () {
     } // is_session
 
     // register callback to handle incoming message with this filename
-    function wait_for_file(receipt_filename, timeout_at, cb) {
+    function wait_for_file(request, response_filename, timeout_at, cb) {
         var pgm = module + '.wait_for_message: ' ;
-        if (done[receipt_filename]) return 'Error. ' + receipt_filename + ' already done or callback object already defined' ;
+        // check parameters
+        if (typeof request != 'object') throw pgm + 'invalid call. expected param 1 request to be an object (json). request = ' + JSON.stringify(request) ;
+        if (!request.msgtype) throw pgm + 'invalid call. expected param 1 request to have a msgtype. request = ' + JSON.stringify(request) ;
+        if (typeof response_filename != 'string') throw pgm + 'invalid call. expected param 2 response_filename to be a string. response_filename = ' + JSON.stringify(response_filename) ;
+        if (!response_filename.match(/^[0-9a-f]{10}\.[0-9]{13}/)) throw pgm + 'invalid call. invalid param 2 response_filename = ' + response_filename ;
+        if (timeout_at && (typeof timeout_at != 'number')) throw pgm + 'invalid call. invalid param 3 timeout 3 = ' + JSON.stringify(timeout_at) ;
+        if (cb && (typeof cb != 'function')) throw pgm + 'invalid call. invalid param 4 cb. expected a function. cb = ' + JSON.stringify(cb);
+        if (done[response_filename]) return 'Error. ' + response_filename + ' already done or callback object already defined' ;
         if (!timeout_at) timeout_at = (new Date().getTime()) + 30000 ;
         if (!cb) cb = function() {} ;
-        done[receipt_filename] = { timeout_at: timeout_at, cb: cb} ;
-        if (debug) console.log(pgm + 'added a callback function for ' + receipt_filename) ;
+        done[response_filename] = { request: request, timeout_at: timeout_at, cb: cb} ;
+        if (debug) console.log(pgm + 'added a callback function for ' + response_filename) ;
         return null ;
     } // wait_for_file
 
@@ -776,10 +811,10 @@ var MoneyNetworkAPIDemon = (function () {
             if (done[filename] == true) continue ;
             if (done[filename].timeout_at > now) continue ;
             try {
-                done[filename].cb({error: 'Timeout while waiting for ' + filename}) ;
+                done[filename].cb({error: 'Timeout while waiting for ' + filename + '. request was ' + JSON.stringify(done[filename].request)}) ;
             }
             catch (e) {
-                console.log(pgm + 'Error when processing incomming message ' + filename + '. error = ' + e.message)
+                console.log(pgm + 'Error when processing incomming message ' + filename + '. error = ' + e.message + '. request was ' + JSON.stringify(done[filename].request))
             }
             done[filename] = true ;
         } // for i

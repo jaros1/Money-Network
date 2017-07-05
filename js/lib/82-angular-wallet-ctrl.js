@@ -49,12 +49,13 @@ angular.module('MoneyNetwork')
         }) ;
 
         // todo: save data received from wallet sessions in localStorage
-        var todo_saved_data = {} ;
+        var todo_saved_data = {} ; // sessionid => hash with saved wallet data
 
         // generic callback function to handle incoming messages from wallet session(s):
         // - save_data message. save (encrypted) data in MoneyNetwork localStorage
         // - get_data message. return (encrypted) data saved in MoneyNetwork localStorage
         // - delete_data message. delete data saved in MoneyNetwork localStorage
+        var SESSION_PASSWORD_KEY = '$session_password' ; // special key used for session restore password
         function process_incoming_message (filename) {
             var pgm = controller + '.process_incoming_message: ' ;
             var debug_seq ;
@@ -72,8 +73,9 @@ angular.module('MoneyNetwork')
                 encrypted_json = JSON.parse(json_str) ;
                 encrypt2.decrypt_json(encrypted_json, function (request) {
                     var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
-                    var timestamp, error, response, i, key, value ;
+                    var timestamp, error, response, i, key, value, encryptions ;
                     console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                    encryptions = [1,2,3] ;
                     // remove any response timestamp before validation (used in response filename)
                     timestamp = request.response ; delete request.response ;
                     // validate and process incoming json message and process
@@ -87,6 +89,16 @@ angular.module('MoneyNetwork')
                         }
                         else {
                             encrypt2.setup_encryption({pubkey: request.pubkey, pubkey2: request.pubkey2}) ;
+                            console.log(pgm + 'save password if password in pubkeys message. used for wallet session restore. See get_password request');
+                            if (request.password) {
+                                if (!todo_saved_data[test_sessionid]) todo_saved_data[test_sessionid] = {} ;
+                                todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY] = {
+                                    password: request.password,
+                                    pubkey: encrypt2.other_session_pubkey,
+                                    pubkey2: encrypt2.other_session_pubkey2,
+                                    unlock_pwd2: encrypt2.unlock_pwd2
+                                };
+                            }
                         }
                     }
                     else if (request.msgtype == 'save_data') {
@@ -95,6 +107,7 @@ angular.module('MoneyNetwork')
                         if (!todo_saved_data[test_sessionid]) todo_saved_data[test_sessionid] = {} ;
                         for (i=0 ; i<request.data.length ; i++) {
                             key = request.data[i].key ;
+                            if (key == SESSION_PASSWORD_KEY) continue ;
                             value = request.data[i].value ;
                             todo_saved_data[test_sessionid][key] = value ;
                         }
@@ -103,11 +116,18 @@ angular.module('MoneyNetwork')
                         // received delete_data request from wallet session.
                         console.log(pgm + 'todo: delete data saved in localStorage') ;
                         if (!todo_saved_data[test_sessionid]) null ; // OK - no data
-                        else if (!request.keys) delete todo_saved_data[test_sessionid] ; // OK - no keys array - delete all data
+                        else if (!request.keys) {
+                            // OK - no keys array - delete all data
+                            for (key in todo_saved_data[test_sessionid]) {
+                                if (key == SESSION_PASSWORD_KEY) continue ;
+                                delete todo_saved_data[test_sessionid][key] ;
+                            }
+                        }
                         else {
                             // keys array. deleted requested keys
                             for (i=0 ; i<request.keys.length ; i++) {
                                 key = request.keys[i].key ;
+                                if (key == SESSION_PASSWORD_KEY) continue ;
                                 delete todo_saved_data[test_sessionid][key] ;
                             }
                         }
@@ -124,13 +144,30 @@ angular.module('MoneyNetwork')
                             response.data.push({key: key, value: value}) ;
                         } // for i
                     }
+                    else if (request.msgtype == 'get_password') {
+                        // received get_password request from wallet session. return password is any. Encrypt response with cryptMessage only
+                        console.log(pgm + 'todo_saved_data[test_sessionid] = ' + JSON.stringify(todo_saved_data[test_sessionid])) ;
+                        console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                        if (todo_saved_data[test_sessionid] &&
+                            todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY] &&
+                            (todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].pubkey == request.pubkey) &&
+                            (todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].pubkey2 == request.pubkey2) &&
+                            (todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].unlock_pwd2 == request.unlock_pwd2)) {
+                            encryptions = [2] ; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
+                            response = {
+                                msgtype: 'password',
+                                password: todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].password
+                            }
+                        }
+                        else response.error = 'Not found' ;
+                    }
                     else error = 'Unknown msgtype ' + request.msgtype ;
                     console.log(pgm + 'json = ' + JSON.stringify(request) + ', error = ' + error) ;
 
                     // send response
                     if (!timestamp) return ; // exit. no response requested
                     if (error) response.error = error ;
-                    encrypt2.send_message(response, {timestamp: timestamp, msgtype: request.msgtype}, function (res)  {
+                    encrypt2.send_message(response, {timestamp: timestamp, msgtype: request.msgtype, encryptions: encryptions}, function (res)  {
                         var pgm = controller + '.process_incoming_message send_message callback 3: ';
                         console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     }) ; // send_message callback 3
@@ -410,7 +447,7 @@ angular.module('MoneyNetwork')
                     self.test_running = false ; ;
                 }
                 else {
-                    // start test 5. wait for wallet feedback
+                    // start test 5. wait for wallet feedback (pubkeys message)
                     info.status = 'Running' ;
 
                     // wait for session to start. expects a pubkeys message from MoneyNetwork wallet session
