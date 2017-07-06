@@ -444,60 +444,27 @@ angular.module('MoneyNetwork')
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // test done
                     info.disabled = true ;
-                    self.test_running = false ; ;
+                    self.test_running = false ;
                 }
                 else {
                     // start test 5. wait for wallet feedback (pubkeys message)
                     info.status = 'Running' ;
 
                     // wait for session to start. expects a pubkeys message from MoneyNetwork wallet session
-                    // no event file done event. wait for db update. max 1 minute
-                    sessionid_sha256 = CryptoJS.SHA256(test_sessionid).toString();
-                    query =
-                        "select json.directory, files_optional.filename, keyvalue.value as modified " +
-                        "from files_optional, json, keyvalue " +
-                        "where files_optional.filename like '" + wallet_session_filename + ".%' " +
-                        "and json.json_id = files_optional.json_id " +
-                        "and keyvalue.json_id = json.json_id " +
-                        "and keyvalue.key = 'modified' " +
-                        "and keyvalue.value > '" + ('' + test_session_at).substr(0,10) + "' " +
-                        "order by filename" ;
-                    MoneyNetworkHelper.debug('select', 'query 18 = ' + query) ;
+                    // incoming messages are received by MoneyNetworkAPI.demon process in process_incoming_message callback
+                    // wait for pubkeys information to be inserted into todo_saved_data hash. wait max 1 minute
                     var check_session = function(cb, count) {
-                        var debug_seq ;
+                        var job ;
                         if (!count) count = 0;
                         if (count > 60) return cb({ error: "timeout" }) ;
-                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 18. count = ' + count) ;
-                        ZeroFrame.cmd("dbQuery", [query], function (res) {
-                            var pgm = controller + '.test5.check_session dbQuery callback 1: ' ;
-                            var inner_path ;
-                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                            if (res.error) {
-                                console.log(pgm + 'Error when checking for new wallet session. error = ' + res.error) ;
-                                console.log(pgm + 'query = ' + query) ;
-                                return cb({ error: res.error }) ;
-                            }
-                            if (res.length == 0) {
-                                var job = function () { check_session(cb, count+1) };
-                                $timeout(job, 1000) ;
-                                return ;
-                            }
-                            // found message from wallet with correct filename .
-                            inner_path = 'merged-MoneyNetwork/' + res[0].directory + '/' + res[0].filename ;
-                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-                            ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (json_str) {
-                                var pgm = controller + '.test5.check_session fileGet callback 2: ' ;
-                                var json ;
-                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                if (!json_str) return (cb({ error: 'File ' + inner_path + ' was not found'})) ;
-                                console.log(pgm + 'encrypted_str = ' + JSON.stringify(json_str));
-                                json = JSON.parse(json_str) ;
-                                encrypt2.decrypt_json(json, function (json) {
-                                    console.log(pgm + 'json = ' + JSON.stringify(json)) ;
-                                    cb(json) ;
-                                }) ;
-                            }) ; // fileGet callback 2
-                        }); // dbQuery callback 1
+                        if (!todo_saved_data[test_sessionid] || !todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY]) {
+                            // wait. pubkeys message not yet received
+                            job = function () { check_session(cb, count+1) };
+                            $timeout(job, 1000) ;
+                            return ;
+                        }
+                        // done. pubkeys message from wallet session was received by process_incoming_message callback
+                        cb(todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY]) ;
                     }; // check_session
 
                     // start session check. should wait for max 60 seconds for session handshake

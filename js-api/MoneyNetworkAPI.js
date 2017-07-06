@@ -175,12 +175,30 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     }) ; // eciesDecrypt callback 1
 }; // decrypt_2
 
-
 // 3: symmetric encrypt/decrypt using sessionid
+var debug_aes_encrypt = {} ;
+var debug_aes_encrypt_running = 0 ;
 MoneyNetworkAPI.prototype.aes_encrypt = function (text, password) {
-    var output_wa ;
-    output_wa = CryptoJS.AES.encrypt(text, password, {format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
-    return output_wa.toString(CryptoJS.format.OpenSSL);
+    var pgm = this.module + '.aes_encrypt: ' ;
+    var iv, output_wa, encrypted_text, key ;
+    if (debug_aes_encrypt_running) console.log(pgm + 'warning. other aes_encrypt request is already running. debug_aes_encrypt_running = ' + debug_aes_encrypt_running) ;
+    debug_aes_encrypt_running++ ;
+    iv  = CryptoJS.enc.Hex.parse("00000000000000000000000000000000");
+    output_wa = CryptoJS.AES.encrypt(text, password, {iv: iv, format: CryptoJS.format.OpenSSL}); //, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+    encrypted_text = output_wa.toString(CryptoJS.format.OpenSSL);
+    key = JSON.stringify([text,password]) ;
+    if (debug_aes_encrypt[key] && (encrypted_text != debug_aes_encrypt[key])) {
+        console.log(pgm + 'error. aes_encrypt error. Two identical aes_encrypt calls with different output') ;
+        console.log(pgm + 'text = ' + text) ;
+        console.log(pgm + 'password = ' + password) ;
+        console.log(pgm + 'old encryption = ' + debug_aes_encrypt[key]) ;
+        console.log(pgm + 'new encryption = ' + encrypted_text) ;
+        debug_aes_encrypt_running-- ;
+        // throw pgm + 'error. aes_encrypt error. Two identical aes_encrypt calls with different output' ;
+    }
+    debug_aes_encrypt[key] = encrypted_text ;
+    debug_aes_encrypt_running-- ;
+    return encrypted_text ;
 } ; // aes_encrypt
 MoneyNetworkAPI.prototype.encrypt_3 = function (encrypted_text_2, cb) {
     var pgm = this.module + '.encrypt_3: ' ;
@@ -190,8 +208,9 @@ MoneyNetworkAPI.prototype.encrypt_3 = function (encrypted_text_2, cb) {
     cb(encrypted_text_3) ;
 }; // encrypt_3
 MoneyNetworkAPI.prototype.aes_decrypt = function (text, password) {
-    var output_wa ;
-    output_wa = CryptoJS.AES.decrypt(text, password, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
+    var output_wa, iv ;
+    iv  = CryptoJS.enc.Hex.parse("00000000000000000000000000000000");
+    output_wa = CryptoJS.AES.decrypt(text, password, {iv: iv, format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
     return output_wa.toString(CryptoJS.enc.Utf8);
 }; // aes_decrypt
 MoneyNetworkAPI.prototype.decrypt_3 = function (encrypted_text_3, cb) {
@@ -764,6 +783,7 @@ var MoneyNetworkAPIDemon = (function () {
             if (debug) console.log(pgm + 'sessionid = ' + sessionid + ', sha256 = ' + sha256 + ', wallet = ' + wallet + ', other_session_filename = ' + other_session_filename) ;
             if (sessions[other_session_filename]) return null ; // known sessionid
             start_demon = (Object.keys(sessions).length == 0) ;
+            console.log(pgm + 'monitoring other_session_filename ' + other_session_filename) ;
             sessions[other_session_filename] = { sessionid: sessionid, session_at: new Date().getTime() } ;
             if (start_demon) {
                 demon_id = setInterval(demon, (interval || 500)) ;
@@ -810,6 +830,7 @@ var MoneyNetworkAPIDemon = (function () {
         for (filename in done) {
             if (done[filename] == true) continue ;
             if (done[filename].timeout_at > now) continue ;
+            console.log(pgm + 'timeout. running callback for ' + filename) ;
             try {
                 done[filename].cb({error: 'Timeout while waiting for ' + filename + '. request was ' + JSON.stringify(done[filename].request)}) ;
             }
