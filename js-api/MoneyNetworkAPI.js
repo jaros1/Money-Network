@@ -341,11 +341,11 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
     this.get_content_json(function (content) {
         var inner_path, json_raw ;
         if (!content) return cb({error: 'fileGet content.json failed'}) ;
-        if (content.optional == self.this_optional) cb({}) ; // optional files support already OK
+        if (content.optional == self.this_optional) return cb({}) ; // optional files support already OK
         // add optional files support
         content.optional = self.this_optional ;
         // 2: write content.json
-        inner_path = this.this_user_path + 'content.json' ;
+        inner_path = self.this_user_path + 'content.json' ;
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
         self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
             var pgm = self.module + '.add_optional_files_support fileWrite callback 2: ';
@@ -511,7 +511,7 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, request_m
         // validate request => response combinations
         if (request_msgtype == 'response') return 'Invalid request msgtype ' + request_msgtype ;
         if (!MoneyNetworkAPI.json_schemas[request_msgtype]) return 'Unknown request msgtype ' + request_msgtype ;
-        if (json.msgtype == 'response') null ; // OK response for any request msgtype
+        if (json.msgtype == 'response') null ; // response OK for any request msgtype
         else if ((request_msgtype == 'pubkeys') && (json.msgtype == 'pubkeys')) null ; // OK combination
         else if ((request_msgtype == 'get_data') && (json.msgtype == 'data')) null ; // OK combination
         else if ((request_msgtype == 'get_password') && (json.msgtype == 'password')) null ; // OK combination
