@@ -31,7 +31,7 @@ angular.module('MoneyNetwork')
             console.log(pgm + 'moneynetwork_session_filename = ' + moneynetwork_session_filename);
             console.log(pgm + 'wallet_session_filename = ' + wallet_session_filename);
             // monitor incoming messages from this wallet session
-            MoneyNetworkAPIDemon.add_session(test_sessionid) ;
+            MoneyNetworkAPILib.add_session(test_sessionid) ;
         } // new_sessionid
 
         // messages between MoneyNetwork and MoneyNetwork wallet (session) will be encrypted with cryptMessage, JSEncrypt and sessionid
@@ -177,7 +177,7 @@ angular.module('MoneyNetwork')
         } // process_incoming_message
 
         // start demon. listen for incoming messages from wallet sessions
-        MoneyNetworkAPIDemon.init({debug: true, ZeroFrame: ZeroFrame, cb: process_incoming_message}) ;
+        MoneyNetworkAPILib.init({debug: true, ZeroFrame: ZeroFrame, cb: process_incoming_message}) ;
 
         self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?
         var tested_wallet_url = null ; // last tested url
