@@ -607,7 +607,7 @@ MoneyNetworkAPI.json_schemas = {
     "pubkeys": {
         "type": 'object',
         "title": 'Send pubkeys (JSEncrypt and cryptMessage) to other session',
-        "description": 'MoneyNetwork: sends unencrypted pubkeys message to Wallet. Wallet: returns an encrypted pubkeys message to MoneyNetwork including a session password. pubkey is public key from JSEncrypt. pubkey2 is public key from cryptMessage. Password used for session restore',
+        "description": 'MoneyNetwork: sends unencrypted pubkeys message to Wallet without a session password. Wallet: returns an encrypted pubkeys message to MoneyNetwork including a session password. pubkey is public key from JSEncrypt. pubkey2 is public key from cryptMessage. Password used for session restore. See get_password and password messages',
         "properties": {
             "msgtype": {"type": 'string', "pattern": '^pubkeys$'},
             "pubkey": {"type": 'string'},

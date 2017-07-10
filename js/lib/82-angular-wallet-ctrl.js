@@ -84,21 +84,19 @@ angular.module('MoneyNetwork')
                     if (error) response.error = 'message is invalid. ' + error ;
                     else if (request.msgtype == 'pubkeys') {
                         // received public keys from wallet session (test5)
-                        if (encrypt2.other_session_pubkey || encrypt2.other_session_pubkey2) {
-                            response.error = 'Public keys have already been received. Keeping old public keys' ;
+                        if (!request.password) response.error = 'Password is required in pubkeys message from wallet' ;
+                        else if (encrypt2.other_session_pubkey || encrypt2.other_session_pubkey2) {
+                            response.error = 'Warning. Public keys have already been received. Keeping old public keys and old session password' ;
                         }
                         else {
                             encrypt2.setup_encryption({pubkey: request.pubkey, pubkey2: request.pubkey2}) ;
-                            console.log(pgm + 'save password if password in pubkeys message. used for wallet session restore. See get_password request');
-                            if (request.password) {
-                                if (!todo_saved_data[test_sessionid]) todo_saved_data[test_sessionid] = {} ;
-                                todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY] = {
-                                    password: request.password,
-                                    pubkey: encrypt2.other_session_pubkey,
-                                    pubkey2: encrypt2.other_session_pubkey2,
-                                    unlock_pwd2: encrypt2.unlock_pwd2
-                                };
-                            }
+                            console.log(pgm + 'save session password. used for wallet session restore. See get_password and password messages');
+                            if (!todo_saved_data[test_sessionid]) todo_saved_data[test_sessionid] = {} ;
+                            todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY] = {
+                                password: request.password, // encrypted session password pwd2
+                                pubkey: encrypt2.other_session_pubkey,
+                                pubkey2: encrypt2.other_session_pubkey2
+                            };
                         }
                     }
                     else if (request.msgtype == 'save_data') {
@@ -147,22 +145,24 @@ angular.module('MoneyNetwork')
                     else if (request.msgtype == 'get_password') {
                         // received get_password request from wallet session. return password is any. Encrypt response with cryptMessage only
                         console.log(pgm + 'todo_saved_data[test_sessionid] = ' + JSON.stringify(todo_saved_data[test_sessionid])) ;
-                        console.log(pgm + 'request = ' + JSON.stringify(request)) ;
-                        if (todo_saved_data[test_sessionid] &&
-                            todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY] &&
-                            (todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].pubkey == request.pubkey) &&
-                            (todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].pubkey2 == request.pubkey2) &&
-                            (todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].unlock_pwd2 == request.unlock_pwd2)) {
-                            encryptions = [2] ; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
+                        console.log(pgm + 'todo: max number invalid get_password requests') ;
+                        // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                        encryptions = [2] ; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
+                        if (!todo_saved_data[test_sessionid] || !todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY]) response.error = 'Not found' ;
+                        else if (todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].pubkey != request.pubkey) response.error = 'Not found pubkey' ;
+                        else if (todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].pubkey2 != request.pubkey2) response.error = 'Not found pubkey2' ;
+                        else if (encrypt2.unlock_pwd2 != request.unlock_pwd2) response.error = 'Not found unlock_pwd2' ;
+                        else {
                             response = {
                                 msgtype: 'password',
                                 password: todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY].password
                             }
                         }
-                        else response.error = 'Not found' ;
                     }
                     else error = 'Unknown msgtype ' + request.msgtype ;
-                    console.log(pgm + 'json = ' + JSON.stringify(request) + ', error = ' + error) ;
+                    console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                    console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                    console.log(pgm + 'encryptions = ' + JSON.stringify(encryptions)) ;
 
                     // send response
                     if (!timestamp) return ; // exit. no response requested
