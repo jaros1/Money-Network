@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
 
-    .controller('WalletCtrl', ['$rootScope', '$window', '$location', '$timeout', 'MoneyNetworkService',
-                     function ($rootScope, $window, $location, $timeout, moneyNetworkService)
+    .controller('WalletCtrl', ['$rootScope', '$window', '$location', '$timeout', 'MoneyNetworkService', 'MoneyNetworkHubService',
+                     function ($rootScope, $window, $location, $timeout, moneyNetworkService, moneyNetworkHubService)
     {
         var self = this;
         var controller = 'WalletCtrl';
@@ -34,19 +34,6 @@ angular.module('MoneyNetwork')
             MoneyNetworkAPILib.add_session(test_sessionid) ;
         } // new_sessionid
 
-        // messages between MoneyNetwork and MoneyNetwork wallet (session) will be encrypted with cryptMessage, JSEncrypt and sessionid
-        // todo: messages will be deleted when read and processed
-        var encrypt2 = new MoneyNetworkAPI({ZeroFrame: ZeroFrame, wallet: false, debug: true}) ;
-        encrypt2.setup_encryption({
-            prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
-            userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
-        }) ;
-        // get user_path for encrypt2 setup. used for responses to ingoing requests
-        moneyNetworkService.get_my_user_hub(function (hub) {
-            var user_path ;
-            user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
-            encrypt2.setup_encryption({user_path: user_path});
-        }) ;
 
         // todo: save data received from wallet sessions in localStorage
         var todo_saved_data = {} ; // sessionid => hash with saved wallet data
@@ -55,8 +42,8 @@ angular.module('MoneyNetwork')
         // - save_data message. save (encrypted) data in MoneyNetwork localStorage
         // - get_data message. return (encrypted) data saved in MoneyNetwork localStorage
         // - delete_data message. delete data saved in MoneyNetwork localStorage
-        var SESSION_PASSWORD_KEY = '$session_password' ; // special key used for session restore password
-        function process_incoming_message (filename) {
+        var SESSION_PASSWORD_KEY = '$session_password' ; // special key used for session restore password. see pubkeys, get_password and password messages
+        function process_incoming_message (filename, encrypt2) {
             var pgm = controller + '.process_incoming_message: ' ;
             var debug_seq ;
             console.log(pgm + 'filename = ' + filename) ;
@@ -176,10 +163,27 @@ angular.module('MoneyNetwork')
             }) ; // fileGet callback 1
         } // process_incoming_message
 
-        // start demon. listen for incoming messages from wallet sessions
-        MoneyNetworkAPILib.init({debug: true, ZeroFrame: ZeroFrame, cb: process_incoming_message}) ;
+        // config MoneyNetworkAPI. add callback for incoming messages from wallet sessions
+        MoneyNetworkAPILib.config({
+            debug: true,
+            ZeroFrame: ZeroFrame,
+            optional: moneyNetworkHubService.get_content_optional(),
+            cb: process_incoming_message
+        }) ;
+        moneyNetworkService.get_my_user_hub(function (hub) {
+            var user_path ;
+            user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
+            MoneyNetworkAPILib.config({user_path: user_path});
+        }) ;
 
-        self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?
+        // messages between MoneyNetwork and MoneyNetwork wallet (session) will be encrypted with cryptMessage, JSEncrypt and sessionid
+        // todo: messages will be deleted when read and processed
+        var encrypt2 = new MoneyNetworkAPI({
+            prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
+            userid2: MoneyNetworkHelper.getUserId() // for cryptMessage (decrypt incoming message)
+        }) ;
+
+        self.new_wallet_url = $location.search()['new_wallet_site'] ; // comming from a MoneyNetwork wallet site?
         var tested_wallet_url = null ; // last tested url
         var test_sessionid ;
         var moneynetwork_session_filename ; // MoneyNetwork (main windows/this session)

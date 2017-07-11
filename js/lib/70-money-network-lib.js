@@ -45,10 +45,12 @@ var MoneyNetworkHelper = (function () {
     } // ls_bind
 
     function ls_load() {
+        var pgm = module + '.ls_load: ' ;
         var key ;
-        for (var key in local_storage) delete local_storage[key] ;
+        for (key in local_storage) delete local_storage[key] ;
         if (!ls_use_private_data) return ;
         local_storage.loading = true ;
+        // console.log(pgm + 'ZeroFrame=', ZeroFrame) ;
         ZeroFrame.cmd("wrapperGetLocalStorage", [], function (res) {
             var pgm = module + '.wrapperGetLocalStorage callback (1): ';
             // console.log(pgm + 'typeof res =' + typeof res) ;
