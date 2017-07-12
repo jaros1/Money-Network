@@ -256,7 +256,7 @@ var MoneyNetworkAPILib = (function () {
         // if (debug) console.log(pgm + 'query = ' + query) ;
         ZeroFrame.cmd("dbQuery", [query], function (res) {
             var pgm = module + '.demon dbQuery callback: ';
-            var i, directory, filename, session_filename, cb, inner_path, encrypt;
+            var i, directory, filename, session_filename, cb, other_user_path, inner_path, encrypt;
             if (res.error) {
                 console.log(pgm + 'query failed. error = ' + res.error);
                 clearInterval(demon_id);
@@ -268,17 +268,25 @@ var MoneyNetworkAPILib = (function () {
                 directory = res[i].directory;
                 filename = res[i].filename;
                 session_filename = filename.substr(0,10) ;
-                if (done[filename] == true) continue; // done
-                inner_path = 'merged-MoneyNetwork/' + directory + '/' + filename;
+                if (done[filename] == true) continue; // already done
+                encrypt = sessions[session_filename].encrypt ;
+                other_user_path = 'merged-MoneyNetwork/' + directory + '/' ;
+                inner_path = other_user_path + filename;
+                if (!encrypt.other_user_path) encrypt.setup_encryption({other_user_path: other_user_path}) ;
+                if (other_user_path != encrypt.other_user_path) {
+                    console.log(pgm + 'Rejected incoming message ' + inner_path + '. Expected incoming messages for this session to come from ' + encrypt.other_user_path) ;
+                    done[filename] = true;
+                    continue ;
+                }
                 if (done[filename]) cb = done[filename].cb ; // message level callback
                 else if (sessions[session_filename].cb) cb = sessions[session_filename].cb ; // session level callback
                 else cb = process_message_cb; // generic callback
                 if (!cb) {
                     console.log(pgm + 'Error when processing incomming message ' + inner_path + '. No process callback found');
+                    done[filename] = true;
                     continue;
                 }
                 // execute callback. inject MoneyNetworkAPI instance into callback method
-                encrypt = sessions[session_filename].encrypt ;
                 try {
                     cb(inner_path, encrypt)
                 }
@@ -434,22 +442,32 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
     if (options.hasOwnProperty('debug')) this.debug = options.debug;
     // ZeroFrame API
     if (options.ZeroFrame) MoneyNetworkAPILib.config({ZeroFrame: options.ZeroFrame}) ;
-    this.ZeroFrame = MoneyNetworkAPILib.get_ZeroFrame() ;
+    else if (!this.ZeroFrame) this.ZeroFrame = MoneyNetworkAPILib.get_ZeroFrame() ;
     // sessionid
-    self.readonly(options,'sessionid') ;
-    is_new_sessionid = !this.sessionid && options.sessionid ; // call add_session. monitor incoming messages for this sessionid
-    if (options.sessionid) this.sessionid = options.sessionid;
+    if (options.sessionid) {
+        self.readonly(options,'sessionid') ;
+        is_new_sessionid = !this.sessionid  ; // call add_session. monitor incoming messages for this sessionid
+        this.sessionid = options.sessionid;
+    }
     // other session public keys
-    self.readonly(options,'pubkey') ;
-    if (options.pubkey)    this.other_session_pubkey = options.pubkey;
-    self.readonly(options,'pubkey2') ;
-    if (options.pubkey2)   this.other_session_pubkey2 = options.pubkey2;
+    if (options.pubkey) {
+        self.readonly(options,'pubkey') ;
+        this.other_session_pubkey = options.pubkey;
+    }
+    if (options.pubkey2) {
+        self.readonly(options,'pubkey2') ;
+        this.other_session_pubkey2 = options.pubkey2;
+    }
     // this session private keys
-    self.readonly(options,'prvkey') ;
-    if (options.prvkey)    this.this_session_prvkey = options.prvkey;
-    self.readonly(options,'userid2') ;
-    if (options.hasOwnProperty('userid2')) this.this_session_userid2 = options.userid2;
-    // user paths
+    if (options.prvkey) {
+        self.readonly(options,'prvkey') ;
+        this.this_session_prvkey = options.prvkey;
+    }
+    if (options.hasOwnProperty('userid2')) {
+        self.readonly(options,'userid2') ;
+        this.this_session_userid2 = options.userid2;
+    }
+    // user paths. full merger site paths
     self.readonly(options,'this_user_path') ;
     if (options.this_user_path) {
         if (this.this_user_path && (this.this_user_path != options.this_user_path)) {

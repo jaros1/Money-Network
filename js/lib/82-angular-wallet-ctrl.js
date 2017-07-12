@@ -45,8 +45,15 @@ angular.module('MoneyNetwork')
         var SESSION_PASSWORD_KEY = '$session_password' ; // special key used for session restore password. see pubkeys, get_password and password messages
         function process_incoming_message (filename, encrypt2) {
             var pgm = controller + '.process_incoming_message: ' ;
-            var debug_seq ;
+            var debug_seq, pos, other_user_path ;
             console.log(pgm + 'filename = ' + filename) ;
+            // filename = merged-MoneyNetwork/1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/0d4002d16c.1499860158848
+
+            // check other_user_path. all messages for this session must come from same user directory
+            pos = filename.lastIndexOf('/') ;
+            other_user_path = filename.substr(0,pos+1) ;
+            console.log(pgm + 'other_user_path = ' + other_user_path) ;
+            encrypt2.setup_encryption({other_user_path: other_user_path}) ; // set and check
 
             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + ' fileGet') ;
             ZeroFrame.cmd("fileGet", {inner_path: filename, required: false}, function (json_str) {
