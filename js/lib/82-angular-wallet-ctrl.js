@@ -77,6 +77,7 @@ angular.module('MoneyNetwork')
                         }
                         else {
                             encrypt2.setup_encryption({pubkey: request.pubkey, pubkey2: request.pubkey2}) ;
+                            console.log(pgm + 'todo: remember wallet user_path. following messages must come from identical wallet user_path');
                             console.log(pgm + 'save session password. used for wallet session restore. See get_password and password messages');
                             if (!todo_saved_data[test_sessionid]) todo_saved_data[test_sessionid] = {} ;
                             todo_saved_data[test_sessionid][SESSION_PASSWORD_KEY] = {
@@ -173,7 +174,7 @@ angular.module('MoneyNetwork')
         moneyNetworkService.get_my_user_hub(function (hub) {
             var user_path ;
             user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
-            MoneyNetworkAPILib.config({user_path: user_path});
+            MoneyNetworkAPILib.config({this_user_path: user_path});
         }) ;
 
         // messages between MoneyNetwork and MoneyNetwork wallet (session) will be encrypted with cryptMessage, JSEncrypt and sessionid
