@@ -1,12 +1,14 @@
 # Money-Network
 Demo with complementary and alternative money. Implemented in ZeroFrame and AngularJS. Focus on privacy, encryption, max data on client and min data on server. 
 
-Alternative and complementary money systems can in greater or less extent, replace or support the current monetary system and 
-prevent some bad things from happening in the future. There exists many alternative and complementary money systems, but they are not as 
-accessible and real for people as good old conventional money. 
+Money is everything. Money Network is a demo about money. With inspiration from Charles Eisenstein, Bernard Lietaer and others.
 
-The primary goal of the Money Network is to make complementary and alternative monetary systems just as real and accessible as 
-regular conventional money. One client wallet for it all.
+Our world has one serious error. Our current monetary system. Almost all problems on our planet is caused by this error.
+This is an attempt to make money free. To build a bridge between our present traditional monetary system and an ecosystem of complementare and alternative money systems. A monetary ecosystem will solve many of the problems the world are facing today.
+
+The vision here is one wallet with easy access to any kind of money.
+Be free. Use the money systems you like and not only the money system that has been forced on you for over 300 years.
+Here is the demo. Someone more skilled than I may bring the vision into real existence.
 
 ## Project status
 Spare time project, work in progress, no money in here yet. For now just a chat app on a very promising platform (ZeroNet). 
@@ -17,7 +19,7 @@ Implemented:
 - Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat, markdown, emojis, reactions and comments
 
 Todo:
-- Wallet, Money API and interface to external money systems. One ZeroNet plugin site for each money system. Starting with a BitCoin interface.
+- Wallet, money and API to external money systems. One ZeroNet merger site for each external money system. Starting with a test BitCoins wallet (blocktrail.com) and API for internal ZeroNet communication between MoneyNetwork and wallet sites.
 
 ## Demo
 - http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
