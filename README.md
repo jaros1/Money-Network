@@ -7,7 +7,8 @@ Our world has one serious error. Our current monetary system. Almost all problem
 This is an attempt to make money free. To build a bridge between our present traditional monetary system and an ecosystem of complementare and alternative money systems. A monetary ecosystem will solve many of the problems the world are facing today.
 
 The vision here is one wallet with easy access to any kind of money.
-Be free. Use the money systems you like and not only the money system that has been forced on you for over 300 years.
+Be free. Use the money systems you like and not only the money system that has been forced on you for over 300 years. Do not we all hate banks?
+
 Here is the demo. Someone more skilled than I may bring the vision into real existence.
 
 ## Project status
