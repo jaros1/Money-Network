@@ -34,7 +34,7 @@ Todo:
 - https://zeroml.ml/moneynetwork.bit/
 
 This demo should be safe to check out on a ZeroNet proxy server. 
-You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server.
+You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server and do not use real money on a proxy server.
 
 ## Wallets
 - https://github.com/jaros1/Money-Network-W2 (test Bitcoins/Blocktrail API)
