@@ -184,7 +184,6 @@ var MoneyNetworkAPILib = (function () {
             if (start_demon) {
                 demon_id = setInterval(demon, (interval || 500));
                 if (debug) console.log(pgm + 'Started demon. process id = ' + demon_id);
-                console.log(pgm + 'todo: demon should check/use other_user_path if other_user_path is known for session') ;
             }
         }); // get_wallet callback
     } // add_session
@@ -467,28 +466,21 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
         self.readonly(options,'userid2') ;
         this.this_session_userid2 = options.userid2;
     }
-    // user paths. full merger site paths
-    self.readonly(options,'this_user_path') ;
     if (options.this_user_path) {
-        if (this.this_user_path && (this.this_user_path != options.this_user_path)) {
-            error = pgm +
-                'cannot change this_user_path. please use new MoneyNetworkAPI to initialize a new instance with a new user path' +
-                'old value = ' + this.this_user_path + ', new value = ' + options.this_user_path ;
-            throw error ;
-        }
+        self.readonly(options,'this_user_path') ;
         this.this_user_path = options.this_user_path;
     }
-    if (this.this_user_path) MoneyNetworkAPILib.config({user_path: this.this_user_path});
-    else this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
-    self.readonly(options,'other_user_path') ;
+    // user paths. full merger site paths
+    if (options.this_user_path) MoneyNetworkAPILib.config({user_path: this.this_user_path});
+    else if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
     if (options.other_user_path) {
         if (!MoneyNetworkAPILib.is_user_path(options.other_user_path)) throw pgm + 'invalid options.other_user_path' ;
-        if (this.other_user_path && (options.other_user_path != this.other_user_path)) throw pgm + 'cannot update other_user_path. please use new MoneyNetworkAPI to initialize a new instance with new user path. old value = ' + this.other_user_path + ', new value = ' + options.other_user_path ;
+        self.readonly(options,'other_user_path') ;
         this.other_user_path = options.other_user_path ;
     }
-    // optional files pattern. add if MoneyNetworkAPI should add optional files support in content.json file before sending message to other session
+    // optional files pattern. add if API should add optional files support in content.json file before sending message to other session
     if (options.optional) MoneyNetworkAPILib.config({optional: this.optional}) ;
-    this.this_optional = MoneyNetworkAPILib.get_optional() ;
+    else if (!this.this_optional) this.this_optional = MoneyNetworkAPILib.get_optional() ;
     if (options.cb) this.cb = options.cb ;
     if (this.sessionid) {
         // known sessionid. new or old session

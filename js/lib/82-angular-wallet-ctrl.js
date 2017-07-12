@@ -52,7 +52,7 @@ angular.module('MoneyNetwork')
             // check other_user_path. all messages for this session must come from same user directory
             pos = filename.lastIndexOf('/') ;
             other_user_path = filename.substr(0,pos+1) ;
-            console.log(pgm + 'other_user_path = ' + other_user_path) ;
+            // console.log(pgm + 'other_user_path = ' + other_user_path) ;
             encrypt2.setup_encryption({other_user_path: other_user_path}) ; // set and check
 
             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + ' fileGet') ;
