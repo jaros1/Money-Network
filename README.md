@@ -27,15 +27,12 @@ Todo:
 ## MoneyNetwork Demo
 - http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
 - https://www.zerogate.tk/moneynetwork.bit/
-- https://zeronet.korso.win/moneynetwork.bit/
 - https://fuckcf.cf/moneynetwork.bit/
 - https://zeronet.maxweiss.io/moneynetwork.bit/
 - https://proxy.th3nd.com/moneynetwork.bit/
-- https://zn.maly.io/moneynetwork.bit/
-- https://zeroml.ml/moneynetwork.bit/
 
 This demo should be safe to check out on a ZeroNet proxy server. 
-You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server and do not use real money on a proxy server.
+You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server. An Anonymous moneynetwork.bit certificate can be used instead. And do not use real money on a proxy server.
 
 ## Wallets
 - https://github.com/jaros1/Money-Network-W2 (test Bitcoins/Blocktrail API)
