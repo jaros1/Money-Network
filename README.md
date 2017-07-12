@@ -1,7 +1,7 @@
-# Money-Network
+# MoneyNetwork
 Demo with complementary and alternative money. Implemented in ZeroFrame and AngularJS. Focus on privacy, encryption, max data on client and min data on server. 
 
-Money is everything. Money Network is a demo about money. With inspiration from Charles Eisenstein, Bernard Lietaer and others.
+Money is everything. MoneyNetwork is a demo about money. With inspiration from Charles Eisenstein, Bernard Lietaer and others.
 
 Our world has one serious error. Our current monetary system. Almost all problems on our planet is caused by this error.
 This is an attempt to make money free. To build a bridge between our present traditional monetary system and an ecosystem of complementare and alternative money systems. A monetary ecosystem will solve many of the problems the world are facing today.
@@ -21,7 +21,7 @@ Implemented:
 Todo:
 - Wallet, money and API to external money systems. One ZeroNet merger site for each external money system. Starting with a test BitCoins wallet (blocktrail.com) and API for internal ZeroNet communication between MoneyNetwork and wallet sites.
 
-## Demo
+## MoneyNetwork Demo
 - http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
 - https://www.zerogate.tk/moneynetwork.bit/
 - https://zeronet.korso.win/moneynetwork.bit/
@@ -33,6 +33,143 @@ Todo:
 
 This demo should be safe to check out on a ZeroNet proxy server. 
 You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server.
+
+## Wallets
+- https://github.com/jaros1/Money-Network-W2 (test Bitcoins/Blocktrail API)
+
+## API
+At present time very unstable. Json validation for in- and outgoing messages:
+
+json_schemas = {
+
+    "pubkeys": {
+        "type": 'object',
+        "title": 'Send pubkeys (JSEncrypt and cryptMessage) to other session',
+        "description": 'MoneyNetwork: sends unencrypted pubkeys message to Wallet without a session password. Wallet: returns an encrypted pubkeys message to MoneyNetwork including a session password. pubkey is public key from JSEncrypt. pubkey2 is public key from cryptMessage. Password used for session restore. See get_password and password messages',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^pubkeys$'},
+            "pubkey": {"type": 'string'},
+            "pubkey2": {"type": 'string'},
+            "password": {"type": 'string'}
+        },
+        "required": ['msgtype', 'pubkey', 'pubkey2'],
+        "additionalProperties": false
+    }, // pubkeys
+
+    "save_data": {
+        "type": 'object',
+        "title": 'Wallet: Save encrypted wallet data in MoneyNetwork',
+        "description": "Optional message. Can be used to save encrypted data in an {key:value} object in MoneyNetwork localStorage.",
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^save_data$'},
+            "data": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "key": {"type": 'string'},
+                        "value": {"type": 'string'}
+                    },
+                    "required": ['key'],
+                    "additionalProperties": false
+                },
+                "minItems": 1
+            }
+        },
+        "required": ['msgtype', 'data'],
+        "additionalProperties": false
+    }, // save_data
+
+    "get_data": {
+        "type": 'object',
+        "title": 'Wallet: Get encrypted data from MoneyNetwork',
+        "description": "Optional message. Can be used to request encrypted wallet data from MoneyNetwork localStorage",
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^get_data$'},
+            "keys": {
+                "type": 'array',
+                "items": {"type": 'string'},
+                "minItems": 1
+            }
+        },
+        "required": ['msgtype', 'keys'],
+        "additionalProperties": false
+    }, // get_data
+
+    "data": {
+        "type": 'object',
+        "title": 'MoneyNetwork: get_data response to with requested encrypted wallet data',
+        "description": "Optional message. Return requested encrypted data to wallet",
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^data$'},
+            "data": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "key": {"type": 'string'},
+                        "value": {"type": 'string'}
+                    },
+                    "required": ['key'],
+                    "additionalProperties": false
+                }
+            }
+        }
+    }, // data
+
+    "delete_data": {
+        "type": 'object',
+        "title": 'Wallet: Delete encrypted data saved in MoneyNetwork',
+        "description": "Optional message. Delete encrypted wallet data from MoneyNetwork localStorage. No keys property = delete all data",
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^delete_data$'},
+            "keys": {
+                "type": 'array',
+                "items": {"type": 'string'},
+                "minItems": 1
+            }
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    }, // delete_data
+
+    "get_password": {
+        "type": 'object',
+        "title": 'Wallet: Restore old session. Request pwd2 from MN',
+        "description": 'Pwd2 was sent to MN in first pubkeys message. Session restore. Unlock and return pwd2 to wallet session',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^get_password$'},
+            "pubkey": {"type": 'string'},
+            "pubkey2": {"type": 'string'},
+            "unlock_pwd2": {"type": 'string'}
+        },
+        "required": ["msgtype", "pubkey", "pubkey2", "unlock_pwd2"],
+        "additionalProperties": false
+    }, // get_password
+
+    "password": {
+        "type": 'object',
+        "title": 'MN: Restore old session. Return unlocked password pwd2 to wallet session',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^password$'},
+            "password": {"type": 'string'}
+        },
+        "required": ["msgtype", "password"],
+        "additionalProperties": false
+    }, // password
+
+    "response": {
+        "type": 'object',
+        "title": 'Generic response with an optional error message',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^response$'},
+            "error": {"type": 'string'}
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    } // response
+}
+
 
 ## Software 
 - html5, ccs3, javascript and some sql. Simple code, lots of comments and code should be "easy"" to follow. 
