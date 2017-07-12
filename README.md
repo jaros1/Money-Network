@@ -19,7 +19,9 @@ Implemented:
 - Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat, markdown, emojis, reactions and comments
 
 Todo:
-- Wallet, money and API to external money systems. One ZeroNet merger site for each external money system. Starting with a test BitCoins wallet (blocktrail.com) and API for internal ZeroNet communication between MoneyNetwork and wallet sites.
+- API for ZeroNet communication between MoneyNetwork and wallet sites using ZeroNet merger site plugin. One ZeroNet merger site for each external money system. Starting with a test BitCoins wallet (blocktrail.com).
+- Wallet page: Test, add, use, rate and remove wallet sites.
+- Chat page: Add money transactions to chat ($). Send money, receive money, pay, receive payment etc.
 
 ## MoneyNetwork Demo
 - http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
