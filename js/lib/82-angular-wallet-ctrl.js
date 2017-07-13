@@ -130,7 +130,8 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'todo: get data saved in localStorage') ;
                         response = { msgtype: 'data', data: []} ;
                         for (i=0 ; i<request.keys.length ; i++) {
-                            key = request.keys[i].key ;
+                            key = request.keys[i] ;
+                            if (key == SESSION_PASSWORD_KEY) continue ; // special key used for session restore
                             if (!todo_saved_data[test_sessionid]) continue ; // OK - no data - return empty data array
                             if (!todo_saved_data[test_sessionid].hasOwnProperty(key)) continue ; // OK - no data with this key
                             value = todo_saved_data[test_sessionid][key] ;

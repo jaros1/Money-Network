@@ -14,8 +14,8 @@
    "size": 42
   },
   "README.md": {
-   "sha512": "680168763b69f451d7034458a758ce44bdeef4610c719455251021f856699589",
-   "size": 8349
+   "sha512": "cec0ea8ab7051d612cd33c109199b184c2292638b4c2ae1751a527d6a1db4f92",
+   "size": 8290
   },
   "css/all.css": {
    "sha512": "d998847816e6f79362dfac17be6e253ffca3185aa0ea670a46d2a57e38a20e2b",
@@ -34,8 +34,8 @@
    "size": 125374
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "10e8ac5da3620c10c0dd279115b0b208592ec28dd4105e306f99701942886741",
-   "size": 62668
+   "sha512": "62f76f2d4f04bfc55cb1e03c264dbd4ea708ad2d99b71d16a12d9801dffda4f5",
+   "size": 62612
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -178,12 +178,12 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "4230d761891c5e07c120ab1c41eae2bd779f3529be0724c96d45513f626521c9",
-   "size": 1244504
+   "sha512": "ef20c5ae5e182584b047d3171d7be8e71199355f49e8456d230f8f083dbc2204",
+   "size": 1245161
   },
   "js/all.js.zip": {
-   "sha512": "d54764ac4715236f5f59e4897201cf65dfa8655380cb9cb5cbbd0ab813a9bace",
-   "size": 202727
+   "sha512": "69157f666b8ba1f3e0ab68912639a3b87e6528c4c0ff7644477fc022ec1479f9",
+   "size": 202940
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -302,7 +302,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1499855975,
+ "modified": 1499936340,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -314,7 +314,7 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "GxYeFtP7Q6c0vocAuoMUhUta+mcF1gDC3n34Vb74r22iXw3rHd9rUR47+vXTduAeTHhFYroAg2ObqzRw7wPQ/hM="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "Gz0tkddfXbo2vcYJLt+AyHAUAYMFq8oKsONjwdUpkTlIBUobiqdlI6alSwrSJXgKjVeayZd2JdXMEEUm41+SOSk="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",
