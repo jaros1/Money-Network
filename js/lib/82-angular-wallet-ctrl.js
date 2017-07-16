@@ -176,7 +176,7 @@ angular.module('MoneyNetwork')
         MoneyNetworkAPILib.config({
             debug: true,
             ZeroFrame: ZeroFrame,
-            optional: moneyNetworkHubService.get_content_optional(),
+            optional: moneyNetworkHubService.get_z_content_optional(),
             cb: process_incoming_message
         }) ;
         moneyNetworkService.get_my_user_hub(function (hub) {

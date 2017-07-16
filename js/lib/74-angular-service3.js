@@ -72,7 +72,7 @@ angular.module('MoneyNetwork')
         //// - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
         //// - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
         //// - new encrypted image: <unix timestamp>-<user seq>-image.json
-        var CONTENT_OPTIONAL = moneyNetworkHubService.get_content_optional() ;
+        var Z_CONTENT_OPTIONAL = moneyNetworkHubService.get_z_content_optional() ;
 
         // inject functions from calling services
         var ls_save_contacts ;
@@ -475,7 +475,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'content = ' + JSON.stringify(content));
 
                     // remember actual list of actual files. Used in public chat
-                    if (content.optional == CONTENT_OPTIONAL) save_my_files_optional(content.files_optional || {}) ;
+                    if (content.optional == Z_CONTENT_OPTIONAL) save_my_files_optional(content.files_optional || {}) ;
 
                     // console.log(pgm + 'res = ' + JSON.stringify(res));
                     if (content.files["avatar.jpg"]) {

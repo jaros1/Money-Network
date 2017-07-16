@@ -68,7 +68,7 @@ angular.module('MoneyNetwork')
         //// - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
         //// - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
         //// - new encrypted image: <unix timestamp>-<user seq>-image.json
-        var CONTENT_OPTIONAL = moneyNetworkHubService.get_content_optional() ;
+        var Z_CONTENT_OPTIONAL = moneyNetworkHubService.get_z_content_optional() ;
         //
         //// user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
         //// params:
@@ -4717,7 +4717,7 @@ angular.module('MoneyNetwork')
                     return ;
                 }
 
-                if (filename.match(new RegExp(CONTENT_OPTIONAL))) {
+                if (filename.match(new RegExp(Z_CONTENT_OPTIONAL))) {
                     // Ok. received file done event when receiving optional json file.
                     // get_and_load_chat_file fileGet callback is normally already processing this file (no need to do anything)
                     // exception: failed image downloades (timeout).
@@ -5015,7 +5015,7 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 content = JSON.parse(content) ;
-                if (content.optional != CONTENT_OPTIONAL) {
+                if (content.optional != Z_CONTENT_OPTIONAL) {
                     // console.log(pgm + 'optional option not ready in content.json file. will be added/updated after next publish') ;
                     if (cb) cb(null) ;
                     return ;
@@ -5263,7 +5263,13 @@ angular.module('MoneyNetwork')
                         "  files_optional.size," +
                         "  users.pubkey, users.guest " +
                         "from files_optional, json as content_json, json as data_json, users " +
-                        "where content_json.json_id = files_optional.json_id " +
+                        "where cast(substr(files_optional.filename,1,13) as integer) >= 1000000000000 " +
+                        "and substr(files_optional.filename,14,1) = '-' " +
+                        "and cast(substr(files_optional.filename,15,13) as integer) >= 1000000000000 " +
+                        "and substr(filename,28,1) = '-' " +
+                        "and substr(substr(files_optional.filename,29), 1, instr(substr(files_optional.filename,29),'-')-1) = '' || cast(substr(substr(files_optional.filename,29), 1, instr(substr(files_optional.filename,29),'-')-1) as integer) " +
+                        "and files_optional.filename like '%-chat.json' " +
+                        "and content_json.json_id = files_optional.json_id " +
                         "and data_json.directory = content_json.directory " +
                         "and data_json.file_name = 'data.json' " +
                         "and users.json_id = data_json.json_id " +

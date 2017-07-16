@@ -246,7 +246,7 @@ angular.module('MoneyNetwork')
                             "select distinct substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
                             "from keyvalue as optional, json, files " +
                             "where optional.key = 'optional' " +
-                            "and optional.value = '" + CONTENT_OPTIONAL + "' " +
+                            "and optional.value = '" + Z_CONTENT_OPTIONAL + "' " +
                             "and json.json_id = optional.json_id " +
                             "and files.json_id = json.json_id " +
                             "and files.filename = 'data.json'" ;
@@ -491,7 +491,7 @@ angular.module('MoneyNetwork')
                             break ;
                         }
                         if (!filename) return cb3() ; // next step: done with optional file info calls
-                        // check file info for image json file
+                        // check file info for optional file
                         ZeroFrame.cmd("optionalFileInfo", [filename], function (file_info) {
                             var pgm = service + '.merge_user_hub.step_3_get_file_info optionalFileInfo callback 2: ';
                             if (filename == 'merged-MoneyNetwork/182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/000b72320e.1499349613092') {
@@ -505,10 +505,16 @@ angular.module('MoneyNetwork')
 
                     // step 4: download any missing optional files
                     step_4_download_files = function (cb4) {
-                        var key, filename, debug_seq0, required, format, timeout ;
+                        var key, filename, debug_seq0, required, format, timeout, regexp ;
                         if (Object.keys(hub_content.files_optional).length == 0) return cb4() ;
+                        regexp = new RegExp(MN_CONTENT_OPTIONAL) ; // internal rule for optional filenames
                         // find next optional file to download
                         for (key in hub_content.files_optional) {
+                            if (!key.match(regexp)) {
+                                // unknown optional filename pattern. ignore file
+                                hub_content.files_optional[key].file_info.is_downloaded = -1 ;
+                                continue ;
+                            }
                             if (hub_content.files_optional[key].size == 2) continue ; // deleted marked optional file
                             if (!hub_content.files_optional[key].file_info.is_downloaded &&
                                 !hub_content.files_optional[key].file_info.peer) continue ; // not downloaded and no peers
@@ -519,12 +525,8 @@ angular.module('MoneyNetwork')
                         }
                         if (!filename) return cb4() ; // next step: done with optional file downloads
 
-                        // todo: fileGet to not existing optional file: This site requests permission: Merger:MoneyNetwork.
-                        // test1: required=true: no scroll. fileGet operation is hanging. No error returned
-                        // test2: required=false: no scroll. fileGet operation is hanging.
-                        // test3: required=false. scroll. fileGet operation is handling. UI server errors but no result is returned to javascript.
-                        //        but dbQuery fails with 'NoneType' object has no attribute 'execute' (error from dbQuery)
-                        // test4: required=true. no scroll. error: This site requests permission: Merger:MoneyNetwork.
+                        // fileGet to not existing optional file: fileGet error This site requests permission: Merger:MoneyNetwork and/or dbQuery 'NoneType' object has no attribute 'execute' error
+                        // has been "fixed" in step_1_update_content_json
                         required = true ;
                         format = 'text' ;
                         timeout = 10 ; // 300=30 seconds? 10 = 1 second?
@@ -1307,9 +1309,19 @@ angular.module('MoneyNetwork')
         // - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
         // - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
         // - new encrypted image: <unix timestamp>-<user seq>-image.json
-        var CONTENT_OPTIONAL = '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json|[0-9]{13}-[0-9]+-image.json|[0-9a-f]{10}.[0-9]{13})' ;
-        function get_content_optional () {
-            return CONTENT_OPTIONAL
+        // https://github.com/HelloZeroNet/ZeroNet/issues/1019
+        // https://github.com/HelloZeroNet/ZeroNet/issues/989
+        // https://github.com/jaros1/Money-Network/issues/181
+        // pattern with {n} is no longer allowed. replace with simple [0-9] pattern and use javascript to validate optional filenames
+        // Z_CONTENT_OPTIONAL - used on ZeroNet as pattern for optional files
+        // MN_CONTENT_OPTIONAL - used internal in MN (validate filenames)
+        var Z_CONTENT_OPTIONAL = '^.*[0-9].*$' ;
+        var MN_CONTENT_OPTIONAL = '^([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json|[0-9]{13}-[0-9]+-image.json|[0-9a-f]{10}.[0-9]{13})$' ;
+        function get_z_content_optional () {
+            return Z_CONTENT_OPTIONAL
+        }
+        function get_mn_content_optional () {
+            return MN_CONTENT_OPTIONAL ;
         }
 
         // user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
@@ -1407,7 +1419,6 @@ angular.module('MoneyNetwork')
                                 check_merger_permission(pgm, function () {
 
                                     // check content.json and add optional file support if missing
-                                    // also check for
                                     debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + '/content.json fileGet') ;
                                     ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
                                         var pgm = service + '.zeronet_site_publish fileGet callback 6: ';
@@ -1421,13 +1432,15 @@ angular.module('MoneyNetwork')
                                         // 1) <to timestamp>-<from timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for first and last chat msg in json file
                                         // 2) <timestamp>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
                                         // 3) <timestamp>-<userseq>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
+                                        // Z_CONTENT_OPTIONAL has been changed to a very simple pattern for optional files [0-9]
+                                        // use MN_CONTENT_OPTIONAL pattern for full optional filename validation
                                         content = JSON.parse(content) ;
-                                        if (content.optional == CONTENT_OPTIONAL) {
+                                        if (content.optional == Z_CONTENT_OPTIONAL) {
                                             // optional file support also in place. save to my_files_optional. used in public chat
                                             save_my_files_optional(content.files_optional || {}) ;
                                         }
                                         else {
-                                            content.optional = CONTENT_OPTIONAL ;
+                                            content.optional = Z_CONTENT_OPTIONAL ;
                                             content_updated = true ;
                                         }
 
@@ -1738,7 +1751,7 @@ angular.module('MoneyNetwork')
                 for (key in z_cache.my_files_optional) delete z_cache.my_files_optional[key] ;
                 z_cache.files_optional = files_optional || {} ;
                 if (!files_optional) return ;
-                optional_regexp = new RegExp('^' + CONTENT_OPTIONAL + '$') ;
+                optional_regexp = new RegExp(MN_CONTENT_OPTIONAL) ;
                 now = new Date().getTime() ;
                 for (key in files_optional) {
                     key_a = key.split('-') ;
@@ -2779,7 +2792,8 @@ angular.module('MoneyNetwork')
             get_public_contact: get_public_contact,
             get_public_chat_outbox_msg: get_public_chat_outbox_msg,
             check_sha256_addresses: check_sha256_addresses,
-            get_content_optional: get_content_optional,
+            get_z_content_optional: get_z_content_optional,
+            get_mn_content_optional: get_mn_content_optional,
             zeronet_site_publish: zeronet_site_publish,
             write_empty_chat_file: write_empty_chat_file,
             save_my_files_optional: save_my_files_optional,
