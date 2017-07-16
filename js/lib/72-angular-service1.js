@@ -191,49 +191,36 @@ angular.module('MoneyNetwork')
             if (z_cache.my_user_hub) return cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
             z_cache.my_user_hub = true ;
 
-            // get a list of MoneyNetwork User data hubs. title /user data hub/i. used for new MoneyNetwork users
+            // get a list of MoneyNetwork User data hubs. title or description matches /user data hub/i. used for new MoneyNetwork users
             ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
                 var pgm = service + '.get_my_user_hub mergerSiteList callback 1: ' ;
-                var user_data_hubs, hub, query, debug_seq, i, optional_values ;
+                var user_data_hubs, hub, query, debug_seq, i ;
                 user_data_hubs = [] ;
                 if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites)) ;
                 else for (hub in merger_sites) {
-                    if (merger_sites[hub].content.title.match(/user data hub/i)) user_data_hubs.push(hub);
+                    if (merger_sites[hub].content.title.match(/user data hub/i) ||
+                        merger_sites[hub].content.description.match(/user data hub/i)) user_data_hubs.push(hub);
                 }
-                // console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
+                console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
 
                 // find current user data hub(s)
-                // - check content.optional pattern to id relavant user directories
                 // - must have a data.json file
-                // - use latest updated content.json as user hub
-                optional_values = [
-                    // actual optional pattern
-                    CONTENT_OPTIONAL,
-                    // old optional patterns
-                    '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json|[0-9]{13}-image.json)',
-                    '([0-9]{13}-[0-9]{13}-[0-9]+-chat.json)',
-                    '([0-9]{13}-[0-9]+-chat.json)'
-                ] ;
+                // - use latest updated content.json as user data hub
                 query =
-                    "select hub " +
-                    "from (" +
-                    "  select " +
-                    "    substr(json.directory, 1, instr(json.directory,'/')-1) as hub," +
-                    "    case optional.value ";
-                for (i=0 ; i<optional_values.length ; i++) query += "    when '" + optional_values[i] + "' then " + i + " " ;
-                query +=
-                    "    else " + optional_values.length + " end as priority, " +
-                    "    modified.value as modified " +
-                    "  from keyvalue as optional, keyvalue as modified, json, files " +
-                    "  where optional.key = 'optional' " +
-                    "  and json.json_id = optional.json_id " +
-                    "  and json.directory like '%/" + ZeroFrame.site_info.auth_address + "' " +
-                    "  and modified.json_id = json.json_id " +
-                    "  and modified.key = 'modified' " +
-                    "  and files.json_id = json.json_id " +
-                    "  and files.filename = 'data.json') " +
-                    "where priority < " + optional_values.length + " " +
-                    "order by priority, modified desc";
+                    "select " +
+                    "  substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
+                    "  from keyvalue as modified, json, files " +
+                    "  where json.directory in " ;
+                for (i=0 ; i<user_data_hubs.length ; i++) {
+                    query += (i == 0 ? "('" : ",'") + user_data_hubs[i] + '/data/users/' + ZeroFrame.site_info.auth_address + "'" ;
+                }
+                query += ") " +
+                    "and json.file_name = 'content.json' " +
+                    "and modified.json_id = json.json_id " +
+                    "and modified.key = 'modified' " +
+                    "and files.json_id = json.json_id " +
+                    "and files.filename = 'data.json' " +
+                    "order by modified.value desc";
 
                 debug('select', pgm + 'query 17 (MS OK) = ' + query);
                 debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
@@ -329,10 +316,15 @@ angular.module('MoneyNetwork')
         } // get_my_user_hub
 
         // merge old user hub data into current user hub and delete old user hub data
+        var merge_user_hubs_status = { running: false } ;
         function merge_user_hubs (hubs) {
             var pgm = service + '.merge_user_hubs: ' ;
             var hub ;
-            if (!hubs.length) return ;
+            if (!hubs.length) {
+                merge_user_hubs_status.running = false ;
+                return ;
+            }
+            merge_user_hubs_status.running = true ;
             hub = hubs.shift() ; // first row in array = current user hub
             merge_user_hub(hub, function(res) {
                 var pgm = service + '.merge_user_hubs merge_user_hub callback: ' ;
@@ -345,6 +337,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.merge_user_hub: ' ;
             console.log(pgm + 'hub = ' + hub) ;
             get_my_user_hub(function(my_hub) {
+                var pgm = service + '.merge_user_hub get_my_user_hub callback 1: ';
                 var hub_user_path, my_user_path, inner_path0, debug_seq0 ;
                 hub_user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
                 my_user_path = 'merged-MoneyNetwork/' + my_hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
@@ -354,11 +347,11 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: false}, function (hub_content_str) {
                     var pgm = service + '.merge_user_hub fileGet callback 2: ';
                     var hub_content, my_content, hub_data, my_data, hub_status, my_status,  my_like, hub_like,
-                        step_1_remove_file_doublets, step_2_get_file_info, step_3_download_files, step_4_get_data_files,
-                        step_5_get_status_files, step_6_get_like_files, step_7_debug_output, step_8_merge_user,
-                        step_9_move_other_files, step_10_cleanup_hub_user_files, step_11_publish_empty_hub,
-                        step_12_write_and_publish_user_data, step_n_done,
-                        my_data_updated, my_status_updated, my_like_updated, my_publish, hub_publish ;
+                        step_2_remove_file_doublets, step_3_get_file_info, step_4_download_files, step_5_get_data_files,
+                        step_6_get_status_files, step_7_get_like_files, step_8_debug_output, step_9_merge_user,
+                        step_10_move_other_files, step_11_cleanup_hub_user_files, step_12_publish_empty_hub,
+                        step_13_write_and_publish_user_data, step_n_done,
+                        my_data_updated, my_status_updated, my_like_updated, my_publish, hub_publish, json_raw, debug_seq2 ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                     // console.log(pgm + 'content_str = ' + content_str) ;
                     if (!hub_content_str) {
@@ -366,13 +359,9 @@ angular.module('MoneyNetwork')
                         return cb(null) ;
                     }
                     hub_content = JSON.parse(hub_content_str) ;
-                    if (!hub_content.files_optional) hub_content.files_optional = [] ;
 
-                    // any files to merge into current user hub?
-                    if ((Object.keys(hub_content.files).length == 0) &&
-                        (Object.keys(hub_content.files_optional).length == 0)) return cb(null) ;
-                    // console.log(pgm + 'files = ' + JSON.stringify(hub_content.files)) ;
-                    // console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
+
+
 
                     // keep track of pending file updates and publish operations
                     my_data_updated = false ;
@@ -381,15 +370,86 @@ angular.module('MoneyNetwork')
                     my_publish = false ;
                     hub_publish = false ;
 
+                    // step 1: refresh hub content.json file. content.files_optional may be out of sync with file system.
+                    // fileGet operations on not existing optional files will raise strange ZeroNet errors
+                    // for example "This site requests permission: Merger:MoneyNetwork"
+                    // or dbQuery error "'NoneType' object has no attribute 'execute'"
+                    var step_1_update_content_json = function (cb1) {
+                        var pgm = service + '.merge_user_hub.step_1_update_content_json: ';
+                        var old_hub_content_str, inner_path0, debug_seq0 ;
+                        // write, sign and reload hub content.json to ensure correct files_optional content.
+                        // todo: modified timestamp is updated and hub content.json will temporary be newest content.json file (=new user hub)
+                        console.log(pgm + 'todo: update ' + inner_path0 + '. Optional files can be out of sync.');
+                        old_hub_content_str = hub_content_str ;
+                        delete hub_content.files_optional ;
+                        json_raw = unescape(encodeURIComponent(JSON.stringify(hub_content)));
+                        inner_path0 = hub_user_path + 'content.json' ;
+                        debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
+                        ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
+                            var pgm = service + '.merge_user_hub.step_1_update_content_json fileWrite callback 1: ';
+                            var debug_seq1;
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                            if (res != 'ok') {
+                                console.log(pgm + 'Error: ' + inner_path0 + ' fileWrite failed. res = ' + JSON.stringify(res)) ;
+                                return cb(null) ;
+                            }
+                            // sign
+                            debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + inner_path0 + ' sign') ;
+                            ZeroFrame.cmd("siteSign", {inner_path: inner_path0}, function (res) {
+                                var pgm = service + '.merge_user_hub.step_1_update_content_json siteSign callback 2: ';
+                                var debug_seq2 ;
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
+                                if (res != 'ok') {
+                                    console.log(pgm + inner_path0 + ' siteSign failed. error = ' + JSON.stringify(res));
+                                    return cb(null);
+                                }
+                                // reload updated hub content file
+                                debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
+                                ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: false}, function (new_hub_content_str) {
+                                    var pgm = service + '.merge_user_hub.step_1_update_content_json fileGet callback 3: ';
+                                    var debug_seq3 ;
+                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2);
+                                    if (!new_hub_content_str) {
+                                        console.log(pgm + inner_path0 + ' fileGet failed.') ;
+                                        return cb(null) ;
+                                    }
+                                    hub_content = JSON.parse(new_hub_content_str) ;
+                                    // any files to merge into current user hub?
+                                    if (!hub_content.files_optional) hub_content.files_optional = [] ;
+                                    if ((Object.keys(hub_content.files).length == 0) &&
+                                        (Object.keys(hub_content.files_optional).length == 0)) return cb(null) ;
+                                    // restore old hub content while processing hub. merge_user_hub process may fail and old content is the correct content. no publish action!
+                                    json_raw = unescape(encodeURIComponent(old_hub_content_str));
+                                    debug_seq3 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
+                                    ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
+                                        var pgm = service + '.merge_user_hub.step_1_update_content_json fileGet callback 4: ';
+                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq3);
+                                        if (res != 'ok') {
+                                            console.log(pgm + inner_path0 + ' fileWrite failed.') ;
+                                            return cb(null) ;
+                                        }
+                                        // continue with next step
+                                        cb1() ;
+
+                                    }) ; // fileWrite callback 4
+
+                                }) ; // fileGet callback 3
+
+                            }) ; // siteSign callback 2
+
+                        }) ; // fileWrite callback 1
+
+                    }; // step_1_update_content_json ;
+
                     // step 1: remove optional files already in current user hub (identical filename and sha512 signature)
-                    step_1_remove_file_doublets = function (cb2) {
+                    step_2_remove_file_doublets = function (cb2) {
                         var inner_path0, debug_seq0 ;
                         if (Object.keys(hub_content.files_optional).length == 0) return cb2() ;
                         // read my content.json (current user hub)
                         inner_path0 = my_user_path + 'content.json' ;
                         debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                         ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: false}, function (content_str) {
-                            var pgm = service + '.merge_user_hub.step_1_remove_file_doublets fileGet callback: ';
+                            var pgm = service + '.merge_user_hub.step_2_remove_file_doublets fileGet callback: ';
                             var remove_files, filename ;
                             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                             if (!content_str) {
@@ -415,12 +475,12 @@ angular.module('MoneyNetwork')
 
                         }) ; // fileGet
 
-                    } ; // step_1_remove_file_doublets
+                    } ; // step_2_remove_file_doublets
 
                     // step 2: get optional file info
                     // 1) size=2: deleted optional file
                     // 2) check bad_files list. do not try to download files on bad-files list
-                    step_2_get_file_info = function (cb3) {
+                    step_3_get_file_info = function (cb3) {
                         var key, filename ;
                         if (Object.keys(hub_content.files_optional).length == 0) return cb3() ;
                         // find next optional file to check
@@ -433,16 +493,19 @@ angular.module('MoneyNetwork')
                         if (!filename) return cb3() ; // next step: done with optional file info calls
                         // check file info for image json file
                         ZeroFrame.cmd("optionalFileInfo", [filename], function (file_info) {
-                            var pgm = service + '.merge_user_hub.step_2_get_file_info optionalFileInfo callback 2: ';
+                            var pgm = service + '.merge_user_hub.step_3_get_file_info optionalFileInfo callback 2: ';
+                            if (filename == 'merged-MoneyNetwork/182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/000b72320e.1499349613092') {
+                                console.log(pgm + 'filename = ' + filename + ', file_info = ' + JSON.stringify(file_info)) ;
+                            }
                             hub_content.files_optional[key].file_info = file_info || {} ;
                             // continue with next optional file
-                            step_2_get_file_info(cb3) ;
+                            step_3_get_file_info(cb3) ;
                         }) ; // optionalFileInfo
-                    } ; // step_2_get_file_info
+                    } ; // step_3_get_file_info
 
-                    // step 3: download any missing optional files
-                    step_3_download_files = function (cb4) {
-                        var key, filename, debug_seq0 ;
+                    // step 4: download any missing optional files
+                    step_4_download_files = function (cb4) {
+                        var key, filename, debug_seq0, required, format, timeout ;
                         if (Object.keys(hub_content.files_optional).length == 0) return cb4() ;
                         // find next optional file to download
                         for (key in hub_content.files_optional) {
@@ -456,18 +519,27 @@ angular.module('MoneyNetwork')
                         }
                         if (!filename) return cb4() ; // next step: done with optional file downloads
 
-                        debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + ' fileGet') ;
-                        ZeroFrame.cmd("fileGet", {inner_path: filename, required: true}, function (file_str) {
-                            var pgm = service + '.merge_user_hub.step_2_download_files fileGet callback: ';
+                        // todo: fileGet to not existing optional file: This site requests permission: Merger:MoneyNetwork.
+                        // test1: required=true: no scroll. fileGet operation is hanging. No error returned
+                        // test2: required=false: no scroll. fileGet operation is hanging.
+                        // test3: required=false. scroll. fileGet operation is handling. UI server errors but no result is returned to javascript.
+                        //        but dbQuery fails with 'NoneType' object has no attribute 'execute' (error from dbQuery)
+                        // test4: required=true. no scroll. error: This site requests permission: Merger:MoneyNetwork.
+                        required = true ;
+                        format = 'text' ;
+                        timeout = 10 ; // 300=30 seconds? 10 = 1 second?
+                        debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + (required ? ' required' : '') + ' fileGet') ;
+                        ZeroFrame.cmd("fileGet", [filename, required, format, timeout], function (file_str) {
+                            var pgm = service + '.merge_user_hub.step_4_download_files fileGet callback: ';
                             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                             if (!file_str) hub_content.files_optional[key].file_info.is_downloaded = -1 ; // download failed
                             hub_content.files_optional[key].file_str = file_str ;
                             // continue with next download
-                            step_3_download_files(cb4) ;
+                            step_4_download_files(cb4) ;
                         }) ; // fileGet callback
-                    }; // step_3_download_files
+                    }; // step_4_download_files
 
-                    step_4_get_data_files = function (cb5) {
+                    step_5_get_data_files = function (cb5) {
                         get_data_json(function (data) {
                             var inner_path0, debug_seq0, empty_data ;
                             my_data = data ;
@@ -484,7 +556,7 @@ angular.module('MoneyNetwork')
                             inner_path0 = hub_user_path + 'data.json' ;
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (data_str) {
-                                var pgm = service + '.merge_user_hub.step_4_get_data_files fileGet callback 2: ';
+                                var pgm = service + '.merge_user_hub.step_5_get_data_files fileGet callback 2: ';
                                 var error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
                                 if (!data_str) hub_data = empty_data ;
@@ -497,9 +569,9 @@ angular.module('MoneyNetwork')
                                 cb5() ;
                             }) ; // fileGet callback 2
                         }); // get_data_json callback 1
-                    }; // step_4_get_data_files
+                    }; // step_5_get_data_files
 
-                    step_5_get_status_files = function (cb6) {
+                    step_6_get_status_files = function (cb6) {
                         get_status_json(function (status) {
                             var inner_path0, debug_seq0 ;
                             my_status = status ;
@@ -510,7 +582,7 @@ angular.module('MoneyNetwork')
                             inner_path0 = hub_user_path + 'status.json' ;
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (status_str) {
-                                var pgm = service + '.merge_user_hub.step_5_get_status_files fileGet callback 2: ';
+                                var pgm = service + '.merge_user_hub.step_6_get_status_files fileGet callback 2: ';
                                 var empty_status, error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
                                 empty_status = status = {version: dbschema_version, status: []};
@@ -524,9 +596,9 @@ angular.module('MoneyNetwork')
                                 cb6() ;
                             }) ; // fileGet callback 2
                         }); // get_status_json callback 1
-                    }; // step_5_get_status_files
+                    }; // step_6_get_status_files
 
-                    step_6_get_like_files = function (cb7) {
+                    step_7_get_like_files = function (cb7) {
                         get_like_json(function (like) {
                             var empty_like, inner_path0, debug_seq0 ;
                             empty_like =  {
@@ -541,7 +613,7 @@ angular.module('MoneyNetwork')
                             inner_path0 = hub_user_path + 'like.json' ;
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (like_str) {
-                                var pgm = service + '.merge_user_hub.step_5_get_like_files fileGet callback 2: ';
+                                var pgm = service + '.merge_user_hub.step_7_get_like_files fileGet callback 2: ';
                                 var error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
                                 if (!like_str) hub_like = empty_like ;
@@ -553,10 +625,10 @@ angular.module('MoneyNetwork')
                                 cb7() ;
                             }) ; // fileGet callback 2
                         }); // get_like_json callback 1
-                    }; // step_6_get_like_files
+                    }; // step_7_get_like_files
 
-                    step_7_debug_output = function(cb8) {
-                        var pgm = service + '.merge_user_hub.step_7_debug_output: ';
+                    step_8_debug_output = function(cb8) {
+                        var pgm = service + '.merge_user_hub.step_8_debug_output: ';
                         return cb8() ;
                         console.log(pgm + 'files_optional = ' + JSON.stringify(hub_content.files_optional)) ;
                         console.log(pgm + 'my_data = ' + JSON.stringify(my_data));
@@ -565,11 +637,11 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'hub_status = ' + JSON.stringify(hub_status));
                         console.log(pgm + 'my_like = ' + JSON.stringify(my_like));
                         console.log(pgm + 'hub_like = ' + JSON.stringify(hub_like));
-                    }; // step_7_debug_output
+                    }; // step_8_debug_output
 
                     // todo: what about max user directory size. below limit before merge. over limit after merge
-                    step_8_merge_user = function (cb9) {
-                        var pgm = service + '.merge_user_hub.step_8_merge_user: ';
+                    step_9_merge_user = function (cb9) {
+                        var pgm = service + '.merge_user_hub.step_9_merge_user: ';
                         var hub_user, my_user, i, my_max_user_seq, my_user_seq, hub_user_seq, found, j, json,
                             move_user_files ;
 
@@ -687,10 +759,10 @@ angular.module('MoneyNetwork')
                         // 1) -<hub_user_seq>-chat.json
                         // 2) -<hub_user_seq>-image.json
                         move_user_files = function() {
-                            var pgm = service + '.merge_user_hub.step_8_merge_user.move_user_files: ';
+                            var pgm = service + '.merge_user_hub.step_9_merge_user.move_user_files: ';
                             var key, re1, re2, match, hub_filename, filename_splitted, my_filename, inner_path0,
                                 debug_seq0, file_str, json_raw ;
-                            if (Object.keys(hub_content.files_optional).length == 0) return step_8_merge_user(cb9) ; // next user
+                            if (Object.keys(hub_content.files_optional).length == 0) return step_9_merge_user(cb9) ; // next user
                             re1 = new RegExp('-' + hub_user_seq + '-chat\.json$');
                             re2 = new RegExp('-' + hub_user_seq + '-image\.json$');
                             for (key in hub_content.files_optional) {
@@ -705,7 +777,7 @@ angular.module('MoneyNetwork')
                                 hub_filename = key ;
                                 break ;
                             }
-                            if (!match) return step_8_merge_user(cb9); // continue with next user
+                            if (!match) return step_9_merge_user(cb9); // continue with next user
 
                             filename_splitted = hub_filename.split('-');
                             filename_splitted[filename_splitted.length - 2] = my_user_seq;
@@ -751,11 +823,11 @@ angular.module('MoneyNetwork')
                         }; // move_files
                         move_user_files() ;
 
-                    }; // step_8_merge_user
+                    }; // step_9_merge_user
 
-                    // step_9_move_other_files. Etc optional files not ending with -<user_seq>-chat.json or -<user_seq>-image.json
-                    step_9_move_other_files = function (cb10) {
-                        var pgm = service + '.merge_user_hub.step_9_move_other_files: ';
+                    // step_10_move_other_files. Etc optional files not ending with -<user_seq>-chat.json or -<user_seq>-image.json
+                    step_10_move_other_files = function (cb10) {
+                        var pgm = service + '.merge_user_hub.step_10_move_other_files: ';
                         var key, filename, file_str, json_raw, inner_path0, debug_seq0 ;
                         for (key in hub_content.files_optional) {
                             if (hub_content.files_optional[key].size == 2) continue ; // empty file
@@ -771,7 +843,7 @@ angular.module('MoneyNetwork')
                         if (my_content.files_optional[filename]) {
                             // file already in current user hub.
                             delete hub_content.files_optional[filename];
-                            return step_9_move_other_files(cb10); // next file
+                            return step_10_move_other_files(cb10); // next file
                         }
 
                         // move file.
@@ -788,7 +860,7 @@ angular.module('MoneyNetwork')
                                 // move failed
                                 console.log(pgm + inner_path0 + 'fileWrite failed. res = ' + JSON.stringify(res));
                                 delete hub_content.files_optional[filename];
-                                return step_9_move_other_files(cb10); // next file
+                                return step_10_move_other_files(cb10); // next file
                             }
                             // delete file from old user hub
                             inner_path1 = hub_user_path + filename;
@@ -799,15 +871,15 @@ angular.module('MoneyNetwork')
                                 delete hub_content.files_optional[filename];
                                 my_publish = true;
                                 hub_publish = true;
-                                step_9_move_other_files(cb10); // next file
+                                step_10_move_other_files(cb10); // next file
                             }); // fileDelete callback
 
                         }); // fileWrite callback
 
-                    }; // step_9_move_other_files
+                    }; // step_10_move_other_files
 
-                    step_10_cleanup_hub_user_files = function(cb11) {
-                        var pgm = service + '.merge_user_hub.step_10_cleanup_hub_user_files: ';
+                    step_11_cleanup_hub_user_files = function(cb11) {
+                        var pgm = service + '.merge_user_hub.step_11_cleanup_hub_user_files: ';
                         var inner_path, debug_seq, filename ;
                         if (!hub_publish) return cb11() ; // no hub user files were updated
                         if (!hub_content.files) return cb11() ; // no hub user files
@@ -819,12 +891,12 @@ angular.module('MoneyNetwork')
                             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                             delete hub_content.files[filename] ;
                             // next file
-                            step_10_cleanup_hub_user_files(cb11) ;
+                            step_11_cleanup_hub_user_files(cb11) ;
                         }) ; // fileDelete callback
-                    }; // step_10_cleanup_hub_user_files
+                    }; // step_11_cleanup_hub_user_files
 
-                    step_11_publish_empty_hub = function (cb12) {
-                        var pgm = service + '.merge_user_hub.step_11_publish_empty_hub: ';
+                    step_12_publish_empty_hub = function (cb12) {
+                        var pgm = service + '.merge_user_hub.step_12_publish_empty_hub: ';
                         var json_raw, inner_path, debug_seq ;
                         if (!hub_publish) return cb12() ;
 
@@ -834,7 +906,7 @@ angular.module('MoneyNetwork')
                         inner_path = hub_user_path + 'content.json' ;
                         debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                         ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
-                            var pgm = service + '.merge_user_hub.step_11_publish_empty_hub fileWrite callback 1: ';
+                            var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                             MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                             if (res != 'ok') {
                                 console.log(pgm + inner_path + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
@@ -843,7 +915,7 @@ angular.module('MoneyNetwork')
                             // sign and publish
                             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + hub + ' publish') ;
                             ZeroFrame.cmd("sitePublish", {inner_path: inner_path}, function (res) {
-                                var pgm = service + '.merge_user_hub.step_11_publish_empty_hub sitePublish callback 2: ';
+                                var pgm = service + '.merge_user_hub.step_12_publish_empty_hub sitePublish callback 2: ';
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                                 if (res != 'ok') {
                                     console.log(pgm + inner_path + ' sitePublish failed. error = ' + JSON.stringify(res)) ;
@@ -852,14 +924,14 @@ angular.module('MoneyNetwork')
                                 cb12() ;
                             }) ; // sitePublish
                         }) ; // fileWrite callback 1
-                    }; // step_11_publish_empty_hub
+                    }; // step_12_publish_empty_hub
 
-                    step_12_write_and_publish_user_data = function (cb13) {
-                        var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data: ';
+                    step_13_write_and_publish_user_data = function (cb13) {
+                        var pgm = service + '.merge_user_hub.step_13_write_and_publish_user_data: ';
                         var write_data, write_status, write_like, publish ;
                         
                         write_data = function (cb) {
-                            var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.write_data: ';
+                            var pgm = service + '.merge_user_hub.step_13_write_and_publish_user_data.write_data: ';
                             var json_raw, inner_path, debug_seq ;
                             if (!my_data_updated) return cb() ;
                             my_publish = true ;
@@ -867,7 +939,7 @@ angular.module('MoneyNetwork')
                             inner_path = hub_user_path + 'data.json' ;
                             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
-                                var pgm = service + '.merge_user_hub.step_11_publish_empty_hub fileWrite callback 1: ';
+                                var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                                 if (res != 'ok') {
                                     console.log(pgm + inner_path + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
@@ -878,7 +950,7 @@ angular.module('MoneyNetwork')
                         } ; // write_data
 
                         write_status = function (cb) {
-                            var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.write_status: ';
+                            var pgm = service + '.merge_user_hub.step_13_write_and_publish_user_data.write_status: ';
                             var json_raw, inner_path, debug_seq ;
                             if (!my_status_updated) return cb() ;
                             my_publish = true ;
@@ -886,7 +958,7 @@ angular.module('MoneyNetwork')
                             inner_path = hub_user_path + 'status.json' ;
                             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
-                                var pgm = service + '.merge_user_hub.step_11_publish_empty_hub fileWrite callback 1: ';
+                                var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                                 if (res != 'ok') {
                                     console.log(pgm + inner_path + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
@@ -897,7 +969,7 @@ angular.module('MoneyNetwork')
                         } ; // write_status
 
                         write_like = function (cb) {
-                            var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.write_like: ';
+                            var pgm = service + '.merge_user_hub.step_13_write_and_publish_user_data.write_like: ';
                             var json_raw, inner_path, debug_seq ;
                             if (!my_like_updated) return cb() ;
                             my_publish = true ;
@@ -905,7 +977,7 @@ angular.module('MoneyNetwork')
                             inner_path = hub_user_path + 'like.json' ;
                             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
-                                var pgm = service + '.merge_user_hub.step_11_publish_empty_hub fileWrite callback 1: ';
+                                var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                                 if (res != 'ok') {
                                     console.log(pgm + inner_path + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
@@ -916,14 +988,14 @@ angular.module('MoneyNetwork')
                         } ; // write_like
 
                         publish = function (cb) {
-                            var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.publish: ';
+                            var pgm = service + '.merge_user_hub.step_13_write_and_publish_user_data.publish: ';
                             var inner_path0, debug_seq0;
                             if (!my_publish) return cb();
 
                             inner_path0 = my_user_path + 'content.json';
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + my_hub + ' publish');
                             ZeroFrame.cmd("sitePublish", {inner_path: inner_path0}, function (res) {
-                                var pgm = service + '.merge_user_hub.step_12_write_and_publish_user_data.publish sitePublish callback: ';
+                                var pgm = service + '.merge_user_hub.step_13_write_and_publish_user_data.publish sitePublish callback: ';
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                                 if (res != 'ok') {
                                     console.log(pgm + inner_path0 + ' sitePublish failed. error = ' + JSON.stringify(res));
@@ -944,7 +1016,7 @@ angular.module('MoneyNetwork')
                             })
                         });
                         
-                    }; // step_12_write_and_publish_user_data
+                    }; // step_13_write_and_publish_user_data
 
                     // step n: finish doing tasks
                     step_n_done = function () {
@@ -953,20 +1025,22 @@ angular.module('MoneyNetwork')
                     }; // step_n_done
 
                     // callback chain step 1, .2, ... n
-                    step_1_remove_file_doublets(function() {
-                        step_2_get_file_info(function() {
-                            step_3_download_files(function() {
-                                step_4_get_data_files(function() {
-                                    step_5_get_status_files(function() {
-                                        step_6_get_like_files(function() {
-                                            step_7_debug_output(function() {
-                                                step_8_merge_user(function() {
-                                                    step_7_debug_output(function() {
-                                                        step_9_move_other_files(function(){
-                                                            step_10_cleanup_hub_user_files(function() {
-                                                                step_11_publish_empty_hub(function() {
-                                                                    step_12_write_and_publish_user_data(function() {
-                                                                        step_n_done() ;
+                    step_1_update_content_json(function() {
+                        step_2_remove_file_doublets(function() {
+                            step_3_get_file_info(function() {
+                                step_4_download_files(function() {
+                                    step_5_get_data_files(function() {
+                                        step_6_get_status_files(function() {
+                                            step_7_get_like_files(function() {
+                                                step_8_debug_output(function() {
+                                                    step_9_merge_user(function() {
+                                                        step_8_debug_output(function() {
+                                                            step_10_move_other_files(function(){
+                                                                step_11_cleanup_hub_user_files(function() {
+                                                                    step_12_publish_empty_hub(function() {
+                                                                        step_13_write_and_publish_user_data(function() {
+                                                                            step_n_done() ;
+                                                                        })
                                                                     })
                                                                 })
                                                             })
@@ -978,7 +1052,8 @@ angular.module('MoneyNetwork')
                                     })
                                 })
                             })
-                        })
+                        }) ;
+
                     }) ;
 
                 }) ; // fileGet callback 2
@@ -1625,11 +1700,17 @@ angular.module('MoneyNetwork')
         } // get_user_seq
 
         // sometimes problem with lost Merger:MoneyNetwork permission
-        // maybe a ZeroNet bug. maybe a problem after migrating MoneyNetwork to a merger site.
+        // maybe a ZeroNet bug.
+        // maybe a problem after migrating MoneyNetwork to a merger site.
+        // maybe a problem with deleted optional files and content.db out of sync
         // check and ensure Merger:MoneyNetwork before file operations
         // no mergerSiteAdd. assuming lost Merger:MoneyNetwork is the problem
+        var MERGER_ERROR = "Please check console.log and UI server log. Error occurs after fileGet for not existing optional files. For example content.json file(s) is out of sync with filesystem. For example after manually deleting optional files from filesystem. Error also occurs after fileGet to a bad-file. Try deleting content.db and restart ZeroNet. Otherwise find and delete invalid or sign content.json file" ;
+        function get_merger_error () {
+            return MERGER_ERROR + '. merge_user_hubs_status.running = ' + merge_user_hubs_status.running ;
+        }
         function request_merger_permission (calling_pgm, cb) {
-            console.log(calling_pgm + 'Error: Merger:MoneyNetwork permission was lost. Please check console.log and UI server log') ;
+            console.log(calling_pgm + 'Error: Merger:MoneyNetwork permission was lost. ' + MERGER_ERROR) ;
             ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
                 // continue anyway
                 cb() ;
@@ -2721,7 +2802,8 @@ angular.module('MoneyNetwork')
             get_message_by_sender_sha256: get_message_by_sender_sha256,
             get_message_by_local_msg_seq: get_message_by_local_msg_seq,
             remove_message: remove_message,
-            recursive_delete_message: recursive_delete_message
+            recursive_delete_message: recursive_delete_message,
+            get_merger_error: get_merger_error
         };
 
         // end MoneyNetworkHubService

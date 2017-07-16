@@ -5216,6 +5216,7 @@ angular.module('MoneyNetwork')
 
         // callback from chatCtrl
         // check for any public chat relevant for current chat page context
+        var MERGER_ERROR = moneyNetworkHubService.get_merger_error() ;
         function get_public_chat (cb) {
             var pgm = service + '.get_public_chat: ' ;
             var my_auth_address ;
@@ -5278,6 +5279,13 @@ angular.module('MoneyNetwork')
                             hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
                             deleted_messages, message, cb_status, js_messages_row, one_hour_ago, k, delete_file ;
                         MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        if (res.error == "'NoneType' object has no attribute 'execute'") {
+                            // maybe a problem with deleted optional files. content.db out of sync with file system
+                            console.log(pgm + "Search for public chat failed: " + res.error + MERGER_ERROR);
+                            // try again "cb(null) = loop forever. Trying with done
+                            return cb('done') ;
+                        }
+
                         if (res.error) {
                             ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error]);
                             console.log(pgm + "Search for public chat failed: " + res.error);
