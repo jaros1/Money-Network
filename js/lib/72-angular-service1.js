@@ -26,6 +26,13 @@ angular.module('MoneyNetwork')
             return true ;
         }
 
+
+        // inject functions from calling services
+        var get_user_reactions ;
+        function inject_functions (hash) {
+            if (hash.get_user_reactions) get_user_reactions = hash.get_user_reactions ;
+        }
+
         //// convert data.json file to newest version / structure
         var dbschema_version = 10 ;
         function zeronet_migrate_data (json) {
@@ -160,9 +167,6 @@ angular.module('MoneyNetwork')
             json.version = dbschema_version ;
         } // z_migrate_status
 
-        //function generate_random_password () {
-        //    return MoneyNetworkHelper.generate_random_password(200);
-        //}
 
 
 
@@ -194,7 +198,7 @@ angular.module('MoneyNetwork')
             // get a list of MoneyNetwork User data hubs. title or description matches /user data hub/i. used for new MoneyNetwork users
             ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
                 var pgm = service + '.get_my_user_hub mergerSiteList callback 1: ' ;
-                var user_data_hubs, hub, query, debug_seq, i ;
+                var user_data_hubs, hub, query, debug_seq, i, run_callbacks, user_hub_selected, get_and_add_default_user_hub ;
                 user_data_hubs = [] ;
                 if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites)) ;
                 else for (hub in merger_sites) {
@@ -202,6 +206,49 @@ angular.module('MoneyNetwork')
                         merger_sites[hub].content.description.match(/user data hub/i)) user_data_hubs.push(hub);
                 }
                 console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
+
+                run_callbacks = function () {
+                    // run callbacks. this and any pending callbacks
+                    var pgm = service + '.get_my_user_hub.run_callbacks: ' ;
+                    console.log(pgm + 'my_user_hub = ' + z_cache.my_user_hub + ', other_user_hub = ' + z_cache.other_user_hub) ;
+                    cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
+                    while (get_my_user_hub_cbs.length) {
+                        cb = get_my_user_hub_cbs.shift() ;
+                        cb(z_cache.my_user_hub, z_cache.other_user_hub)
+                    }
+                }; // run_callbacks
+
+                user_hub_selected = function () {
+                    // user data hub was selected. find a random other user data hub. For user data hub lists. written to data.json file
+                    var other_user_data_hubs ;
+                    if (user_data_hubs.length <= 1) {
+                        z_cache.other_user_hub = z_cache.my_user_hub ;
+                        return run_callbacks() ;
+                    }
+                    other_user_data_hubs = [] ;
+                    for (i=0 ; i<user_data_hubs.length ; i++) other_user_data_hubs.push(user_data_hubs[i].hub) ;
+                    i = Math.floor(Math.random() * other_user_data_hubs.length);
+                    z_cache.other_user_hub = other_user_data_hubs[i] ;
+                    return run_callbacks() ;
+                }; // user_hub_selected
+                get_and_add_default_user_hub = function () {
+                    var pgm = service + '.get_my_user_hub.get_and_add_default_user_hub: ' ;
+                    var my_user_hub ;
+                    // no user_data_hubs (no merger site hubs were found)
+                    my_user_hub = get_default_user_hub() ;
+                    console.log(pgm + 'my_user_hub = ' + my_user_hub) ;
+                    ZeroFrame.cmd("mergerSiteAdd", [my_user_hub], function (res) {
+                        var pgm = service + '.get_my_user_hub.get_and_add_default_user_hub mergerSiteAdd callback: ' ;
+                        console.log(pgm + 'res = '+ JSON.stringify(res));
+                        z_cache.my_user_hub = my_user_hub ;
+                        user_hub_selected() ;
+                    }) ; // mergerSiteAdd callback 3
+                };
+
+                if (!user_data_hubs.length) {
+                    // no MoneyNetwork user data hubs were found. Get and add default user data hub
+                    return get_and_add_default_user_hub() ;
+                }
 
                 // find current user data hub(s)
                 // - must have a data.json file
@@ -226,58 +273,14 @@ angular.module('MoneyNetwork')
                 debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = service + '.get_my_user_hub dbQuery callback 2: ' ;
-                    var i, merge_job, run_callbacks, user_hub_selected ;
+                    var i, merge_job ;
                     // if (detected_client_log_out(pgm)) return ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                    run_callbacks = function () {
-                        var pgm = service + '.get_my_user_hub.run_callbacks: ' ;
-                        console.log(pgm + 'my_user_hub = ' + z_cache.my_user_hub + ', other_user_hub = ' + z_cache.other_user_hub) ;
-                        cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
-                        while (get_my_user_hub_cbs.length) {
-                            cb = get_my_user_hub_cbs.shift() ;
-                            cb(z_cache.my_user_hub, z_cache.other_user_hub)
-                        }
-                    }; // run_callbacks
-                    user_hub_selected = function () {
-                        // user data hub was selected. find a random other user data hub. For user data hub list
-                        var pgm = service + '.get_my_user_hub.user_hub_selected: ' ;
-                        var query, debug_seq ;
-                        query =
-                            "select distinct substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
-                            "from keyvalue as optional, json, files " +
-                            "where optional.key = 'optional' " +
-                            "and optional.value = '" + Z_CONTENT_OPTIONAL + "' " +
-                            "and json.json_id = optional.json_id " +
-                            "and files.json_id = json.json_id " +
-                            "and files.filename = 'data.json'" ;
-                        debug('select', pgm + 'query ?? = ' + query);
-                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ??') ;
-                        ZeroFrame.cmd("dbQuery", [query], function (res) {
-                            var pgm = service + '.get_my_user_hub.user_hub_selected dbQuery callback: ';
-                            var i, other_user_data_hubs;
-                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
-                            z_cache.other_user_hub = z_cache.my_user_hub ;
-                            if (res.error) {
-                                console.log(pgm + "find other user data hub failed: " + res.error);
-                                console.log(pgm + 'query = ' + query);
-                                return run_callbacks() ;
-                            }
-                            other_user_data_hubs = [] ;
-                            for (i=0 ; i<res.length ; i++) if (res[i].hub != z_cache.my_user_hub) other_user_data_hubs.push(res[i].hub);
-                            if (!other_user_data_hubs.length) return run_callbacks() ;
-                            console.log(pgm + 'other_hubs = ' + JSON.stringify(other_user_data_hubs));
-                            i = Math.floor(Math.random() * other_user_data_hubs.length);
-                            z_cache.other_user_hub = other_user_data_hubs[i] ;
-                            return run_callbacks() ;
 
-                        }) ; // dbQuery callback
-
-                    }; // user_hub_selected
                     if (res.error) {
                         console.log(pgm + "user data hub lookup failed: " + res.error);
                         console.log(pgm + 'query = ' + query);
-                        z_cache.my_user_hub = get_default_user_hub() ;
-                        return user_hub_selected() ;
+                        return get_and_add_default_user_hub() ;
                     }
                     if (res.length) {
                         // user data hub(s) found
@@ -305,10 +308,10 @@ angular.module('MoneyNetwork')
                         // select random user data hub from mergerSiteList
                         i = Math.floor(Math.random() * user_data_hubs.length);
                         z_cache.my_user_hub = user_data_hubs[i] ;
+                        console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
+                        user_hub_selected() ;
                     }
-                    else z_cache.my_user_hub = get_default_user_hub() ; // from site_info.content.sessions.default_hubs
-                    console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
-                    user_hub_selected() ;
+                    else get_and_add_default_user_hub() ;
                 }) ; // dbQuery callback 2
 
             }) ; // mergerSiteList callback 1
@@ -2508,7 +2511,7 @@ angular.module('MoneyNetwork')
         // load_contacts:
         // - true: called from ls_load_contacts or load_public_chat
         // - false: do not add message to contact.messages array (already there)
-        function add_message(contact, message, load_contacts, get_user_reactions) {
+        function add_message(contact, message, load_contacts) {
             // read like.json file with public reactions
             get_like_json(function (like, like_index, empty) {
                 var pgm = service + '.add_message: ' ;
@@ -2640,6 +2643,21 @@ angular.module('MoneyNetwork')
             js_messages_index.sender_sha256[message.sender_sha256] = js_messages_row ;
         }
 
+        // add message to contact
+        function add_msg(contact, message, param3) {
+            var pgm = service + '.add_msg: ' ;
+            if (arguments.length != 2) throw pgm + 'invalid call. add_msg must be called with 2 arguments! param3 = ' + JSON.stringify(param3) ;
+            // save message in localStorage. local_storage_save_messages / z_update_1_data_json call will encrypt and add encrypted message to data.json (ZeroNet)
+            var message_with_envelope = {
+                folder: 'outbox',
+                message: message,
+                created_at: new Date().getTime()
+            } ;
+            // add message to contact.messages and js_messages array. not yet a sender_sha256 address. will be added in z_update_1_data_json
+            add_message(contact, message_with_envelope, false) ;
+            // console.log(pgm + 'contact = ' + JSON.stringify(contact));
+        } // add_msg
+
         function remove_message (js_messages_row) {
             var pgm = service + '.remove_message' ;
             var contact, message, i, seq ;
@@ -2728,7 +2746,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                     // send message
                     update_zeronet = true ;
-                    add_msg(message.contact, delete_message, false);
+                    add_msg(message.contact, delete_message);
                     js_messages[js_messages.length-1].chat_filter = false ;
                     // delete old message
                     delete message.edit_chat_message;
@@ -2815,9 +2833,11 @@ angular.module('MoneyNetwork')
             get_message_by_seq: get_message_by_seq,
             get_message_by_sender_sha256: get_message_by_sender_sha256,
             get_message_by_local_msg_seq: get_message_by_local_msg_seq,
+            add_msg: add_msg,
             remove_message: remove_message,
             recursive_delete_message: recursive_delete_message,
-            get_merger_error: get_merger_error
+            get_merger_error: get_merger_error,
+            inject_functions: inject_functions
         };
 
         // end MoneyNetworkHubService

@@ -34,7 +34,7 @@ angular.module('MoneyNetwork')
         }
 
         function generate_random_password () {
-            return MoneyNetworkHelper.generate_random_password(200);
+            return moneyNetworkZService.generate_random_password();
         }
 
         function get_my_user_hub (cb) {
@@ -349,7 +349,7 @@ angular.module('MoneyNetwork')
                                 participant: message_with_envelope.participant
                             } ;
                             lost_message_with_envelope.ls_msg_size = JSON.stringify(lost_message_with_envelope).length ;
-                            add_message(contact, lost_message_with_envelope) ;
+                            add_message(contact, lost_message_with_envelope, false) ;
                             debug('lost_message', 'added lost msg to inbox. lost_message_with_envelope = ' + JSON.stringify(lost_message_with_envelope));
                         } // for i (sent)
 
@@ -864,6 +864,7 @@ angular.module('MoneyNetwork')
         function clear_messages () { moneyNetworkHubService.clear_messages() }
 
         function get_user_reactions () { return moneyNetworkEmojiService.get_user_reactions() }
+        moneyNetworkHubService.inject_functions({get_user_reactions: get_user_reactions}) ;
 
         function add_message_parent_index (message) { return moneyNetworkHubService.add_message_parent_index (message) }
 
@@ -872,8 +873,7 @@ angular.module('MoneyNetwork')
         // - true: called from ls_load_contacts or load_public_chat
         // - false: do not add message to contact.messages array (already there)
         function add_message(contact, message, load_contacts) {
-            // inject get_user_reactions function into moneyNetworkHubService
-            moneyNetworkHubService.add_message(contact, message, load_contacts, get_user_reactions)
+            moneyNetworkHubService.add_message(contact, message, load_contacts)
         }
         function message_add_local_msg_seq(js_messages_row, local_msg_seq) { moneyNetworkHubService.message_add_local_msg_seq(js_messages_row, local_msg_seq)}
         function message_add_sender_sha256(js_messages_row, sender_sha256) { moneyNetworkHubService.message_add_sender_sha256(js_messages_row, sender_sha256)}
@@ -1951,6 +1951,8 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.setItem('msg_seq', JSON.stringify(local_msg_seq)) ;
             return local_msg_seq ;
         } // next_local_msg_seq
+        moneyNetworkZService.inject_functions({next_local_msg_seq: next_local_msg_seq});
+
 
 
         // received an incoming message with image=true
@@ -2385,7 +2387,7 @@ angular.module('MoneyNetwork')
             //    "received_at": 1480097522875,
             //    "ls_msg_size": 414
             //};
-            add_message(contact_or_group, message) ;
+            add_message(contact_or_group, message, false) ;
 
             if (message.receiver_sha256) {
                 // this message is using a sender_sha256 address from a previous sent message (add contact, chat etc)
@@ -4320,21 +4322,14 @@ angular.module('MoneyNetwork')
 
 
         // add message to contact
-        function add_msg(contact, message) {
+        function add_msg(contact, message, param3) {
             var pgm = service + '.add_msg: ' ;
-            // save message in localStorage. local_storage_save_messages / z_update_1_data_json call will encrypt and add encrypted message to data.json (ZeroNet)
-            var message_with_envelope = {
-                folder: 'outbox',
-                message: message,
-                created_at: new Date().getTime()
-            } ;
-            // add message to contact.messages and js_messages array. not yet a sender_sha256 address. will be added in z_update_1_data_json
-            add_message(contact, message_with_envelope) ;
-            // console.log(pgm + 'contact = ' + JSON.stringify(contact));
+            if (arguments.length != 2) throw pgm + 'invalid call. add_msg must be called with 2 arguments! param3 = ' + JSON.stringify(param3) ;
+            return moneyNetworkHubService.add_msg(contact, message) ;
         } // add_msg
 
-
         // delete previously send message. returns true if ZeroNet must be updated after calling the method
+        // todo: also a remove_msg function in moneyNetworkHubService but with not identical. remove?
         function remove_msg (local_msg_seq) {
             var pgm = service + '.remove_msg: ' ;
 
@@ -6149,7 +6144,7 @@ angular.module('MoneyNetwork')
                             //}
                             message_with_envelope.ls_msg_size = 0; // ZeroNet and browser size 0 for all public chat messages
                             debug('public_chat', pgm + 'folder = ' + folder + ', message_with_envelope = ' + JSON.stringify(message_with_envelope));
-                            add_message(contact, message_with_envelope);
+                            add_message(contact, message_with_envelope, false);
                             cache_status.timestamps.splice(i,1) ;
                             page_updated = 'updated';
                         } // for i
@@ -6794,7 +6789,8 @@ angular.module('MoneyNetwork')
             check_reactions: check_reactions,
             unicode_to_symbol: moneyNetworkEmojiService.unicode_to_symbol,
             symbol_to_unicode: symbol_to_unicode,
-            get_my_user_hub: get_my_user_hub
+            get_my_user_hub: get_my_user_hub,
+            generate_random_password: moneyNetworkZService.generate_random_password
         };
 
         // end MoneyNetworkService

@@ -247,17 +247,24 @@ var MoneyNetworkAPILib = (function () {
             "where ";
         for (session_filename in sessions) {
             query += first ? "(" : " or ";
-            query += "files_optional.filename like '" + session_filename + ".%'"
+            query += "files_optional.filename like '" + session_filename + ".%'";
+            first = false ;
         }
         query +=
             ") and json.json_id = files_optional.json_id " +
             "order by substr(files_optional.filename, 12)";
+        if (first) {
+            console.log(pgm + 'error. no sessions were found');
+            clearInterval(demon_id);
+            return;
+        }
         // if (debug) console.log(pgm + 'query = ' + query) ;
         ZeroFrame.cmd("dbQuery", [query], function (res) {
             var pgm = module + '.demon dbQuery callback: ';
             var i, directory, filename, session_filename, cb, other_user_path, inner_path, encrypt;
             if (res.error) {
                 console.log(pgm + 'query failed. error = ' + res.error);
+                console.log(pgm + 'query = ' + query);
                 clearInterval(demon_id);
                 return;
             }
@@ -469,10 +476,10 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
     if (options.this_user_path) {
         self.readonly(options,'this_user_path') ;
         this.this_user_path = options.this_user_path;
+        MoneyNetworkAPILib.config({user_path: this.this_user_path})
     }
     // user paths. full merger site paths
-    if (options.this_user_path) MoneyNetworkAPILib.config({user_path: this.this_user_path});
-    else if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
+    if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
     if (options.other_user_path) {
         if (!MoneyNetworkAPILib.is_user_path(options.other_user_path)) throw pgm + 'invalid options.other_user_path' ;
         self.readonly(options,'other_user_path') ;
@@ -729,6 +736,7 @@ MoneyNetworkAPI.prototype.get_content_json = function (cb) {
     var pgm = this.module + '.get_content_json: ';
     var self, inner_path;
     self = this;
+    if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
     if (!this.this_user_path) return cb(); // error. user_path is required
     inner_path = this.this_user_path + 'content.json';
     // 1: fileGet
@@ -774,6 +782,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
     if (!this.ZeroFrame) return cb({error: 'Cannot add optional files support to content.json. ZeroFrame is missing in setup'});
     if (!this.ZeroFrame.site_info) return cb({error: 'Cannot add optional files support to content.json. ZeroFrame is not finished loading'});
     if (!this.ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot add optional files support to content.json. No cert_user_id. ZeroNet certificate is missing'});
+    if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
     if (!this.this_user_path) return cb({error: 'Cannot add optional files support to content.json. user_path is missing in setup'});
     // ready for checking/adding optional files support in/to content.json file
     // 1: get content.json. will create empty signed content.json if content.json is missing
@@ -999,6 +1008,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     if (!this.other_session_pubkey && (encryptions.indexOf(1) != -1)) return cb({error: 'Cannot JSEncrypt encrypt outgoing message. pubkey is missing in encryption setup'}); // encrypt_1
     if (!this.other_session_pubkey2 && (encryptions.indexOf(2) != -1)) return cb({error: 'Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'}); // encrypt_2
     if (!this.sessionid && (encryptions.indexOf(3) != -1)) return cb({error: 'Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'}); // encrypt_3
+    if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
     if (!this.this_user_path) return cb({error: 'Cannot send message. this_user_path is missing in setup'});
     if (response) {
         // Ingoing encryption

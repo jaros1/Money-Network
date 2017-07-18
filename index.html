@@ -1099,6 +1099,9 @@
                 <button ng-show="w.show_test_new_wallet(1)" type="submit" ng-click="w.test_new_wallet()" ng-disabled="w.test_running">Test</button>
                 <button ng-show="w.test_running" type="submit" ng-click="w.reset_test()">Reset</button>
                 <button ng-show="w.show_add_new_wallet()" type="submit" ng-click="w.add_new_wallet()" ng-disabled="w.test_running">Add</button>
+                <span ng-hide="w.show_test_new_wallet(2)">
+                    <br>( Tip: You can test with URL = 1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1 )
+                </span>
             </p>
 
             <p ng-show="w.show_test_new_wallet(2)">
@@ -2063,9 +2066,9 @@
   all.js ~= 1 Mb and distribution is slow on zeronet
   js/all.js.tar.bz2 is small and distributed fast but tar.bz2 is not yet supported by all clients
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->

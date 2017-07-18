@@ -52,32 +52,44 @@ angular.module('MoneyNetwork')
             moneyNetworkHubService.get_like_json(cb);
         }
         function write_like_json (cb) {
-            moneyNetworkHubService.write_like_json(cb) ;
+            moneyNetworkHubService.write_like_json(cb)
         }
         function update_like_index (like, like_index) {
-            moneyNetworkHubService.update_like_index(like, like_index);
+            moneyNetworkHubService.update_like_index(like, like_index)
         }
         function get_my_user_hub (cb) {
             moneyNetworkHubService.get_my_user_hub(cb) ;
         }
         function save_my_files_optional (files_optional) {
-            moneyNetworkHubService.save_my_files_optional(files_optional) ;
+            moneyNetworkHubService.save_my_files_optional(files_optional)
         }
         function get_public_contact (create) {
-            return moneyNetworkHubService.get_public_contact(create) ;
+            return moneyNetworkHubService.get_public_contact(create)
         }
-        function zeronet_site_publish(cb) { moneyNetworkHubService.zeronet_site_publish(cb)} ;
+        function zeronet_site_publish(cb) { moneyNetworkHubService.zeronet_site_publish(cb)}
+        function get_my_unique_id() { return moneyNetworkHubService.get_my_unique_id()}
+        function get_message_by_seq(seq) { return moneyNetworkHubService.get_message_by_seq(seq)}
+        function message_add_local_msg_seq(js_messages_row, local_msg_seq) {
+            return moneyNetworkHubService.message_add_local_msg_seq(js_messages_row, local_msg_seq)
+        }
+        function message_add_sender_sha256(js_messages_row, sender_sha256) {
+            return moneyNetworkHubService.message_add_sender_sha256(js_messages_row, sender_sha256)
+        }
+        function add_message_parent_index (message) {
+            return moneyNetworkHubService.add_message_parent_index (message)
+        }
 
-         /// optional files format:
+        /// optional files format:
         //// - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
         //// - old encrypted image: <unix timestamp>-image.json (not used but old files may still exist)
         //// - new encrypted image: <unix timestamp>-<user seq>-image.json
         var Z_CONTENT_OPTIONAL = moneyNetworkHubService.get_z_content_optional() ;
 
         // inject functions from calling services
-        var ls_save_contacts ;
+        var ls_save_contacts, next_local_msg_seq ;
         function inject_functions (hash) {
             if (hash.ls_save_contacts) ls_save_contacts = hash.ls_save_contacts ;
+            if (hash.next_local_msg_seq) next_local_msg_seq = hash.next_local_msg_seq ;
         }
 
 
@@ -520,6 +532,9 @@ angular.module('MoneyNetwork')
             return avatar ;
         }
 
+        function generate_random_password () {
+            return MoneyNetworkHelper.generate_random_password(200);
+        }
 
 
         // action table used when updating group chat reaction.
@@ -2896,7 +2911,8 @@ angular.module('MoneyNetwork')
             cleanup_my_image_json: cleanup_my_image_json,
             load_avatar: load_avatar,
             get_avatar: get_avatar,
-            inject_functions: inject_functions
+            inject_functions: inject_functions,
+            generate_random_password: generate_random_password
         };
 
         // end MoneyNetworkZService

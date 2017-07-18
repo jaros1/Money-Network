@@ -203,7 +203,7 @@ angular.module('MoneyNetwork')
             // create test data. status sent, no zeronet_msg_id and status cleanup
             var local_msg_seq, sender_sha256, lost_message_with_envelope, js_messages ;
             local_msg_seq = moneyNetworkService.next_local_msg_seq() ;
-            sender_sha256 = CryptoJS.SHA256(MoneyNetworkHelper.generate_random_password(200)).toString();
+            sender_sha256 = CryptoJS.SHA256(moneyNetworkService.generate_random_password()).toString();
             lost_message_with_envelope =
             {
                 "folder": "outbox",
@@ -216,7 +216,7 @@ angular.module('MoneyNetwork')
             lost_message_with_envelope.ls_msg_size = JSON.stringify(lost_message_with_envelope).length ;
             debug('lost_message', pgm + 'lost_message = ' + JSON.stringify(lost_message_with_envelope));
             // add message
-            moneyNetworkService.add_message(last_contact, lost_message_with_envelope) ;
+            moneyNetworkService.add_message(last_contact, lost_message_with_envelope, false) ;
             moneyNetworkService.ls_save_contacts(false) ;
             ZeroFrame.cmd('wrapperNotification', ['info', 'created new outbox msg ' + local_msg_seq + '. Not sent, not on ZeroNet, no feedback info and marked as cleanup', 5000]);
         } // testcase_message_lost_in_cyberspace

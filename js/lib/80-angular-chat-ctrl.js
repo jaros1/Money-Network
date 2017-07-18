@@ -111,7 +111,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'group_unique_id = ' + group_unique_id) ;
 
                 // create new pseudo chat group contact. assword will be send to group participants in send_msg
-                password = MoneyNetworkHelper.generate_random_password(200);
+                password = moneyNetworkService.generate_random_password();
                 unique_id = CryptoJS.SHA256(password).toString() ;
                 public_avatars = MoneyNetworkHelper.get_public_avatars() ;
                 index = Math.floor(Math.random() * public_avatars.length);
@@ -725,7 +725,7 @@ angular.module('MoneyNetwork')
                         return ;
                     }
                     // send message
-                    moneyNetworkService.add_msg(message.contact, verified_message, false) ;
+                    moneyNetworkService.add_msg(message.contact, verified_message) ;
                     moneyNetworkService.ls_save_contacts(true) ;
                     // notification
                     delete message.message.message.password_sha256 ;
@@ -1158,7 +1158,7 @@ angular.module('MoneyNetwork')
                                 return;
                             }
                             // send group chat message
-                            moneyNetworkService.add_msg(self.group_chat_contacts[i], message, false);
+                            moneyNetworkService.add_msg(self.group_chat_contacts[i], message);
                         } // for i
                         delete contact.send_password ;
                     }
@@ -1182,7 +1182,7 @@ angular.module('MoneyNetwork')
                     }
                     // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                     // send message
-                    moneyNetworkService.add_msg(contact, message, false);
+                    moneyNetworkService.add_msg(contact, message);
                     if (self.group_chat && self.new_chat_src) {
                         // sending a group chat message with an image.
                         // expects one receipt for each participant in chat group except me
@@ -1351,7 +1351,7 @@ angular.module('MoneyNetwork')
                     }
                     // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                     // send message
-                    moneyNetworkService.add_msg(null, new_message, false);
+                    moneyNetworkService.add_msg(null, new_message);
                     moneyNetworkService.ls_save_contacts(true);
                     return ;
                     // update public outbox message
@@ -1376,7 +1376,7 @@ angular.module('MoneyNetwork')
                 if (new_image && (old_image == new_image)) changed_message.replace_unchanged_image_with_x = true ;
                 // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                 // send message
-                moneyNetworkService.add_msg(message.contact, changed_message, false);
+                moneyNetworkService.add_msg(message.contact, changed_message);
                 // delete old message
                 console.log(pgm + 'todo: keep old message in some kind of edit history?');
                 //message.message.deleted_at = new Date().getTime() ;
@@ -1722,7 +1722,7 @@ angular.module('MoneyNetwork')
                 // send message
                 if (message.message.z_filename) contact = null ; // public chat
                 else contact = message.contact ; // private or group chat
-                moneyNetworkService.add_msg(contact, comment, false);
+                moneyNetworkService.add_msg(contact, comment);
                 if (contact && (contact.type == 'group') && comment.image) {
                     // sending a group chat message with an image.
                     // expects one receipt for each participant in chat group except me
