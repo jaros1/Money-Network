@@ -58,11 +58,14 @@ angular.module('MoneyNetwork')
 
         // load old sessions and listen for incoming messages
         var ls_sessions = ls_get_sessions() ; // sessionid => hash with saved wallet data
-        (function() {
-            var pgm = controller + ' load_sessions: ';
-            var sessionid, session_info, encrypt, prvkey, userid2 ;
+
+        function create_sessions() {
+            var pgm = controller + '.create_sessions: ';
+            var sessionid, session_info, encrypt, prvkey, userid2, sessions1, sessions2, step_1_other_session_filename,
+                step_2_find_files, step_3_cleanup_done_files ;
             prvkey = MoneyNetworkHelper.getItem('prvkey') ;
             userid2 = MoneyNetworkHelper.getUserId() ;
+            sessions1 = [] ;
             console.log(pgm + 'todo: move prvkey and userid2 setup to MoneyNetworkAPILib. No reason for prvkey and userid2 setup for each MoneyNetworkAPI instance') ;
             console.log(pgm + 'todo: pubkey+pubkey2 combinations (other session) should be unique. only one sessionid is being used by the other session. last used sessionid is the correct session');
             for (sessionid in ls_sessions) {
@@ -76,18 +79,134 @@ angular.module('MoneyNetwork')
                     pubkey: session_info.pubkey,
                     pubkey2: session_info.pubkey2
                 }) ;
+                sessions1.push(encrypt) ;
                 // get session filenames. otherwise "Not found unlock_pwd2" error in get_password request from wallet!
-                encrypt.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
-                    // console.log(pgm + 'why this debug? sessionid = ' + sessionid + ', other_session_filename = ' + other_session_filename) ;
-                }) ;
+                //encrypt.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
+                //    // console.log(pgm + 'why this debug? sessionid = ' + sessionid + ', other_session_filename = ' + other_session_filename) ;
+                //}) ;
             } // for sessionid
-        })() ; // load_sessions
+
+            // checking done list.
+            console.log(pgm + ': todo: check done list. maybe some done timestamps can be removed');
+            sessions2 = {} ;
+            step_1_other_session_filename = function(cb2) {
+                var pgm = controller + '.create_sessions.step_1_other_session_filename: ';
+                console.log(pgm + 'cb2 = ', cb2) ;
+                var encrypt ;
+                if (!sessions1.length) return cb2() ; // next step
+                encrypt = sessions1.shift() ;
+                if (encrypt.destroyed) return step_1_other_session_filename() ; // next session
+                encrypt.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
+                    sessions2[other_session_filename] = {sessionid: encrypt.sessionid, files: {}} ;
+                    step_1_other_session_filename(cb2) ; // next session
+                }) ;
+            }; // step_1_other_session_filename
+
+            // find not deleted files
+            step_2_find_files = function (cb3) {
+                var pgm = controller + '.create_sessions.step_2_find_files: ';
+                var query, first, other_session_filename  ;
+                if (!Object.keys(sessions2).length) return ; // no sessions
+
+                // build query
+                first = true;
+                query =
+                    "select json.directory, files_optional.filename " +
+                    "from files_optional, json " +
+                    "where ";
+                for (other_session_filename in sessions2) {
+                    query += first ? "(" : " or ";
+                    query += "files_optional.filename like '" + other_session_filename + ".%'";
+                    first = false ;
+                }
+                query +=
+                    ") and json.json_id = files_optional.json_id " +
+                    "order by substr(files_optional.filename, 12)";
+                console.log(pgm + 'query = ' + query) ;
+
+                ZeroFrame.cmd("dbQuery", [query], function (res) {
+                    var pgm = controller + '.create_sessions.step_2_find_files dbQuery callback: ';
+                    var i, filename, timestamp, timestamp_re, other_session_filename ;
+                    if (res.error) {
+                        console.log(pgm + 'query failed. error = ' + res.error);
+                        console.log(pgm + 'query = ' + query);
+                        return;
+                    }
+                    // console.log(pgm + 'res = ' + JSON.stringify(res));
+                    //res = [{
+                    //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                    //    "filename": "3c69e1b778.1500291521896"
+                    //}, {
+                    // ...
+                    //}, {
+                    //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                    //    "filename": "90ed57c290.1500649849934"
+                    //}];
+                    timestamp_re = /^[0-9]{13}$/ ;
+                    for (i=0 ; i<res.length ; i++) {
+                        filename = res[i].filename;
+                        other_session_filename = filename.substr(0,10) ;
+                        timestamp = filename.substr(11) ;
+                        if (!timestamp.match(timestamp_re)) continue ;
+                        timestamp = parseInt(timestamp) ;
+                        sessions2[other_session_filename].files[timestamp] = true ;
+                    } // for i
+                    //console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+
+                    // next step
+                    cb3() ;
+
+                }) ; // dbQuery callback
+
+            }; // step_2_find_files
+
+            step_3_cleanup_done_files = function() {
+                var pgm = controller + '.create_sessions.step_3_cleanup_done_files: ';
+                console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+                //sessions2 = {
+                //    "3c69e1b778": {
+                //        "sessionid": "exwo7kfpldms9xszutcigsebqc08oqplwrgwpxpk65h9xs40eivo6lvkfw9b",
+                //        "files": {
+                //            "1500291521896": true,
+                //            "1500291524251": true,
+                //            "1500291534841": true,
+                //            "1500291538738": true,
+                //            "1500291551403": true,
+                //            "1500291553832": true,
+                //            "1500291590687": true,
+                //            "1500298500052": true,
+                //            "1500298501666": true,
+                //            "1500300646074": true,
+                //            "1500300646126": true,
+                //            "1500364465468": true,
+                //            "1500365002692": true
+                //        }
+                //    },
+                //    ...
+                //    "90ed57c290": {
+                //        "sessionid": "ab18l1j3woeaeahgosigtcqwoi429jomj4yey1ywthwhbcjcqqq85clstwww",
+                //        "files": {"1500625596200": true, "1500649849934": true}
+                //    }
+                //};
+
+            }; // step_3_cleanup_done_files
+
+            step_1_other_session_filename(function() {
+                step_2_find_files(function() {
+                    step_3_cleanup_done_files() ;
+                }) ;
+            }) ;
+
+        } // create_sessions
+        create_sessions() ;
 
         // generic callback function to handle incoming messages from wallet session(s):
         // - save_data message. save (encrypted) data in MoneyNetwork localStorage
         // - get_data message. return (encrypted) data saved in MoneyNetwork localStorage
         // - delete_data message. delete data saved in MoneyNetwork localStorage
         console.log(controller + ': todo: move process_incoming_message to moneyNetworkService') ;
+        console.log(controller + ': todo: add done callback. demon should wait until finished before processing next message');
+
         function process_incoming_message (filename, encrypt2) {
             var pgm = controller + '.process_incoming_message: ' ;
             var debug_seq, pos, other_user_path, sessionid, session_info, file_timestamp ;
@@ -136,11 +255,34 @@ angular.module('MoneyNetwork')
                 encrypted_json = JSON.parse(json_str) ;
                 encrypt2.decrypt_json(encrypted_json, function (request) {
                     var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
-                    var timestamp, error, response, i, key, value, encryptions ;
-                    console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                    var timestamp, error, response, i, key, value, encryptions, done_and_send ;
+                    // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                     encryptions = [1,2,3] ;
+
                     // remove any response timestamp before validation (used in response filename)
                     timestamp = request.response ; delete request.response ;
+
+                    done_and_send = function (response, encryptions) {
+                        // marked as done. do not process same message twice
+                        if (session_info) session_info.done[file_timestamp] = new Date().getTime() ;
+                        ls_save_sessions() ;
+
+                        console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                        if (timestamp) {
+                            // response was requested
+                            console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                            console.log(pgm + 'encryptions = ' + JSON.stringify(encryptions)) ;
+                        }
+                        else return ; // exit. no response was requested
+
+                        // send response to other session
+                        encrypt2.send_message(response, {timestamp: timestamp, msgtype: request.msgtype, encryptions: encryptions}, function (res)  {
+                            var pgm = controller + '.process_incoming_message send_message callback 3: ';
+                            console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                        }) ; // send_message callback 3
+
+                    } ; // done_and_send
+
                     // validate and process incoming json message and process
                     response = { msgtype: 'response' } ;
                     error = encrypt2.validate_json(pgm, request) ;
@@ -209,57 +351,52 @@ angular.module('MoneyNetwork')
                         }
                     }
                     else if (request.msgtype == 'get_password') {
-                        // received get_password request from wallet session. return password is any. Encrypt response with cryptMessage only
+                        // received get_password request from wallet session. return password if OK. Encrypt response with cryptMessage only
                         // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
-                        encryptions = [2] ; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
-                        if (session_info.invalid_get_password &&
-                            (session_info.invalid_get_password > 6)) {
-                            session_info = null ;
-                            delete ls_sessions[encrypt2.sessionid] ;
-                            encrypt2.destroy('Too many invalid get_password errors') ;
-                        }
-                        if (!ls_sessions[sessionid]) response.error = 'Session has been deleted' ;
-                        else if (!session_info) response.error = 'Session info was not found' ;
-                        else if (session_info.invalid_get_password && (session_info.invalid_get_password > 3)) response.error = 'Too many get_password errors' ;
-                        else if (encrypt2.other_session_pubkey != request.pubkey) response.error = 'Not found pubkey' ;
-                        else if (encrypt2.other_session_pubkey2 != request.pubkey2) response.error = 'Not found pubkey2' ;
-                        else if (encrypt2.unlock_pwd2 != request.unlock_pwd2) response.error = 'Not found unlock_pwd2' ;
-                        else {
-                            response = {
-                                msgtype: 'password',
-                                password: session_info.password
+                        // get unlock_pwd2
+                        encrypt2.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
+                            var pgm = controller + '.process_incoming_message get_session_filenames callback 3: ';
+                            encryptions = [2] ; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
+                            if (session_info.invalid_get_password &&
+                                (session_info.invalid_get_password > 6)) {
+                                session_info = null ;
+                                delete ls_sessions[sessionid] ;
+                                encrypt2.destroy('Too many invalid get_password errors') ;
                             }
-                        }
-                        // count no get_password errors. max 3
-                        if (session_info) {
-                            if (response.error) {
-                                if (!session_info.invalid_get_password) session_info.invalid_get_password = 0 ;
-                                session_info.invalid_get_password++ ;
+                            if (!ls_sessions[sessionid]) response.error = 'Session has been deleted' ;
+                            else if (!session_info) response.error = 'Session info was not found' ;
+                            else if (session_info.invalid_get_password && (session_info.invalid_get_password > 3)) response.error = 'Too many get_password errors' ;
+                            else if (encrypt2.other_session_pubkey != request.pubkey) response.error = 'Not found pubkey' ;
+                            else if (encrypt2.other_session_pubkey2 != request.pubkey2) response.error = 'Not found pubkey2' ;
+                            else if (encrypt2.unlock_pwd2 != request.unlock_pwd2) response.error = 'Not found unlock_pwd2' ;
+                            else {
+                                response = {
+                                    msgtype: 'password',
+                                    password: session_info.password
+                                }
                             }
-                            else if (session_info.invalid_get_password) {
-                                delete session_info.invalid_get_password ;
+                            // count no get_password errors. max 3
+                            if (session_info) {
+                                if (response.error) {
+                                    if (!session_info.invalid_get_password) session_info.invalid_get_password = 0 ;
+                                    session_info.invalid_get_password++ ;
+                                }
+                                else if (session_info.invalid_get_password) {
+                                    delete session_info.invalid_get_password ;
+                                }
                             }
-                        }
+                            // finish message processing. marked as done and send any response
+                            done_and_send(response, encryptions) ;
+
+                        }) ; // get_session_filenames callback
+                        // stop and wait
+                        return ;
+
                     }
                     else response.error = 'Unknown msgtype ' + request.msgtype ;
 
-                    // marked as done. to not process same message twice
-                    if (session_info) session_info.done[file_timestamp] = true ;
-                    ls_save_sessions() ;
-
-                    console.log(pgm + 'request = ' + JSON.stringify(request)) ;
-                    if (timestamp) {
-                        // response was requested
-                        console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-                        console.log(pgm + 'encryptions = ' + JSON.stringify(encryptions)) ;
-                    }
-                    else return ; // exit. no response was requested
-
-                    // send response to other session
-                    encrypt2.send_message(response, {timestamp: timestamp, msgtype: request.msgtype, encryptions: encryptions}, function (res)  {
-                        var pgm = controller + '.process_incoming_message send_message callback 3: ';
-                        console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                    }) ; // send_message callback 3
+                    // finish message processing. marked as done and send any response
+                    done_and_send(response, encryptions) ;
 
                 }) ; // decrypt_json callback 2
             }) ; // fileGet callback 1

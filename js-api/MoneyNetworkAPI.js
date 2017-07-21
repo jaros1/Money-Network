@@ -348,7 +348,7 @@ var MoneyNetworkAPILib = (function () {
     function demon() {
         var pgm = module + '.demon: ';
         var filename, query, session_filename, first, now;
-        // check for expired callbacks
+        // check for expired callbacks. processes waiting for a response
         now = new Date().getTime();
         for (filename in done) {
             if (done[filename] == true) continue;
