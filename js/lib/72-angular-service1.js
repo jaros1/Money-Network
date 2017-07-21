@@ -1748,17 +1748,19 @@ angular.module('MoneyNetwork')
             var pgm = service + '.save_my_files_optional: ' ;
             // console.log(pgm + 'files_optional = ' + JSON.stringify(files_optional));
             get_user_seq(function(user_seq) {
-                var key, key_a, optional_regexp, now ;
+                var key, key_a, optional_regexp1, optional_regexp2, now ;
                 // console.log(pgm + 'user_seq = ' + user_seq) ;
                 // ready. update z_cache.files_optional (full list) and my_files_optional (filter with user_seq)
                 for (key in z_cache.my_files_optional) delete z_cache.my_files_optional[key] ;
                 z_cache.files_optional = files_optional || {} ;
                 if (!files_optional) return ;
-                optional_regexp = new RegExp(MN_CONTENT_OPTIONAL) ;
+                optional_regexp1 = new RegExp(MN_CONTENT_OPTIONAL) ;
+                optional_regexp2 = new RegExp('^[0-9a-f]{10}.[0-9]{13}$'); // no user seq (MoneyNetworkAPI messages)
                 now = new Date().getTime() ;
                 for (key in files_optional) {
                     key_a = key.split('-') ;
-                    if (!key.match(optional_regexp)) console.log(pgm + 'invalid files_optional key ' + key) ; // invalid optional file name
+                    if (!key.match(optional_regexp1)) console.log(pgm + 'invalid files_optional key ' + key) ; // invalid optional file name
+                    else if (key.match(optional_regexp2)) continue ; // ignore MoneyNetworkAPI messages
                     else if (key_a[0] > '' + now) console.log(pgm + 'invalid files_optional key ' + key) ; // timestamp in the future
                     else if (files_optional[key].size <= 2) null ; // debug('public_chat', pgm + 'ignoring empty logical deleted json file ' + key) ;
                     else if (!user_seq || ('' + user_seq == key_a[2])) z_cache.my_files_optional[key] = files_optional[key] ; // ok
@@ -2044,6 +2046,11 @@ angular.module('MoneyNetwork')
                 "and files.json_id = keyvalue.json_id " +
                 "order by keyvalue.value, keyvalue.json_id";
             debug('select', pgm + 'query 16 (MS OK) = ' + query);
+
+            console.log(pgm + 'todo: old user account cleanup is no longer working after adding merger site feature. users are now on different sites with different admin private keys');
+            console.log(pgm + 'query 16 = ' + query) ;
+            return ;
+
             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 16') ;
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.cleanup_inactive_users dbQuery callback: ';
@@ -2058,7 +2065,8 @@ angular.module('MoneyNetwork')
                 if (res.length == 0) return; // no more inactive users to cleanup
 
                 console.log(pgm + 'todo: old user account cleanup is no longer working after adding merger site feature. users are on different sites with different admin private keys');
-                console.log(pgm + 'res = ' + JSON.stringify(res));
+                console.log(pgm + 'query 16 = ' + query) ;
+                // console.log(pgm + 'res = ' + JSON.stringify(res));
                 return ;
 
                 var json_ids = [] ;

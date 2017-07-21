@@ -6274,6 +6274,8 @@ angular.module('MoneyNetwork')
             chat_page_context.failures = [] ;
             clear_files_optional_cache() ;
             for (key in watch_like_msg_id) delete watch_like_msg_id[key] ;
+            // clear any session data in MoneyNetworkAPI
+            MoneyNetworkAPILib.delete_all_sessions() ;
             if (login_setting_changed) return ;
             // redirect
             a_path = '/auth' ;
