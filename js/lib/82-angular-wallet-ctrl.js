@@ -61,8 +61,10 @@ angular.module('MoneyNetwork')
 
         function create_sessions() {
             var pgm = controller + '.create_sessions: ';
-            var sessionid, session_info, encrypt, prvkey, userid2, sessions1, sessions2, step_1_other_session_filename,
-                step_2_find_files, step_3_cleanup_done_files ;
+            var sessionid, session_info, encrypt, prvkey, userid2, sessions1, sessions2, sessions3,
+                step_1_other_session_filename, step_2_find_files, step_3_cleanup_done_files ;
+
+            // create a MoneyNetworkAPI object for each session (listen for incoming messages)
             prvkey = MoneyNetworkHelper.getItem('prvkey') ;
             userid2 = MoneyNetworkHelper.getUserId() ;
             sessions1 = [] ;
@@ -79,16 +81,16 @@ angular.module('MoneyNetwork')
                     pubkey: session_info.pubkey,
                     pubkey2: session_info.pubkey2
                 }) ;
+                // for done list cleanup.
                 sessions1.push(encrypt) ;
-                // get session filenames. otherwise "Not found unlock_pwd2" error in get_password request from wallet!
-                //encrypt.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
-                //    // console.log(pgm + 'why this debug? sessionid = ' + sessionid + ', other_session_filename = ' + other_session_filename) ;
-                //}) ;
             } // for sessionid
 
-            // checking done list.
-            console.log(pgm + ': todo: check done list. maybe some done timestamps can be removed');
-            sessions2 = {} ;
+            // checking done list for each loaded session. maybe some done timestamps can be removed from ls_sessions
+            sessions2 = {} ; // from other_session_filename to hash with not deleted files (incoming files from other session)
+            sessions3 = {} ; // from sessionid to hash with not deleted files (incoming files from other session)
+
+            // callback chain.
+            // step 1: find other session filename. used in filenames for incoming messages
             step_1_other_session_filename = function(cb2) {
                 var pgm = controller + '.create_sessions.step_1_other_session_filename: ';
                 console.log(pgm + 'cb2 = ', cb2) ;
@@ -102,7 +104,7 @@ angular.module('MoneyNetwork')
                 }) ;
             }; // step_1_other_session_filename
 
-            // find not deleted files
+            // step 2: dbQuery - find not deleted incoming messages
             step_2_find_files = function (cb3) {
                 var pgm = controller + '.create_sessions.step_2_find_files: ';
                 var query, first, other_session_filename  ;
@@ -160,37 +162,49 @@ angular.module('MoneyNetwork')
 
             }; // step_2_find_files
 
+            // step 3: cleanup done lists in ls_sessions
             step_3_cleanup_done_files = function() {
                 var pgm = controller + '.create_sessions.step_3_cleanup_done_files: ';
-                console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
-                //sessions2 = {
-                //    "3c69e1b778": {
-                //        "sessionid": "exwo7kfpldms9xszutcigsebqc08oqplwrgwpxpk65h9xs40eivo6lvkfw9b",
-                //        "files": {
-                //            "1500291521896": true,
-                //            "1500291524251": true,
-                //            "1500291534841": true,
-                //            "1500291538738": true,
-                //            "1500291551403": true,
-                //            "1500291553832": true,
-                //            "1500291590687": true,
-                //            "1500298500052": true,
-                //            "1500298501666": true,
-                //            "1500300646074": true,
-                //            "1500300646126": true,
-                //            "1500364465468": true,
-                //            "1500365002692": true
-                //        }
-                //    },
-                //    ...
-                //    "90ed57c290": {
-                //        "sessionid": "ab18l1j3woeaeahgosigtcqwoi429jomj4yey1ywthwhbcjcqqq85clstwww",
-                //        "files": {"1500625596200": true, "1500649849934": true}
-                //    }
-                //};
+                var other_session_filename, sessionid, timestamp, session_info, delete_timestamps, no_done_deleted ;
+                // console.log(pgm + 'ls_sessions = ' + JSON.stringify(ls_sessions)) ;
+                // console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+                for (other_session_filename in sessions2) {
+                    sessionid = sessions2[other_session_filename].sessionid ;
+                    sessions3[sessionid] = {} ;
+                    for (timestamp in sessions2[other_session_filename].files) {
+                        sessions3[sessionid][timestamp] = sessions2[other_session_filename].files[timestamp]
+                    }
+                }
+                // console.log(pgm + 'sessions3 = ' + JSON.stringify(sessions3)) ;
+
+                // check done files for each session in ls_sessions
+                no_done_deleted = 0 ;
+                for (sessionid in ls_sessions) {
+                    session_info = ls_sessions[sessionid][SESSION_PASSWORD_KEY] ;
+                    if (!session_info) continue ;
+                    if (!session_info.done) continue ;
+                    delete_timestamps = [] ;
+                    for (timestamp in session_info.done) {
+                        if (!sessions3[sessionid][timestamp]) {
+                            // file in done list and has been deleted by other session. remove from done list
+                            delete_timestamps.push(timestamp) ;
+                        }
+                    }
+                    // remove from done list
+                    while (delete_timestamps.length) {
+                        timestamp = delete_timestamps.shift() ;
+                        delete session_info.done[timestamp] ;
+                        no_done_deleted++ ;
+                    }
+                } // for sessionid
+                console.log(pgm + 'no_done_deleted = ' + no_done_deleted) ;
+                // no deleted = 64
+                // no deleted = 0
+                if (no_done_deleted) ls_save_sessions() ;
 
             }; // step_3_cleanup_done_files
 
+            // start callback chain step 1-3
             step_1_other_session_filename(function() {
                 step_2_find_files(function() {
                     step_3_cleanup_done_files() ;
