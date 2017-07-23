@@ -61,155 +61,154 @@ angular.module('MoneyNetwork')
 
         function create_sessions() {
             var pgm = controller + '.create_sessions: ';
-            var sessionid, session_info, encrypt, prvkey, userid2, sessions1, sessions2, sessions3,
-                step_1_other_session_filename, step_2_find_files, step_3_cleanup_done_files ;
+            var sessionid, session_info, encrypt, prvkey, userid2 ;
 
             // create a MoneyNetworkAPI object for each session (listen for incoming messages)
             prvkey = MoneyNetworkHelper.getItem('prvkey') ;
             userid2 = MoneyNetworkHelper.getUserId() ;
-            sessions1 = [] ;
             console.log(pgm + 'todo: move prvkey and userid2 setup to MoneyNetworkAPILib. No reason for prvkey and userid2 setup for each MoneyNetworkAPI instance') ;
             console.log(pgm + 'todo: pubkey+pubkey2 combinations (other session) should be unique. only one sessionid is being used by the other session. last used sessionid is the correct session');
             for (sessionid in ls_sessions) {
                 session_info = ls_sessions[sessionid][SESSION_PASSWORD_KEY] ;
                 if (!session_info) continue ;
                 // initialize encrypt object. added to sessions in MoneyNetworkAPILib. incoming message from old sessions will be processed by "process_incoming_message"
-                encrypt = new MoneyNetworkAPI({
-                    sessionid: sessionid,
-                    prvkey: prvkey,
-                    userid2: userid2,
-                    pubkey: session_info.pubkey,
-                    pubkey2: session_info.pubkey2
-                }) ;
-                // for done list cleanup.
-                sessions1.push(encrypt) ;
+                try {
+                    console.log(pgm + 'calling new MoneyNetworkAPI for sessionid ' + sessionid) ;
+                    encrypt = new MoneyNetworkAPI({
+                        sessionid: sessionid,
+                        prvkey: prvkey,
+                        userid2: userid2,
+                        pubkey: session_info.pubkey,
+                        pubkey2: session_info.pubkey2,
+                        debug: true
+                    }) ;
+                }
+                catch (e) {
+                    console.log(pgm + 'error. could not create a session with sessionid ' + sessionid + '. error = ' + (e.message || 'see previous message in log')) ;
+                    continue ;
+                }
             } // for sessionid
 
-            // checking done list for each loaded session. maybe some done timestamps can be removed from ls_sessions
-            sessions2 = {} ; // from other_session_filename to hash with not deleted files (incoming files from other session)
-            sessions3 = {} ; // from sessionid to hash with not deleted files (incoming files from other session)
+            // check sessions. compare list of done files in ls_sessions with incoming files on file system (dbQuery)
+            MoneyNetworkAPILib.get_sessions(function (sessions1) {
+                var sessions2, sessions3, i, step_1_find_files, step_2_cleanup_done_files ;
+                console.log(pgm + 'sessions1 = ' + JSON.stringify(sessions1)) ;
+                sessions2 = {} ; // from other_session_filename to hash with not deleted files (incoming files from other session)
+                sessions3 = {} ; // from sessionid to hash with not deleted files (incoming files from other session)
 
-            // callback chain.
-            // step 1: find other session filename. used in filenames for incoming messages
-            step_1_other_session_filename = function(cb2) {
-                var pgm = controller + '.create_sessions.step_1_other_session_filename: ';
-                console.log(pgm + 'cb2 = ', cb2) ;
-                var encrypt ;
-                if (!sessions1.length) return cb2() ; // next step
-                encrypt = sessions1.shift() ;
-                if (encrypt.destroyed) return step_1_other_session_filename() ; // next session
-                encrypt.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
-                    sessions2[other_session_filename] = {sessionid: encrypt.sessionid, files: {}} ;
-                    step_1_other_session_filename(cb2) ; // next session
-                }) ;
-            }; // step_1_other_session_filename
-
-            // step 2: dbQuery - find not deleted incoming messages
-            step_2_find_files = function (cb3) {
-                var pgm = controller + '.create_sessions.step_2_find_files: ';
-                var query, first, other_session_filename  ;
-                if (!Object.keys(sessions2).length) return ; // no sessions
-
-                // build query
-                first = true;
-                query =
-                    "select json.directory, files_optional.filename " +
-                    "from files_optional, json " +
-                    "where ";
-                for (other_session_filename in sessions2) {
-                    query += first ? "(" : " or ";
-                    query += "files_optional.filename like '" + other_session_filename + ".%'";
-                    first = false ;
+                // reformat sessions1 array
+                for (i=0 ; i<sessions1.length ; i++) {
+                    sessions2[sessions1[i].other_session_filename] = {sessionid: sessions1[i].sessionid, files: {}}
                 }
-                query +=
-                    ") and json.json_id = files_optional.json_id " +
-                    "order by substr(files_optional.filename, 12)";
-                console.log(pgm + 'query = ' + query) ;
+                console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
 
-                ZeroFrame.cmd("dbQuery", [query], function (res) {
-                    var pgm = controller + '.create_sessions.step_2_find_files dbQuery callback: ';
-                    var i, filename, timestamp, timestamp_re, other_session_filename ;
-                    if (res.error) {
-                        console.log(pgm + 'query failed. error = ' + res.error);
-                        console.log(pgm + 'query = ' + query);
-                        return;
+                // step 1: dbQuery - find not deleted incoming messages
+                step_1_find_files = function (cb3) {
+                    var pgm = controller + '.create_sessions.step_1_find_files: ';
+                    var query, first, other_session_filename  ;
+                    if (!Object.keys(sessions2).length) return ; // no sessions
+                    console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+
+                    // build query
+                    first = true;
+                    query =
+                        "select json.directory, files_optional.filename " +
+                        "from files_optional, json " +
+                        "where ";
+                    for (other_session_filename in sessions2) {
+                        query += first ? "(" : " or ";
+                        query += "files_optional.filename like '" + other_session_filename + ".%'";
+                        first = false ;
                     }
-                    // console.log(pgm + 'res = ' + JSON.stringify(res));
-                    //res = [{
-                    //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-                    //    "filename": "3c69e1b778.1500291521896"
-                    //}, {
-                    // ...
-                    //}, {
-                    //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-                    //    "filename": "90ed57c290.1500649849934"
-                    //}];
-                    timestamp_re = /^[0-9]{13}$/ ;
-                    for (i=0 ; i<res.length ; i++) {
-                        filename = res[i].filename;
-                        other_session_filename = filename.substr(0,10) ;
-                        timestamp = filename.substr(11) ;
-                        if (!timestamp.match(timestamp_re)) continue ;
-                        timestamp = parseInt(timestamp) ;
-                        sessions2[other_session_filename].files[timestamp] = true ;
-                    } // for i
-                    //console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+                    query +=
+                        ") and json.json_id = files_optional.json_id " +
+                        "order by substr(files_optional.filename, 12)";
+                    console.log(pgm + 'query = ' + query) ;
 
-                    // next step
-                    cb3() ;
+                    ZeroFrame.cmd("dbQuery", [query], function (res) {
+                        var pgm = controller + '.create_sessions.step_1_find_files dbQuery callback: ';
+                        var i, filename, timestamp, timestamp_re, other_session_filename ;
+                        if (res.error) {
+                            console.log(pgm + 'query failed. error = ' + res.error);
+                            console.log(pgm + 'query = ' + query);
+                            return;
+                        }
+                        // console.log(pgm + 'res = ' + JSON.stringify(res));
+                        //res = [{
+                        //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                        //    "filename": "3c69e1b778.1500291521896"
+                        //}, {
+                        // ...
+                        //}, {
+                        //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                        //    "filename": "90ed57c290.1500649849934"
+                        //}];
+                        timestamp_re = /^[0-9]{13}$/ ;
+                        for (i=0 ; i<res.length ; i++) {
+                            filename = res[i].filename;
+                            other_session_filename = filename.substr(0,10) ;
+                            timestamp = filename.substr(11) ;
+                            if (!timestamp.match(timestamp_re)) continue ;
+                            timestamp = parseInt(timestamp) ;
+                            sessions2[other_session_filename].files[timestamp] = true ;
+                        } // for i
+                        //console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
 
-                }) ; // dbQuery callback
+                        // next step
+                        cb3() ;
 
-            }; // step_2_find_files
+                    }) ; // dbQuery callback
 
-            // step 3: cleanup done lists in ls_sessions
-            step_3_cleanup_done_files = function() {
-                var pgm = controller + '.create_sessions.step_3_cleanup_done_files: ';
-                var other_session_filename, sessionid, timestamp, session_info, delete_timestamps, no_done_deleted ;
-                // console.log(pgm + 'ls_sessions = ' + JSON.stringify(ls_sessions)) ;
-                // console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
-                for (other_session_filename in sessions2) {
-                    sessionid = sessions2[other_session_filename].sessionid ;
-                    sessions3[sessionid] = {} ;
-                    for (timestamp in sessions2[other_session_filename].files) {
-                        sessions3[sessionid][timestamp] = sessions2[other_session_filename].files[timestamp]
-                    }
-                }
-                // console.log(pgm + 'sessions3 = ' + JSON.stringify(sessions3)) ;
+                }; // step_1_find_files
 
-                // check done files for each session in ls_sessions
-                no_done_deleted = 0 ;
-                for (sessionid in ls_sessions) {
-                    session_info = ls_sessions[sessionid][SESSION_PASSWORD_KEY] ;
-                    if (!session_info) continue ;
-                    if (!session_info.done) continue ;
-                    delete_timestamps = [] ;
-                    for (timestamp in session_info.done) {
-                        if (!sessions3[sessionid][timestamp]) {
-                            // file in done list and has been deleted by other session. remove from done list
-                            delete_timestamps.push(timestamp) ;
+                // step 2: cleanup done lists in ls_sessions
+                step_2_cleanup_done_files = function() {
+                    var pgm = controller + '.create_sessions.step_2_cleanup_done_files: ';
+                    var other_session_filename, sessionid, timestamp, session_info, delete_timestamps, no_done_deleted ;
+                    // console.log(pgm + 'ls_sessions = ' + JSON.stringify(ls_sessions)) ;
+                    // console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+                    for (other_session_filename in sessions2) {
+                        sessionid = sessions2[other_session_filename].sessionid ;
+                        sessions3[sessionid] = {} ;
+                        for (timestamp in sessions2[other_session_filename].files) {
+                            sessions3[sessionid][timestamp] = sessions2[other_session_filename].files[timestamp]
                         }
                     }
-                    // remove from done list
-                    while (delete_timestamps.length) {
-                        timestamp = delete_timestamps.shift() ;
-                        delete session_info.done[timestamp] ;
-                        no_done_deleted++ ;
-                    }
-                } // for sessionid
-                console.log(pgm + 'no_done_deleted = ' + no_done_deleted) ;
-                // no deleted = 64
-                // no deleted = 0
-                if (no_done_deleted) ls_save_sessions() ;
+                    // console.log(pgm + 'sessions3 = ' + JSON.stringify(sessions3)) ;
 
-            }; // step_3_cleanup_done_files
+                    // check done files for each session in ls_sessions
+                    no_done_deleted = 0 ;
+                    for (sessionid in ls_sessions) {
+                        session_info = ls_sessions[sessionid][SESSION_PASSWORD_KEY] ;
+                        if (!session_info) continue ;
+                        if (!session_info.done) continue ;
+                        delete_timestamps = [] ;
+                        for (timestamp in session_info.done) {
+                            if (!sessions3[sessionid][timestamp]) {
+                                // file in done list and has been deleted by other session. remove from done list
+                                delete_timestamps.push(timestamp) ;
+                            }
+                        }
+                        // remove from done list
+                        while (delete_timestamps.length) {
+                            timestamp = delete_timestamps.shift() ;
+                            delete session_info.done[timestamp] ;
+                            no_done_deleted++ ;
+                        }
+                    } // for sessionid
+                    console.log(pgm + 'no_done_deleted = ' + no_done_deleted) ;
+                    // no deleted = 64
+                    // no deleted = 0
+                    if (no_done_deleted) ls_save_sessions() ;
 
-            // start callback chain step 1-3
-            step_1_other_session_filename(function() {
-                step_2_find_files(function() {
-                    step_3_cleanup_done_files() ;
+                }; // step_2_cleanup_done_files
+
+                // start callback chain step 1-2
+                step_1_find_files(function() {
+                    step_2_cleanup_done_files() ;
                 }) ;
-            }) ;
+
+            }) ; // get_sessions callback
 
         } // create_sessions
         create_sessions() ;

@@ -12,14 +12,10 @@
 // - timeout in request = logout for other session = close session.
 //   timeout can also be a "server" fault (error in other session). can be verified with a simple ping
 //   timeout in simple ping = closed session. OK simple ping = server fault in previous response
-// - add remove_session message. No reason to listen for incoming messages from a closed session
-// - remember user_path in ingoing messages. all ingoing messages should be from identical user_path.
-//   changed hub or auth_address => new session handshake or restore required
-// - add clear_cache or delete_sessions function. stop demon and delete all data. used at log out
 // - add request timestamp to response. for offline transactions. cleanup request when response is received
-// - move this_user_path to MoneyNetworkAPILib
 // - add done message. send list of done but not removed messages to other session
-
+// - n-n relation between MoneyNetwork and wallets? MoneyNetwork can have many wallets. A wallet can be used of many MoneyNetwork clones?
+//
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
 var MoneyNetworkAPILib = (function () {
@@ -209,19 +205,22 @@ var MoneyNetworkAPILib = (function () {
     var wallet; // null, x, true or false
     var get_wallet_cbs = []; // callbacks waiting for get_wallet response
     function get_wallet(cb) {
-        var pgm = module + '.get: ';
+        var pgm = module + '.get_wallet: ';
         if (!ZeroFrame) throw pgm + 'ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into this library';
         if (!cb) cb = function () {};
         if (wallet == 'x') {
             // wait. first get_wallet request is executing
             get_wallet_cbs.push(cb);
+            console.log(pgm + 'wallet = x. get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
             return;
         }
         if ([true, false].indexOf(wallet) != -1) return cb(wallet); // ready
         // first get_wallet request. check site address and set wallet = true or false. x while executing
         wallet = 'x';
         ZeroFrame.cmd("siteInfo", {}, function (site_info) {
+            var pgm = module + '.get_wallet siteInfo callback' ;
             wallet = (site_info.address != '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk');
+            console.log(pgm + 'wallet = ' + wallet + '. get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
             cb(wallet);
             while (get_wallet_cbs.length) {
                 cb = get_wallet_cbs.shift();
@@ -239,16 +238,23 @@ var MoneyNetworkAPILib = (function () {
     // options:
     // - cb: session level callback function to handle incoming messages for this sessionide
     // - encrypt: MoneyNetworkAPI instance for this sessionid. Used for encrypt and decrypt. injected into callback function
+    // - constructor: called from MoneyNetworkAPI constructor. error message is not reported back in catch (e) { e.message }
     function add_session(sessionid, options) {
         var pgm = module + '.add_session: ';
-        var cb, encrypt, sha256, other_session_filename, start_demon;
-        if (typeof sessionid != 'string') throw pgm + 'invalid call. param 1 sessionid must be a string' ;
+        var cb, encrypt, sha256, other_session_filename, start_demon, constructor, error ;
+        if (typeof options == 'object') constructor = options.constructor ;
+        error = function (text) {
+            if (constructor) console.log(pgm + text) ; // new MoneyNetworkAPI. no error.message in catch
+            throw pgm + text ;
+        } ;
+        if (typeof sessionid != 'string') error('invalid call. param 1 sessionid must be a string') ;
+        if (['', 'undefined'].indexOf(sessionid) != -1) error('invalid call. param 1 sessionid "' + sessionid + '" is not allowed') ;
         if (!options) options = {} ;
-        if (typeof options != 'object') throw pgm + 'invalid call. param 2 options must be an object' ;
+        if (typeof options != 'object') error('invalid call. param 2 options must be an object') ;
         cb = options.cb ;
         encrypt = options.encrypt ;
-        if (cb && (typeof cb != 'function')) throw pgm + 'invalid call. param 2 options.cb must be null or a callback function to handle incoming messages' ;
-        if (encrypt && !is_MoneyNetworkAPI(encrypt)) throw pgm + 'invalid call. param 2 options.encrypt must be null or an instance of MoneyNetworkAPI' ;
+        if (cb && (typeof cb != 'function')) error('invalid call. param 2 options.cb must be null or a callback function to handle incoming messages') ;
+        if (encrypt && !is_MoneyNetworkAPI(encrypt)) error('invalid call. param 2 options.encrypt must be null or an instance of MoneyNetworkAPI') ;
         sha256 = CryptoJS.SHA256(sessionid).toString();
         get_wallet(function (wallet) {
             other_session_filename = wallet ? sha256.substr(0, 10) : sha256.substr(sha256.length - 10);
@@ -268,6 +274,38 @@ var MoneyNetworkAPILib = (function () {
             }
         }); // get_wallet callback
     } // add_session
+
+    function get_sessions (cb) {
+        var pgm = module + '.get_sessions: ' ;
+        var array, other_session_filename, session_info1, session_info2, key, retry_get_sessions, fake_get_wallet_cb ;
+        console.log(pgm + 'get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
+        if (get_wallet_cbs.length) {
+            // wait for get_wallet queue to empty before returning sessions (get_session_filenames)
+            retry_get_sessions = function() {
+                get_sessions(cb) ;
+            };
+            fake_get_wallet_cb = function() {
+                // wait a moment to empty get_wallet_cbs queue
+                setTimeout(retry_get_sessions, 200) ;
+            };
+            get_wallet_cbs.push(fake_get_wallet_cb) ;
+            return ;
+        }
+
+        array = [] ;
+        for (other_session_filename in sessions) {
+            session_info1 = sessions[other_session_filename] ;
+            if (session_info1.encrypt && session_info1.encrypt.destroyed) continue ;
+            session_info2 = { other_session_filename: other_session_filename} ;
+            for (key in session_info1) {
+                if (!session_info1.hasOwnProperty(key)) continue ;
+                if (key == 'encrypt') continue ; // Blocked a frame with origin "null" from accessing a cross-origin frame error for returned encrypt object?!
+                session_info2[key] = session_info1[key] ;
+            } // for key
+            array.push(session_info2) ;
+        } // for other_session_filename
+        cb(array) ;
+    } // get_sessions
 
     // delete session. session removed by client.
     function delete_session (sessionid) {
@@ -460,6 +498,7 @@ var MoneyNetworkAPILib = (function () {
         get_wallet: get_wallet,
         is_session: is_session,
         add_session: add_session,
+        get_sessions: get_sessions,
         wait_for_file: wait_for_file,
         delete_session: delete_session,
         delete_all_sessions: delete_all_sessions,
@@ -516,7 +555,7 @@ var MoneyNetworkAPI = function (options) {
     this.cb = options.cb ;
     if (this.sessionid) {
         // monitor incoming messages for this sessionid.
-        MoneyNetworkAPILib.add_session(this.sessionid, {encrypt: this, cb: this.cb}) ;
+        MoneyNetworkAPILib.add_session(this.sessionid, {encrypt: this, cb: this.cb, constructor:true}) ;
     }
     else {
         // unknown sessionid. used for get_password message (session restore)
