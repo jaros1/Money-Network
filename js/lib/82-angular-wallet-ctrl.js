@@ -66,7 +66,7 @@ angular.module('MoneyNetwork')
             // create a MoneyNetworkAPI object for each session (listen for incoming messages)
             prvkey = MoneyNetworkHelper.getItem('prvkey') ;
             userid2 = MoneyNetworkHelper.getUserId() ;
-            console.log(pgm + 'todo: move prvkey and userid2 setup to MoneyNetworkAPILib. No reason for prvkey and userid2 setup for each MoneyNetworkAPI instance') ;
+            MoneyNetworkAPILib.config({this_session_prvkey: prvkey, this_session_userid2: userid2}) ;
             console.log(pgm + 'todo: pubkey+pubkey2 combinations (other session) should be unique. only one sessionid is being used by the other session. last used sessionid is the correct session');
             for (sessionid in ls_sessions) {
                 session_info = ls_sessions[sessionid][SESSION_PASSWORD_KEY] ;
@@ -76,8 +76,6 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'calling new MoneyNetworkAPI for sessionid ' + sessionid) ;
                     encrypt = new MoneyNetworkAPI({
                         sessionid: sessionid,
-                        prvkey: prvkey,
-                        userid2: userid2,
                         pubkey: session_info.pubkey,
                         pubkey2: session_info.pubkey2,
                         debug: true
@@ -219,6 +217,7 @@ angular.module('MoneyNetwork')
         // - delete_data message. delete data saved in MoneyNetwork localStorage
         console.log(controller + ': todo: move process_incoming_message to moneyNetworkService') ;
         console.log(controller + ': todo: add done callback. demon should wait until finished before processing next message');
+        console.log(controller + ': todo: old timestamp in filename = response to a request. Do not process unexpected old messages');
 
         function process_incoming_message (filename, encrypt2) {
             var pgm = controller + '.process_incoming_message: ' ;
@@ -268,12 +267,13 @@ angular.module('MoneyNetwork')
                 encrypted_json = JSON.parse(json_str) ;
                 encrypt2.decrypt_json(encrypted_json, function (request) {
                     var pgm = controller + '.process_incoming_message decrypt_json callback 2: ';
-                    var timestamp, error, response, i, key, value, encryptions, done_and_send ;
+                    var response_timestamp, request_timestamp, error, response, i, key, value, encryptions, done_and_send ;
                     // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                     encryptions = [1,2,3] ;
 
                     // remove any response timestamp before validation (used in response filename)
-                    timestamp = request.response ; delete request.response ;
+                    response_timestamp = request.response ; delete request.response ; // request received. must use response_timestamp in response fileename
+                    request_timestamp = request.request ; delete request.request ; // response received. must be a response to previous send request with request timestamp in request filename
 
                     done_and_send = function (response, encryptions) {
                         // marked as done. do not process same message twice
@@ -281,7 +281,7 @@ angular.module('MoneyNetwork')
                         ls_save_sessions() ;
 
                         console.log(pgm + 'request = ' + JSON.stringify(request)) ;
-                        if (timestamp) {
+                        if (response_timestamp) {
                             // response was requested
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                             console.log(pgm + 'encryptions = ' + JSON.stringify(encryptions)) ;
@@ -289,7 +289,7 @@ angular.module('MoneyNetwork')
                         else return ; // exit. no response was requested
 
                         // send response to other session
-                        encrypt2.send_message(response, {timestamp: timestamp, msgtype: request.msgtype, encryptions: encryptions}, function (res)  {
+                        encrypt2.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, encryptions: encryptions}, function (res)  {
                             var pgm = controller + '.process_incoming_message send_message callback 3: ';
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                         }) ; // send_message callback 3
