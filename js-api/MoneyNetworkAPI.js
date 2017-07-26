@@ -11,15 +11,11 @@
 // - timeout in request = logout for other session = close session.
 //   timeout can also be a "server" fault (error in other session). can be verified with a simple ping
 //   timeout in simple ping = closed session. OK simple ping = server fault in previous response
-// - add request timestamp to response. for offline transactions. cleanup request when response is received
+// - offline transactions. cleanup request when response is received
 // - add done message. send list of done but not removed messages to other session
-// - n-n relation between MoneyNetwork and wallets? MoneyNetwork can have many wallets. A wallet can be used of many MoneyNetwork clones?
-// - normally demon process should not read old messages (timestamp older that x seconds/minutes/hours/days).
-//   messages with timestamp about one year ago is always response to a previous sent request. app should keep a list of send and unanswered requests and check for response
-//   an exception is offline transactions. request send to an offline session (MN or wallet) and read by other session after next login
-//   how and where to save a list of offline transactions? other session should check for offline transactions after session restore
-//   for example a money transaction, send, receive, donate, pay, receive payment. W2W transactions. Started by one MN user. Must by received by an other MN user
-//   offline transactions in <session_filename>.0000000000000
+// - n-n session relations between MoneyNetwork and wallets? MoneyNetwork can have many wallets. A wallet can be used of many MoneyNetwork clones?
+// - test offline transactions. for example a money transaction, send, receive, donate, pay, receive payment.
+//   W2W transactions. Started by one MN user. Must by received by an other MN user
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
 var MoneyNetworkAPILib = (function () {
@@ -315,7 +311,6 @@ var MoneyNetworkAPILib = (function () {
                 sessions[other_session_filename] = {sessionid: sessionid, session_at: new Date().getTime()};
             }
             if (cb) sessions[other_session_filename].cb = cb ;
-            // todo: encrypt. pubkey+pubkey2 combinations should be unique. last used sessionid is the correct session
             if (encrypt) sessions[other_session_filename].encrypt = encrypt ;
             if (start_demon) {
                 demon_id = setInterval(demon, (interval || 500));

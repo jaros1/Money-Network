@@ -40,14 +40,25 @@ angular.module('MoneyNetwork')
             }) ;
         } // new_sessionid
 
-        var SESSION_PASSWORD_KEY = '$session_password' ; // special key used for session restore password. see pubkeys, get_password and password messages
+        var SESSION_INFO_KEY = '_$session_info' ; // special key used for session restore password. see pubkeys, get_password and password messages
 
         // load/save sessions in ls
         function ls_get_sessions () {
-            var sessions_str ;
+            var sessions_str, sessions, sessionid, session_info, migrate ;
             sessions_str = MoneyNetworkHelper.getItem('sessions') ;
-            if (sessions_str) return JSON.parse(sessions_str) ;
-            else return {} ;
+            if (!sessions_str) return {} ;
+            sessions = JSON.parse(sessions_str) ;
+            migrate = false ;
+            for (sessionid in sessions) {
+                session_info = sessions[sessionid] ;
+                if (!session_info.hasOwnProperty('$session_password')) continue ; // old session info key not found
+                // migrate from old to new session info key
+                session_info[SESSION_INFO_KEY] = session_info['$session_password'] ;
+                delete session_info['$session_password'] ;
+                migrate = true ;
+            }
+            if (migrate) ls_save_sessions() ;
+            return sessions ;
         } // ls_get_sessions
         function ls_save_sessions () {
             var sessions_str ;
@@ -56,9 +67,8 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.ls_save() ;
         } // ls_save_sessions ;
 
-        // load old sessions and listen for incoming messages
+        // load old sessions from ls and listen to new incoming messages
         var ls_sessions = ls_get_sessions() ; // sessionid => hash with saved wallet data
-
         function create_sessions() {
             var pgm = controller + '.create_sessions: ';
             var sessionid, session_info, encrypt, prvkey, userid2 ;
@@ -68,12 +78,14 @@ angular.module('MoneyNetwork')
             userid2 = MoneyNetworkHelper.getUserId() ;
             MoneyNetworkAPILib.config({this_session_prvkey: prvkey, this_session_userid2: userid2}) ;
             console.log(pgm + 'todo: pubkey+pubkey2 combinations (other session) should be unique. only one sessionid is being used by the other session. last used sessionid is the correct session');
+
+            console.log(pgm + 'todo: add last_request_at timestamp to session info. set for outgoing request with a OK ingoing response. Set for ingoing request with a OK response');
+
             for (sessionid in ls_sessions) {
-                session_info = ls_sessions[sessionid][SESSION_PASSWORD_KEY] ;
+                session_info = ls_sessions[sessionid][SESSION_INFO_KEY] ;
                 if (!session_info) continue ;
                 // initialize encrypt object. added to sessions in MoneyNetworkAPILib. incoming message from old sessions will be processed by "process_incoming_message"
                 try {
-                    console.log(pgm + 'calling new MoneyNetworkAPI for sessionid ' + sessionid) ;
                     encrypt = new MoneyNetworkAPI({
                         sessionid: sessionid,
                         pubkey: session_info.pubkey,
@@ -83,17 +95,16 @@ angular.module('MoneyNetwork')
                 }
                 catch (e) {
                     console.log(pgm + 'error. could not create a session with sessionid ' + sessionid + '. error = ' + (e.message || 'see previous message in log')) ;
-                    continue ;
                 }
             } // for sessionid
 
             // check sessions. compare list of done files in ls_sessions with incoming files on file system (dbQuery)
             MoneyNetworkAPILib.get_sessions(function (sessions1) {
                 var sessions2, sessions3, i, step_1_find_files, step_2_cleanup_done_files ;
-                console.log(pgm + 'sessions1 = ' + JSON.stringify(sessions1)) ;
                 sessions2 = {} ; // from other_session_filename to hash with not deleted files (incoming files from other session)
                 sessions3 = {} ; // from sessionid to hash with not deleted files (incoming files from other session)
 
+                console.log(pgm + 'sessions1 = ' + JSON.stringify(sessions1)) ;
                 // reformat sessions1 array
                 for (i=0 ; i<sessions1.length ; i++) {
                     sessions2[sessions1[i].other_session_filename] = {sessionid: sessions1[i].sessionid, files: {}}
@@ -177,7 +188,7 @@ angular.module('MoneyNetwork')
                     // check done files for each session in ls_sessions
                     no_done_deleted = 0 ;
                     for (sessionid in ls_sessions) {
-                        session_info = ls_sessions[sessionid][SESSION_PASSWORD_KEY] ;
+                        session_info = ls_sessions[sessionid][SESSION_INFO_KEY] ;
                         if (!session_info) continue ;
                         if (!session_info.done) continue ;
                         delete_timestamps = [] ;
@@ -240,7 +251,7 @@ angular.module('MoneyNetwork')
 
             // get session info. ignore already read messages
             sessionid = encrypt2.sessionid ;
-            session_info = ls_sessions[sessionid] ? ls_sessions[sessionid][SESSION_PASSWORD_KEY] : null ;
+            session_info = ls_sessions[sessionid] ? ls_sessions[sessionid][SESSION_INFO_KEY] : null ;
             pos = filename.lastIndexOf('.') ;
             file_timestamp = parseInt(filename.substr(pos+1)) ;
             console.log(pgm + 'file_timestamp = ' + file_timestamp) ;
@@ -303,7 +314,7 @@ angular.module('MoneyNetwork')
                     else if (request.msgtype == 'pubkeys') {
                         // first message from wallet. received public keys from wallet session
                         if (!request.password) response.error = 'Password is required in pubkeys message from wallet' ;
-                        else if (session_info) response.error = 'Warning. Public keys have already been received. Keeping old public keys and old session password' ;
+                        else if (session_info) response.error = 'Public keys have already been received. Keeping old session information' ;
                         else {
                             encrypt2.setup_encryption({pubkey: request.pubkey, pubkey2: request.pubkey2}) ;
                             console.log(pgm + 'todo: remember wallet user_path. following messages must come from identical wallet user_path');
@@ -315,7 +326,7 @@ angular.module('MoneyNetwork')
                                 done: {}
                             } ;
                             if (!ls_sessions[sessionid]) ls_sessions[sessionid] = {} ;
-                            ls_sessions[sessionid][SESSION_PASSWORD_KEY] = session_info ;
+                            ls_sessions[sessionid][SESSION_INFO_KEY] = session_info ;
                         }
                     }
                     else if (request.msgtype == 'save_data') {
@@ -324,7 +335,7 @@ angular.module('MoneyNetwork')
                         if (!ls_sessions[sessionid]) ls_sessions[sessionid] = {} ;
                         for (i=0 ; i<request.data.length ; i++) {
                             key = request.data[i].key ;
-                            if (key == SESSION_PASSWORD_KEY) continue ;
+                            if (key == SESSION_INFO_KEY) continue ;
                             value = request.data[i].value ;
                             ls_sessions[sessionid][key] = value ;
                         }
@@ -336,7 +347,7 @@ angular.module('MoneyNetwork')
                         else if (!request.keys) {
                             // OK - no keys array - delete all data
                             for (key in ls_sessions[sessionid]) {
-                                if (key == SESSION_PASSWORD_KEY) continue ;
+                                if (key == SESSION_INFO_KEY) continue ;
                                 delete ls_sessions[sessionid][key] ;
                             }
                         }
@@ -344,7 +355,7 @@ angular.module('MoneyNetwork')
                             // keys array. deleted requested keys
                             for (i=0 ; i<request.keys.length ; i++) {
                                 key = request.keys[i].key ;
-                                if (key == SESSION_PASSWORD_KEY) continue ;
+                                if (key == SESSION_INFO_KEY) continue ;
                                 delete ls_sessions[sessionid][key] ;
                             }
                         }
@@ -355,7 +366,7 @@ angular.module('MoneyNetwork')
                         if (ls_sessions[sessionid]) {
                             for (i=0 ; i<request.keys.length ; i++) {
                                 key = request.keys[i] ;
-                                if (key == SESSION_PASSWORD_KEY) continue ; // special key used for session restore
+                                if (key == SESSION_INFO_KEY) continue ; // special key used for session restore
                                 if (!ls_sessions[sessionid]) continue ; // OK - no data - return empty data array
                                 if (!ls_sessions[sessionid].hasOwnProperty(key)) continue ; // OK - no data with this key
                                 value = ls_sessions[sessionid][key] ;
@@ -671,14 +682,14 @@ angular.module('MoneyNetwork')
                         var job ;
                         if (!count) count = 0;
                         if (count > 60) return cb({ error: "timeout" }) ;
-                        if (!ls_sessions[test_sessionid] || !ls_sessions[test_sessionid][SESSION_PASSWORD_KEY]) {
+                        if (!ls_sessions[test_sessionid] || !ls_sessions[test_sessionid][SESSION_INFO_KEY]) {
                             // wait. pubkeys message not yet received
                             job = function () { check_session(cb, count+1) };
                             $timeout(job, 1000) ;
                             return ;
                         }
                         // done. pubkeys message from wallet session was received by process_incoming_message callback
-                        cb(ls_sessions[test_sessionid][SESSION_PASSWORD_KEY]) ;
+                        cb(ls_sessions[test_sessionid][SESSION_INFO_KEY]) ;
                     }; // check_session
 
                     // start session check. should wait for max 60 seconds for session handshake
