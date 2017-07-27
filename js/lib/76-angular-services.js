@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
 
-    .factory('MoneyNetworkService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService', 'MoneyNetworkEmojiService', 'MoneyNetworkZService',
-                             function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService, moneyNetworkEmojiService, moneyNetworkZService)
+    .factory('MoneyNetworkService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService', 'MoneyNetworkEmojiService', 'MoneyNetworkZService', 'MoneyNetworkWService',
+                             function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService, moneyNetworkEmojiService, moneyNetworkZService, moneyNetworkWService)
     {
         var service = 'MoneyNetworkService' ;
         console.log(service + ' loaded') ;
@@ -6240,6 +6240,7 @@ angular.module('MoneyNetwork')
                 update_chat_notifications() ;
                 cleanup_inactive_users() ;
                 // cleanup_non_merger_site_data() ;
+                moneyNetworkWService.w_login() ;
             }
             return z_cache.user_id ;
         } // client_login

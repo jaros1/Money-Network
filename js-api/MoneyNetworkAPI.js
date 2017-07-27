@@ -162,10 +162,13 @@ var MoneyNetworkAPILib = (function () {
     // 2: OK to change in MoneyNetworkAPILib but any instance using old prvkey must be destroyed
     var this_session_userid2 = null ;
     function set_this_session_userid2 (userid2) {
+        var pgm = module + '.set_this_session_userid2: ' ;
         var delete_sessions, other_session_filename, i, encrypt ;
-        if (!userid2) userid2 = 0 ;
+        if (userid2 == null) userid2 = 0 ;
+        if (typeof userid2 == 'undefined') userid2 = 0 ;
         if ((this_session_userid2 != null) && (userid2 != this_session_userid2)) {
             // 2: OK to change in MoneyNetworkAPILib but any instance using old prvkey must be destroyed
+            if (debug) console.log(pgm + 'userid2 changed. destroy old MoneyNetworkAPI instances with userid2 = ' + this_session_userid2) ;
             delete_sessions = [] ;
             for (other_session_filename in sessions) {
                 if (!sessions[other_session_filename].encrypt) continue ;
@@ -185,8 +188,8 @@ var MoneyNetworkAPILib = (function () {
             }
         }
         this_session_userid2 = userid2 ;
+        // console.log(pgm + 'this_session_userid2 = ' + this_session_userid2) ;
     } // set_this_session_userid2
-
 
     var debug, ZeroFrame, process_message_cb, interval, optional;
     function config(options) {
@@ -219,7 +222,7 @@ var MoneyNetworkAPILib = (function () {
         }
         if (options.this_user_path) set_this_user_path(options.this_user_path, {throw: true}) ;
         if (options.this_session_prvkey) set_this_session_prvkey(options.this_session_prvkey) ;
-        if (options.this_session_userid2) set_this_session_prvkey(options.this_session_userid2) ;
+        if (options.hasOwnProperty('this_session_userid2')) set_this_session_userid2(options.this_session_userid2) ;
     } // config
 
     // check if ZeroFrame has been injected into this library
@@ -239,6 +242,8 @@ var MoneyNetworkAPILib = (function () {
         return this_session_prvkey ;
     }
     function get_this_session_userid2() {
+        var pgm = module + '.get_this_session_userid2: ' ;
+        // console.log(pgm + 'this_session_userid2 = ' + this_session_userid2) ;
         return this_session_userid2 ;
     }
 
@@ -699,8 +704,10 @@ var MoneyNetworkAPI = function (options) {
     // this.this_session_prvkey = options.prvkey || null;    // JSEncrypt private key for this session (decrypt ingoing messages)
     if (options.prvkey) MoneyNetworkAPILib.set_this_session_prvkey(options.prvkey);
     this.this_session_prvkey = MoneyNetworkAPILib.get_this_session_prvkey() ;
-    if (options.userid2) MoneyNetworkAPILib.set_this_session_userid2(options.userid2);
+
+    if (options.hasOwnProperty('userid2')) MoneyNetworkAPILib.set_this_session_userid2(options.userid2);
     this.this_session_userid2 = MoneyNetworkAPILib.get_this_session_userid2() || 0 ;
+    // this.log(pgm, 'this_session_userid2 = ' + this.this_session_userid2) ;
 
     // user paths
     if (options.this_user_path) MoneyNetworkAPILib.config({this_user_path: options.this_user_path});
@@ -737,11 +744,13 @@ var MoneyNetworkAPI = function (options) {
     else console.log(pgm + prefix + 'Encryption setup: waiting for ' + missing_keys.join(', '));
 }; // MoneyNetworkAPI
 
-MoneyNetworkAPI.prototype.log = function (pgm, text) {
+MoneyNetworkAPI.prototype.log = function (calling_pgm, text) {
+    var pgm = this.module + '.log: ' ;
     var prefix;
     if (!this.debug) return;
+    if (arguments.length != 2) throw pgm + 'invalid call. two arguments pgm and text expected' ;
     prefix = this.debug == true ? '' : this.debug + ': ';
-    console.log(pgm + prefix + text);
+    console.log(calling_pgm + prefix + text);
 }; // log
 
 // map external and internal property names
@@ -811,6 +820,7 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
         MoneyNetworkAPILib.set_this_session_userid2(options.userid2);
     }
     this.this_session_userid2 = MoneyNetworkAPILib.get_this_session_userid2() || 0 ;
+    // this.log(pgm, 'this_session_userid2 = ' + this.this_session_userid2) ;
 
     if (options.hasOwnProperty('userid2')) {
         self.readonly(options,'userid2') ;
@@ -945,6 +955,7 @@ MoneyNetworkAPI.prototype.decrypt_1 = function (encrypted_text_1, cb) {
     encrypt = new JSEncrypt();
     encrypt.setPrivateKey(this.this_session_prvkey);
     password = encrypt.decrypt(key);
+    if (!password) this.log(pgm, 'error. password is null. key = ' + key + ', this_session_prvkey = ' + this.this_session_prvkey) ;
     output_wa = CryptoJS.AES.decrypt(encrypted_text, password, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
     clear_text = output_wa.toString(CryptoJS.enc.Utf8);
     cb(clear_text)
@@ -1001,7 +1012,7 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     // 1a. decrypt key = password
     this.log(pgm, 'calling eciesDecrypt');
     this.ZeroFrame.cmd("eciesDecrypt", [key, this.this_session_userid2], function (password) {
-        if (!password) throw pgm + 'key eciesDecrypt failed. key = ' + key + ', userid2 = ' + JSON.stringify(self.this_session_userid2);
+        if (!password) throw pgm + 'key eciesDecrypt failed. key = ' + key + ', userid2 = ' + JSON.stringify(self.this_session_userid2 + ', MoneyNetworkAPILib.get_this_session_userid2 = ' + MoneyNetworkAPILib.get_this_session_userid2());
         // 1b. decrypt encrypted_text
         self.log(pgm, 'eciesDecrypt OK. password = ' + password + ', calling aesDecrypt');
         self.ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (encrypted_text_1) {
