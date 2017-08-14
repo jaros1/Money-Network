@@ -16,6 +16,7 @@
 // - n-n session relations between MoneyNetwork and wallets? MoneyNetwork can have many wallets. A wallet can be used of many MoneyNetwork clones?
 // - test offline transactions. for example a money transaction, send, receive, donate, pay, receive payment.
 //   W2W transactions. Started by one MN user. Must by received by an other MN user
+// - add wallet.json validation. Written by wallet session with some base info about wallet (address, title, description and currencies)
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
 var MoneyNetworkAPILib = (function () {

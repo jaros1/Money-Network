@@ -1535,9 +1535,19 @@ angular.module('MoneyNetwork')
 
             }; // uploadImage
 
-            self.new_char_src_remove = function() {
+            self.new_chat_src_remove = function() {
                 self.new_chat_src = '' ;
             } ;
+
+            self.new_chat_add_money = function() {
+                var pgm = controller + '.new_chat_add_money: ' ;
+                console.log(pgm + 'todo: Send, receive or donate money. Pay or receive payment. Not yet implemented') ;
+                console.log(pgm + 'todo: currencies. must have a distributed currency list. Symbol 2-5 characters, name and description');
+                console.log(pgm + 'todo: send money. enter currency and amount. must known currencies and amounts from my connected wallets') ;
+                console.log(pgm + 'todo: send money. not required but should know contacts preferred or connected currencies') ;
+                console.log(pgm + 'todo: send money. receiver must accept send money transaction');
+
+            } ; // new_chat_add_money
 
             // public chat checkbox changed - add/remove public chat from UI
             self.public_chat_changed = function () {

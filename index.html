@@ -722,7 +722,7 @@
                                             <tr ng-show="c.new_chat_src">
                                                 <td colspan="2">
                                                     <div style="position: relative; display: inline-block;">
-                                                    <span ng-click="c.new_char_src_remove()"
+                                                    <span ng-click="c.new_chat_src_remove()"
                                                           class="glyphicon glyphicon-remove"
                                                           style="position: absolute; right: 0;"></span>
                                                         <img ng-src="{{c.new_chat_src}}">
@@ -1039,7 +1039,7 @@
                                         <tr ng-show="c.new_chat_src">
                                             <td colspan="2">
                                                 <div style="position: relative; display: inline-block;">
-                                                <span ng-click="c.new_char_src_remove()"
+                                                <span ng-click="c.new_chat_src_remove()"
                                                       class="glyphicon glyphicon-remove"
                                                       style="position: absolute; right: 0;"></span>
                                                     <img ng-src="{{c.new_chat_src}}">
@@ -1049,7 +1049,11 @@
                                         <tr>
                                             <td colspan="2" style="width: 99%; text-align: right">
 
-                                                <div class="image-upload">
+                                                <span ng-show="c.contact"
+                                                      class="glyphicon glyphicon-bitcoin" title="Add money transaction"
+                                                      ng-click="c.new_chat_add_money()"></span>
+
+                                                <div class="image-upload" title="Add image">
                                                     <label for="file-input2">
                                                         <span class="glyphicon glyphicon-camera"></span>
                                                     </label>
@@ -1059,7 +1063,8 @@
                                                            ng-disabled="c.chat_hint_pubkey()"/>
                                                 </div>
 
-                                                <button type="submit" ng-click="c.send_chat_msg()"
+                                                <button type="submit" title="Send chat message"
+                                                        ng-click="c.send_chat_msg()"
                                                         ng-disabled="new_chat_msg_form.$invalid">Send
                                                 </button>
                                             </td>
