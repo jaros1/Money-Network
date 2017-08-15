@@ -28,9 +28,10 @@ angular.module('MoneyNetwork')
 
 
         // inject functions from calling services
-        var get_user_reactions ;
+        var get_user_reactions, ls_save_contacts ;
         function inject_functions (hash) {
             if (hash.get_user_reactions) get_user_reactions = hash.get_user_reactions ;
+            if (hash.ls_save_contacts) ls_save_contacts = hash.ls_save_contacts ;
         }
 
         //// convert data.json file to newest version / structure
@@ -187,6 +188,7 @@ angular.module('MoneyNetwork')
         var get_my_user_hub_cbs = [] ; // callbacks waiting for query 17 to finish
         function get_my_user_hub (cb) {
             var pgm = service + '.get_my_hub: ' ;
+            var user_data_hubs, step_1_merger_site_list, step_2_compare_tables, step_3_find_user_hubs, step_4_get_and_add_default_user_hub, step_5_user_hub_selected, step_6_run_callbacks ;
             if (z_cache.my_user_hub == true) {
                 // get_my_user_hub request is already running. please wait
                 get_my_user_hub_cbs.push(cb) ;
@@ -195,93 +197,102 @@ angular.module('MoneyNetwork')
             if (z_cache.my_user_hub) return cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
             z_cache.my_user_hub = true ;
 
-            // get a list of MoneyNetwork User data hubs. title or description matches /user data hub/i. used for new MoneyNetwork users
-            ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
-                var pgm = service + '.get_my_user_hub mergerSiteList callback 1: ' ;
-                var user_data_hubs, hub, query, debug_seq, i, run_callbacks, user_hub_selected, get_and_add_default_user_hub ;
-                user_data_hubs = [] ;
-                if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites)) ;
-                else for (hub in merger_sites) {
-                    if (merger_sites[hub].content.title.match(/user data hub/i) ||
-                        merger_sites[hub].content.description.match(/user data hub/i)) user_data_hubs.push(hub);
+            // setup callback chain step 1-6
+            user_data_hubs = [] ;
+
+            step_6_run_callbacks = function () {
+                // run callbacks. this and any pending callbacks
+                var pgm = service + '.get_my_user_hub.step_6_run_callbacks: ' ;
+                console.log(pgm + 'my_user_hub = ' + z_cache.my_user_hub + ', other_user_hub = ' + z_cache.other_user_hub) ;
+                cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
+                while (get_my_user_hub_cbs.length) {
+                    cb = get_my_user_hub_cbs.shift() ;
+                    cb(z_cache.my_user_hub, z_cache.other_user_hub)
                 }
-                console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
+            }; // step_6_run_callbacks
 
-                run_callbacks = function () {
-                    // run callbacks. this and any pending callbacks
-                    var pgm = service + '.get_my_user_hub.run_callbacks: ' ;
-                    console.log(pgm + 'my_user_hub = ' + z_cache.my_user_hub + ', other_user_hub = ' + z_cache.other_user_hub) ;
-                    cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
-                    while (get_my_user_hub_cbs.length) {
-                        cb = get_my_user_hub_cbs.shift() ;
-                        cb(z_cache.my_user_hub, z_cache.other_user_hub)
-                    }
-                }; // run_callbacks
-
-                user_hub_selected = function () {
-                    // user data hub was selected. find a random other user data hub. For user data hub lists. written to data.json file
-                    var other_user_data_hubs ;
-                    if (user_data_hubs.length <= 1) {
-                        z_cache.other_user_hub = z_cache.my_user_hub ;
-                        return run_callbacks() ;
-                    }
-                    other_user_data_hubs = [] ;
-                    for (i=0 ; i<user_data_hubs.length ; i++) other_user_data_hubs.push(user_data_hubs[i].hub) ;
-                    i = Math.floor(Math.random() * other_user_data_hubs.length);
-                    z_cache.other_user_hub = other_user_data_hubs[i] ;
-                    return run_callbacks() ;
-                }; // user_hub_selected
-                get_and_add_default_user_hub = function () {
-                    var pgm = service + '.get_my_user_hub.get_and_add_default_user_hub: ' ;
-                    var my_user_hub ;
-                    // no user_data_hubs (no merger site hubs were found)
-                    my_user_hub = get_default_user_hub() ;
-                    console.log(pgm + 'my_user_hub = ' + my_user_hub) ;
-                    ZeroFrame.cmd("mergerSiteAdd", [my_user_hub], function (res) {
-                        var pgm = service + '.get_my_user_hub.get_and_add_default_user_hub mergerSiteAdd callback: ' ;
-                        console.log(pgm + 'res = '+ JSON.stringify(res));
-                        z_cache.my_user_hub = my_user_hub ;
-                        user_hub_selected() ;
-                    }) ; // mergerSiteAdd callback 3
-                };
-
-                if (!user_data_hubs.length) {
-                    // no MoneyNetwork user data hubs were found. Get and add default user data hub
-                    return get_and_add_default_user_hub() ;
+            step_5_user_hub_selected = function () {
+                // user data hub was selected. find a random other user data hub. For user data hub lists. written to data.json file
+                var pgm = service + '.get_my_user_hub.step_5_user_hub_selected: ' ;
+                var other_user_data_hubs ;
+                if (user_data_hubs.length <= 1) {
+                    z_cache.other_user_hub = z_cache.my_user_hub ;
+                    return step_6_run_callbacks() ;
                 }
+                other_user_data_hubs = [] ;
+                for (i=0 ; i<user_data_hubs.length ; i++) other_user_data_hubs.push(user_data_hubs[i].hub) ;
+                i = Math.floor(Math.random() * other_user_data_hubs.length);
+                z_cache.other_user_hub = other_user_data_hubs[i] ;
+                return step_6_run_callbacks() ;
+            }; // step_5_user_hub_selected
 
-                // find current user data hub(s)
+            step_4_get_and_add_default_user_hub = function () {
+                var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub: ' ;
+                var my_user_hub ;
+                // no user_data_hubs (no merger site hubs were found)
+                my_user_hub = get_default_user_hub() ;
+                console.log(pgm + 'my_user_hub = ' + my_user_hub) ;
+                ZeroFrame.cmd("mergerSiteAdd", [my_user_hub], function (res) {
+                    var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub mergerSiteAdd callback: ' ;
+                    console.log(pgm + 'res = '+ JSON.stringify(res));
+                    z_cache.my_user_hub = my_user_hub ;
+                    step_5_user_hub_selected() ;
+                }) ; // mergerSiteAdd callback 3
+            }; // step_4_get_and_add_default_user_hub
+
+            step_3_find_user_hubs = function () {
+                var pgm = service + '.get_my_user_hub.step_3_find_user_hubs: ' ;
+                var query, i, debug_seq ;
+
+                // step 3: find current user data hub(s)
                 // - must have a data.json file
                 // - use latest updated content.json as user data hub
+
+                // old query with files table:
+                //query =
+                //    "select " +
+                //    "  substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
+                //    "  from keyvalue as modified, json, files " +
+                //    "  where json.directory in " ;
+                //for (i=0 ; i<user_data_hubs.length ; i++) {
+                //    query += (i == 0 ? "('" : ",'") + user_data_hubs[i] + '/data/users/' + ZeroFrame.site_info.auth_address + "'" ;
+                //}
+                //query += ") " +
+                //    "and json.file_name = 'content.json' " +
+                //    "and modified.json_id = json.json_id " +
+                //    "and modified.key = 'modified' " +
+                //    "and files.json_id = json.json_id " +
+                //    "and files.filename = 'data.json' " +
+                //    "order by modified.value desc";
+
+                // new query 17 without files table:
                 query =
                     "select " +
-                    "  substr(json.directory, 1, instr(json.directory,'/')-1) as hub " +
-                    "  from keyvalue as modified, json, files " +
-                    "  where json.directory in " ;
+                    "  substr(content.directory, 1, instr(content.directory,'/')-1) as hub " +
+                    "  from keyvalue as modified, json as content, json as data " +
+                    "  where content.directory in " ;
                 for (i=0 ; i<user_data_hubs.length ; i++) {
                     query += (i == 0 ? "('" : ",'") + user_data_hubs[i] + '/data/users/' + ZeroFrame.site_info.auth_address + "'" ;
                 }
                 query += ") " +
-                    "and json.file_name = 'content.json' " +
-                    "and modified.json_id = json.json_id " +
+                    "and content.file_name = 'content.json' " +
+                    "and modified.json_id = content.json_id " +
                     "and modified.key = 'modified' " +
-                    "and files.json_id = json.json_id " +
-                    "and files.filename = 'data.json' " +
+                    "and data.directory = content.directory " +
+                    "and data.file_name = 'data.json' " +
                     "order by modified.value desc";
 
                 debug('select', pgm + 'query 17 (MS OK) = ' + query);
-                console.log(pgm + 'use json instead of files in query 17? query = ' + query) ;
                 debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
-                    var pgm = service + '.get_my_user_hub dbQuery callback 2: ' ;
+                    var pgm = service + '.get_my_user_hub.step_3_find_user_hubs dbQuery callback: ' ;
                     var i, merge_job ;
                     // if (detected_client_log_out(pgm)) return ;
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-
                     if (res.error) {
                         console.log(pgm + "user data hub lookup failed: " + res.error);
                         console.log(pgm + 'query = ' + query);
-                        return get_and_add_default_user_hub() ;
+                        return step_4_get_and_add_default_user_hub() ;
                     }
                     if (res.length) {
                         // user data hub(s) found
@@ -300,7 +311,7 @@ angular.module('MoneyNetwork')
                             } ;
                             $timeout(merge_job, 5000) ;
                         }
-                        return user_hub_selected() ;
+                        return step_5_user_hub_selected() ;
                     }
                     // new user. get user data hub from
                     // 1) list of MoneyNetwork merger sites (mergerSiteList)
@@ -310,12 +321,209 @@ angular.module('MoneyNetwork')
                         i = Math.floor(Math.random() * user_data_hubs.length);
                         z_cache.my_user_hub = user_data_hubs[i] ;
                         console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
-                        user_hub_selected() ;
+                        step_5_user_hub_selected() ;
                     }
-                    else get_and_add_default_user_hub() ;
+                    else step_4_get_and_add_default_user_hub() ;
                 }) ; // dbQuery callback 2
 
-            }) ; // mergerSiteList callback 1
+            }; // step_3_find_user_hubs
+
+            // todo: compare json and files rows before running query 17. Should be identical. files table should not be used in query 17
+            step_2_compare_tables = function () {
+                var pgm = service + '.get_my_user_hub.step_2_compare_tables: ' ;
+                var query1, debug_seq1 ;
+
+                // with operator not supported. one query for each table (json and files)
+                // 1: get json rows
+                query1 =
+                    "select directory, file_name," +
+                    "   (select value from keyvalue " +
+                    "    where keyvalue.json_id = json.json_id " +
+                    "    and keyvalue.key = 'modified') as modified " +
+                    "from json " +
+                    "where json.directory like '%/" + ZeroFrame.site_info.auth_address + "' " ;
+                debug('select', pgm + 'query ? = ' + query1) ;
+                debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ?') ;
+                ZeroFrame.cmd("dbQuery", [query1], function (res1) {
+                    var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 1: ';
+                    var query2, debug_seq2, res, i, index, indexed_by_modified ;
+                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
+                    if (res1.error) {
+                        console.log(pgm + "json and files compare failed: " + res1.error);
+                        console.log(pgm + 'query = ' + query1);
+                        return step_3_find_user_hubs() ;
+                    }
+                    res = {} ;
+                    indexed_by_modified = {} ;
+                    for (i=0 ; i<res1.length ; i++) {
+                        if (res1[i].file_name == 'content.json') {
+                            indexed_by_modified[res1[i].modified] = res1[i].directory ;
+                        }
+                        else {
+                            index = res1[i].directory + '/' + res1[i].file_name ;
+                            res[index] = {
+                                directory: res1[i].directory,
+                                file_name: res1[i].file_name,
+                                in_json: true
+                            } ;
+                        }
+                    }
+                    // console.log(pgm + 'indexed_by_modified = ' + JSON.stringify(indexed_by_modified));
+
+                    // 2: get files rows
+                    query2 =
+                        "select json.directory, files.filename as file_name from files, json " +
+                        "where json.directory like '%/" + ZeroFrame.site_info.auth_address + "' " +
+                        "and json.json_id = files.json_id" ;
+                    debug('select', pgm + 'query ? = ' + query2) ;
+                    debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ?') ;
+                    ZeroFrame.cmd("dbQuery", [query2], function (res2) {
+                        var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 2: ';
+                        var i, index, missing_rows, dictionaries, modified, sign ;
+                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2);
+                        if (res2.error) {
+                            console.log(pgm + "json and files compare failed: " + res2.error);
+                            console.log(pgm + 'query = ' + query2);
+                            return step_3_find_user_hubs();
+                        }
+                        for (i=0 ; i<res2.length ; i++) {
+                            index = res2[i].directory + '/' + res2[i].file_name ;
+                            if (res[index]) res[index].in_files = true ;
+                            else res[index] =  {
+                                directory: res2[i].directory,
+                                file_name: res2[i].file_name,
+                                in_files: true
+                            } ;
+                        }
+
+                        missing_rows = [] ;
+                        for (index in res) {
+                            if (res[index].in_json && res[index].in_files) continue ;
+                            if (['avatar.jpg','avatar.png'].indexOf(res[index.file_name]) != -1) continue ; // minor dif
+                            missing_rows.push(res[index]) ;
+                        }
+                        if (!missing_rows.length) return step_3_find_user_hubs() ; // everything is OK. next step
+
+                        // inconsistency between json and files!
+                        console.log(pgm + 'warning. difference between json and files rows. could be missing sign or manuel deleted files. signing content.json files in modified order to fix this') ;
+                        console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                        //res = {
+                        //    "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/status.json": {
+                        //        "directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                        //        "file_name": "status.json",
+                        //        "in_json": true,
+                        //        "in_files": true
+                        //    },
+                        //    "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/data.json": {
+                        //        "directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                        //        "file_name": "data.json",
+                        //        "in_json": true,
+                        //        "in_files": true
+                        //    },
+                        //    "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/like.json": {
+                        //        "directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                        //        "file_name": "like.json",
+                        //        "in_json": true,
+                        //        "in_files": true
+                        //    },
+                        //    "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/wallet.json": {
+                        //        "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                        //        "file_name": "wallet.json",
+                        //        "in_json": true,
+                        //        "in_files": true
+                        //    }
+                        //};
+                        console.log(pgm + 'missing_rows = ' + JSON.stringify(missing_rows)) ;
+
+                        // rules:
+                        // - always sign directories without content.json / without modified timestamp first
+                        // - always sign last changed content.json last
+                        // - minimum one second between each sign to keep modified sequence
+                        dictionaries = [] ;
+                        for (modified in indexed_by_modified) dictionaries.push(indexed_by_modified[modified]) ;
+                        for (i=0 ; i<missing_rows.length ; i++) {
+                            if (dictionaries.indexOf(missing_rows[i].directory) !=-1) continue ;
+                            dictionaries.unshift(missing_rows[i].directory) ;
+                        }
+                        console.log(pgm + 'dictionaries = ' + JSON.stringify(dictionaries)) ;
+
+                        // loop. sign each content.json file (remove files_optional and add optional)
+                        sign = function () {
+                            var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign: ';
+                            var dictionary, inner_path, debug_seq0 ;
+                            dictionary = dictionaries.shift() ;
+                            // 1: read content.json
+                            inner_path = 'merged-MoneyNetwork/' + dictionary + '/content.json' ;
+                            debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+                            ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (content_str) {
+                                var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign fileGet callback 1: ';
+                                var content, json_raw, debug_seq1 ;
+                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
+                                if (content_str) content = JSON.parse(content_str) ;
+                                else content = {} ;
+                                content.optional = Z_CONTENT_OPTIONAL ;
+                                delete content.files_optional ;
+                                // 2: write content.json
+                                json_raw = unescape(encodeURIComponent(JSON.stringify(content)));
+                                debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite');
+                                ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+                                    var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign fileWrite callback 2: ';
+                                    var debug_seq2 ;
+                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
+                                    if (res != 'ok') {
+                                        console.log(pgm + 'Error: ' + inner_path + ' fileWrite failed. res = ' + JSON.stringify(res));
+                                        return step_3_find_user_hubs() ; // error - continue with next step
+                                    }
+                                    // 3: sign
+                                    debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + inner_path + ' sign') ;
+                                    ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+                                        var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign siteSign callback 3: ';
+                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2);
+                                        if (res != 'ok') {
+                                            console.log(pgm + inner_path + ' siteSign failed. error = ' + JSON.stringify(res));
+                                            return step_3_find_user_hubs() ; // error - continue with next step;
+                                        }
+                                        // sign OK
+                                        if (!dictionaries.length) return step_3_find_user_hubs() ; // done - continue with next step
+                                        // next sign in 1 second to keep modified sequence
+                                        setTimeout(sign, 1000) ;
+
+                                    }) ; // siteSign callback 3
+
+                                }) ; // fileWrite callback 2
+
+                            }) ; // fileGet callback 1
+
+                        } ; // sign
+                        // start sign loop
+                        sign() ;
+
+                    }) ; // dbQuery callback 2
+
+                }) ; // dbQuery callback 1
+
+            } ; // step_2_compare_tables
+
+            // step 1 : get a list of MoneyNetwork User data hubs. title or description matches /user data hub/i. used for new MoneyNetwork users
+            step_1_merger_site_list = function () {
+                ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
+                    var pgm = service + '.get_my_user_hub.step_1_merger_site_list: ';
+                    var hub;
+
+                    if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites));
+                    else for (hub in merger_sites) {
+                        if (merger_sites[hub].content.title.match(/user data hub/i) ||
+                            merger_sites[hub].content.description.match(/user data hub/i)) user_data_hubs.push(hub);
+                    }
+                    console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
+                    // next step
+                    step_2_compare_tables() ;
+                }) ;
+
+            } ; // step_1_merger_site_list
+
+            // start callback chain step 1-6
+            step_1_merger_site_list() ;
 
         } // get_my_user_hub
 
@@ -380,12 +588,12 @@ angular.module('MoneyNetwork')
                         var old_hub_content_str, inner_path0, debug_seq0 ;
                         // write, sign and reload hub content.json to ensure correct files_optional content.
                         // todo: modified timestamp is updated and hub content.json will temporary be newest content.json file (=new user hub)
-                        console.log(pgm + 'todo: update ' + inner_path0 + '. Optional files can be out of sync.');
                         old_hub_content_str = hub_content_str ;
                         delete hub_content.files_optional ;
                         hub_content.optional = Z_CONTENT_OPTIONAL ; // fix "Potentially unsafe part of the pattern: ]{" error
                         json_raw = unescape(encodeURIComponent(JSON.stringify(hub_content)));
                         inner_path0 = hub_user_path + 'content.json' ;
+                        console.log(pgm + 'updating ' + inner_path0 + '. Optional files can be out of sync.');
                         debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
                         ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
                             var pgm = service + '.merge_user_hub.step_1_update_content_json fileWrite callback 1: ';
@@ -577,19 +785,19 @@ angular.module('MoneyNetwork')
 
                     step_6_get_status_files = function (cb6) {
                         get_status_json(function (status) {
-                            var inner_path0, debug_seq0 ;
+                            var inner_path0, debug_seq0, empty_status ;
                             my_status = status ;
+                            empty_status = status = {version: dbschema_version, status: []};
                             if (!hub_content.files['status.json']) {
-                                hub_status = {} ;
+                                hub_status = empty_status ;
                                 return cb6() ;
                             }
                             inner_path0 = hub_user_path + 'status.json' ;
                             debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path0 + ' fileGet') ;
                             ZeroFrame.cmd("fileGet", {inner_path: inner_path0, required: true}, function (status_str) {
                                 var pgm = service + '.merge_user_hub.step_6_get_status_files fileGet callback 2: ';
-                                var empty_status, error ;
+                                var error ;
                                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
-                                empty_status = status = {version: dbschema_version, status: []};
                                 if (!status_str) hub_status = empty_status ;
                                 else {
                                     hub_status = JSON.parse(status_str) ;

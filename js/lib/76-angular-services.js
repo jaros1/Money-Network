@@ -1482,6 +1482,7 @@ angular.module('MoneyNetwork')
             }
         } // ls_save_contacts
         moneyNetworkZService.inject_functions({ls_save_contacts: ls_save_contacts});
+        moneyNetworkHubService.inject_functions({ls_save_contacts: ls_save_contacts});
 
 
         // update last updated for group chat pseudo contacts
