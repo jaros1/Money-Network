@@ -16,7 +16,6 @@
 // - n-n session relations between MoneyNetwork and wallets? MoneyNetwork can have many wallets. A wallet can be used of many MoneyNetwork clones?
 // - test offline transactions. for example a money transaction, send, receive, donate, pay, receive payment.
 //   W2W transactions. Started by one MN user. Must by received by an other MN user
-// - add wallet.json validation. Written by wallet session with some base info about wallet (address, title, description and currencies)
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
 var MoneyNetworkAPILib = (function () {
@@ -1346,7 +1345,37 @@ MoneyNetworkAPI.json_schemas = {
         },
         "required": ['msgtype'],
         "additionalProperties": false
-    } // response
+    }, // response
+
+    "wallet": {
+        "type": 'object',
+        "title": 'Public wallet information',
+        "description": 'wallet_* from site_info, currencies is a list of supported currencies and hub is a random wallet data hub address',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^wallet$'},
+            "wallet_address": { "type": 'string'},
+            "wallet_title": { "type": 'string'},
+            "wallet_description": { "type": 'string'},
+            "currencies": {
+                "type": 'array',
+                "description": 'List if supported currencies. code is a (pseudo) currency iso code. Optional URL to currency information on the www',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                        "name": {"type": 'string'},
+                        "url": {"type": 'string'}
+                    },
+                    "required": ['code', 'name'],
+                    "additionalProperties": false
+                }
+            },
+            "hub": { "type": 'string'}
+
+        },
+        "required": ['msgtype', 'wallet_address', 'wallet_title', 'wallet_description'],
+        "additionalProperties": false
+    } // wallet
 
 }; // json_schemas
 
