@@ -39,9 +39,11 @@ angular.module('MoneyNetwork')
         }
 
         // load/save sessions in ls
+        var ls_sessions ;
         function ls_get_sessions () {
             var pgm = service + '.ls_get_sessions: ' ;
             var sessions_str, sessions, sessionid, session_info, migrate, delete_sessions ;
+            if (ls_sessions) return ls_sessions ; // already loaded
             sessions_str = MoneyNetworkHelper.getItem('sessions') ;
             if (!sessions_str) return {} ;
             sessions = JSON.parse(sessions_str) ;
@@ -70,66 +72,52 @@ angular.module('MoneyNetwork')
             //            "password": "U2FsdGVkX18YSwwUOLQS9lMqivpF7ynNzNXBuOOFvy91i/JApuPUiFRH4ViMQvezXD6tS+4AXZYZJd7f98EeW4V74+RvcfjHg2VFmUQvS4U=",
             //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHzoMPSwwM8z1P7eZzjNFe7Md6Ds\nkMhR0DlUvTlJOtxfZ/KENMsBIl45pize7sGJxpAmIJQG1JQzOp9R0qFW22geoK5q\nbn8WGHNHRyRObjpqDpRkwiovCz5DtP0AFvliawhFj60WEV56gL5sFoJ0/154MbZZ\nt2nA0/i76YJLfZHxAgMBAAE=\n-----END PUBLIC KEY-----",
             //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-            //            "last_request_at": 1501425766330,
-            //            "done": {
-            //                "1501425736457": 1501425737407,
-            //                "1501425738829": 1501425739618,
-            //                "1501425746426": 1501425747240,
-            //                "1501425752208": 1501425753091,
-            //                "1501425764224": 1501425765066,
-            //                "1501425766330": 1501425767238
-            //            }
+            //            "last_request_at": 1501605913768,
+            //            "done": {}
             //        },
             //        "login": "{\"encryption\":2,\"message\":\"[\\\"Dnef0YhfD7BjhXMkn6J1eALKACDwb/P2VcCNxmg8YZjZfnyfkqrEJeMi8Cs2yzpc66XAxgAgF0ixkr+/6RpVdh/RG9e3xc+BMazkPLC5ZPAnd+ruYtb2K6sa4Pbi53oycO+gpxi+ytH9H+M09FiPGJkeoXiZEBu7k8PnSCme6WdBayJREh6w7EAQiOtnTzlA9AgUNU/HEY7k4X7+w/LR+i6NS9kF/A==\\\",\\\"VJ3dEcnYYa5sqmFHUtPKcw==\\\",\\\"yUSuG8+U0pJ2uLFAoNpg1eNMg9V3xhpLUPc0oS+h4EOGxzhd9kHgD9nmsTop4DXBXFupBUxsL/WDaGeroxZSstySdlLkCOC7ZAz56VhLATUNCiF5KYetE+QFt+dFEdaUYCjEXONHKQAAcL8juPybkQ==\\\"]\"}"
-            //    }
-            //};
-
-            //sessions = {
-            //    "acpo0lstqzcpkskad9olzvbm1xdmgx1zpqbr4cn1jsf39nfexbuaikgcndfe": {
+            //    },
+            //    "uzeptj8mlixhtbrhdnilhdvmxiujufrkk6lp0uj5wpglxsuktcrobm0s2i7n": {
             //        "_$session_info": {
-            //            "password": "U2FsdGVkX18YSwwUOLQS9lMqivpF7ynNzNXBuOOFvy91i/JApuPUiFRH4ViMQvezXD6tS+4AXZYZJd7f98EeW4V74+RvcfjHg2VFmUQvS4U=",
-            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHzoMPSwwM8z1P7eZzjNFe7Md6Ds\nkMhR0DlUvTlJOtxfZ/KENMsBIl45pize7sGJxpAmIJQG1JQzOp9R0qFW22geoK5q\nbn8WGHNHRyRObjpqDpRkwiovCz5DtP0AFvliawhFj60WEV56gL5sFoJ0/154MbZZ\nt2nA0/i76YJLfZHxAgMBAAE=\n-----END PUBLIC KEY-----",
-            //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-            //            "last_request_at": 1501425801945,
-            //            "done": {
-            //                "1501425736457": 1501425737407,
-            //                "1501425738829": 1501425739618,
-            //                "1501425746426": 1501425747240,
-            //                "1501425752208": 1501425753091,
-            //                "1501425764224": 1501425765066,
-            //                "1501425766330": 1501425767238,
-            //                "1501425799582": 1501425800595,
-            //                "1501425801945": 1501425803053
-            //            }
+            //            "password": "U2FsdGVkX1/5ItpxUyRH1ZiZuoyN1tCvLUKpSogDnVDvBNLcODVLijUC52N8WBSYf3hBxXzQZYjkRqKdk79oS5Rp/nJ3rq9bSgoodVJPxyU=",
+            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHsgCP4qEflm0HEXYUO5dP+UOENN\n7C5K8H7aFVmhwc32PwySbLcdQDbWpFhX6cKODQOC5gJNSnzoEHqxrNeCO97yXe/P\nyzVVjHlq56a16IC2lB/SSnUh5ipjfC4grFK9ZlMUpHUDN/j5oxzUnK/QLd5L1wLO\nsITFawX1WuxB9FERAgMBAAE=\n-----END PUBLIC KEY-----",
+            //            "pubkey2": "AjNp+TH4ho3DEmyfa73v447KWgv/W8t3R94/mY+ib/2+",
+            //            "last_request_at": 1501597939326,
+            //            "done": {}
             //        },
-            //        "login": "{\"encryption\":2,\"message\":\"[\\\"Dnef0YhfD7BjhXMkn6J1eALKACDwb/P2VcCNxmg8YZjZfnyfkqrEJeMi8Cs2yzpc66XAxgAgF0ixkr+/6RpVdh/RG9e3xc+BMazkPLC5ZPAnd+ruYtb2K6sa4Pbi53oycO+gpxi+ytH9H+M09FiPGJkeoXiZEBu7k8PnSCme6WdBayJREh6w7EAQiOtnTzlA9AgUNU/HEY7k4X7+w/LR+i6NS9kF/A==\\\",\\\"VJ3dEcnYYa5sqmFHUtPKcw==\\\",\\\"yUSuG8+U0pJ2uLFAoNpg1eNMg9V3xhpLUPc0oS+h4EOGxzhd9kHgD9nmsTop4DXBXFupBUxsL/WDaGeroxZSstySdlLkCOC7ZAz56VhLATUNCiF5KYetE+QFt+dFEdaUYCjEXONHKQAAcL8juPybkQ==\\\"]\"}"
-            //    }
-            //};
-
-            //sessions = {
-            //    "acpo0lstqzcpkskad9olzvbm1xdmgx1zpqbr4cn1jsf39nfexbuaikgcndfe": {
+            //        "login": "{\"encryption\":2,\"message\":\"[\\\"WI3ge3bR3OZVOadRHc8AiwLKACAd2cWrwglaHK4iPWh7gfZbDxRo8q1HGI+GulQw5mN+aAAgeEqjcT52OIl/Dg+izATqSoc12gQxnnpE3jYX93oc+gdRMv8M6S0Z6LDKt1BbUo8UVtvizaa6UwXw/H4wGsjHnQ6Dihc/x06MpnLl8LHlb+m8onDHy4w7h+m3riKACnQUlnaIyHK6Vi2+996xzr0VQw==\\\",\\\"BjuhlcJk3ZCYmUbbefKJ5w==\\\",\\\"z1+K4KvYnepB5bO2K3lUB8o3V+IaYZtbuYmMapg7BJAGSFLipvegj501tF88orzgbaMMmUG9+Y6GuIl4MNaoqkWZBAIn896KeL/jiuzpaKri0Wlq3uydbQftWfBOGUkL5biZz3jC6MF/p92JOimpVg==\\\"]\"}"
+            //    },
+            //    "odcbtal2lclghgcezhf6vzpue46yuvfjskezvt9ixmgnjdziyzug09jrij16": {
             //        "_$session_info": {
-            //            "password": "U2FsdGVkX18YSwwUOLQS9lMqivpF7ynNzNXBuOOFvy91i/JApuPUiFRH4ViMQvezXD6tS+4AXZYZJd7f98EeW4V74+RvcfjHg2VFmUQvS4U=",
-            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHzoMPSwwM8z1P7eZzjNFe7Md6Ds\nkMhR0DlUvTlJOtxfZ/KENMsBIl45pize7sGJxpAmIJQG1JQzOp9R0qFW22geoK5q\nbn8WGHNHRyRObjpqDpRkwiovCz5DtP0AFvliawhFj60WEV56gL5sFoJ0/154MbZZ\nt2nA0/i76YJLfZHxAgMBAAE=\n-----END PUBLIC KEY-----",
+            //            "password": "U2FsdGVkX18+bh2RYZzvbeLoCqsGvj12eTfL7T/3frFfO9VQbgLpGAEsO+5QZjH3JrRr9wmGjIe+O6SojshHm8XdgZvYV19msuyWh+HX0XE=",
+            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDjZGACcz2Swp07gN7+use66NvA\nIAxvMpykW7qcG3MP2DTDH3mKg1JlY40U4SwP5CE1LGmOJN7Saymoh2W9i0oHzxvR\n+b+bNcoG09eYZuinH1M7FB9wx8RxcfbNH+lzoAtU4HVnGrtrLG5X2SM9Cx+FN9cw\ncdVCdwU1IqwILPyDCwIDAQAB\n-----END PUBLIC KEY-----",
             //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-            //            "last_request_at": 1501426683141,
-            //            "done": {
-            //                "1501425736457": 1501425737407,
-            //                "1501425738829": 1501425739618,
-            //                "1501425746426": 1501425747240,
-            //                "1501425752208": 1501425753091,
-            //                "1501425764224": 1501425765066,
-            //                "1501425766330": 1501425767238,
-            //                "1501425799582": 1501425800595,
-            //                "1501425801945": 1501425803053,
-            //                "1501425979043": 1501425979907,
-            //                "1501426680694": 1501426681687,
-            //                "1501426683141": 1501426683751
-            //            }
+            //            "last_request_at": 1503050724533,
+            //            "done": {}
             //        },
-            //        "login": "{\"encryption\":2,\"message\":\"[\\\"Dnef0YhfD7BjhXMkn6J1eALKACDwb/P2VcCNxmg8YZjZfnyfkqrEJeMi8Cs2yzpc66XAxgAgF0ixkr+/6RpVdh/RG9e3xc+BMazkPLC5ZPAnd+ruYtb2K6sa4Pbi53oycO+gpxi+ytH9H+M09FiPGJkeoXiZEBu7k8PnSCme6WdBayJREh6w7EAQiOtnTzlA9AgUNU/HEY7k4X7+w/LR+i6NS9kF/A==\\\",\\\"VJ3dEcnYYa5sqmFHUtPKcw==\\\",\\\"yUSuG8+U0pJ2uLFAoNpg1eNMg9V3xhpLUPc0oS+h4EOGxzhd9kHgD9nmsTop4DXBXFupBUxsL/WDaGeroxZSstySdlLkCOC7ZAz56VhLATUNCiF5KYetE+QFt+dFEdaUYCjEXONHKQAAcL8juPybkQ==\\\"]\"}"
+            //        "login": "{\"encryption\":2,\"message\":\"[\\\"Wl3rYLBR1WSWAn+gC1bRcwLKACCZMdIBYAa8hYLxRdZz8ELqw4/612JsIe4GdDyB0X5I9wAgk3y1RAr8kahveSo3O9S8McoRnTmhhxUY2RpVZRERyYiY2sNWwyu+9/CmY9f7vokh4eUkVC87Hoabvgboc0F+RwwH5gApwKcWvTEh4dRGjcLhxRQryv2TyK+57OiWGskNmQQwLmpXB30JgKFNPly/jw==\\\",\\\"FpR1Mtv9SUrC1CcrxVL/aQ==\\\",\\\"NZbluBmYtnf9vXy3ffUjbn18Dg7PgbtufA2TcRaMVU8a5XT7ZX4UNj/S9GFF+xm7VLc0C62L8ZJtLg1wa0tL7pSWaKd8TbuIVhzk/n/9J8sE1dFm9ttJawT6N19qyg9jQBTA9GuxikUSBUVFP+u3cQ==\\\"]\"}"
+            //    },
+            //    "z1a4wzejn0bifkglpblefqqedevpdiyissdstq5kbppardmbzdytbtrzkp2w": {
+            //        "_$session_info": {
+            //            "password": "U2FsdGVkX1+6+X4pSDQOf8/Bb+3xG+nFQDyhr3/7syi+wYXKEZ6UL49dB2ftq1gmC5/LKfI2XfJS2fEsEy5CYscRBDuoUxJEqKNwiiiiXBA=",
+            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCsOMfAvHPTp0K9qZfoItdJ9898\nU3S2gAZZSLuLZ1qMXr1dEnO8AwxS58UvKGwHObT1XQG8WT3Q1/6OGlJms4mYY1rF\nQXzYEV5w0RlcSrMpLz3+nJ7cVb9lYKOO8hHZFWudFRywkYb/aeNh6mAXqrulv92z\noX0S7YMeNd2YrhqefQIDAQAB\n-----END PUBLIC KEY-----",
+            //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+            //            "last_request_at": 1503137602267,
+            //            "done": {},
+            //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
+            //        }
+            //    },
+            //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
+            //        "_$session_info": {
+            //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+            //            "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+            //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+            //            "last_request_at": 1503235635135,
+            //            "done": {}
+            //        }
             //    }
-            //};
+            //} ;
 
             return sessions ;
         } // ls_get_sessions
@@ -141,7 +129,6 @@ angular.module('MoneyNetwork')
         } // ls_save_sessions ;
 
         // load old sessions from ls and listen to new incoming messages
-        var ls_sessions ;
         function create_sessions() {
             var pgm = service + '.create_sessions: ';
             var sessionid, session_info, encrypt, prvkey, userid2 ;
@@ -154,12 +141,20 @@ angular.module('MoneyNetwork')
             MoneyNetworkAPILib.config({this_session_prvkey: prvkey, this_session_userid2: userid2}) ;
 
             console.log(pgm + 'todo: pubkey+pubkey2 combinations (other session) should be unique. only one sessionid is being used by the other session. last used sessionid is the correct session');
+            //session_info = {
+            //    "password":"U2FsdGVkX1+6+X4pSDQOf8/Bb+3xG+nFQDyhr3/7syi+wYXKEZ6UL49dB2ftq1gmC5/LKfI2XfJS2fEsEy5CYscRBDuoUxJEqKNwiiiiXBA=",
+            //    "pubkey":"-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCsOMfAvHPTp0K9qZfoItdJ9898\nU3S2gAZZSLuLZ1qMXr1dEnO8AwxS58UvKGwHObT1XQG8WT3Q1/6OGlJms4mYY1rF\nQXzYEV5w0RlcSrMpLz3+nJ7cVb9lYKOO8hHZFWudFRywkYb/aeNh6mAXqrulv92z\noX0S7YMeNd2YrhqefQIDAQAB\n-----END PUBLIC KEY-----",
+            //    "pubkey2":"Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+            //    "last_request_at":1503051957877,
+            //    "done":{"1503051957877":1503051958520},
+            //    "url":"/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"};
+            // url and pubkey - should be a 1-1 relation. many pubkey => use last session and delete old session
 
             for (sessionid in ls_sessions) {
                 session_info = ls_sessions[sessionid][SESSION_INFO_KEY] ;
                 if (!session_info) continue ;
                 // initialize encrypt object. added to sessions in MoneyNetworkAPILib. incoming message from old sessions will be processed by "process_incoming_message"
-                console.log(pgm + 'create session with sessionid ' + sessionid) ;
+                console.log(pgm + 'create session with sessionid ' + sessionid + '. session_info = ' + JSON.stringify(session_info)) ;
                 try {
                     encrypt = new MoneyNetworkAPI({
                         sessionid: sessionid,
@@ -180,6 +175,20 @@ angular.module('MoneyNetwork')
                 sessions3 = {} ; // from sessionid to hash with not deleted files (incoming files from other session)
 
                 console.log(pgm + 'sessions1 = ' + JSON.stringify(sessions1)) ;
+                //sessions1 = [{
+                //    "other_session_filename": "5eb10feeca",
+                //    "sessionid": "acpo0lstqzcpkskad9olzvbm1xdmgx1zpqbr4cn1jsf39nfexbuaikgcndfe",
+                //    "session_at": 1503043546775
+                //}, {
+                //    "other_session_filename": "f1b4881fc5",
+                //    "sessionid": "uzeptj8mlixhtbrhdnilhdvmxiujufrkk6lp0uj5wpglxsuktcrobm0s2i7n",
+                //    "session_at": 1503043546780
+                //}, {
+                //    "other_session_filename": "c7c627af4d",
+                //    "sessionid": "odcbtal2lclghgcezhf6vzpue46yuvfjskezvt9ixmgnjdziyzug09jrij16",
+                //    "session_at": 1503043546784
+                //}];
+
                 // reformat sessions1 array
                 for (i=0 ; i<sessions1.length ; i++) {
                     sessions2[sessions1[i].other_session_filename] = {sessionid: sessions1[i].sessionid, files: {}}
@@ -398,11 +407,13 @@ angular.module('MoneyNetwork')
                         // first message from wallet. received public keys from wallet session
                         if (!request.password) response.error = 'Password is required in pubkeys message from wallet' ;
                         else if (session_info) response.error = 'Public keys have already been received. Keeping old session information' ;
+                        else if (!encrypt2.extra && encrypt2.extra.url) response.error = 'No site url was found for this session' ;
                         else {
                             encrypt2.setup_encryption({pubkey: request.pubkey, pubkey2: request.pubkey2}) ;
                             console.log(pgm + 'saving session password. used for wallet session restore. See get_password and password messages');
                             // console.log(pgm + 'setting last_request_at: encrypt2.session_at = ' + encrypt2.session_at + ', file_timestamp = ' + file_timestamp);
                             session_info = {
+                                url: encrypt2.extra.url,
                                 password: request.password, // encrypted session password pwd2
                                 pubkey: encrypt2.other_session_pubkey,
                                 pubkey2: encrypt2.other_session_pubkey2,

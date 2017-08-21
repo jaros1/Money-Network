@@ -21,7 +21,7 @@ angular.module('MoneyNetwork')
         // - my messages: sha256.first(10).timestamp
         // - wallet messages: sha256.last(10).timestamp
         var encrypt2 ;
-        function new_sessionid () {
+        function new_sessionid (url) {
             var pgm = controller + '.new_sessionid: ' ;
             test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
             // monitor incoming messages from this new wallet session
@@ -29,20 +29,21 @@ angular.module('MoneyNetwork')
                 sessionid: test_sessionid,
                 prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
                 userid2: MoneyNetworkHelper.getUserId(), // for cryptMessage (decrypt incoming message)
-                debug: true
+                debug: true,
+                extra: { url: url}
             }) ;
         } // new_sessionid
 
         var SESSION_INFO_KEY = moneyNetworkWService.get_session_info_key() ;
 
-        // get old sessions from ls
+        // get sessions from ls
         var ls_sessions = moneyNetworkWService.ls_get_sessions() ;
 
         self.new_wallet_url = $location.search()['new_wallet_site'] ; // redirect from a MoneyNetwork wallet site?
         var tested_wallet_url = null ; // last tested url
         var test_sessionid ;
         var test_session_at = null ;
-        new_sessionid () ;
+        // new_sessionid () ;
 
         function get_relative_url (url) {
             var pgm = controller + '.get_relative_url: ' ;
@@ -125,23 +126,143 @@ angular.module('MoneyNetwork')
                 delete self.tests[i].info.disabled ;
             }
             // new sessionid
-            new_sessionid() ;
+            // new_sessionid() ;
         };
-        var test1_open_url = (function () {
+
+        var test1_ping_session = (function () {
             var pgm = controller + '.test1: ' ;
             var info = {
                 no: 1,
-                text: 'Open wallet URL',
+                text: 'Ping existing wallet session',
                 status: 'Pending'
             };
             function run() {
                 var pgm = controller + '.test1.run: ' ;
+                var url, request, old_sessions, sessionid, session_info, test_old_session ;
+                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
+                    // continue with next test
+                    console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no + 1));
+                    info.disabled = true;
+                    test2_open_url.run();
+                }
+                else {
+                    // start test 1. send ping to old wallet session(s)
+                    info.status = 'Running' ;
+                    url = get_relative_url(self.new_wallet_url) ;
+                    console.log(pgm + 'url = ' + url) ;
+
+                    // find old sessions
+                    old_sessions = [] ;
+                    for (sessionid in ls_sessions) {
+                        session_info = ls_sessions[sessionid][SESSION_INFO_KEY] ;
+                        if (!session_info) continue ;
+                        if (!session_info.last_request_at) continue ;
+                        if (session_info.url != url) continue ;
+                        console.log(pgm + 'sessionid = ' + sessionid + ', ls_sessions[sessionid] = ' + JSON.stringify(ls_sessions[sessionid])) ;
+                        old_sessions.push({sessionid: sessionid, last_request_at: session_info.last_request_at}) ;
+                    } // for
+                    if (!old_sessions.length) {
+                        // no old sessions were found. continue with test 2-6
+                        info.status = 'Test skipped' ;
+                        console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no + 1));
+                        info.disabled = true;
+                        test2_open_url.run();
+                        return ;
+                    }
+                    // sort by descending last_request_at. Start with newest session
+                    old_sessions.sort(function (a,b) {
+                        return (b.last_request_at - a.last_request_at) ;
+                    }) ;
+                    console.log(pgm + 'old_sessions = ' + JSON.stringify(old_sessions)) ;
+                    //old_sessions = [{
+                    //    "sessionid": "z1a4wzejn0bifkglpblefqqedevpdiyissdstq5kbppardmbzdytbtrzkp2w",
+                    //    "last_request_at": 1503137602267
+                    //}, {
+                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                    //    "last_request_at": 1503241981466
+                    //}];
+
+                    //old_sessions = [{
+                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                    //    "last_request_at": 1503241981466
+                    //}, {
+                    //    "sessionid": "z1a4wzejn0bifkglpblefqqedevpdiyissdstq5kbppardmbzdytbtrzkp2w",
+                    //    "last_request_at": 1503137602267
+                    //}];
+
+                    // loop. test old sessions. timeout = 5 seconds
+                    test_old_session = function () {
+                        var pgm = controller + '.test1.run.test_old_session: ' ;
+                        var old_session, sessionid ;
+                        if (!old_sessions.length) {
+                            // no response from old sessions
+                            info.status = 'Test failed' ;
+                            info.disabled = true;
+                            test2_open_url.run();
+                            return ;
+                        }
+                        old_session = old_sessions.shift() ;
+                        sessionid = old_session.sessionid ;
+                        MoneyNetworkAPILib.get_session(sessionid, function(session) {
+                            var pgm = controller + '.test1.run.test_old_session get_session callback 1: ' ;
+                            var request ;
+                            console.log(pgm + 'sessionid = ', sessionid, ', session = ', session) ;
+
+                            // send ping. timeout max 5 seconds. Expects Timeout ... or OK response
+                            request = { msgtype: 'ping' };
+                            session.encrypt.send_message(request, {response: 5000}, function (response) {
+                                var pgm = controller + '.test1.run.test_old_session send_message callback 2: ' ;
+                                if (response && response.error && response.error.match(/^Timeout /)) {
+                                    // OK. Timeout. Continue with next session
+                                    console.log(pgm + 'ping sessionid ' + sessionid + ' timeout') ;
+                                    return test_old_session() ;
+                                }
+                                if (!response || response.error) {
+                                    // Unexpected error.
+                                    console.log(pgm + 'ping sessionid ' + sessionid + ' returned ' + JSON.stringify(response)) ;
+                                    info.status = 'Test failed' ;
+                                    info.disabled = true;
+                                    return test2_open_url.run();
+                                }
+                                // ping OK. Skip test 2-6
+                                info.status = 'Test OK' ;
+                                info.disabled = true;
+                                test2_open_url.info.status = 'Test skipped' ;
+                                test3_allow_popup.info.status = test2_open_url.info.status ;
+                                test4_select_zeroid.info.status = test2_open_url.info.status ;
+                                test5_merger_moneynetwork.info.status = test2_open_url.info.status ;
+                                test6_check_session.info.status = test2_open_url.info.status ;
+                                test2_open_url.run();
+                            }) ; // send_message callback 2
+                        }) ; // get_session callback 1
+
+                    }; // test_old_session
+                    // start loop
+                    test_old_session() ;
+
+                } // if else
+            } // run
+            return {
+                info: info,
+                run: run
+            };
+        })(); // test1
+
+        var test2_open_url = (function () {
+            var pgm = controller + '.test2: ' ;
+            var info = {
+                no: 2,
+                text: 'Open wallet URL',
+                status: 'Pending'
+            };
+            function run() {
+                var pgm = controller + '.test2.run: ' ;
                 var url, request ;
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // continue with next test
                     console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no + 1));
                     info.disabled = true;
-                    test2_allow_popup.run();
+                    test3_allow_popup.run();
                 }
                 else {
                     // start test 1. add sessionid to URL and open new window with wallet session
@@ -150,6 +271,7 @@ angular.module('MoneyNetwork')
                     // SHA256(sessionid).last(10).<timestamp>: MoneyNetwork wallet session filename (optional file). other session
                     info.status = 'Running' ;
                     url = get_relative_url(self.new_wallet_url) ;
+                    new_sessionid(url) ;
                     url = updateURLParameter(url, 'sessionid', test_sessionid) ;
                     console.log(pgm + 'url = ' + url) ;
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
@@ -163,7 +285,7 @@ angular.module('MoneyNetwork')
                     } ;
                     test_session_at = new Date().getTime() ;
                     encrypt2.send_message(request, {encryptions:[]}, function (response) {
-                        var pgm = controller + '.test1.run send_message callback 2: ' ;
+                        var pgm = controller + '.test2.run send_message callback 2: ' ;
                         console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                     }) ;
 
@@ -173,12 +295,12 @@ angular.module('MoneyNetwork')
                 info: info,
                 run: run
             };
-        })(); // test1
+        })(); // test2
 
-        var test2_allow_popup = (function () {
-            var pgm = controller + '.test2: ' ;
+        var test3_allow_popup = (function () {
+            var pgm = controller + '.test3: ' ;
             var info = {
-                no: 2,
+                no: 3,
                 text: 'Popup allowed in browser',
                 status: 'Pending'
             };
@@ -187,15 +309,15 @@ angular.module('MoneyNetwork')
                     // continue with next test
                     console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no+1)) ;
                     info.disabled = true ;
-                    test3_select_zeroid.run() ;
+                    test4_select_zeroid.run() ;
                 }
                 else {
-                    // start test 2
+                    // start test 3
                     info.status = 'Running' ;
                     ZeroFrame.cmd("wrapperConfirm", [info.text + '?'], function (ok) {
                         if (!ok) return ;
                         info.test_ok = true ;
-                        self.test_feedback(test2_allow_popup, 'OK') ;
+                        self.test_feedback(test3_allow_popup, 'OK') ;
                         $rootScope.$apply() ;
                     }) ;
                 }
@@ -204,12 +326,12 @@ angular.module('MoneyNetwork')
                 info: info,
                 run: run
             };
-        })(); // test2
+        })(); // test3
 
-        var test3_select_zeroid = (function () {
-            var pgm = controller + '.test3: ' ;
+        var test4_select_zeroid = (function () {
+            var pgm = controller + '.test4: ' ;
             var info = {
-                no: 3,
+                no: 4,
                 text: 'ZeroID selected in wallet',
                 status: 'Pending'
             };
@@ -218,7 +340,7 @@ angular.module('MoneyNetwork')
                     // continue with next test
                     console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no+1)) ;
                     info.disabled = true ;
-                    test4_merger_moneynetwork.run() ;
+                    test5_merger_moneynetwork.run() ;
                 }
                 else {
                     // start test 3
@@ -230,12 +352,12 @@ angular.module('MoneyNetwork')
                 info: info,
                 run: run
             };
-        })(); // test3
+        })(); // test4
 
-        var test4_merger_moneynetwork = (function () {
-            var pgm = controller + '.test4: ' ;
+        var test5_merger_moneynetwork = (function () {
+            var pgm = controller + '.test5: ' ;
             var info = {
-                no: 4,
+                no: 5,
                 text: 'Merger:MoneyNetwork permission granted in wallet',
                 status: 'Pending'
             };
@@ -244,10 +366,10 @@ angular.module('MoneyNetwork')
                     // continue with next test
                     console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no+1)) ;
                     info.disabled = true ;
-                    test5_check_session.run() ;
+                    test6_check_session.run() ;
                 }
                 else {
-                    // start test 4
+                    // start test 5
                     info.status = 'Running' ;
                     ZeroFrame.cmd('wrapperNotification', ['info', 'Please check that "Merger:MoneyNetwork permission" is granted in wallet and click Test OK', 5000]);
                 }
@@ -256,12 +378,12 @@ angular.module('MoneyNetwork')
                 info: info,
                 run: run
             };
-        })(); // test4
+        })(); // test5
 
-        var test5_check_session = (function () {
-            var pgm = controller + '.test5: ' ;
+        var test6_check_session = (function () {
+            var pgm = controller + '.test6: ' ;
             var info = {
-                no: 5,
+                no: 6,
                 text: 'Checking session',
                 status: 'Pending'
             };
@@ -272,7 +394,7 @@ angular.module('MoneyNetwork')
                     self.test_running = false ;
                 }
                 else {
-                    // start test 5. wait for wallet feedback (pubkeys message)
+                    // start test 6. wait for wallet feedback (pubkeys message)
                     info.status = 'Running' ;
 
                     // wait for session to start. expects a pubkeys message from MoneyNetwork wallet session
@@ -322,16 +444,17 @@ angular.module('MoneyNetwork')
                 info: info,
                 run: run
             };
-        })(); // test5
+        })(); // test6
 
         self.tests = [] ;
         function init_tests () {
             self.tests.splice(0, self.tests.length) ;
-            self.tests.push(test1_open_url) ;
-            self.tests.push(test2_allow_popup) ;
-            self.tests.push(test3_select_zeroid) ;
-            self.tests.push(test4_merger_moneynetwork) ;
-            self.tests.push(test5_check_session) ;
+            self.tests.push(test1_ping_session) ;
+            self.tests.push(test2_open_url) ;
+            self.tests.push(test3_allow_popup) ;
+            self.tests.push(test4_select_zeroid) ;
+            self.tests.push(test5_merger_moneynetwork) ;
+            self.tests.push(test6_check_session) ;
         }
         init_tests();
         self.test_running = false ;

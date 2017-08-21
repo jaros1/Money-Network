@@ -8,6 +8,7 @@
 
 // todo:
 // - add logout message. MN => wallets & wallet => MN
+// - add a ping message. MM => wallet and wallet => MN. simple are you alive ping?
 // - timeout in request = logout for other session = close session.
 //   timeout can also be a "server" fault (error in other session). can be verified with a simple ping
 //   timeout in simple ping = closed session. OK simple ping = server fault in previous response
@@ -16,6 +17,10 @@
 // - n-n session relations between MoneyNetwork and wallets? MoneyNetwork can have many wallets. A wallet can be used of many MoneyNetwork clones?
 // - test offline transactions. for example a money transaction, send, receive, donate, pay, receive payment.
 //   W2W transactions. Started by one MN user. Must by received by an other MN user
+// - API handshake. MN and wallet sessions will normally use different MoneyNetworkAPI versions. validate all messages before send/after receive.
+//   sessions must exchange list of supported/allowed messages.
+//   json schema compare?
+//
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
 var MoneyNetworkAPILib = (function () {
@@ -330,6 +335,33 @@ var MoneyNetworkAPILib = (function () {
         }); // get_wallet callback
     } // add_session
 
+    // return session
+    function get_session (sessionid, cb) {
+        var pgm = module + '.get_sessions: ' ;
+        var retry_get_session, fake_get_wallet_cb, other_session_filename, session_info ;
+        console.log(pgm + 'get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
+        if (get_wallet_cbs.length) {
+            // wait for get_wallet queue to empty before returning sessions (get_session_filenames)
+            retry_get_session = function() {
+                get_session(sessionid, cb) ;
+            };
+            fake_get_wallet_cb = function() {
+                // wait a moment to empty get_wallet_cbs queue
+                setTimeout(retry_get_session, 200) ;
+            };
+            get_wallet_cbs.push(fake_get_wallet_cb) ;
+            return ;
+        }
+        for (other_session_filename in sessions) {
+            session_info = sessions[other_session_filename];
+            if (session_info.encrypt && session_info.encrypt.destroyed) continue;
+            if (session_info.sessionid != sessionid) continue ;
+            console.log(pgm + 'found session with sessionid ' + sessionid) ;
+            return cb(session_info) ;
+        }
+        cb() ;
+    } // get_session
+
     function get_sessions (cb) {
         var pgm = module + '.get_sessions: ' ;
         var array, other_session_filename, session_info1, session_info2, key, retry_get_sessions, fake_get_wallet_cb ;
@@ -364,6 +396,7 @@ var MoneyNetworkAPILib = (function () {
 
     // delete session. session removed by client.
     function delete_session (sessionid) {
+        var pgm = module + '.delete_session: ' ;
         var other_session_filename ;
         for (other_session_filename in sessions) {
             if (sessions[other_session_filename].sessionid != sessionid) continue ;
@@ -429,13 +462,18 @@ var MoneyNetworkAPILib = (function () {
         if (timeout_at && (typeof timeout_at != 'number')) throw pgm + 'invalid call. invalid param 3 timeout 3 = ' + JSON.stringify(timeout_at);
         if (cb && (typeof cb != 'function')) throw pgm + 'invalid call. invalid param 4 cb. expected a function. cb = ' + JSON.stringify(cb);
         if (done[response_filename]) return 'Error. ' + response_filename + ' already done or callback object already defined';
+        if (!cb) {
+            if (debug) console.log(pgm + 'ignoring incoming message with filename ' + response_filename + '. request = ' + JSON.stringify(request)) ;
+            else console.log(pgm + 'no debug 1') ;
+            done[response_filename] = true ;
+            return null ;
+        }
         if (!timeout_at) timeout_at = (new Date().getTime()) + 30000;
-        if (!cb) cb = function () {}; // ignored message (read by an other process)
         done[response_filename] = {request: request, timeout_at: timeout_at, cb: cb};
         if (debug) console.log(pgm + 'added a callback function for ' + response_filename + '. request = ' + JSON.stringify(request) + ', done[' + response_filename + '] = ' + JSON.stringify(done[response_filename]));
+        else console.log(pgm + 'no debug 2') ;
         return null;
     } // wait_for_file
-
 
     var timestamp_re = /^[0-9]{13}$/ ;
     function demon() {
@@ -591,7 +629,6 @@ var MoneyNetworkAPILib = (function () {
             console.log(pgm + text) ;
             offline[session_filename] = [] ;
             done[filename1] = true;
-            return ;
         };
         encrypt = sessions[session_filename].encrypt ;
         if (encrypt.destroyed) return error('Session with other_session_filename ' + session_filename + ' has been destroyed') ;
@@ -668,6 +705,7 @@ var MoneyNetworkAPILib = (function () {
         get_wallet: get_wallet,
         is_session: is_session,
         add_session: add_session,
+        get_session: get_session,
         get_sessions: get_sessions,
         wait_for_file: wait_for_file,
         delete_session: delete_session,
@@ -692,6 +730,7 @@ var MoneyNetworkAPILib = (function () {
 // - this_user_path and other_user_path. full merger site user path string "merged-MoneyNetwork/<hub>/data/users/<auth_address>/"
 // - optional. optional files pattern to be added to user content.json file (new users).
 // - cb. callback function to process incoming messages for this session
+// - extra. hash with any additional session info. Not used by MoneyNetworkAPI
 var MoneyNetworkAPI = function (options) {
     var pgm = 'new MoneyNetworkAPI: ';
     var missing_keys, key, prefix;
@@ -731,6 +770,7 @@ var MoneyNetworkAPI = function (options) {
     this.this_optional = MoneyNetworkAPILib.get_optional() ;
     // optional callback function process incoming messages for this session
     this.cb = options.cb ;
+    this.extra = options.extra ;
     if (this.sessionid) {
         // monitor incoming messages for this sessionid.
         MoneyNetworkAPILib.add_session(this.sessionid, {encrypt: this, cb: this.cb, constructor:true}) ;
@@ -862,6 +902,7 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
     if (options.optional) MoneyNetworkAPILib.config({optional: this.optional}) ;
     else if (!this.this_optional) this.this_optional = MoneyNetworkAPILib.get_optional() ;
     if (options.cb) this.cb = options.cb ;
+    if (options.extra) this.extra = options.extra ;
     if (this.sessionid) {
         // known sessionid. new or old session
         if (is_new_sessionid) {
@@ -1338,7 +1379,7 @@ MoneyNetworkAPI.json_schemas = {
 
     "response": {
         "type": 'object',
-        "title": 'Generic response with an optional error message',
+        "title": 'Generic response with an optional error message/code',
         "properties": {
             "msgtype": {"type": 'string', "pattern": '^response$'},
             "error": {"type": 'string'}
@@ -1347,9 +1388,54 @@ MoneyNetworkAPI.json_schemas = {
         "additionalProperties": false
     }, // response
 
+    "ping": {
+        "type": 'object',
+        "title": 'Simple ping. Expects Timeout or OK response',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^ping$'},
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    }, // ping
+
+    "get_balance": {
+        "type": 'object',
+        "title": 'MN: send get_balance request to wallet session',
+        "description": 'Wallet session must return a balance (OK) or response (error) message. Open and/or close wallet before/after get_balance request',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^get_balance$'},
+            "open_wallet": {"type": 'boolean'},
+            "close_wallet": {"type": 'boolean'}
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    }, // get_balance
+
+    "balance": {
+        "type": 'object',
+        "title": 'Wallet: response. return balance info to MN',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^balance$'},
+            "balance": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                        "amount": {"type": 'number'}
+                    },
+                    "required": ['code', 'amount'],
+                    "additionalProperties": false
+                }
+            }
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    }, // balance
+
     "wallet": {
         "type": 'object',
-        "title": 'Public wallet information',
+        "title": 'Public wallet information in wallet.json files',
         "description": 'wallet_* from site_info, currencies is a list of supported currencies and hub is a random wallet data hub address',
         "properties": {
             "msgtype": {"type": 'string', "pattern": '^wallet$'},
@@ -1421,7 +1507,7 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, request_m
 //   - timestamp: timestamp to be used in filename for outgoing message. Only used when sending response
 //   - msgtype: request msgtype. only used when sending response. Used for json validation
 //   - request: request timestamp. only used when sending response. Added to response json after validation. used for offline transactions
-// - cb: callback. returns an empty hash, hash with an error messsage or response
+// - cb: callback. returns an empty hash, a hash with an error messsage or a response
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
     var self, response, request_msgtype, request_timestamp, encryptions, error, request_at, request_file_timestamp,
@@ -1610,6 +1696,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                 response_filename = other_session_filename + '.' + response;
                                 if (is_session) {
                                     // demon is running and is monitoring incoming messages for this sessionid
+                                    self.log(pgm, 'demon is running. wait for response file ' + response_filename + '. cb = get_and_decrypt') ;
                                     error = MoneyNetworkAPILib.wait_for_file(request, response_filename, timeout_at, get_and_decrypt);
                                     if (error) return cb({error: error});
                                 }
