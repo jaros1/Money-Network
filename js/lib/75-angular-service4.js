@@ -321,7 +321,6 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'ignoring incoming message ' + filename + '. session has been destroyed. reason = ' + encrypt2.destroyed) ;
                 return ;
             }
-
             console.log(pgm + 'filename = ' + filename) ;
             // filename = merged-MoneyNetwork/1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/0d4002d16c.1499860158848
 

@@ -198,7 +198,13 @@ angular.module('MoneyNetwork')
                             // no response from old sessions
                             info.status = 'Test failed' ;
                             info.disabled = true;
+                            console.log(pgm + 'test 1 failed. Ask user to continue test. Popup window in test 2');
+                            // issue https://github.com/HelloZeroNet/ZeroNet/issues/1089
+                            // chrome only. cannot run window.open call long time after test start. ask user to restart test
                             test2_open_url.run();
+                            //ZeroFrame.cmd("wrapperConfirm", ['Ok', 'Test 1 failed<br>Press OK to continue test'], function (confirm) {
+                            //    if (confirm) test2_open_url.run();
+                            //});
                             return ;
                         }
                         old_session = old_sessions.shift() ;
