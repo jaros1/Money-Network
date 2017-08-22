@@ -130,21 +130,22 @@ angular.module('MoneyNetwork')
                 //            "postmessage_nonce_security": true,
                 //            "address_index": 21770330
                 //        },
-                //        "peers": 16,
+                //        "peers": 6,
                 //        "auth_key": "2e6660337d0efeaca1cd6ee4b3b3dbfcabe30693f37d483a497c38fe322547f8",
                 //        "settings": {
+                //            "peers": 4,
                 //            "added": 1495634355,
-                //            "bytes_recv": 2056350,
-                //            "optional_downloaded": 3758,
+                //            "bytes_recv": 2088756,
+                //            "optional_downloaded": 811278,
+                //            "bytes_sent": 1293583,
+                //            "ajax_key": "a2eac98ba827b84747354ac863f114cf25fcdc326fc604f85a96ffee5f567bbf",
+                //            "modified": 1503392135,
                 //            "cache": {},
-                //            "bytes_sent": 99044,
-                //            "peers": 14,
-                //            "modified": 1499677345,
-                //            "size_optional": 38693,
                 //            "serving": true,
                 //            "own": true,
                 //            "permissions": [],
-                //            "size": 99618
+                //            "size_optional": 892015,
+                //            "size": 187371
                 //        },
                 //        "bad_files": 0,
                 //        "workers": 0,
@@ -176,21 +177,22 @@ angular.module('MoneyNetwork')
                 //            "zeronet_version": "0.5.5",
                 //            "postmessage_nonce_security": true
                 //        },
-                //        "peers": 25,
+                //        "peers": 3,
                 //        "auth_key": "2e6660337d0efeaca1cd6ee4b3b3dbfcabe30693f37d483a497c38fe322547f8",
                 //        "settings": {
+                //            "peers": 2,
                 //            "added": 1497250023,
-                //            "bytes_recv": 694529,
-                //            "optional_downloaded": 528376,
+                //            "bytes_recv": 731810,
+                //            "optional_downloaded": 775,
+                //            "bytes_sent": 262231,
+                //            "ajax_key": "fb135ca9d5c773addd4539e9f60c75abd4a53c11f469d0b33502ba934aedcdec",
+                //            "modified": 1503190684,
                 //            "cache": {},
-                //            "bytes_sent": 195780,
-                //            "peers": 24,
-                //            "modified": 1500100815,
-                //            "size_optional": 531962,
                 //            "serving": true,
                 //            "own": true,
                 //            "permissions": [],
-                //            "size": 647964
+                //            "size_optional": 32761,
+                //            "size": 542789
                 //        },
                 //        "bad_files": 0,
                 //        "workers": 0,
@@ -223,20 +225,21 @@ angular.module('MoneyNetwork')
                 //            "zeronet_version": "0.5.4",
                 //            "postmessage_nonce_security": true
                 //        },
-                //        "peers": 19,
+                //        "peers": 20,
                 //        "auth_key": "2e6660337d0efeaca1cd6ee4b3b3dbfcabe30693f37d483a497c38fe322547f8",
                 //        "settings": {
+                //            "peers": 19,
                 //            "added": 1492417547,
                 //            "bytes_recv": 6063314,
                 //            "optional_downloaded": 0,
-                //            "cache": {},
-                //            "bytes_sent": 23290673,
-                //            "peers": 18,
+                //            "bytes_sent": 23292632,
+                //            "ajax_key": "9ef51f9a9dafa22e44390c6bba868a42e5271ff8e59aa47c918d46b43b792b4b",
                 //            "modified": 1493993640,
-                //            "size_optional": 0,
+                //            "cache": {},
                 //            "serving": true,
                 //            "own": true,
                 //            "permissions": [],
+                //            "size_optional": 0,
                 //            "size": 4934644
                 //        },
                 //        "bad_files": 0,
@@ -274,17 +277,18 @@ angular.module('MoneyNetwork')
                 //        "peers": 19,
                 //        "auth_key": "2e6660337d0efeaca1cd6ee4b3b3dbfcabe30693f37d483a497c38fe322547f8",
                 //        "settings": {
+                //            "peers": 18,
                 //            "added": 1495614835,
                 //            "bytes_recv": 1118,
                 //            "optional_downloaded": 0,
-                //            "cache": {},
                 //            "bytes_sent": 9550,
-                //            "peers": 10,
+                //            "ajax_key": "18ba629a2075b92e19af2ac1d28145c6548d1971b5ac8603413966124d4eda22",
                 //            "modified": 1495974144,
-                //            "size_optional": 0,
+                //            "cache": {},
                 //            "serving": true,
                 //            "own": true,
                 //            "permissions": [],
+                //            "size_optional": 0,
                 //            "size": 2452
                 //        },
                 //        "bad_files": 0,
@@ -321,21 +325,22 @@ angular.module('MoneyNetwork')
                 //            "postmessage_nonce_security": true,
                 //            "address_index": 80726747
                 //        },
-                //        "peers": 18,
+                //        "peers": 30,
                 //        "auth_key": "2e6660337d0efeaca1cd6ee4b3b3dbfcabe30693f37d483a497c38fe322547f8",
                 //        "settings": {
+                //            "peers": 29,
                 //            "added": 1495960709,
-                //            "bytes_recv": 906307,
-                //            "optional_downloaded": 1147026,
+                //            "bytes_recv": 1015239,
+                //            "optional_downloaded": 507632,
+                //            "bytes_sent": 668516,
+                //            "ajax_key": "25cebf473bbfe3a497adebc997788fd0f6e63742bbbcdf7c78197d86c83859db",
+                //            "modified": 1503387148,
                 //            "cache": {},
-                //            "bytes_sent": 502788,
-                //            "peers": 17,
-                //            "modified": 1500100814,
-                //            "size_optional": 1171052,
                 //            "serving": true,
                 //            "own": true,
                 //            "permissions": [],
-                //            "size": 21426
+                //            "size_optional": 579978,
+                //            "size": 34486
                 //        },
                 //        "bad_files": 0,
                 //        "workers": 0,
@@ -445,6 +450,14 @@ angular.module('MoneyNetwork')
             }) ;
 
         }; // money_network_w2_11
+
+        self.money_network_w2_12 = function () {
+            var pgm = controller + '.money_network_w2_12: ';
+            console.log(pgm + 'Test siteList') ;
+            ZeroFrame.cmd("siteList", [true], function (site_list) {
+                console.log(pgm + 'site_list = ' + JSON.stringify(site_list));
+            }) ;
+        } ; // money_network_w2_12
 
         // end MoneyCtrl
     }])

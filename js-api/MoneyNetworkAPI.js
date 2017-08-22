@@ -1390,7 +1390,7 @@ MoneyNetworkAPI.json_schemas = {
 
     "ping": {
         "type": 'object',
-        "title": 'Simple ping. Expects Timeout or OK response',
+        "title": 'Simple session ping. Expects Timeout or OK response',
         "properties": {
             "msgtype": {"type": 'string', "pattern": '^ping$'},
         },

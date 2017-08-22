@@ -28,7 +28,10 @@
       ]
     },
     ".+/data/users/.+/wallet.json": {
-      "to_keyvalue": [ "sessionid_sha256", "session_at", "pubkey2" ]
+      "to_table": [
+        { "node": "currencies", "table": "currencies"}
+      ],
+      "to_keyvalue": [ "wallet_address", "wallet_title", "wallet_description" ]
     }
   },
   "tables": {
@@ -122,6 +125,16 @@
         ["json_id", "INTEGER REFERENCES json (json_id)"]
       ],
       "indexes": ["CREATE INDEX like_i1 ON like(timestamp)"],
+      "schema_changed": 10
+    },
+    "currencies": {
+      "cols": [
+        ["code", "TEXT"],
+        ["name", "TEXT"],
+        ["url", "TEXT"],
+        ["json_id", "INTEGER REFERENCES currencies (json_id)"]
+      ],
+      "indexes": ["CREATE INDEX currencies_i1 ON currencies(json_id)"],
       "schema_changed": 10
     }
   }

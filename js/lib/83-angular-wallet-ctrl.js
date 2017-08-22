@@ -173,22 +173,7 @@ angular.module('MoneyNetwork')
                     old_sessions.sort(function (a,b) {
                         return (b.last_request_at - a.last_request_at) ;
                     }) ;
-                    console.log(pgm + 'old_sessions = ' + JSON.stringify(old_sessions)) ;
-                    //old_sessions = [{
-                    //    "sessionid": "z1a4wzejn0bifkglpblefqqedevpdiyissdstq5kbppardmbzdytbtrzkp2w",
-                    //    "last_request_at": 1503137602267
-                    //}, {
-                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
-                    //    "last_request_at": 1503241981466
-                    //}];
-
-                    //old_sessions = [{
-                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
-                    //    "last_request_at": 1503241981466
-                    //}, {
-                    //    "sessionid": "z1a4wzejn0bifkglpblefqqedevpdiyissdstq5kbppardmbzdytbtrzkp2w",
-                    //    "last_request_at": 1503137602267
-                    //}];
+                    // console.log(pgm + 'old_sessions = ' + JSON.stringify(old_sessions)) ;
 
                     // loop. test old sessions. timeout = 5 seconds
                     test_old_session = function () {
@@ -230,7 +215,10 @@ angular.module('MoneyNetwork')
                                     info.disabled = true;
                                     return test2_open_url.run();
                                 }
-                                // ping OK. Skip test 2-6
+                                // ping OK. Save session
+                                test_sessionid = session.encrypt.sessionid ;
+                                encrypt2 = session.encrypt ;
+                                // Skip test 2-6
                                 info.status = 'Test OK' ;
                                 info.disabled = true;
                                 test2_open_url.info.status = 'Test skipped' ;
@@ -258,7 +246,7 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.test2: ' ;
             var info = {
                 no: 2,
-                text: 'Open wallet URL',
+                text: 'New wallet session',
                 status: 'Pending'
             };
             function run() {
@@ -395,9 +383,9 @@ angular.module('MoneyNetwork')
             };
             function run () {
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
-                    // test done
+                    // next test
                     info.disabled = true ;
-                    self.test_running = false ;
+                    test7_check_wallet.run() ;
                 }
                 else {
                     // start test 6. wait for wallet feedback (pubkeys message)
@@ -427,14 +415,12 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'wallet session was not found. error = ' + res.error) ;
                             info.status = 'Test failed' ;
                             info.disabled = true ;
-                            self.test_running = false ;
                         }
                         else {
                             elapsed = res.session_at - test_session_at ;
                             console.log(pgm + 'new wallet session was found. pubkey2 = ' + res.pubkey2 + ', waited ' + Math.round(elapsed / 1000) + ' seconds') ;
                             info.status = 'Test OK' ;
                             info.disabled = true ;
-                            self.test_running = false ;
                         }
                         console.log(pgm + 'check_session. res = ' + JSON.stringify(res)) ;
                         //res = {
@@ -452,6 +438,63 @@ angular.module('MoneyNetwork')
             };
         })(); // test6
 
+        var test7_check_wallet = (function () {
+            var pgm = controller + '.test7: ' ;
+            var info = {
+                no: 7,
+                text: 'Check wallet.json',
+                status: 'Pending'
+            };
+            function run () {
+                var pgm = controller + '.test7.run: ' ;
+                var inner_path, debug_seq ;
+                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
+                    // test done
+                    info.disabled = true ;
+                    self.test_running = false ;
+                    // finish. update UI just to be sure everything is OK
+                    $rootScope.$apply();
+                }
+                else {
+                    // start test 7. read wallet.json
+                    info.status = 'Running' ;
+
+                    inner_path = encrypt2.other_user_path + 'wallet.json' ;
+                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+                    ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
+                        var pgm = controller + '.test7.run fileGet callback: ' ;
+                        var wallet, error ;
+                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                        if (!wallet_str) {
+                            console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path) ;
+                            info.status = 'Test failed' ;
+                        }
+                        else {
+                            wallet = JSON.parse(wallet_str) ;
+                            console.log(pgm + 'wallet = ' + JSON.stringify(wallet)) ;
+                            // validate before write
+                            error = encrypt2.validate_json(pgm, wallet) ;
+                            if (error) {
+                                console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', json = ' + JSON.stringify(json));
+                                info.status = 'Test failed' ;
+                            }
+                            else info.status = 'Test OK' ;
+                        }
+                        info.disabled = true ;
+                        self.test_running = false ;
+                        // finish. update UI just to be sure everything is OK
+                        $rootScope.$apply();
+
+                    }) ; // fileGet
+
+                } // end if else
+            } // run
+            return {
+                info: info,
+                run: run
+            };
+        })(); // test7
+
         self.tests = [] ;
         function init_tests () {
             self.tests.splice(0, self.tests.length) ;
@@ -461,6 +504,7 @@ angular.module('MoneyNetwork')
             self.tests.push(test4_select_zeroid) ;
             self.tests.push(test5_merger_moneynetwork) ;
             self.tests.push(test6_check_session) ;
+            self.tests.push(test7_check_wallet) ;
         }
         init_tests();
         self.test_running = false ;
