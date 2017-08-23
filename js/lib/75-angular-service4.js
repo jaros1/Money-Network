@@ -217,6 +217,7 @@ angular.module('MoneyNetwork')
                         ") and json.json_id = files_optional.json_id " +
                         "order by substr(files_optional.filename, 12)";
                     console.log(pgm + 'query = ' + query) ;
+                    console.log(pgm + 'todo: add debug_seq to this query') ;
 
                     ZeroFrame.cmd("dbQuery", [query], function (res) {
                         var pgm = service + '.create_sessions.step_1_find_files dbQuery callback: ';

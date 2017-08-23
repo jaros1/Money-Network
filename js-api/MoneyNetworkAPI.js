@@ -1436,7 +1436,7 @@ MoneyNetworkAPI.json_schemas = {
     "wallet": {
         "type": 'object',
         "title": 'Public wallet information in wallet.json files',
-        "description": 'wallet_* from site_info, currencies is a list of supported currencies and hub is a random wallet data hub address',
+        "description": 'wallet_* from site_info, currencies is a list of supported currencies and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_title, wallet_description, currencies} hash',
         "properties": {
             "msgtype": {"type": 'string', "pattern": '^wallet$'},
             "wallet_address": { "type": 'string'},
@@ -1456,10 +1456,11 @@ MoneyNetworkAPI.json_schemas = {
                     "additionalProperties": false
                 }
             },
+            "wallet_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' },
             "hub": { "type": 'string'}
 
         },
-        "required": ['msgtype', 'wallet_address', 'wallet_title', 'wallet_description'],
+        "required": ['msgtype', 'wallet_sha256'],
         "additionalProperties": false
     } // wallet
 

@@ -447,45 +447,86 @@ angular.module('MoneyNetwork')
             };
             function run () {
                 var pgm = controller + '.test7.run: ' ;
-                var inner_path, debug_seq ;
-                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
-                    // test done
+                var inner_path, debug_seq0 ;
+                var test_done = function (status) {
+                    if (status) info.status = status ;
                     info.disabled = true ;
                     self.test_running = false ;
                     // finish. update UI just to be sure everything is OK
                     $rootScope.$apply();
-                }
+                } ;
+                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) return test_done() ;
                 else {
                     // start test 7. read wallet.json
                     info.status = 'Running' ;
 
                     inner_path = encrypt2.other_user_path + 'wallet.json' ;
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+                    debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
                     ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
-                        var pgm = controller + '.test7.run fileGet callback: ' ;
-                        var wallet, error ;
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                        var pgm = controller + '.test7.run fileGet callback 1: ' ;
+                        var wallet, error, wallet_sha256_json, calc_wallet_sha256, query, debug_seq1 ;
+                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                         if (!wallet_str) {
                             console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path) ;
-                            info.status = 'Test failed' ;
+                            return test_done('Test failed') ;
                         }
-                        else {
-                            wallet = JSON.parse(wallet_str) ;
-                            console.log(pgm + 'wallet = ' + JSON.stringify(wallet)) ;
-                            // validate before write
-                            error = encrypt2.validate_json(pgm, wallet) ;
-                            if (error) {
-                                console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', json = ' + JSON.stringify(json));
-                                info.status = 'Test failed' ;
-                            }
-                            else info.status = 'Test OK' ;
+                        wallet = JSON.parse(wallet_str) ;
+                        console.log(pgm + 'wallet = ' + JSON.stringify(wallet)) ;
+                        // validate wallet.json after read
+                        error = encrypt2.validate_json(pgm, wallet) ;
+                        if (error) {
+                            console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', wallet = ' + JSON.stringify(wallet));
+                            return test_done('Test failed') ;
                         }
-                        info.disabled = true ;
-                        self.test_running = false ;
-                        // finish. update UI just to be sure everything is OK
-                        $rootScope.$apply();
+                        // partial (wallet_sha256 only) or full wallet information.
+                        if (wallet.wallet_address && wallet.wallet_title && wallet.wallet_description) {
+                            // full wallet info. test wallet_sha256 signature
+                            wallet_sha256_json = {
+                                wallet_address: wallet.wallet_address,
+                                wallet_title: wallet.wallet_title,
+                                wallet_description: wallet.wallet_description,
+                                currencies: wallet.currencies
+                            } ;
+                            calc_wallet_sha256 = CryptoJS.SHA256(JSON.stringify(wallet_sha256_json)).toString();
+                            if (wallet.wallet_sha256 == calc_wallet_sha256) return test_done('Test OK') ;
+                            console.log(pgm + 'wallet.json was found but is invalid. expected calc_wallet_sha256 = ' + calc_wallet_sha256 + '. found wallet.wallet_sha256 = ' + wallet.wallet_sha256 + ', wallet = ' + JSON.stringify(wallet));
+                            return test_done('Test failed') ;
+                        }
 
-                    }) ; // fileGet
+                        // wallet_sha256 information only. find and read an other wallet with full wallet information
+                        query =
+                            "select json.directory " +
+                            "from keyvalue as wallet_sha256, keyvalue, json " +
+                            "where wallet_sha256.key = 'wallet_sha256' " +
+                            "and wallet_sha256.value = '" + wallet.wallet_sha256 + "' " +
+                            "and keyvalue.json_id = wallet_sha256.json_id " +
+                            "and keyvalue.value is not null " +
+                            "and keyvalue.key like 'wallet_%' " +
+                            "and json.json_id = keyvalue.json_id " +
+                            "group by keyvalue.json_id " +
+                            "having count(*) >= 4" ;
+                        debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ?') ;
+                        ZeroFrame.cmd("dbQuery", [query], function (res) {
+                            var pgm = controller + '.test7.run dbQuery callback 2: ' ;
+                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
+                            if (res.error) {
+                                console.log(pgm + 'failed to find full wallet information. error = ' + res.error) ;
+                                console.log(pgm + 'query = ' + query) ;
+                                return test_done('Test failed');
+                            }
+                            if (!res.length) {
+                                console.log(pgm + 'could not find any wallet.json with full wallet info for wallet_sha256 = ' + wallet.wallet_sha256) ;
+                                console.log(pgm + 'query = ' + query) ;
+                                return test_done('Test failed');
+                            }
+
+                            // todo: loop for each wallet.json file and read/check wallet.json information
+
+                            return test_done('Test OK') ;
+
+                        }) ; // dbQuery callback 2
+
+                    }) ; // fileGet callback 1
 
                 } // end if else
             } // run
