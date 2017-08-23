@@ -690,6 +690,24 @@ var MoneyNetworkAPILib = (function () {
         return output_wa.toString(CryptoJS.enc.Utf8);
     } // aes_decrypt
 
+    // helper. caculate wallet_sha256 from other wallet fields (minimize wallet.json disk usage)
+    function calc_wallet_sha256 (wallet) {
+        var pgm = module + '.calc_wallet_sha256: ';
+        var wallet_sha256_json, wallet_sha256 ;
+        if (!wallet.wallet_address || !wallet.wallet_title || !wallet.wallet_description || !wallet.currencies) {
+            this.log(pgm + 'cannot calculate wallet_sha256 for wallet ' + JSON.stringify(wallet))  ;
+            return null ;
+        }
+        wallet_sha256_json = {
+            wallet_address: wallet.wallet_address,
+            wallet_title: wallet.wallet_title,
+            wallet_description: wallet.wallet_description,
+            currencies: wallet.currencies
+        } ;
+        wallet_sha256 = CryptoJS.SHA256(JSON.stringify(wallet_sha256_json)).toString();
+        return wallet_sha256 ;
+    } // calc_wallet_sha256
+
     // export MoneyNetworkAPILib
     return {
         config: config,
@@ -712,7 +730,8 @@ var MoneyNetworkAPILib = (function () {
         delete_all_sessions: delete_all_sessions,
         clear_all_data: clear_all_data,
         aes_encrypt: aes_encrypt,
-        aes_decrypt: aes_decrypt
+        aes_decrypt: aes_decrypt,
+        calc_wallet_sha256: calc_wallet_sha256
     };
 
 })(); // MoneyNetworkAPILib
