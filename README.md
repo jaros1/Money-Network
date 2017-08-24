@@ -160,14 +160,91 @@ json_schemas = {
 
     "response": {
         "type": 'object',
-        "title": 'Generic response with an optional error message',
+        "title": 'Generic response with an optional error message/code',
         "properties": {
             "msgtype": {"type": 'string', "pattern": '^response$'},
             "error": {"type": 'string'}
         },
         "required": ['msgtype'],
         "additionalProperties": false
-    } // response
+    }, // response
+
+    "ping": {
+        "type": 'object',
+        "title": 'Simple session ping. Expects Timeout or OK response',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^ping$'},
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    }, // ping
+
+    "get_balance": {
+        "type": 'object',
+        "title": 'MN: send get_balance request to wallet session',
+        "description": 'Wallet session must return a balance (OK) or response (error) message. Boolean flags: Open and/or close wallet before/after get_balance request',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^get_balance$'},
+            "open_wallet": {"type": 'boolean'},
+            "close_wallet": {"type": 'boolean'}
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    }, // get_balance
+
+    "balance": {
+        "type": 'object',
+        "title": 'Wallet: response. return balance info to MN',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^balance$'},
+            "balance": {
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                        "amount": {"type": 'number'}
+                    },
+                    "required": ['code', 'amount'],
+                    "additionalProperties": false
+                }
+            }
+        },
+        "required": ['msgtype'],
+        "additionalProperties": false
+    }, // balance
+
+    "wallet": {
+        "type": 'object',
+        "title": 'Public wallet information in wallet.json files',
+        "description": 'wallet_* fields from site_info. currencies is a list of supported currencies and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies} hash',
+        "properties": {
+            "msgtype": {"type": 'string', "pattern": '^wallet$'},
+            "wallet_address": { "type": 'string'},
+            "wallet_domain": { "type": 'string'},
+            "wallet_title": { "type": 'string'},
+            "wallet_description": { "type": 'string'},
+            "currencies": {
+                "type": 'array',
+                "description": 'List if supported currencies. code is a (pseudo) currency iso code. Optional URL to currency information on the www',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                        "name": {"type": 'string'},
+                        "url": {"type": 'string'}
+                    },
+                    "required": ['code', 'name'],
+                    "additionalProperties": false
+                }
+            },
+            "wallet_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' },
+            "hub": { "type": 'string'}
+
+        },
+        "required": ['msgtype', 'wallet_sha256'],
+        "additionalProperties": false
+    } // wallet
 }
 
 
