@@ -438,6 +438,7 @@ angular.module('MoneyNetwork')
             };
         })(); // test6
 
+        // read wallet.json file
         var test7_check_wallet = (function () {
             var pgm = controller + '.test7: ' ;
             var info = {
@@ -447,13 +448,22 @@ angular.module('MoneyNetwork')
             };
             function run () {
                 var pgm = controller + '.test7.run: ' ;
-                var inner_path, debug_seq0 ;
-                var test_done = function (status) {
+                var inner_path, debug_seq0, test_done, test_wallet_address, url ;
+                // test finished (OK or error)
+                test_done = function (status) {
                     if (status) info.status = status ;
                     info.disabled = true ;
-                    self.test_running = false ;
-                    // finish. update UI just to be sure everything is OK
-                    $rootScope.$apply();
+                    // next test
+                    test8_get_balance.run() ;
+                } ;
+                // test url and wallet infomation must match (address or domain)
+                url = get_relative_url(self.new_wallet_url) ;
+                test_wallet_address = function (wallet) {
+                    var pgm = controller + '.test7.run.test_wallet_address: ' ;
+                    // url = /1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1, wallet_address = 1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1
+                    if ([wallet.wallet_address, wallet.wallet_domain].indexOf(url.substr(1)) != -1) return true ;
+                    console.log(pgm + 'error. no match between test url ' + url + ' and wallet ' + JSON.stringify(wallet)) ;
+                    return false ;
                 } ;
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) return test_done() ;
                 else {
@@ -482,12 +492,16 @@ angular.module('MoneyNetwork')
                         if (wallet.wallet_address && wallet.wallet_title && wallet.wallet_description) {
                             // full wallet info. test wallet_sha256 signature
                             calc_wallet_sha256 = MoneyNetworkAPILib.calc_wallet_sha256(wallet);
-                            if (wallet.wallet_sha256 == calc_wallet_sha256) return test_done('Test OK') ;
-                            console.log(pgm + 'wallet.json was found but is invalid. expected calc_wallet_sha256 = ' + calc_wallet_sha256 + '. found wallet.wallet_sha256 = ' + wallet.wallet_sha256 + ', wallet = ' + JSON.stringify(wallet));
-                            return test_done('Test failed') ;
+                            if (!calc_wallet_sha256 || (wallet.wallet_sha256 != calc_wallet_sha256)) {
+                                console.log(pgm + 'wallet.json was found but is invalid. expected calc_wallet_sha256 = ' + calc_wallet_sha256 + '. found wallet.wallet_sha256 = ' + wallet.wallet_sha256 + ', wallet = ' + JSON.stringify(wallet));
+                                return test_done('Test failed') ;
+                            }
+                            if (!test_wallet_address(wallet)) return test_done('Test failed') ;
+
+                            return test_done('Test OK') ;
                         }
 
-                        // wallet_sha256 information only. find and read an other wallet with full wallet information
+                        // wallet_sha256 signature only. find and read an other wallet.json file with full wallet information
                         query =
                             "select json.directory " +
                             "from keyvalue as wallet_sha256, keyvalue, json " +
@@ -516,7 +530,7 @@ angular.module('MoneyNetwork')
                             }
                             console.log(pgm + 'res.length = ' + res.length) ;
 
-                            // todo: loop for each wallet.json file and read/check wallet.json information
+                            // loop for each wallet.json file with full wallet information and read/check wallet.json information
                             read_and_test_wallet = function () {
                                 var pgm = controller + '.test7.run.read_and_test_wallet: ' ;
                                 var row ;
@@ -529,7 +543,7 @@ angular.module('MoneyNetwork')
                                 debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
                                 ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet2_str) {
                                     var pgm = controller + '.test7.run.read_and_test_wallet fileGet callback 1: ' ;
-                                    var wallet2, error, calc_wallet_sha256;
+                                    var wallet2, error, calc_wallet_sha256, url;
                                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                                     if (!wallet2_str) {
                                         console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path);
@@ -541,19 +555,21 @@ angular.module('MoneyNetwork')
                                     error = encrypt2.validate_json(pgm, wallet2) ;
                                     if (error) {
                                         console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', wallet2 = ' + JSON.stringify(wallet2));
-                                        return read_and_test_wallet() ;
+                                        return read_and_test_wallet() ; // next wallet
                                     }
                                     // check wallet_sha256
                                     // full wallet info. test wallet_sha256 signature
                                     calc_wallet_sha256 = MoneyNetworkAPILib.calc_wallet_sha256(wallet2);
                                     if (!calc_wallet_sha256) {
                                         console.log(pgm + 'wallet.json was found but is invalid. wallet_sha256 could not be calculated, wallet2 = ' + JSON.stringify(wallet2));
-                                        return read_and_test_wallet() ;
+                                        return read_and_test_wallet() ; // next wallet
                                     }
                                     if (calc_wallet_sha256 != wallet2.wallet_sha256) {
                                         console.log(pgm + 'wallet.json was found but is invalid. expected calc_wallet_sha256 = ' + calc_wallet_sha256 + '. found wallet2.wallet_sha256 = ' + wallet2.wallet_sha256 + ', wallet2 = ' + JSON.stringify(wallet2));
-                                        return read_and_test_wallet() ;
+                                        return read_and_test_wallet() ; // next wallet
                                     }
+                                    if (!test_wallet_address(wallet)) return read_and_test_wallet() ; // next wallet
+
                                     // test OK
                                     console.log(pgm + 'wallet2 = ' + JSON.stringify(wallet2)) ;
                                     return test_done('Test OK') ;
@@ -575,6 +591,56 @@ angular.module('MoneyNetwork')
             };
         })(); // test7
 
+        // get wallet balance
+        var test8_get_balance = (function () {
+            var pgm = controller + '.test8: ' ;
+            var info = {
+                no: 8,
+                text: 'Get wallet balance',
+                status: 'Pending'
+            };
+            function run () {
+                var pgm = controller + '.test8.run: ' ;
+                var inner_path, debug_seq0, test_done, test_wallet_address, request ;
+                // test finished (OK or error)
+                test_done = function (status) {
+                    if (status) info.status = status ;
+                    info.disabled = true ;
+                    self.test_running = false ;
+                    // finish. update UI just to be sure everything is OK
+                    $rootScope.$apply();
+                } ;
+                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) return test_done() ;
+                else {
+                    // start test 8. send get_balance request. expects a balance response. long timeout. wallet operations may take some time
+                    info.status = 'Running' ;
+
+                    request = {
+                        msgtype: 'get_balance',
+                        open_wallet: true,
+                        close_wallet: false
+                    } ;
+                    // timeout 60 seconds. todo: = limit for offline transactions. maybe allow longer timeout for online transactions?
+                    encrypt2.send_message(request, {response: 60000}, function (response) {
+                        var pgm = controller + '.test8.run send_message callback 1: ' ;
+                        console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                        if (!response || response.error) {
+                            console.log(pgm + 'test8 failed. response was ' + JSON.stringify(response)) ;
+                            return test_done('Test failed') ;
+                        }
+                        console.log(pgm + 'Test8 OK. response was ' + JSON.stringify(response)) ;
+                        test_done('Test OK') ;
+
+                    }) ; // send_message callback 1
+
+                } // end if else
+            } // run
+            return {
+                info: info,
+                run: run
+            };
+        })(); // test8
+
         self.tests = [] ;
         function init_tests () {
             self.tests.splice(0, self.tests.length) ;
@@ -585,6 +651,7 @@ angular.module('MoneyNetwork')
             self.tests.push(test5_merger_moneynetwork) ;
             self.tests.push(test6_check_session) ;
             self.tests.push(test7_check_wallet) ;
+            self.tests.push(test8_get_balance) ;
         }
         init_tests();
         self.test_running = false ;
