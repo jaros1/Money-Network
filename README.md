@@ -6,8 +6,11 @@ Money is everything. MoneyNetwork is a demo about money. With inspiration from C
 Our world has one serious error. Our current monetary system. Almost all problems on our planet is caused by this error.
 This is an attempt to make money free. To build a bridge between our present traditional monetary system and an ecosystem of complementare and alternative money systems. A monetary ecosystem will solve many of the problems the world are facing today.
 
-The vision here is one wallet with easy access to any kind of money.
-Be free. Use the money systems you like and not only the money system that has been forced on you for over 300 years. Do not we all hate banks?
+Be free. The vision here is one wallet with easy access to any kind of money.
+Use the money systems you like and not only one outdated money system.
+Choose your money in the same way you choose clothes, food, housing, work, boyfriend, etc.
+We are only free if our money systems are also free.
+No more time for bullshit.
 
 Here is the demo. Someone more skilled than I may bring the vision into real existence.
 
@@ -38,7 +41,15 @@ You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNe
 - https://github.com/jaros1/Money-Network-W2 (test Bitcoins/Blocktrail API)
 
 ## API
-At present time very unstable. Json validation for in- and outgoing messages:
+
+Two layers API between MoneyNetwork and external moneysystems. MoneyNetwork <=> API1 <=> MoneyNetwork wallet <=> API2 <=> external money system.
+
+API1: Used inside ZeroNet only. See below.
+
+API2: Used between Money Network wallet sites and external money systems. Specific for each external API. For example https://www.blocktrail.com/api/docs what is a BitCoin API.
+
+
+API1 is at present time very unstable. Json validation for in- and outgoing messages:
 
 json_schemas = {
 
