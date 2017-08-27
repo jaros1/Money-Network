@@ -46,7 +46,8 @@ Two layers API between MoneyNetwork and external moneysystems. MoneyNetwork <=> 
 
 API1: Used inside ZeroNet only. See below.
 
-API2: Used between Money Network wallet sites and external money systems. Specific for each external API. For example https://www.blocktrail.com/api/docs what is a BitCoin API.
+API2: Used between Money Network wallet sites and external money systems.
+Specific for each external API. For example https://www.blocktrail.com/api/docs that is a BitCoin API. See https://github.com/jaros1/Money-Network-W2/
 
 
 API1 is at present time very unstable. Json validation for in- and outgoing messages:
