@@ -6,11 +6,11 @@ Money is everything. MoneyNetwork is a demo about money. With inspiration from C
 Our world has one serious error. Our current monetary system. Almost all problems on our planet is caused by this error.
 This is an attempt to make money free. To build a bridge between our present traditional monetary system and an ecosystem of complementare and alternative money systems. A monetary ecosystem will solve many of the problems the world are facing today.
 
-Be free. The vision here is one wallet with easy access to any kind of money.
-Use the money systems you like and not only one outdated money system.
+The vision here is one wallet with easy access to any kind of money.
+Use the money systems you like and not only our outdated money system.
 Choose your money in the same way you choose clothes, food, housing, work, boyfriend, etc.
 We are only free if our money systems are also free.
-No more time for bullshit.
+No more time for bullshit. Be free.
 
 Here is the demo. Someone more skilled than I may bring the vision into real existence.
 
