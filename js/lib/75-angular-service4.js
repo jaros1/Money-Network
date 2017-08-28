@@ -517,6 +517,11 @@ angular.module('MoneyNetwork')
                         else if (request.msgtype == 'ping') {
                             // simple session ping. always OK response
                         }
+                        else if (request.msgtype == 'balance') {
+                            // received balance message from wallet. save + OK response
+                            session_info.balance = request.balance ;
+                            ls_save_sessions() ;
+                        }
                         else response.error = 'Unknown msgtype ' + request.msgtype ;
 
                         // finish message processing. marked as done and send any response
@@ -562,6 +567,7 @@ angular.module('MoneyNetwork')
         return {
             get_session_info_key: get_session_info_key,
             ls_get_sessions: ls_get_sessions,
+            ls_save_sessions: ls_save_sessions,
             w_login: w_login,
             w_logout: w_logout
         };

@@ -8,7 +8,6 @@
 
 // todo:
 // - add logout message. MN => wallets & wallet => MN
-// - add a ping message. MM => wallet and wallet => MN. simple are you alive ping?
 // - timeout in request = logout for other session = close session.
 //   timeout can also be a "server" fault (error in other session). can be verified with a simple ping
 //   timeout in simple ping = closed session. OK simple ping = server fault in previous response
@@ -835,7 +834,7 @@ MoneyNetworkAPI.prototype.readonly = function (options, options_property) {
     var pgm = this.module + '.setup_encryption: ';
     var self_property, error ;
     self_property = this.internal_property(options_property) ;
-    if (!self[self_property] || !options[options_property] || (self[self_property] == options[options_property])) return ;
+    if (!this[self_property] || !options[options_property] || (this[self_property] == options[options_property])) return ;
     error = pgm +
         'invalid call. ' + options_property + ' cannot be changed. ' +
         'please use new MoneyNetworkAPI to initialize a new instance with new ' + options_property + '. ' +
@@ -1526,10 +1525,11 @@ MoneyNetworkAPI.prototype.validate_json = function (calling_pgm, json, request_m
 // params:
 // - json: message to send. should include a msgtype
 // - options. hash with options for send_message operation
-//   - response: wait for response? null, true, false or timeout (=true) in milliseconds. offline transactions: use response > 60 seconds.
+//   - response: wait for response? null, true, false or timeout (=true) in milliseconds.
 //   - timestamp: timestamp to be used in filename for outgoing message. Only used when sending response
 //   - msgtype: request msgtype. only used when sending response. Used for json validation
 //   - request: request timestamp. only used when sending response. Added to response json after validation. used for offline transactions
+//   - offline: boolean. start an offline transaction (send, receive, pay, receive payment). do not wait for response
 // - cb: callback. returns an empty hash, a hash with an error messsage or a response
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
@@ -1546,6 +1546,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     request_file_timestamp = options.timestamp || request_at ; // timestamp - only if request json is a response to a previous request
     request_msgtype = options.msgtype; // only if request json is a response to a previous request
     request_timestamp = options.request ; // only if request json is a response to a previous request
+    offline_transaction = options.offline ; // offline transaction. send, receive, pay, receive payment etc. wait for other user
 
     encryptions = options.hasOwnProperty('encryptions') ? options.encryptions : [1, 2, 3];
     if (typeof encryptions == 'number') encryptions = [encryptions];
@@ -1598,7 +1599,6 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         }
         else response = default_timeout; // true = default timeout = 10 seconds
         cleanup_in = response ;
-        offline_transaction = (cleanup_in > max_timeout) ;
         timeout_at = request_at + response;
         year = 1000 * 60 * 60 * 24 * 365.2425;
         month = year / 12;

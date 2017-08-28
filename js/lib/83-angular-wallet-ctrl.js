@@ -618,17 +618,42 @@ angular.module('MoneyNetwork')
                     request = {
                         msgtype: 'get_balance',
                         open_wallet: true,
-                        close_wallet: false
+                        close_wallet: true
                     } ;
-                    // timeout 60 seconds. todo: = limit for offline transactions. maybe allow longer timeout for online transactions?
+                    // timeout 60 seconds. communication with external money APIs can take some time
                     encrypt2.send_message(request, {response: 60000}, function (response) {
                         var pgm = controller + '.test8.run send_message callback 1: ' ;
+                        var session_info ;
                         console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                         if (!response || response.error) {
                             console.log(pgm + 'test8 failed. response was ' + JSON.stringify(response)) ;
                             return test_done('Test failed') ;
                         }
                         console.log(pgm + 'Test8 OK. response was ' + JSON.stringify(response)) ;
+                        // Test8 OK. response was {"msgtype":"balance","balance":[{"code":"tBTC","amount":0}]}
+
+                        // todo: save balance
+                        session_info = ls_sessions[encrypt2.sessionid][SESSION_INFO_KEY] ;
+                        console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
+                        //session_info = {
+                        //    "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                        //    "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+                        //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+                        //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                        //    "last_request_at": 1503910808523,
+                        //    "done": {
+                        //        "1503315223138": 1503315232562,
+                        //        "1503910677411": 1503910681319,
+                        //        "1503910691612": 1503910691972,
+                        //        "1503910795247": 1503910795860,
+                        //        "1503910798429": 1503910798839,
+                        //        "1503910802660": 1503910802992,
+                        //        "1503910808523": 1503910808859
+                        //    }
+                        //};
+                        session_info.balance = response.balance ;
+                        moneyNetworkWService.ls_save_sessions() ;
+
                         test_done('Test OK') ;
 
                     }) ; // send_message callback 1
