@@ -448,13 +448,33 @@ angular.module('MoneyNetwork')
             };
             function run () {
                 var pgm = controller + '.test7.run: ' ;
-                var inner_path, debug_seq0, test_done, test_wallet_address, url ;
+                var inner_path, debug_seq0, test_done, test_wallet_address, url, test_ok  ;
                 // test finished (OK or error)
                 test_done = function (status) {
                     if (status) info.status = status ;
                     info.disabled = true ;
                     // next test
                     test8_get_balance.run() ;
+                } ;
+                test_ok = function (wallet) {
+                    var session_info, codes, i, code ;
+                    // check currencies. must be unique
+                    codes = [] ;
+                    for (i=0 ; i<wallet.currencies.length ; i++) {
+                        code = wallet.currencies[i].code ;
+                        if (codes.indexOf(code) != 0) {
+                            console.log(pgm + 'Test failed. code ' + code + ' is not unique in wallet.json. wallet = ' + JSON.stringify(wallet)) ;
+                            return test_done('Test failed') ;
+                        }
+                        codes.push(code) ;
+                    }
+
+                    // save list of supported currencies
+                    session_info = ls_sessions[encrypt2.sessionid][SESSION_INFO_KEY] ;
+                    session_info.currencies = wallet.currencies ;
+                    moneyNetworkWService.ls_save_sessions() ;
+
+                    return test_done('Test OK') ;
                 } ;
                 // test url and wallet infomation must match (address or domain)
                 url = get_relative_url(self.new_wallet_url) ;
@@ -474,7 +494,7 @@ angular.module('MoneyNetwork')
                     debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
                     ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
                         var pgm = controller + '.test7.run fileGet callback 1: ' ;
-                        var wallet, error, calc_wallet_sha256, query, debug_seq1 ;
+                        var wallet, error, calc_wallet_sha256, query, debug_seq1, session_info ;
                         MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                         if (!wallet_str) {
                             console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path) ;
@@ -497,8 +517,8 @@ angular.module('MoneyNetwork')
                                 return test_done('Test failed') ;
                             }
                             if (!test_wallet_address(wallet)) return test_done('Test failed') ;
-
-                            return test_done('Test OK') ;
+                            // test OK. save
+                            return test_ok(wallet) ;
                         }
 
                         // wallet_sha256 signature only. find and read an other wallet.json file with full wallet information
@@ -572,7 +592,8 @@ angular.module('MoneyNetwork')
 
                                     // test OK
                                     console.log(pgm + 'wallet2 = ' + JSON.stringify(wallet2)) ;
-                                    return test_done('Test OK') ;
+                                    // test OK. save
+                                    return test_ok(wallet2) ;
 
                                 }) ; // fileGet callback 1
                             } ; // read_and_test_wallet
@@ -623,35 +644,40 @@ angular.module('MoneyNetwork')
                     // timeout 60 seconds. communication with external money APIs can take some time
                     encrypt2.send_message(request, {response: 60000}, function (response) {
                         var pgm = controller + '.test8.run send_message callback 1: ' ;
-                        var session_info ;
+                        var session_info, i, code, found, j ;
                         console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                         if (!response || response.error) {
-                            console.log(pgm + 'test8 failed. response was ' + JSON.stringify(response)) ;
+                            console.log(pgm + 'test8 failed. get_balance response was ' + JSON.stringify(response)) ;
                             return test_done('Test failed') ;
                         }
+
+                        console.log(pgm + 'validate currency codes in get_balance response') ;
+                        session_info = ls_sessions[encrypt2.sessionid][SESSION_INFO_KEY] ;
+                        if (!session_info.currencies) {
+                            console.log(pgm + 'test8 failed. no currencies list found. cannot validates codes in get_balance response ' + JSON.stringify(response)) ;
+                            return test_done('Test failed') ;
+                        }
+                        for (i=0 ; i<response.balance.length ; i++) {
+                            code = response.balance[i].code ;
+                            found = false ;
+                            for (j=0 ; j<session_info.currencies.length ; j++) {
+                                if (session_info.currencies[j].code != code) continue ;
+                                found = true ;
+                                break ;
+                            }
+                            if (!found) {
+                                console.log(pgm + 'test8 failed. unknown currency code ' + code + ' in get_balance response ' + JSON.stringify(response)) ;
+                                return test_done('Test failed') ;
+                            }
+                        }
+
                         console.log(pgm + 'Test8 OK. response was ' + JSON.stringify(response)) ;
                         // Test8 OK. response was {"msgtype":"balance","balance":[{"code":"tBTC","amount":0}]}
 
-                        // todo: save balance
-                        session_info = ls_sessions[encrypt2.sessionid][SESSION_INFO_KEY] ;
+                        // save balance
                         console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
-                        //session_info = {
-                        //    "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                        //    "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
-                        //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
-                        //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                        //    "last_request_at": 1503910808523,
-                        //    "done": {
-                        //        "1503315223138": 1503315232562,
-                        //        "1503910677411": 1503910681319,
-                        //        "1503910691612": 1503910691972,
-                        //        "1503910795247": 1503910795860,
-                        //        "1503910798429": 1503910798839,
-                        //        "1503910802660": 1503910802992,
-                        //        "1503910808523": 1503910808859
-                        //    }
-                        //};
                         session_info.balance = response.balance ;
+                        session_info.balance_at = new Date().getTime() ;
                         moneyNetworkWService.ls_save_sessions() ;
 
                         test_done('Test OK') ;

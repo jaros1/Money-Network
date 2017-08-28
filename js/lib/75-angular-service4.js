@@ -520,6 +520,7 @@ angular.module('MoneyNetwork')
                         else if (request.msgtype == 'balance') {
                             // received balance message from wallet. save + OK response
                             session_info.balance = request.balance ;
+                            session_info.balance_at = new Date().getTime() ;
                             ls_save_sessions() ;
                         }
                         else response.error = 'Unknown msgtype ' + request.msgtype ;
@@ -542,7 +543,6 @@ angular.module('MoneyNetwork')
         // add callback for incoming messages from wallet session(s)
         MoneyNetworkAPILib.config({cb: process_incoming_message}) ;
 
-
         // init wallet service after client log in
         function w_login () {
             var pgm = service + '.w_login: ' ;
@@ -563,13 +563,31 @@ angular.module('MoneyNetwork')
             MoneyNetworkAPILib.delete_all_sessions() ;
         }
 
+        // return list with currencies.
+        function get_currencies () {
+            var currencies, sessionid, session_info ;
+            if (!ls_sessions) return [] ; // error?
+            currencies = [] ;
+            for (sessionid in sessions) {
+                session_info = sessions[sessionid];
+                if (!session_info) continue;
+                if (!session_info.currencies) continue;
+                if (!session_info.balance) continue;
+
+
+            }
+
+
+        } // get_currencies
+
         // export MoneyNetworkWService API
         return {
             get_session_info_key: get_session_info_key,
             ls_get_sessions: ls_get_sessions,
             ls_save_sessions: ls_save_sessions,
             w_login: w_login,
-            w_logout: w_logout
+            w_logout: w_logout,
+            get_currencies: get_currencies
         };
 
         // end MoneyNetworkWService

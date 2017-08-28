@@ -1446,9 +1446,10 @@ MoneyNetworkAPI.json_schemas = {
                     "required": ['code', 'amount'],
                     "additionalProperties": false
                 }
-            }
+            },
+            "balance_at": { "type": "number", "multipleOf": 1.0 }
         },
-        "required": ['msgtype'],
+        "required": ['msgtype', 'balance', 'balance_at'],
         "additionalProperties": false
     }, // balance
 
@@ -1474,13 +1475,14 @@ MoneyNetworkAPI.json_schemas = {
                     },
                     "required": ['code', 'name'],
                     "additionalProperties": false
-                }
+                },
+                "minItems": 1
             },
             "wallet_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' },
             "hub": { "type": 'string'}
 
         },
-        "required": ['msgtype', 'wallet_sha256'],
+        "required": ['msgtype', 'wallet_sha256', 'currencies'],
         "additionalProperties": false
     } // wallet
 
