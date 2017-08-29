@@ -565,18 +565,53 @@ angular.module('MoneyNetwork')
 
         // return list with currencies.
         function get_currencies () {
-            var currencies, sessionid, session_info ;
+            var pgm = service + '.get_currencies: ' ;
+            var currencies, sessionid, session_info, i, code, j, k, balance, currency, key ;
             if (!ls_sessions) return [] ; // error?
             currencies = [] ;
-            for (sessionid in sessions) {
-                session_info = sessions[sessionid];
+            for (sessionid in ls_sessions) {
+                session_info = ls_sessions[sessionid][SESSION_INFO_KEY];
                 if (!session_info) continue;
                 if (!session_info.currencies) continue;
                 if (!session_info.balance) continue;
-
-
+                // console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
+                //session_info = {
+                //    "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //    "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+                //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                //    "last_request_at": 1504011980821,
+                //    "done": {"1503315223138": 1503315232562, "1503916247431": 1503916247859},
+                //    "balance": [{"code": "tBTC", "amount": 1.3}],
+                //    "currencies": [{
+                //        "code": "tBTC",
+                //        "name": "Test Bitcoin",
+                //        "url": "https://en.bitcoin.it/wiki/Testnet"
+                //    }],
+                //    "balance_at": 1503938853625
+                //};
+                for (i=0 ; i<session_info.balance.length ; i++) {
+                    balance = session_info.balance[i] ;
+                    j = -1 ;
+                    for (k=0 ; k<session_info.currencies.length ; k++) {
+                        if (session_info.currencies[k].code != balance.code) continue ;
+                        j = k ;
+                        break ;
+                    } // for k
+                    if (j == -1) {
+                        console.log(pgm + 'error in session_info for sessionid ' + sessionid + '. Currency code ' + code + ' was not found. session_info = ' + JSON.stringify(session_info)) ;
+                        continue ;
+                    }
+                    // merge balance and currency information
+                    currency = session_info.currencies[j] ;
+                    for (key in currency) {
+                        if (!currency.hasOwnProperty(key)) continue ;
+                        balance[key] = currency[key] ;
+                    }
+                    currencies.push(balance) ;
+                } // for i
             }
-
+            return currencies ;
 
         } // get_currencies
 

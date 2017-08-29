@@ -6794,7 +6794,8 @@ angular.module('MoneyNetwork')
             unicode_to_symbol: moneyNetworkEmojiService.unicode_to_symbol,
             symbol_to_unicode: symbol_to_unicode,
             get_my_user_hub: get_my_user_hub,
-            generate_random_password: moneyNetworkZService.generate_random_password
+            generate_random_password: moneyNetworkZService.generate_random_password,
+            get_currencies: moneyNetworkWService.get_currencies
         };
 
         // end MoneyNetworkService

@@ -462,8 +462,22 @@ angular.module('MoneyNetwork')
                     codes = [] ;
                     for (i=0 ; i<wallet.currencies.length ; i++) {
                         code = wallet.currencies[i].code ;
-                        if (codes.indexOf(code) != 0) {
+                        if (codes.indexOf(code) != -1) {
                             console.log(pgm + 'Test failed. code ' + code + ' is not unique in wallet.json. wallet = ' + JSON.stringify(wallet)) ;
+                            //wallet = {
+                            //    "msgtype": "wallet",
+                            //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //    "wallet_title": "MoneyNetworkW2",
+                            //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                            //    "currencies": [{
+                            //        "code": "tBTC",
+                            //        "name": "Test Bitcoin",
+                            //        "url": "https://en.bitcoin.it/wiki/Testnet",
+                            //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                            //    }],
+                            //    "hub": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ",
+                            //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                            //};
                             return test_done('Test failed') ;
                         }
                         codes.push(code) ;

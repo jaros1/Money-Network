@@ -1465,13 +1465,27 @@ MoneyNetworkAPI.json_schemas = {
             "wallet_description": { "type": 'string'},
             "currencies": {
                 "type": 'array',
-                "description": 'List if supported currencies. code is a (pseudo) currency iso code. Optional URL to currency information on the www',
+                "description": 'List of supported currencies. code is a (pseudo) currency iso code. Optional URL to currency information on the www',
                 "items": {
                     "type": 'object',
                     "properties": {
                         "code": {"type": 'string', "minLength": 2, "maxLength": 5},
                         "name": {"type": 'string'},
-                        "url": {"type": 'string'}
+                        "url": {"type": 'string'},
+                        "units": {
+                            "type": 'array',
+                            "description": 'Optional unit list. For example units: [{ unit: BitCoin, factor: 1 },{ unit: Satoshi, factor: 0.00000001 }]',
+                            "items": {
+                                "type": 'object',
+                                "properties": {
+                                    "unit": { "type": 'string'},
+                                    "factor": { "type": 'number'}
+                                },
+                                "required": ['unit', 'factor'],
+                                "additionalProperties": false
+                            },
+                            "minItems": 1
+                        }
                     },
                     "required": ['code', 'name'],
                     "additionalProperties": false
@@ -1480,7 +1494,6 @@ MoneyNetworkAPI.json_schemas = {
             },
             "wallet_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' },
             "hub": { "type": 'string'}
-
         },
         "required": ['msgtype', 'wallet_sha256', 'currencies'],
         "additionalProperties": false
