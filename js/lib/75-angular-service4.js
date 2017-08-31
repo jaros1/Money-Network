@@ -409,7 +409,7 @@ angular.module('MoneyNetwork')
 
                         // validate and process incoming json message and process
                         response = { msgtype: 'response' } ;
-                        error = encrypt2.validate_json(pgm, request) ;
+                        error = MoneyNetworkAPILib.validate_json(pgm, request) ;
                         if (error) response.error = 'message is invalid. ' + error ;
                         else if (request.msgtype == 'pubkeys') {
                             // first message from wallet. received public keys from wallet session
@@ -743,7 +743,7 @@ angular.module('MoneyNetwork')
                             //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
                             //};
                             // validate wallet.json after read
-                            error = encrypt2.validate_json(pgm, wallet) ;
+                            error = MoneyNetworkAPILib.validate_json(pgm, wallet) ;
                             if (error) {
                                 console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', wallet = ' + JSON.stringify(wallet));
                                 return check_wallet(); // next wallet
