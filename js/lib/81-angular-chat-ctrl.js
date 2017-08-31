@@ -1545,18 +1545,27 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'todo: Send, receive or donate money. Pay or receive payment. Not yet implemented') ;
 
                 console.log(pgm + 'todo: currencies. must have a distributed currency list. Symbol 2-5 characters, name and description');
-                currencies = moneyNetworkService.get_currencies() ;
-                console.log(pgm + 'currencies = ' + JSON.stringify(currencies));
-                //currencies = [{
-                //    "code": "tBTC",
-                //    "amount": 1.3,
-                //    "name": "Test Bitcoin",
-                //    "url": "https://en.bitcoin.it/wiki/Testnet"
-                //}];
+                moneyNetworkService.get_currencies(function (currencies) {
+                    console.log(pgm + 'currencies = ' + JSON.stringify(currencies));
+                    // done: sessionid, balance_at, wallet_sha256
+                    //currencies = [{
+                    //    "code": "tBTC",
+                    //    "amount": 1.3,
+                    //    "name": "Test Bitcoin",
+                    //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                    //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
+                    //    "balance_at": 1504103665013,
+                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                    //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74",
+                    //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //    "wallet_title": "MoneyNetworkW2",
+                    //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro"
+                    //}];
+                    console.log(pgm + 'todo: send money. enter currency and amount. must known currencies and amounts from my connected wallets') ;
+                    console.log(pgm + 'todo: send money. not required but should know contacts preferred or connected currencies') ;
+                    console.log(pgm + 'todo: send money. receiver must accept send money transaction');
 
-                console.log(pgm + 'todo: send money. enter currency and amount. must known currencies and amounts from my connected wallets') ;
-                console.log(pgm + 'todo: send money. not required but should know contacts preferred or connected currencies') ;
-                console.log(pgm + 'todo: send money. receiver must accept send money transaction');
+                }) ;
 
             } ; // new_chat_add_money
 

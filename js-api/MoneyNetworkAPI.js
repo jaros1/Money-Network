@@ -19,6 +19,7 @@
 // - API handshake. MN and wallet sessions will normally use different MoneyNetworkAPI versions. validate all messages before send/after receive.
 //   sessions must exchange list of supported/allowed messages.
 //   json schema compare?
+// - validate_json. Move function from MoneyNetworkAPI instance to MoneyNetworkAPILib
 //
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
@@ -689,7 +690,7 @@ var MoneyNetworkAPILib = (function () {
         return output_wa.toString(CryptoJS.enc.Utf8);
     } // aes_decrypt
 
-    // helper. caculate wallet_sha256 from other wallet fields (minimize wallet.json disk usage)
+    // helper. calculate wallet_sha256 from other wallet fields (minimize wallet.json disk usage)
     function calc_wallet_sha256 (wallet) {
         var pgm = module + '.calc_wallet_sha256: ';
         var wallet_sha256_json, wallet_sha256 ;
@@ -707,6 +708,13 @@ var MoneyNetworkAPILib = (function () {
         wallet_sha256 = CryptoJS.SHA256(JSON.stringify(wallet_sha256_json)).toString();
         return wallet_sha256 ;
     } // calc_wallet_sha256
+
+    // helper. get wallet info from sha256 value (minimize wallet.json disk usage)
+    // param: wallet_sha256. string or array with strings
+    function get_wallet_info (wallet_sha256, cb) {
+        var pgm = module + '.get_wallet_info: ';
+
+    } // get_wallet_info
 
     // export MoneyNetworkAPILib
     return {

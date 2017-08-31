@@ -485,7 +485,8 @@ angular.module('MoneyNetwork')
 
                     // save list of supported currencies
                     session_info = ls_sessions[encrypt2.sessionid][SESSION_INFO_KEY] ;
-                    session_info.currencies = wallet.currencies ;
+                    session_info.currencies = wallet.currencies ; // todo: skip? save only wallet_sha256 in session_info? currencies can always be loaded later
+                    session_info.wallet_sha256 = wallet.wallet_sha256 ; // link to full wallet information (address, title, description etc)
                     moneyNetworkWService.ls_save_sessions() ;
 
                     return test_done('Test OK') ;
@@ -536,6 +537,9 @@ angular.module('MoneyNetwork')
                         }
 
                         // wallet_sha256 signature only. find and read an other wallet.json file with full wallet information
+
+                        console.log(pgm + 'todo: refactor wallet info lookup. could be used in test8 and is also used in moneyNetworkWService.get_currencies') ;
+
                         query =
                             "select json.directory " +
                             "from keyvalue as wallet_sha256, keyvalue, json " +
@@ -667,6 +671,23 @@ angular.module('MoneyNetwork')
 
                         console.log(pgm + 'validate currency codes in get_balance response') ;
                         session_info = ls_sessions[encrypt2.sessionid][SESSION_INFO_KEY] ;
+                        //session_info = {
+                        //    "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                        //    "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+                        //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+                        //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                        //    "last_request_at": 1504101920976,
+                        //    "done": {"1503315223138": 1503315232562, "1503916247431": 1503916247859},
+                        //    "balance": [{"code": "tBTC", "amount": 1.3}],
+                        //    "currencies": [{
+                        //        "code": "tBTC",
+                        //        "name": "Test Bitcoin",
+                        //        "url": "https://en.bitcoin.it/wiki/Testnet",
+                        //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                        //    }],
+                        //    "balance_at": 1504103285798,
+                        //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                        //};
                         if (!session_info.currencies) {
                             console.log(pgm + 'test8 failed. no currencies list found. cannot validates codes in get_balance response ' + JSON.stringify(response)) ;
                             return test_done('Test failed') ;
