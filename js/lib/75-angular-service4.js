@@ -46,7 +46,7 @@ angular.module('MoneyNetwork')
         var ls_sessions ;
         function ls_get_sessions () {
             var pgm = service + '.ls_get_sessions: ' ;
-            var sessions_str, sessions, sessionid, session_info, migrate, delete_sessions ;
+            var sessions_str, sessions, sessionid, session_info, migrate, delete_sessions, balance, i, balance_row, key ;
             if (ls_sessions) return ls_sessions ; // already loaded
             sessions_str = MoneyNetworkHelper.getItem('sessions') ;
             if (!sessions_str) return {} ;
@@ -69,59 +69,95 @@ angular.module('MoneyNetwork')
                 sessionid = delete_sessions.shift() ;
                 delete sessions[sessionid] ;
             }
-            console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
+            console.log(pgm + 'sessions (before cleanup) = ' + JSON.stringify(sessions)) ;
             //sessions = {
-            //    "acpo0lstqzcpkskad9olzvbm1xdmgx1zpqbr4cn1jsf39nfexbuaikgcndfe": {
-            //        "_$session_info": {
-            //            "password": "U2FsdGVkX18YSwwUOLQS9lMqivpF7ynNzNXBuOOFvy91i/JApuPUiFRH4ViMQvezXD6tS+4AXZYZJd7f98EeW4V74+RvcfjHg2VFmUQvS4U=",
-            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHzoMPSwwM8z1P7eZzjNFe7Md6Ds\nkMhR0DlUvTlJOtxfZ/KENMsBIl45pize7sGJxpAmIJQG1JQzOp9R0qFW22geoK5q\nbn8WGHNHRyRObjpqDpRkwiovCz5DtP0AFvliawhFj60WEV56gL5sFoJ0/154MbZZ\nt2nA0/i76YJLfZHxAgMBAAE=\n-----END PUBLIC KEY-----",
-            //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-            //            "last_request_at": 1501605913768,
-            //            "done": {}
-            //        },
-            //        "login": "{\"encryption\":2,\"message\":\"[\\\"Dnef0YhfD7BjhXMkn6J1eALKACDwb/P2VcCNxmg8YZjZfnyfkqrEJeMi8Cs2yzpc66XAxgAgF0ixkr+/6RpVdh/RG9e3xc+BMazkPLC5ZPAnd+ruYtb2K6sa4Pbi53oycO+gpxi+ytH9H+M09FiPGJkeoXiZEBu7k8PnSCme6WdBayJREh6w7EAQiOtnTzlA9AgUNU/HEY7k4X7+w/LR+i6NS9kF/A==\\\",\\\"VJ3dEcnYYa5sqmFHUtPKcw==\\\",\\\"yUSuG8+U0pJ2uLFAoNpg1eNMg9V3xhpLUPc0oS+h4EOGxzhd9kHgD9nmsTop4DXBXFupBUxsL/WDaGeroxZSstySdlLkCOC7ZAz56VhLATUNCiF5KYetE+QFt+dFEdaUYCjEXONHKQAAcL8juPybkQ==\\\"]\"}"
-            //    },
-            //    "uzeptj8mlixhtbrhdnilhdvmxiujufrkk6lp0uj5wpglxsuktcrobm0s2i7n": {
-            //        "_$session_info": {
-            //            "password": "U2FsdGVkX1/5ItpxUyRH1ZiZuoyN1tCvLUKpSogDnVDvBNLcODVLijUC52N8WBSYf3hBxXzQZYjkRqKdk79oS5Rp/nJ3rq9bSgoodVJPxyU=",
-            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHsgCP4qEflm0HEXYUO5dP+UOENN\n7C5K8H7aFVmhwc32PwySbLcdQDbWpFhX6cKODQOC5gJNSnzoEHqxrNeCO97yXe/P\nyzVVjHlq56a16IC2lB/SSnUh5ipjfC4grFK9ZlMUpHUDN/j5oxzUnK/QLd5L1wLO\nsITFawX1WuxB9FERAgMBAAE=\n-----END PUBLIC KEY-----",
-            //            "pubkey2": "AjNp+TH4ho3DEmyfa73v447KWgv/W8t3R94/mY+ib/2+",
-            //            "last_request_at": 1501597939326,
-            //            "done": {}
-            //        },
-            //        "login": "{\"encryption\":2,\"message\":\"[\\\"WI3ge3bR3OZVOadRHc8AiwLKACAd2cWrwglaHK4iPWh7gfZbDxRo8q1HGI+GulQw5mN+aAAgeEqjcT52OIl/Dg+izATqSoc12gQxnnpE3jYX93oc+gdRMv8M6S0Z6LDKt1BbUo8UVtvizaa6UwXw/H4wGsjHnQ6Dihc/x06MpnLl8LHlb+m8onDHy4w7h+m3riKACnQUlnaIyHK6Vi2+996xzr0VQw==\\\",\\\"BjuhlcJk3ZCYmUbbefKJ5w==\\\",\\\"z1+K4KvYnepB5bO2K3lUB8o3V+IaYZtbuYmMapg7BJAGSFLipvegj501tF88orzgbaMMmUG9+Y6GuIl4MNaoqkWZBAIn896KeL/jiuzpaKri0Wlq3uydbQftWfBOGUkL5biZz3jC6MF/p92JOimpVg==\\\"]\"}"
-            //    },
-            //    "odcbtal2lclghgcezhf6vzpue46yuvfjskezvt9ixmgnjdziyzug09jrij16": {
-            //        "_$session_info": {
-            //            "password": "U2FsdGVkX18+bh2RYZzvbeLoCqsGvj12eTfL7T/3frFfO9VQbgLpGAEsO+5QZjH3JrRr9wmGjIe+O6SojshHm8XdgZvYV19msuyWh+HX0XE=",
-            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDjZGACcz2Swp07gN7+use66NvA\nIAxvMpykW7qcG3MP2DTDH3mKg1JlY40U4SwP5CE1LGmOJN7Saymoh2W9i0oHzxvR\n+b+bNcoG09eYZuinH1M7FB9wx8RxcfbNH+lzoAtU4HVnGrtrLG5X2SM9Cx+FN9cw\ncdVCdwU1IqwILPyDCwIDAQAB\n-----END PUBLIC KEY-----",
-            //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-            //            "last_request_at": 1503050724533,
-            //            "done": {}
-            //        },
-            //        "login": "{\"encryption\":2,\"message\":\"[\\\"Wl3rYLBR1WSWAn+gC1bRcwLKACCZMdIBYAa8hYLxRdZz8ELqw4/612JsIe4GdDyB0X5I9wAgk3y1RAr8kahveSo3O9S8McoRnTmhhxUY2RpVZRERyYiY2sNWwyu+9/CmY9f7vokh4eUkVC87Hoabvgboc0F+RwwH5gApwKcWvTEh4dRGjcLhxRQryv2TyK+57OiWGskNmQQwLmpXB30JgKFNPly/jw==\\\",\\\"FpR1Mtv9SUrC1CcrxVL/aQ==\\\",\\\"NZbluBmYtnf9vXy3ffUjbn18Dg7PgbtufA2TcRaMVU8a5XT7ZX4UNj/S9GFF+xm7VLc0C62L8ZJtLg1wa0tL7pSWaKd8TbuIVhzk/n/9J8sE1dFm9ttJawT6N19qyg9jQBTA9GuxikUSBUVFP+u3cQ==\\\"]\"}"
-            //    },
-            //    "z1a4wzejn0bifkglpblefqqedevpdiyissdstq5kbppardmbzdytbtrzkp2w": {
-            //        "_$session_info": {
-            //            "password": "U2FsdGVkX1+6+X4pSDQOf8/Bb+3xG+nFQDyhr3/7syi+wYXKEZ6UL49dB2ftq1gmC5/LKfI2XfJS2fEsEy5CYscRBDuoUxJEqKNwiiiiXBA=",
-            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCsOMfAvHPTp0K9qZfoItdJ9898\nU3S2gAZZSLuLZ1qMXr1dEnO8AwxS58UvKGwHObT1XQG8WT3Q1/6OGlJms4mYY1rF\nQXzYEV5w0RlcSrMpLz3+nJ7cVb9lYKOO8hHZFWudFRywkYb/aeNh6mAXqrulv92z\noX0S7YMeNd2YrhqefQIDAQAB\n-----END PUBLIC KEY-----",
-            //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-            //            "last_request_at": 1503137602267,
-            //            "done": {},
-            //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
-            //        }
-            //    },
             //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
             //        "_$session_info": {
             //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
             //            "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
             //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
             //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-            //            "last_request_at": 1503235635135,
-            //            "done": {}
+            //            "last_request_at": 1504273096866,
+            //            "done": {
+            //                "1503315223138": 1503315232562,
+            //                ...
+            //                "1504273096866": 1504273097557
+            //            },
+            //            "balance": [{
+            //                "code": "tBTC",
+            //                "amount": 1.3,
+            //                "balance_at": 1504265571720,
+            //                "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+            //                "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74",
+            //                "name": "Test Bitcoin",
+            //                "url": "https://en.bitcoin.it/wiki/Testnet",
+            //                "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
+            //                "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+            //                "wallet_title": "MoneyNetworkW2",
+            //                "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+            //                "currencies": [{
+            //                    "code": "tBTC",
+            //                    "name": "Test Bitcoin",
+            //                    "url": "https://en.bitcoin.it/wiki/Testnet",
+            //                    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+            //                }]
+            //            }],
+            //            "currencies": [{
+            //                "code": "tBTC",
+            //                "name": "Test Bitcoin",
+            //                "url": "https://en.bitcoin.it/wiki/Testnet",
+            //                "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+            //            }],
+            //            "balance_at": 1504265571720,
+            //            "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
             //        }
             //    }
-            //} ;
+            //};
+            for (sessionid in sessions) {
+                session_info = sessions[sessionid][SESSION_INFO_KEY];
+                delete session_info.currencies ;
+                balance = session_info.balance ;
+                if (!balance || !balance.length) continue ;
+                for (i=0 ; i<balance.length ; i++) {
+                    balance_row = balance[i] ;
+                    for (key in balance_row) {
+                        if (['code','amount'].indexOf(key) != -1) continue ;
+                        delete balance_row[key] ;
+                    } // for key
+                } // for i
+            } // for sessionid
+            console.log(pgm + 'sessions (after cleanup) = ' + JSON.stringify(sessions)) ;
+            //sessions = {
+            //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
+            //        "_$session_info": {
+            //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+            //            "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+            //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+            //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+            //            "last_request_at": 1504273096866,
+            //            "done": {
+            //                "1503315223138": 1503315232562,
+            //                "1503916247431": 1503916247859,
+            //                "1504261657652": 1504261664116,
+            //                "1504261977720": 1504261982693,
+            //                "1504273004817": 1504273005849,
+            //                "1504273034505": 1504273035560,
+            //                "1504273044607": 1504273045387,
+            //                "1504273096866": 1504273097557
+            //            },
+            //            "balance": [{"code": "tBTC", "amount": 1.3}],
+            //            "currencies": [{
+            //                "code": "tBTC",
+            //                "name": "Test Bitcoin",
+            //                "url": "https://en.bitcoin.it/wiki/Testnet",
+            //                "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+            //            }],
+            //            "balance_at": 1504265571720,
+            //            "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+            //        }
+            //    }
+            //};
+
 
             return sessions ;
         } // ls_get_sessions
@@ -575,64 +611,21 @@ angular.module('MoneyNetwork')
 
         function get_currencies (cb) {
             var pgm = service + '.get_currencies: ' ;
-            var currencies, sessionid, session_info, i, code, j, k, balance, currency, key, lookup_wallet_info,
-                missing_wallet_sha256, wallet_sha256, check_cache ;
+            var currencies, sessionid, session_info, i, balance, currency, missing_wallet_sha256, wallet_sha256,
+                check_cache, move_currency_info ;
             if (!ls_sessions) return [] ; // error?
             currencies = [] ;
             for (sessionid in ls_sessions) {
                 session_info = ls_sessions[sessionid][SESSION_INFO_KEY];
                 if (!session_info) continue;
-                if (!session_info.currencies) continue;
+                //if (!session_info.currencies) continue;
                 if (!session_info.balance) continue;
                 // console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
-                //session_info = {
-                //    "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                //    "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
-                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
-                //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                //    "last_request_at": 1504091401460,
-                //    "done": {
-                //        "1503315223138": 1503315232562,
-                //        "1503916247431": 1503916247859,
-                //        "1504091353452": 1504091354019,
-                //        "1504091401460": 1504091402204
-                //    },
-                //    "balance": [{
-                //        "code": "tBTC",
-                //        "amount": 1.3,
-                //        "name": "Test Bitcoin",
-                //        "url": "https://en.bitcoin.it/wiki/Testnet",
-                //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
-                //    }],
-                //    "currencies": [{
-                //        "code": "tBTC",
-                //        "name": "Test Bitcoin",
-                //        "url": "https://en.bitcoin.it/wiki/Testnet",
-                //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
-                //    }],
-                //    "balance_at": 1504025266145
-                //};
                 for (i=0 ; i<session_info.balance.length ; i++) {
-                    balance = session_info.balance[i] ;
+                    balance = JSON.parse(JSON.stringify(session_info.balance[i])) ;
                     balance.balance_at = session_info.balance_at ;
                     balance.sessionid = sessionid ;
                     balance.wallet_sha256 = session_info.wallet_sha256 ;
-                    j = -1 ;
-                    for (k=0 ; k<session_info.currencies.length ; k++) {
-                        if (session_info.currencies[k].code != balance.code) continue ;
-                        j = k ;
-                        break ;
-                    } // for k
-                    if (j == -1) {
-                        console.log(pgm + 'error in session_info for sessionid ' + sessionid + '. Currency code ' + code + ' was not found. session_info = ' + JSON.stringify(session_info)) ;
-                        continue ;
-                    }
-                    // merge balance and currency information
-                    currency = session_info.currencies[j] ;
-                    for (key in currency) {
-                        if (!currency.hasOwnProperty(key)) continue ;
-                        balance[key] = currency[key] ;
-                    }
                     currencies.push(balance) ;
                 } // for i
             }
@@ -658,6 +651,39 @@ angular.module('MoneyNetwork')
                 return missing_wallet_sha256.length ;
             } ; // check_cache
 
+            // move relevant currency info to balance row
+            move_currency_info = function () {
+                var pgm = service + '.get_currencies.check_cache: ' ;
+                var i, balance, j, k, currency, key ;
+                for (i=currencies.length-1 ; i>=0 ; i--) {
+                    balance = currencies[i] ;
+                    if (!balance.currencies || !balance.currencies.length) {
+                        console.log(pgm + 'no currencies array was found in ' + JSON.stringify(balance)) ;
+                        currencies.splice(i,1) ;
+                        continue ;
+                    }
+                    j = -1 ;
+                    for (k=0 ; k<balance.currencies.length ; k++) {
+                        if (balance.currencies[k].code != balance.code) continue ;
+                        j = k ;
+                        break ;
+                    } // for k
+                    if (j == -1) {
+                        console.log(pgm + 'error in balance. Currency code ' + balance.code + ' was not found. balance = ' + JSON.stringify(balance)) ;
+                        currencies.splice(i,1) ;
+                        continue ;
+                    }
+                    // merge balance and currency information
+                    currency = balance.currencies[j] ;
+                    for (key in currency) {
+                        if (!currency.hasOwnProperty(key)) continue ;
+                        balance[key] = currency[key] ;
+                    }
+                    delete balance.currencies ;
+                } // for i
+
+            }; // move_currency_info
+
             // check for missing wallet information
             if (check_cache()) {
                 // missing wallet info for one or more wallet_sha256 walles
@@ -681,12 +707,38 @@ angular.module('MoneyNetwork')
                             currencies.splice(i,1) ;
                         }
                     }
+                    console.log(pgm + 'sessions (after get_currencies) = ' + JSON.stringify(ls_sessions)) ;
+                    //sessions = {
+                    //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
+                    //        "_$session_info": {
+                    //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //            "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+                    //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+                    //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                    //            "last_request_at": 1504280141674,
+                    //            "done": {
+                    //                "1503315223138": 1503315232562,
+                    //                "1503916247431": 1503916247859,
+                    //                "1504261657652": 1504261664116,
+                    //                "1504261977720": 1504261982693
+                    //            },
+                    //            "balance": [{"code": "tBTC", "amount": 1.3}],
+                    //            "balance_at": 1504265571720,
+                    //            "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                    //        }
+                    //    }
+                    //};
+
+                    move_currency_info() ;
                     cb(currencies) ;
 
                 }) ; // get_wallet_info
 
             }
-            else cb(currencies) ;
+            else {
+                move_currency_info() ;
+                cb(currencies) ;
+            }
 
         } // get_currencies
 

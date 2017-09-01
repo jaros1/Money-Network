@@ -1545,28 +1545,47 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'todo: Send, receive or donate money. Pay or receive payment. Not yet implemented') ;
 
                 console.log(pgm + 'todo: currencies. must have a distributed currency list. Symbol 2-5 characters, name and description');
+
+                // todo: check ls session_info <=> get_wallet_info info. No reason to same get_wallet_info information in ls
+
                 moneyNetworkService.get_currencies(function (currencies) {
                     console.log(pgm + 'currencies = ' + JSON.stringify(currencies));
-                    // done: sessionid, balance_at, wallet_sha256
+
+                    //sessions = {
+                    //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
+                    //        "_$session_info": {
+                    //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //            "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+                    //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+                    //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                    //            "last_request_at": 1504280141674,
+                    //            "done": {
+                    //                "1503315223138": 1503315232562,
+                    //                "1503916247431": 1503916247859,
+                    //                "1504261657652": 1504261664116,
+                    //                "1504261977720": 1504261982693
+                    //            },
+                    //            "balance": [{"code": "tBTC", "amount": 1.3}],
+                    //            "balance_at": 1504265571720,
+                    //            "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                    //        }
+                    //    }
+                    //};
+
                     //currencies = [{
                     //    "code": "tBTC",
                     //    "amount": 1.3,
-                    //    "balance_at": 1504256596576,
+                    //    "balance_at": 1504265571720,
                     //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
                     //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74",
-                    //    "name": "Test Bitcoin",
-                    //    "url": "https://en.bitcoin.it/wiki/Testnet",
-                    //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
                     //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
                     //    "wallet_title": "MoneyNetworkW2",
                     //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                    //    "currencies": [{
-                    //        "code": "tBTC",
-                    //        "name": "Test Bitcoin",
-                    //        "url": "https://en.bitcoin.it/wiki/Testnet",
-                    //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
-                    //    }]
+                    //    "name": "Test Bitcoin",
+                    //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                    //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
                     //}];
+
                     console.log(pgm + 'todo: send money. enter currency and amount. must known currencies and amounts from my connected wallets') ;
                     console.log(pgm + 'todo: send money. not required but should know contacts preferred or connected currencies') ;
                     console.log(pgm + 'todo: send money. receiver must accept send money transaction');
