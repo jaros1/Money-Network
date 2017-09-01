@@ -638,149 +638,41 @@ angular.module('MoneyNetwork')
             }
 
             // lookup wallet info (address, title, description from wallet_sha256. old lookup values cached in z_cache.wallet_sha256
-            missing_wallet_sha256 = {} ; // wallet_sha256 => sessionid
+            missing_wallet_sha256 = [] ; // wallet_sha256 => sessionid
             check_cache = function () {
                 var pgm = service + '.get_currencies.check_cache: ' ;
                 var i, balance, wallet_sha256, key ;
-                for (key in missing_wallet_sha256) delete missing_wallet_sha256[key] ;
+                while (missing_wallet_sha256.length) missing_wallet_sha256.shift() ;
                 for (i=0 ; i<currencies.length ; i++) {
                     balance = currencies[i] ;
                     wallet_sha256 = balance.wallet_sha256 ;
-                    if (missing_wallet_sha256[wallet_sha256]) continue ;
+                    console.log(pgm + 'i = ' + i + ', balance = ' + JSON.stringify(balance) + ', wallet_sha256 = ' + JSON.stringify(wallet_sha256));
+                    if (missing_wallet_sha256.indexOf(wallet_sha256) != -1) continue ;
                     if (z_cache.wallet_sha256 && z_cache.wallet_sha256[wallet_sha256]) {
                         for (key in z_cache.wallet_sha256[wallet_sha256]) {
                             balance[key] = z_cache.wallet_sha256[wallet_sha256][key] ;
                         }
                     }
-                    else missing_wallet_sha256[wallet_sha256] = balance.sessionid ;
+                    else missing_wallet_sha256.push(wallet_sha256) ;
                 } // for i
-                return Object.keys(missing_wallet_sha256).length ;
+                return missing_wallet_sha256.length ;
             } ; // check_cache
 
-            lookup_wallet_info = function (cb) {
-                var pgm = service + '.get_currencies.lookup_wallet_info: ' ;
-                var query, i, debug_seq0, first ;
-                if (!Object.keys(missing_wallet_sha256).length) return cb() ; // done
-                // find wallets with full wallet info for the missing wallet_sha256 values
-                query =
-                    "select  wallet_sha256.value as wallet_sha256, json.directory " +
-                    "from keyvalue as wallet_sha256, keyvalue, json " +
-                    "where wallet_sha256.key = 'wallet_sha256' " +
-                    "and wallet_sha256.value in " ;
-                first = true ;
-                for (key in missing_wallet_sha256) {
-                    query += first ? '(' : ',' ;
-                    first = false ;
-                    query += " '" + key + "'" ;
-                }
-                query +=
-                    ") and keyvalue.json_id = wallet_sha256.json_id " +
-                    "and keyvalue.value is not null " +
-                    "and keyvalue.key like 'wallet_%' " +
-                    "and json.json_id = keyvalue.json_id " +
-                    "group by  wallet_sha256.value, keyvalue.json_id " +
-                    "having count(*) >= 4" ;
-
-                debug('select', pgm + 'query ? = ' + query);
-                debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ?') ;
-                ZeroFrame.cmd("dbQuery", [query], function (wallets) {
-                    var pgm = service + '.get_currencies.lookup_wallet_info dbQuery callback 1: ' ;
-                    var check_wallet, encrypt2 ;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
-                    if (wallets.error) {
-                        console.log(pgm + 'failed to find full wallet information. error = ' + wallets.error);
-                        console.log(pgm + 'query = ' + query);
-                        return cb();
-                    }
-                    if (!wallets.length) {
-                        console.log(pgm + 'could not find any wallet.json with full wallet info for wallet_sha256 in ' + JSON.stringify(missing_wallet_sha256));
-                        console.log(pgm + 'query = ' + query);
-                        return cb();
-                    }
-                    console.log(pgm + 'wallets = ' + JSON.stringify(wallets)) ;
-
-                    // todo: move validate_json to MoneyNetworkAPILib.
-                    encrypt2 = new MoneyNetworkAPI ;
-
-                    // lookup and check wallets one by one. One fileGet for each wallet.json file
-                    check_wallet = function () {
-                        var pgm = service + '.get_currencies.lookup_wallet_info.check_wallet: ' ;
-                        var row, inner_path ;
-                        row = wallets.shift() ;
-                        if (!row) return cb() ; // done
-                        if (z_cache.wallet_sha256[row.wallet_sha256]) return check_wallet() ; // wallet info is already saved in cache
-                        // check wallet.json file
-                        inner_path = 'merged-MoneyNetwork/' + row.directory + '/wallet.json' ;
-                        debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-                        ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
-                            var pgm = service + '.get_currencies.lookup_wallet_info.check_wallet fileGet callback: ' ;
-                            var wallet, error, calc_wallet_sha256 ;
-                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
-                            if (!wallet_str) {
-                                console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path);
-                                return check_wallet(); // next wallet
-                            }
-                            try {
-                                wallet = JSON.parse(wallet_str);
-                            }
-                            catch (e) {
-                                console.log(pgm + 'wallet.json is invalid. inner_path = ' + inner_path + '. error = ' + e.message);
-                                return check_wallet(); // next wallet
-                            }
-                            console.log(pgm + 'wallet = ' + JSON.stringify(wallet));
-                            //wallet = {
-                            //    "msgtype": "wallet",
-                            //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                            //    "wallet_title": "MoneyNetworkW2",
-                            //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                            //    "currencies": [{
-                            //        "code": "tBTC",
-                            //        "name": "Test Bitcoin",
-                            //        "url": "https://en.bitcoin.it/wiki/Testnet",
-                            //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
-                            //    }],
-                            //    "hub": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ",
-                            //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
-                            //};
-                            // validate wallet.json after read
-                            error = MoneyNetworkAPILib.validate_json(pgm, wallet) ;
-                            if (error) {
-                                console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', wallet = ' + JSON.stringify(wallet));
-                                return check_wallet(); // next wallet
-                            }
-                            // check wallet_sha256
-                            // full wallet info. test wallet_sha256 signature
-                            calc_wallet_sha256 = MoneyNetworkAPILib.calc_wallet_sha256(wallet);
-                            if (!calc_wallet_sha256) {
-                                console.log(pgm + 'wallet.json was found but is invalid. wallet_sha256 could not be calculated, wallet = ' + JSON.stringify(wallet));
-                                return check_wallet() ; // next wallet
-                            }
-                            if (calc_wallet_sha256 != wallet.wallet_sha256) {
-                                console.log(pgm + 'wallet.json was found but is invalid. expected calc_wallet_sha256 = ' + calc_wallet_sha256 + '. found wallet.wallet_sha256 = ' + wallet.wallet_sha256 + ', wallet = ' + JSON.stringify(wallet));
-                                return check_wallet() ; // next wallet
-                            }
-                            // OK. add wallet info to cache
-                            z_cache.wallet_sha256[row.wallet_sha256] = {
-                                wallet_address: wallet.wallet_address,
-                                wallet_title: wallet.wallet_title,
-                                wallet_description: wallet.wallet_description
-                            } ;
-                            // next wallet
-                            check_wallet() ;
-                        }) ; // fileGet callback
-
-                    } ; // check_wallet
-                    // start loop
-                    check_wallet() ;
-
-                }) ; // dbQuery callback 1
-
-            } ; // lookup_wallet_info
-
+            // check for missing wallet information
             if (check_cache()) {
                 // missing wallet info for one or more wallet_sha256 walles
                 if (!z_cache.wallet_sha256) z_cache.wallet_sha256 = {} ;
-                lookup_wallet_info(function () {
+
+                // find wallets with full wallet info for the missing wallet_sha256 values
+                console.log(pgm + 'missing_wallet_sha256 = ' + JSON.stringify(missing_wallet_sha256)) ;
+                MoneyNetworkAPILib.get_wallet_info(missing_wallet_sha256, function (wallet_info) {
+                    var key ;
+                    if (!wallet_info || (typeof wallet_info != 'object') || wallet_info.error) {
+                        console.log(pgm + 'could not find wallet_info for sha256 values ' + JSON.stringify(missing_wallet_sha256) + '. wallet_info = ' + JSON.stringify(wallet_info)) ;
+                    }
+                    else for (key in wallet_info) z_cache.wallet_sha256[key] = wallet_info[key] ;
+
+                    // re-check for missing wallet information
                     if (check_cache()) {
                         // still missing wallet info. remove invalid info
                         for (i=currencies.length-1 ; i >= 0 ; i--) {
@@ -790,7 +682,9 @@ angular.module('MoneyNetwork')
                         }
                     }
                     cb(currencies) ;
-                }) ; // lookup_wallet_info callback
+
+                }) ; // get_wallet_info
+
             }
             else cb(currencies) ;
 

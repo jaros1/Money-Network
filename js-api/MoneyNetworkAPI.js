@@ -968,9 +968,136 @@ var MoneyNetworkAPILib = (function () {
     } // calc_wallet_sha256
 
     // helper. get wallet info from sha256 value (minimize wallet.json disk usage)
-    // param: wallet_sha256. string or array with strings
+    // param: wallet_sha256. sha256 string or array with sha256 strings
     function get_wallet_info (wallet_sha256, cb) {
         var pgm = module + '.get_wallet_info: ';
+        var i, re, results, query ;
+        if (!wallet_sha256) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
+        if (typeof wallet_sha256 == 'string') wallet_sha256 = [wallet_sha256] ;
+        if (!wallet_sha256.length) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
+        re = new RegExp('^[0-9a-f]{64}$') ;
+        for (i=0 ; i<wallet_sha256.length ; i++) {
+            if (typeof wallet_sha256[i] != 'string') return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
+            if (!wallet_sha256[i].match(re)) return cb({error: 'invalid call. param 1 must be a sha256 string value or an array of sha256 string values'}) ;
+        }
+        if (typeof cb != 'function') return cb({error: 'invalid call. param 2 must be a callback function'});
+        if (!ZeroFrame) cb({error: 'invalid call. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into this library'});
+
+        console.log(pgm + 'todo: add cache with wallet info.') ;
+
+        results = {} ; // sha256 => wallet_info
+
+        // find wallets with full wallet info for the missing wallet_sha256 values
+        query =
+            "select  wallet_sha256.value as wallet_sha256, json.directory " +
+            "from keyvalue as wallet_sha256, keyvalue, json " +
+            "where wallet_sha256.key = 'wallet_sha256' " +
+            "and wallet_sha256.value in " ;
+        for (i=0 ; i<wallet_sha256.length ; i++) {
+            query += i==0 ? '(' : ',' ;
+            query += " '" + wallet_sha256[i] + "'" ;
+        }
+        query +=
+            ") and keyvalue.json_id = wallet_sha256.json_id " +
+            "and keyvalue.value is not null " +
+            "and keyvalue.key like 'wallet_%' " +
+            "and json.json_id = keyvalue.json_id " +
+            "group by  wallet_sha256.value, keyvalue.json_id " +
+            "having count(*) >= 4" ;
+
+        if (debug) console.log(pgm + 'query ? = ' + query);
+        ZeroFrame.cmd("dbQuery", [query], function (wallets) {
+            var pgm = module + '.get_wallet_info dbQuery callback: ' ;
+            var error, check_wallet ;
+            if (wallets.error) {
+                error = 'failed to find full wallet information. error = ' + wallets.error ;
+                console.log(pgm + error);
+                console.log(pgm + 'query = ' + query);
+                return cb({error: error});
+            }
+            if (!wallets.length) {
+                error = 'could not find any wallet.json with full wallet info for wallet_sha256 in ' + JSON.stringify(wallet_sha256) ;
+                console.log(pgm + error);
+                console.log(pgm + 'query = ' + query);
+                return cb({error: error});
+            }
+            console.log(pgm + 'wallets = ' + JSON.stringify(wallets)) ;
+
+            // lookup and check wallets one by one. One fileGet for each wallet.json file
+            check_wallet = function () {
+                var pgm = module + '.get_wallet_info.check_wallet: ' ;
+                var row, inner_path ;
+                row = wallets.shift() ;
+                if (!row) return cb(results) ; // done
+                if (results[row.wallet_sha256]) return check_wallet() ; // wallet info is already found for this sha256 value
+                // check wallet.json file
+                inner_path = 'merged-MoneyNetwork/' + row.directory + '/wallet.json' ;
+                ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
+                    var pgm = module + '.get_wallet_info.check_wallet fileGet callback: ' ;
+                    var wallet, error, calculated_sha256 ;
+                    if (!wallet_str) {
+                        console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path);
+                        return check_wallet(); // next wallet
+                    }
+                    try {
+                        wallet = JSON.parse(wallet_str);
+                    }
+                    catch (e) {
+                        console.log(pgm + 'wallet.json is invalid. inner_path = ' + inner_path + '. error = ' + e.message);
+                        return check_wallet(); // next wallet
+                    }
+                    console.log(pgm + 'wallet = ' + JSON.stringify(wallet));
+                    //wallet = {
+                    //    "msgtype": "wallet",
+                    //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //    "wallet_title": "MoneyNetworkW2",
+                    //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                    //    "currencies": [{
+                    //        "code": "tBTC",
+                    //        "name": "Test Bitcoin",
+                    //        "url": "https://en.bitcoin.it/wiki/Testnet",
+                    //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                    //    }],
+                    //    "hub": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ",
+                    //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                    //};
+                    // validate wallet.json after read
+                    error = validate_json(pgm, wallet) ;
+                    if (error) {
+                        console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', wallet = ' + JSON.stringify(wallet));
+                        return check_wallet(); // next wallet
+                    }
+                    // check wallet_sha256
+                    // full wallet info. test wallet_sha256 signature
+                    calculated_sha256 = calc_wallet_sha256(wallet);
+                    if (!calculated_sha256) {
+                        console.log(pgm + 'wallet.json was found but is invalid. wallet_sha256 could not be calculated, wallet = ' + JSON.stringify(wallet));
+                        return check_wallet() ; // next wallet
+                    }
+                    if (calculated_sha256 != wallet.wallet_sha256) {
+                        console.log(pgm + 'wallet.json was found but is invalid. expected calculated_sha256 = ' + calculated_sha256 + '. found wallet.wallet_sha256 = ' + wallet.wallet_sha256 + ', wallet = ' + JSON.stringify(wallet));
+                        return check_wallet() ; // next wallet
+                    }
+                    // OK. save wallet info.
+                    results[row.wallet_sha256] = {
+                        wallet_address: wallet.wallet_address,
+                        wallet_domain: wallet.wallet_domain,
+                        wallet_title: wallet.wallet_title,
+                        wallet_description: wallet.wallet_description,
+                        currencies: wallet.currencies,
+                        wallet_sha256: row.wallet_sha256
+                    } ;
+                    // next wallet
+                    check_wallet() ;
+                }) ; // fileGet callback
+
+            } ; // check_wallet
+            // start loop
+            check_wallet() ;
+
+        }) ; // dbQuery callback 1
+
+
 
     } // get_wallet_info
 
@@ -998,7 +1125,8 @@ var MoneyNetworkAPILib = (function () {
         aes_encrypt: aes_encrypt,
         aes_decrypt: aes_decrypt,
         validate_json: validate_json,
-        calc_wallet_sha256: calc_wallet_sha256
+        calc_wallet_sha256: calc_wallet_sha256,
+        get_wallet_info: get_wallet_info
     };
 
 })(); // MoneyNetworkAPILib

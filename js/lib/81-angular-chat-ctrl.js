@@ -1551,15 +1551,21 @@ angular.module('MoneyNetwork')
                     //currencies = [{
                     //    "code": "tBTC",
                     //    "amount": 1.3,
+                    //    "balance_at": 1504256596576,
+                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                    //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74",
                     //    "name": "Test Bitcoin",
                     //    "url": "https://en.bitcoin.it/wiki/Testnet",
                     //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
-                    //    "balance_at": 1504103665013,
-                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
-                    //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74",
                     //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
                     //    "wallet_title": "MoneyNetworkW2",
-                    //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro"
+                    //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                    //    "currencies": [{
+                    //        "code": "tBTC",
+                    //        "name": "Test Bitcoin",
+                    //        "url": "https://en.bitcoin.it/wiki/Testnet",
+                    //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                    //    }]
                     //}];
                     console.log(pgm + 'todo: send money. enter currency and amount. must known currencies and amounts from my connected wallets') ;
                     console.log(pgm + 'todo: send money. not required but should know contacts preferred or connected currencies') ;
