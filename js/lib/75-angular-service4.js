@@ -607,13 +607,13 @@ angular.module('MoneyNetwork')
             MoneyNetworkAPILib.delete_all_sessions() ;
         }
 
-        // return list with currencies.
-        var js_currencies = [] ;
+        // return list with currencies. currencies array is used in angularJS UI (minimum updates)
+        var currencies = [] ;
         function get_currencies (cb) {
             var pgm = service + '.get_currencies: ' ;
-            var currencies, wallet_sha256_values, sessionid, session_info, i, balance ;
+            var temp_currencies, wallet_sha256_values, sessionid, session_info, i, balance ;
             if (!ls_sessions) return [] ; // error?
-            currencies = [] ;
+            temp_currencies = [] ;
             wallet_sha256_values = [] ;
             for (sessionid in ls_sessions) {
                 session_info = ls_sessions[sessionid][SESSION_INFO_KEY];
@@ -626,17 +626,21 @@ angular.module('MoneyNetwork')
                     balance.balance_at = session_info.balance_at ;
                     balance.sessionid = sessionid ;
                     balance.wallet_sha256 = session_info.wallet_sha256 ;
-                    currencies.push(balance) ;
+                    temp_currencies.push(balance) ;
                     wallet_sha256_values.push(session_info.wallet_sha256) ;
                 } // for i
             }
-            if (!currencies.length) return cb(currencies) ; // no wallet / no balance info was found
+            if (!temp_currencies.length) {
+                // no wallet / no balance info was found
+                while (currencies.length) currencies.shift() ;
+                return cb(currencies) ;
+            }
 
             // find full wallet info from sha256 values
             console.log(pgm + 'wallet_sha256_values = ' + JSON.stringify(wallet_sha256_values)) ;
             MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info) {
-                var wallet_sha256, i, key, balance, j, k, currency ;
-                console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
+                var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row ;
+                // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
                 //wallet_info = {
                 //    "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74": {
                 //        "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
@@ -655,30 +659,30 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'could not find wallet_info for sha256 values ' + JSON.stringify(wallet_sha256_values) + '. wallet_info = ' + JSON.stringify(wallet_info)) ;
                 }
                 else for (wallet_sha256 in wallet_info) {
-                    for (i=0 ; i<currencies.length ; i++) {
-                        if (wallet_sha256 != currencies[i].wallet_sha256) continue ;
+                    for (i=0 ; i<temp_currencies.length ; i++) {
+                        if (wallet_sha256 != temp_currencies[i].wallet_sha256) continue ;
                         // copy wallet info to currency (wallet_address, wallet_title, wallet_description and currencies
                         for (key in wallet_info[wallet_sha256]) {
-                            currencies[i][key] = wallet_info[wallet_sha256][key] ;
+                            temp_currencies[i][key] = wallet_info[wallet_sha256][key] ;
                         } // for key
-                        break ;
+                        break ; // break currencies loop. next sha256 value
                     } // for i
                 } // for wallet_sha256
 
                 // copy full wallet info into currencies array
-                for (i=currencies.length-1 ; i >= 0 ; i--) {
-                    if (currencies[i].wallet_address) continue ;
-                    console.log(pgm + 'removing currency/balance info with unknown wallet_sha256. ' + JSON.stringify(currencies[i])) ;
-                    currencies.splice(i,1) ;
+                for (i=temp_currencies.length-1 ; i >= 0 ; i--) {
+                    if (temp_currencies[i].wallet_address) continue ;
+                    console.log(pgm + 'removing currency/balance info with unknown wallet_sha256. ' + JSON.stringify(temp_currencies[i])) ;
+                    temp_currencies.splice(i,1) ;
                 }
                 console.log(pgm + 'sessions (after get_currencies) = ' + JSON.stringify(ls_sessions)) ;
 
                 // move currency info (name, url and units) to currency rows for easy filter and sort
-                for (i=currencies.length-1 ; i>=0 ; i--) {
-                    balance = currencies[i] ;
+                for (i=temp_currencies.length-1 ; i>=0 ; i--) {
+                    balance = temp_currencies[i] ;
                     if (!balance.currencies || !balance.currencies.length) {
                         console.log(pgm + 'no currencies array was found in ' + JSON.stringify(balance)) ;
-                        currencies.splice(i,1) ;
+                        temp_currencies.splice(i,1) ;
                         continue ;
                     }
                     j = -1 ;
@@ -689,10 +693,11 @@ angular.module('MoneyNetwork')
                     } // for k
                     if (j == -1) {
                         console.log(pgm + 'error in balance. Currency code ' + balance.code + ' was not found. balance = ' + JSON.stringify(balance)) ;
-                        currencies.splice(i,1) ;
+                        temp_currencies.splice(i,1) ;
                         continue ;
                     }
                     // merge balance and currency information
+                    balance.unique_id = balance.wallet_sha256 + '/' + balance.code ;
                     currency = balance.currencies[j] ;
                     for (key in currency) {
                         if (!currency.hasOwnProperty(key)) continue ;
@@ -701,7 +706,45 @@ angular.module('MoneyNetwork')
                     delete balance.currencies ;
                 } // for i
 
-                // todo: merge new currencies array into angularJS currencies array js_currencies (insert, update, delete)
+                // merge new currencies array into old currencies array (insert, update, delete). used in angularJS UI
+                unique_ids = {} ;
+                for (i=0 ; i<currencies.length ; i++) unique_ids[currencies[i].unique_id] = { in_old: currencies[i]} ;
+                for (i=0 ; i<temp_currencies.length ; i++) {
+                    unique_id = temp_currencies[i].unique_id ;
+                    if (!unique_ids[unique_id]) unique_ids[unique_id] = {} ;
+                    unique_ids[unique_id].in_new = i ; // index for insert and update operation
+                } // for i
+                // delete
+                for (i=currencies.length-1 ; i>=0 ; i--) {
+                    unique_id = currencies[i].unique_id ;
+                    if (unique_ids[unique_id].hasOwnProperty('in_new')) continue ;
+                    currencies.splice(i,1) ;
+                }
+                // insert or update
+                for (unique_id in unique_ids) {
+                    if (unique_ids[unique_id].in_old) {
+                        // in old
+                        if (unique_ids[unique_id].hasOwnProperty('in_new')) {
+                            // in old and in new. update info. most info is readonly. only amount and balance_at can change
+                            old_row = unique_ids[unique_id].in_old ;
+                            i = unique_ids[unique_id].in_new ;
+                            new_row = temp_currencies[i] ;
+                            if (old_row.amount != new_row.amount) old_row.amount = new_row.amount ;
+                            if (old_row.balance_at != new_row.balance_at) old_row.balance_at = new_row.balance_at ;
+                        }
+                        else {
+                            // in old and not in new. delete. already done
+                            continue ;
+                        }
+                    }
+                    else {
+                        // not in old. must be a new record. insert
+                        i = unique_ids[unique_id].in_new ;
+                        currencies.push(temp_currencies[i]) ;
+                        continue ;
+                    }
+
+                } // for unique_id
 
                 cb(currencies) ;
 
