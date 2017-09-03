@@ -1037,6 +1037,15 @@
                                                 </span>
                                             </td>
                                         </tr>
+                                        <tr ng-show="c.show_money">
+                                            <td colspan="2" style="width: 98%">
+                                                Currency:
+                                                <input type="text" placeholder="Start typing" style="width: 300px"
+                                                       ng-model="c.new_money_code" required ng-change="c.new_money_code_changed()"
+                                                       uib-typeahead="currency.unique_text for currency in c.currencies | filter:$viewValue | limitTo:8"
+                                                       typeahead-editable="false">
+                                            </td>
+                                        </tr>
                                         <tr ng-show="c.new_chat_src">
                                             <td colspan="2">
                                                 <div style="position: relative; display: inline-block;">

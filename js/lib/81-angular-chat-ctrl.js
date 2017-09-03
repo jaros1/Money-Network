@@ -1,8 +1,8 @@
 angular.module('MoneyNetwork')
     
-    .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$timeout', '$routeParams', '$location',
+    .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location',
         'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', '$window', 'dateFilter',
-        function (moneyNetworkService, $scope, $timeout, $routeParams, $location,
+        function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location,
                   chatEditTextAreaId, chatEditImgId, formatChatMessage, $window, date)
         {
             
@@ -1539,6 +1539,10 @@ angular.module('MoneyNetwork')
                 self.new_chat_src = '' ;
             } ;
 
+
+            self.currencies = null ; // initialize in first new_chat_add_money request
+            self.show_money = false ; // show/hide money fields in new chat
+
             self.new_chat_add_money = function() {
                 var pgm = controller + '.new_chat_add_money: ' ;
                 var currencies ;
@@ -1546,10 +1550,14 @@ angular.module('MoneyNetwork')
 
                 console.log(pgm + 'todo: currencies. must have a distributed currency list. Symbol 2-5 characters, name and description');
 
-                // todo: check ls session_info <=> get_wallet_info info. No reason to same get_wallet_info information in ls
-
-                moneyNetworkService.get_currencies(function (currencies) {
+                // get list of currencies from connected wallets
+                moneyNetworkService.get_currencies(function (currencies, delayed) {
                     console.log(pgm + 'currencies = ' + JSON.stringify(currencies));
+
+                    if (!self.currencies) self.currencies = currencies ; // initialize currencies array used in UI
+                    self.show_money = !self.show_money ;
+                    console.log(pgm + 'show_money = ' + self.show_money) ;
+                    if (delayed) $rootScope.$apply() ;
 
                     //sessions = {
                     //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
@@ -1593,6 +1601,13 @@ angular.module('MoneyNetwork')
                 }) ;
 
             } ; // new_chat_add_money
+
+            // new money transaction. select currency for money transaction                                                                                                                                                                                                                                                                                                                 
+            self.new_money_code = null ;
+            self.new_money_code_changed = function() {
+                var pgm = controller + '.new_money_code: ' ;
+                console.log(pgm + 'new_money_code = ' + JSON.stringify(self.new_money_code)) ;
+            }  ;
 
             // public chat checkbox changed - add/remove public chat from UI
             self.public_chat_changed = function () {

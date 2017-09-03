@@ -1037,7 +1037,7 @@ var MoneyNetworkAPILib = (function () {
                 var pgm = module + '.get_wallet_info.check_wallet: ' ;
                 var row, inner_path ;
                 row = wallets.shift() ;
-                if (!row) return cb(results) ; // done
+                if (!row) return cb(results, true) ; // done
                 if (results[row.wallet_sha256]) return check_wallet() ; // wallet info is already found for this sha256 value
                 // check wallet.json file
                 inner_path = 'merged-MoneyNetwork/' + row.directory + '/wallet.json' ;

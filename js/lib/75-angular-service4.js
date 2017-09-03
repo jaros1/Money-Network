@@ -633,12 +633,12 @@ angular.module('MoneyNetwork')
             if (!temp_currencies.length) {
                 // no wallet / no balance info was found
                 while (currencies.length) currencies.shift() ;
-                return cb(currencies) ;
+                return cb(currencies, false) ;
             }
 
             // find full wallet info from sha256 values
             console.log(pgm + 'wallet_sha256_values = ' + JSON.stringify(wallet_sha256_values)) ;
-            MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info) {
+            MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, delayed) {
                 var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row ;
                 // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
                 //wallet_info = {
@@ -698,11 +698,26 @@ angular.module('MoneyNetwork')
                     }
                     // merge balance and currency information
                     balance.unique_id = balance.wallet_sha256 + '/' + balance.code ;
+                    //currencies = [{
+                    //    "code": "tBTC",
+                    //    "amount": 1.3,
+                    //    "balance_at": 1504265571720,
+                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                    //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74",
+                    //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //    "wallet_title": "MoneyNetworkW2",
+                    //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                    //    "name": "Test Bitcoin",
+                    //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                    //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                    //}];
+
                     currency = balance.currencies[j] ;
                     for (key in currency) {
                         if (!currency.hasOwnProperty(key)) continue ;
                         balance[key] = currency[key] ;
                     }
+                    balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_title;
                     delete balance.currencies ;
                 } // for i
 
@@ -746,7 +761,7 @@ angular.module('MoneyNetwork')
 
                 } // for unique_id
 
-                cb(currencies) ;
+                cb(currencies, delayed) ;
 
             }) ; // get_wallet_info
 
