@@ -969,9 +969,10 @@ var MoneyNetworkAPILib = (function () {
 
     // helper. get wallet info from sha256 value (minimize wallet.json disk usage)
     // param: wallet_sha256. sha256 string or array with sha256 strings
+    var wallet_info_cache = {} ; // sha256 => wallet_info
     function get_wallet_info (wallet_sha256, cb) {
         var pgm = module + '.get_wallet_info: ';
-        var i, re, results, query ;
+        var i, re, results, query, sha256 ;
         if (!wallet_sha256) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
         if (typeof wallet_sha256 == 'string') wallet_sha256 = [wallet_sha256] ;
         if (!wallet_sha256.length) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
@@ -983,9 +984,17 @@ var MoneyNetworkAPILib = (function () {
         if (typeof cb != 'function') return cb({error: 'invalid call. param 2 must be a callback function'});
         if (!ZeroFrame) cb({error: 'invalid call. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into this library'});
 
-        console.log(pgm + 'todo: add cache with wallet info.') ;
-
         results = {} ; // sha256 => wallet_info
+
+        // check cache
+        for (i=wallet_sha256.length-1 ; i>=0 ; i--) {
+            sha256 = wallet_sha256[i] ;
+            if (!wallet_info_cache[sha256]) continue ; // not in cache
+            // found in cache
+            results[sha256] = JSON.parse(JSON.stringify(wallet_info_cache[sha256])) ;
+            wallet_sha256.splice(i,1) ;
+        }
+        if (!wallet_sha256.length) return cb(results) ; // all sha256 values were found in cache
 
         // find wallets with full wallet info for the missing wallet_sha256 values
         query =
@@ -1087,6 +1096,7 @@ var MoneyNetworkAPILib = (function () {
                         currencies: wallet.currencies,
                         wallet_sha256: row.wallet_sha256
                     } ;
+                    wallet_info_cache[row.wallet_sha256] = JSON.parse(JSON.stringify(results[row.wallet_sha256])) ;
                     // next wallet
                     check_wallet() ;
                 }) ; // fileGet callback

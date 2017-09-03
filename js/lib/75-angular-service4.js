@@ -608,13 +608,13 @@ angular.module('MoneyNetwork')
         }
 
         // return list with currencies.
-
+        var js_currencies = [] ;
         function get_currencies (cb) {
             var pgm = service + '.get_currencies: ' ;
-            var currencies, sessionid, session_info, i, balance, currency, missing_wallet_sha256, wallet_sha256,
-                check_cache, move_currency_info ;
+            var currencies, wallet_sha256_values, sessionid, session_info, i, balance ;
             if (!ls_sessions) return [] ; // error?
             currencies = [] ;
+            wallet_sha256_values = [] ;
             for (sessionid in ls_sessions) {
                 session_info = ls_sessions[sessionid][SESSION_INFO_KEY];
                 if (!session_info) continue;
@@ -627,34 +627,53 @@ angular.module('MoneyNetwork')
                     balance.sessionid = sessionid ;
                     balance.wallet_sha256 = session_info.wallet_sha256 ;
                     currencies.push(balance) ;
+                    wallet_sha256_values.push(session_info.wallet_sha256) ;
                 } // for i
             }
+            if (!currencies.length) return cb(currencies) ; // no wallet / no balance info was found
 
-            // lookup wallet info (address, title, description from wallet_sha256. old lookup values cached in z_cache.wallet_sha256
-            missing_wallet_sha256 = [] ; // wallet_sha256 => sessionid
-            check_cache = function () {
-                var pgm = service + '.get_currencies.check_cache: ' ;
-                var i, balance, wallet_sha256, key ;
-                while (missing_wallet_sha256.length) missing_wallet_sha256.shift() ;
-                for (i=0 ; i<currencies.length ; i++) {
-                    balance = currencies[i] ;
-                    wallet_sha256 = balance.wallet_sha256 ;
-                    console.log(pgm + 'i = ' + i + ', balance = ' + JSON.stringify(balance) + ', wallet_sha256 = ' + JSON.stringify(wallet_sha256));
-                    if (missing_wallet_sha256.indexOf(wallet_sha256) != -1) continue ;
-                    if (z_cache.wallet_sha256 && z_cache.wallet_sha256[wallet_sha256]) {
-                        for (key in z_cache.wallet_sha256[wallet_sha256]) {
-                            balance[key] = z_cache.wallet_sha256[wallet_sha256][key] ;
-                        }
-                    }
-                    else missing_wallet_sha256.push(wallet_sha256) ;
-                } // for i
-                return missing_wallet_sha256.length ;
-            } ; // check_cache
+            // find full wallet info from sha256 values
+            console.log(pgm + 'wallet_sha256_values = ' + JSON.stringify(wallet_sha256_values)) ;
+            MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info) {
+                var wallet_sha256, i, key, balance, j, k, currency ;
+                console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
+                //wallet_info = {
+                //    "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74": {
+                //        "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //        "wallet_title": "MoneyNetworkW2",
+                //        "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                //        "currencies": [{
+                //            "code": "tBTC",
+                //            "name": "Test Bitcoin",
+                //            "url": "https://en.bitcoin.it/wiki/Testnet",
+                //            "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                //        }],
+                //        "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                //    }
+                //};
+                if (!wallet_info || (typeof wallet_info != 'object') || wallet_info.error) {
+                    console.log(pgm + 'could not find wallet_info for sha256 values ' + JSON.stringify(wallet_sha256_values) + '. wallet_info = ' + JSON.stringify(wallet_info)) ;
+                }
+                else for (wallet_sha256 in wallet_info) {
+                    for (i=0 ; i<currencies.length ; i++) {
+                        if (wallet_sha256 != currencies[i].wallet_sha256) continue ;
+                        // copy wallet info to currency (wallet_address, wallet_title, wallet_description and currencies
+                        for (key in wallet_info[wallet_sha256]) {
+                            currencies[i][key] = wallet_info[wallet_sha256][key] ;
+                        } // for key
+                        break ;
+                    } // for i
+                } // for wallet_sha256
 
-            // move relevant currency info to balance row
-            move_currency_info = function () {
-                var pgm = service + '.get_currencies.check_cache: ' ;
-                var i, balance, j, k, currency, key ;
+                // copy full wallet info into currencies array
+                for (i=currencies.length-1 ; i >= 0 ; i--) {
+                    if (currencies[i].wallet_address) continue ;
+                    console.log(pgm + 'removing currency/balance info with unknown wallet_sha256. ' + JSON.stringify(currencies[i])) ;
+                    currencies.splice(i,1) ;
+                }
+                console.log(pgm + 'sessions (after get_currencies) = ' + JSON.stringify(ls_sessions)) ;
+
+                // move currency info (name, url and units) to currency rows for easy filter and sort
                 for (i=currencies.length-1 ; i>=0 ; i--) {
                     balance = currencies[i] ;
                     if (!balance.currencies || !balance.currencies.length) {
@@ -682,63 +701,12 @@ angular.module('MoneyNetwork')
                     delete balance.currencies ;
                 } // for i
 
-            }; // move_currency_info
+                // todo: merge new currencies array into angularJS currencies array js_currencies (insert, update, delete)
 
-            // check for missing wallet information
-            if (check_cache()) {
-                // missing wallet info for one or more wallet_sha256 walles
-                if (!z_cache.wallet_sha256) z_cache.wallet_sha256 = {} ;
-
-                // find wallets with full wallet info for the missing wallet_sha256 values
-                console.log(pgm + 'missing_wallet_sha256 = ' + JSON.stringify(missing_wallet_sha256)) ;
-                MoneyNetworkAPILib.get_wallet_info(missing_wallet_sha256, function (wallet_info) {
-                    var key ;
-                    if (!wallet_info || (typeof wallet_info != 'object') || wallet_info.error) {
-                        console.log(pgm + 'could not find wallet_info for sha256 values ' + JSON.stringify(missing_wallet_sha256) + '. wallet_info = ' + JSON.stringify(wallet_info)) ;
-                    }
-                    else for (key in wallet_info) z_cache.wallet_sha256[key] = wallet_info[key] ;
-
-                    // re-check for missing wallet information
-                    if (check_cache()) {
-                        // still missing wallet info. remove invalid info
-                        for (i=currencies.length-1 ; i >= 0 ; i--) {
-                            if (currencies[i].wallet_address) continue ;
-                            console.log(pgm + 'removing currency/balance info with unknown wallet_sha256. ' + JSON.stringify(currencies[i])) ;
-                            currencies.splice(i,1) ;
-                        }
-                    }
-                    console.log(pgm + 'sessions (after get_currencies) = ' + JSON.stringify(ls_sessions)) ;
-                    //sessions = {
-                    //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
-                    //        "_$session_info": {
-                    //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //            "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
-                    //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
-                    //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                    //            "last_request_at": 1504280141674,
-                    //            "done": {
-                    //                "1503315223138": 1503315232562,
-                    //                "1503916247431": 1503916247859,
-                    //                "1504261657652": 1504261664116,
-                    //                "1504261977720": 1504261982693
-                    //            },
-                    //            "balance": [{"code": "tBTC", "amount": 1.3}],
-                    //            "balance_at": 1504265571720,
-                    //            "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
-                    //        }
-                    //    }
-                    //};
-
-                    move_currency_info() ;
-                    cb(currencies) ;
-
-                }) ; // get_wallet_info
-
-            }
-            else {
-                move_currency_info() ;
                 cb(currencies) ;
-            }
+
+            }) ; // get_wallet_info
+
 
         } // get_currencies
 
