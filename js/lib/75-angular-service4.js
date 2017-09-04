@@ -638,6 +638,9 @@ angular.module('MoneyNetwork')
 
             // find full wallet info from sha256 values
             console.log(pgm + 'wallet_sha256_values = ' + JSON.stringify(wallet_sha256_values)) ;
+
+            // todo: better param name (delayed)
+
             MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, delayed) {
                 var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row ;
                 // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;

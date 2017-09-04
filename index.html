@@ -1039,11 +1039,43 @@
                                         </tr>
                                         <tr ng-show="c.show_money">
                                             <td colspan="2" style="width: 98%">
-                                                Currency:
-                                                <input type="text" placeholder="Start typing" style="width: 300px"
-                                                       ng-model="c.new_money_code" required ng-change="c.new_money_code_changed()"
-                                                       uib-typeahead="currency.unique_text for currency in c.currencies | filter:$viewValue | limitTo:8"
-                                                       typeahead-editable="false">
+                                                <table class="speech" style="width: 100%">
+                                                    <thead>
+                                                    <tr>
+                                                        <th>Action</th>
+                                                        <th>Currency</th>
+                                                        <th>Amount</th>
+                                                        <th>Unit</th>
+                                                        <th>+/-</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    <tr ng-repeat="mt in c.money_transactions">
+                                                        <td>
+                                                            <input type="text" placeholder="Action ..." style="width: 75px"
+                                                                   ng-model="mt.action" required ng-change="c.money_transaction_changed('action', mt)"
+                                                                   uib-typeahead="action for action in c.money_actions | filter:$viewValue | limitTo:8"
+                                                                   typeahead-editable="false">
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" placeholder="Select currency. Start typing ..." style="width: 300px"
+                                                                   ng-model="mt.currency" required ng-change="c.money_transaction_changed('currency', mt)"
+                                                                   uib-typeahead="currency.unique_text for currency in c.currencies | filter:$viewValue | limitTo:8"
+                                                                   typeahead-editable="false">
+                                                        </td>
+                                                        <td><input type="text" placeholder="Enter amount" style="width: 80px"
+                                                                   ng-model="mt.amount" required ng-change="c.money_transaction_changed('amount', mt)">
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" placeholder="Select unit. Start typing ..." style="width: 80px"
+                                                                   ng-model="mt.unit" required ng-change="c.money_transaction_changed('unit', mt)"
+                                                                   uib-typeahead="unit.unit for unit in c.money_get_units(mt) | filter:$viewValue | limitTo:8"
+                                                                   typeahead-editable="false">
+                                                        </td>
+                                                        <td>+/-</td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
                                             </td>
                                         </tr>
                                         <tr ng-show="c.new_chat_src">

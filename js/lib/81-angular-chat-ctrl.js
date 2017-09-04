@@ -1540,8 +1540,12 @@ angular.module('MoneyNetwork')
             } ;
 
 
-            self.currencies = null ; // initialize in first new_chat_add_money request
+
             self.show_money = false ; // show/hide money fields in new chat
+
+            self.money_actions = [ 'Send', 'Request'] ;
+
+            self.currencies = null ; // list with currencies. initialize in first new_chat_add_money request
 
             self.new_chat_add_money = function() {
                 var pgm = controller + '.new_chat_add_money: ' ;
@@ -1602,12 +1606,24 @@ angular.module('MoneyNetwork')
 
             } ; // new_chat_add_money
 
-            // new money transaction. select currency for money transaction                                                                                                                                                                                                                                                                                                                 
-            self.new_money_code = null ;
-            self.new_money_code_changed = function() {
-                var pgm = controller + '.new_money_code: ' ;
-                console.log(pgm + 'new_money_code = ' + JSON.stringify(self.new_money_code)) ;
-            }  ;
+            self.money_get_units = function (money_transaction) {
+                var pgm = controller + '.money_get_units: ' ;
+                var i ;
+                console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
+                // money_transaction = {"action":"Send","currency":"tBTC Test Bitcoin from MoneyNetworkW2","amount":"1","$$hashKey":"object:140"}
+                for (i=0 ; i<self.currencies.length ; i++) {
+                    if (self.currencies[i].unique_text == money_transaction.currency) return self.currencies[i].units ;
+                }
+                return [] ;
+            } ; // money_get_units
+
+            // new money transaction. select currency for money transaction
+            var empty_money_transaction = {action: null, currency: null, amount: null, unit: null} ;
+            self.money_transactions = [ {action: null, currency: null, amount: null, unit: null} ] ;
+            self.money_transaction_changed = function(name, money_transaction) {
+                var pgm = controller + '.money_transaction_changed: ' ;
+                console.log(pgm + 'name = ' + JSON.stringify(name) + ', money_transaction = ' + JSON.stringify(money_transaction) + ', self.money_transactions = ' + JSON.stringify(self.money_transactions)) ;
+            } ; // money_currency_changed
 
             // public chat checkbox changed - add/remove public chat from UI
             self.public_chat_changed = function () {
