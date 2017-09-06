@@ -57,6 +57,7 @@ angular.module('MoneyNetwork')
                 self.group_chat = false ;
                 self.group_chat_contacts.splice(self.group_chat_contacts.length) ;
                 self.editing_grp_chat = false ;
+                self.show_money = false ;
                 a_path = self.setup.two_panel_chat ? '/chat2' : '/chat' ;
                 z_path = "?path=" + a_path ;
                 ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Chat", z_path]) ;
@@ -193,6 +194,7 @@ angular.module('MoneyNetwork')
                     var contact = find_group_chat_contact() ;
                     console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
                     if (contact && (typeof contact == 'object')) self.contact = contact ;
+                    self.show_money = false ;
                 }
                 contact = self.contact ;
 
@@ -1165,6 +1167,9 @@ angular.module('MoneyNetwork')
                 }
                 else contact = self.contact ;
 
+                if (contact.type == 'group') self.show_money = false ;
+                if (self.show_money)
+
                 // callback function - send chat message
                 var cb = function () {
                     // send chat message to contact
@@ -1559,8 +1564,13 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'currencies = ' + JSON.stringify(currencies));
 
                     if (!self.currencies) self.currencies = currencies ; // initialize currencies array used in UI
+
+                    // show/hide money. always reset money transactions array
+                    self.money_transactions.splice(0,self.money_transactions.length) ;
+                    self.money_transactions.push({action: null, currency: null, amount: null, unit: null}) ;
                     self.show_money = !self.show_money ;
                     console.log(pgm + 'show_money = ' + self.show_money) ;
+
                     if (delayed) $rootScope.$apply() ;
 
                     //sessions = {
@@ -1612,7 +1622,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
                 // money_transaction = {"action":"Send","currency":"tBTC Test Bitcoin from MoneyNetworkW2","amount":"1","$$hashKey":"object:140"}
                 for (i=0 ; i<self.currencies.length ; i++) {
-                    if (self.currencies[i].unique_text == money_transaction.currency) return self.currencies[i].units ;
+                    if (self.currencies[i].unique_text == money_transaction.currency) return self.currencies[i].units || ['n/a'] ;
                 }
                 return [] ;
             } ; // money_get_units
@@ -1622,8 +1632,73 @@ angular.module('MoneyNetwork')
             self.money_transactions = [ {action: null, currency: null, amount: null, unit: null} ] ;
             self.money_transaction_changed = function(name, money_transaction) {
                 var pgm = controller + '.money_transaction_changed: ' ;
+                var units ;
                 console.log(pgm + 'name = ' + JSON.stringify(name) + ', money_transaction = ' + JSON.stringify(money_transaction) + ', self.money_transactions = ' + JSON.stringify(self.money_transactions)) ;
+                if (name == 'currency') {
+                    // currency changed. reset/set unit
+                    money_transaction.unit = null ;
+                    if (!money_transaction.currency) return ;
+                    units = self.money_get_units(money_transaction) ;
+                    if (units.length == 1) money_transaction.unit = units[0] ;
+                } // currency change. reset unit
             } ; // money_currency_changed
+
+            // insert money transaction row. tab/enter
+            self.money_insert_row = function (money_transaction) {
+                var pgm = controller + '.money_insert_row: ' ;
+                console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
+                if (self.validate_money()) return ; // error. wait with new row
+                if (self.money_is_empty(money_transaction)) return ; // wait. empty row
+                var index ;
+                for (var i=0 ; i<self.money_transactions.length ; i++) if (self.money_transactions[i].$$hashKey == money_transaction.$$hashKey) index = i ;
+                index = index + 1 ;
+                self.money_transactions.splice(index, 0, {action: null, currency: null, amount: null, unit: null});
+                $scope.$apply();
+            } ; // money_insert_row
+
+            self.money_delete_row = function (money_transaction) {
+                var index ;
+                for (var i=0 ; i<self.money_transactions.length ; i++) if (self.money_transactions[i].$$hashKey == money_transaction.$$hashKey) index = i ;
+                // console.log(pgm + 'row = ' + JSON.stringify(row)) ;
+                self.money_transactions.splice(index, 1);
+                if (self.money_transactions.length == 0) self.money_transactions.splice(index, 0, {action: null, currency: null, amount: null, unit: null});
+            } ; // money_delete_row
+
+            self.money_is_empty = function (money_transaction) {
+                return (!money_transaction.action && !money_transaction.currency && !money_transaction.amount && !money_transaction.unit) ;
+            } ; // money_is_empty
+
+            // money transaction field required? all or none
+            self.money_required = function (action, money_transaction) {
+                if (!self.show_money) return false ;
+                if (self.money_is_empty(money_transaction)) return false ;
+                return true ;
+            } ; // money_required
+
+            self.money_amount_re = '^[+-]?[0-9]*(\.[0-9]+)?$' ;
+
+            // validate money transaction(s). Empty money transaction = no money transaction
+            // returns null (ok) or an error message
+            self.validate_money = function (tab) {
+                var pgm = controller + '.validate_money' ;
+                var i, money_transaction, empty_rows ;
+                if (!self.show_money) return null ;
+                empty_rows = false ;
+                for (i=0 ; i<self.money_transactions.length ; i++) {
+                    money_transaction = self.money_transactions[i] ;
+                    if (self.money_is_empty(money_transaction)) {
+                        empty_rows = true ;
+                        continue ;
+                    }
+                    if (!money_transaction.action) return 'Row ' + (i+1) + ': Action (Send/Request) is required' ;
+                    if (!money_transaction.currency) return 'Row ' + (i+1) + ': Currency is required' ;
+                    if (!money_transaction.amount) return 'Row ' + (i+1) + ': Amount is required' ;
+                    if (!money_transaction.unit) return 'Row ' + (i+1) + ': Unit is required' ;
+                }
+                if (empty_rows || !tab) return null ;
+                return 'Press <Tab> to insert extra rows' ;
+
+            } ; // validate_money
 
             // public chat checkbox changed - add/remove public chat from UI
             self.public_chat_changed = function () {

@@ -1052,27 +1052,34 @@
                                                     <tbody>
                                                     <tr ng-repeat="mt in c.money_transactions">
                                                         <td>
-                                                            <input type="text" placeholder="Action ..." style="width: 75px"
-                                                                   ng-model="mt.action" required ng-change="c.money_transaction_changed('action', mt)"
+                                                            <input type="text" placeholder="Action. Start typing ..." style="width: 70px"
+                                                                   ng-model="mt.action" ng-required="c.money_required('action',mt)" ng-change="c.money_transaction_changed('action', mt)"
                                                                    uib-typeahead="action for action in c.money_actions | filter:$viewValue | limitTo:8"
                                                                    typeahead-editable="false">
                                                         </td>
                                                         <td>
-                                                            <input type="text" placeholder="Select currency. Start typing ..." style="width: 300px"
-                                                                   ng-model="mt.currency" required ng-change="c.money_transaction_changed('currency', mt)"
+                                                            <input type="text" placeholder="Currency. Start typing ..." style="width: 300px"
+                                                                   ng-model="mt.currency" ng-required="c.money_required('currency',mt)" ng-change="c.money_transaction_changed('currency', mt)"
                                                                    uib-typeahead="currency.unique_text for currency in c.currencies | filter:$viewValue | limitTo:8"
                                                                    typeahead-editable="false">
                                                         </td>
-                                                        <td><input type="text" placeholder="Enter amount" style="width: 80px"
-                                                                   ng-model="mt.amount" required ng-change="c.money_transaction_changed('amount', mt)">
+                                                        <td><input type="text" placeholder="Amount" style="width: 80px" ng-pattern="c.money_amount_re"
+                                                                   ng-model="mt.amount" ng-required="c.money_required('amount',mt)" ng-change="c.money_transaction_changed('amount', mt)">
                                                         </td>
                                                         <td>
-                                                            <input type="text" placeholder="Select unit. Start typing ..." style="width: 80px"
-                                                                   ng-model="mt.unit" required ng-change="c.money_transaction_changed('unit', mt)"
+                                                            <input type="text" placeholder="Unit. Start typing ..." style="width: 80px"
+                                                                   ng-model="mt.unit" ng-required="c.money_required('unit',mt)" ng-change="c.money_transaction_changed('unit', mt)"
                                                                    uib-typeahead="unit.unit for unit in c.money_get_units(mt) | filter:$viewValue | limitTo:8"
-                                                                   typeahead-editable="false">
+                                                                   typeahead-editable="false" on-key-enter="c.money_insert_row(mt)">
                                                         </td>
-                                                        <td>+/-</td>
+                                                        <td title="Delete row">
+                                                            <span ng-click="c.money_delete_row(mt)"
+                                                                  class="glyphicon glyphicon-remove" style="color: red; font-size: larger">
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan="5" ng-bind="c.validate_money(true)"></td>
                                                     </tr>
                                                     </tbody>
                                                 </table>
