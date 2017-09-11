@@ -1108,6 +1108,7 @@ angular.module('MoneyNetwork')
 
             self.new_chat_msg = '';
             self.new_chat_src = null ;
+            self.new_chat_msg_disabled = false ; // disabled while sending chat message
 
             self.handleTextAreaHeight = function (e) {
                 // see issue #34 Resend old messages?
@@ -1118,10 +1119,18 @@ angular.module('MoneyNetwork')
                 element.style.height = element.scrollHeight + 'px';
             };
 
+            self.open_wallet = function (money_transaction) {
+                var pgm = controller + '.open_wallet: ' ;
+                console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
+            } ; // open_wallet
+
             self.confirmed_send_chat = null ;
             self.send_chat_msg = function () {
                 var pgm = controller + '.send_chat_msg: ';
-                var i, j, contact, my_unique_id, message, error, warning;
+                var i, j, contact, my_unique_id, message, error, warning, money_transactions;
+
+                // disable form elements while checking and sending message
+                self.new_chat_msg_disabled = true ;
 
                 // check image attachment
                 if (self.new_chat_src && !moneyNetworkService.get_image_ext_from_base64uri(self.new_chat_src)) {
@@ -1136,7 +1145,10 @@ angular.module('MoneyNetwork')
                 self.editing_grp_chat = false ;
                 if (self.group_chat) {
                     contact = find_group_chat_contact() ;
-                    if (!contact) return ;
+                    if (!contact) {
+                        self.new_chat_msg_disabled = false ;
+                        return ;
+                    }
                     if (contact.type != 'group') {
                         self.contact = contact ;
                         self.group_chat = false;
@@ -1157,6 +1169,7 @@ angular.module('MoneyNetwork')
                             error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
                             if (error) {
                                 ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                                self.new_chat_msg_disabled = false ;
                                 return;
                             }
                             // send group chat message
@@ -1167,11 +1180,40 @@ angular.module('MoneyNetwork')
                 }
                 else contact = self.contact ;
 
+                // money transaction?
                 if (contact.type == 'group') self.show_money = false ;
-                if (self.show_money)
+                if (self.show_money) {
+                    if (self.validate_money_transactions()) {
+                        // error in money transaction(s)
+                        self.new_chat_msg_disabled = false ;
+                        return ;
+                    }
+                    // empty money transaction(s)?
+                    money_transactions = false ;
+                    for (i=0 ; i<self.money_transactions.length ; i++) {
+                        if (!self.money_transaction_is_empty(self.money_transactions[i])) {
+                            money_transactions = true ;
+                            break ;
+                        }
+                    }
+                    if (!money_transactions) self.show_money = false ;
+                }
+
+                if (self.show_money) {
+                    // non empty money transaction(s)
+                    console.log(pgm + 'todo: 1) add wallet status / error message to money transaction table') ;
+                    console.log(pgm + 'todo: 2) add open wallet link to UI') ;
+                    console.log(pgm + 'todo: 3) ping my wallet. show ping error message in UI') ;
+                    console.log(pgm + 'todo: 4) validate money transaction. send to my wallet. returns error or a wallet specific json to be included in chat to other user') ;
+                    console.log(pgm + 'todo: 5) send chat message.') ;
+                    console.log(pgm + 'todo: 6) make money transactions table responsive? Not nice on small devices');
+                }
 
                 // callback function - send chat message
-                var cb = function () {
+                var step_3_send_message = function () {
+                    var pgm = controller + '.send_chat_msg.step_3_send_message: ';
+                    // ready to send. hide any money transactions.
+                    self.show_money = false ;
                     // send chat message to contact
                     message = {
                         msgtype: 'chat msg',
@@ -1182,6 +1224,7 @@ angular.module('MoneyNetwork')
                     // validate json
                     error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
                     if (error) {
+                        self.new_chat_msg_disabled = false ;
                         ZeroFrame.cmd("wrapperNotification", ["Error", error]);
                         return;
                     }
@@ -1207,28 +1250,166 @@ angular.module('MoneyNetwork')
                     // ready for next chat msg
                     self.new_chat_msg = '';
                     self.new_chat_src = null ;
+                    self.new_chat_msg_disabled = false ;
                     // console.log(pgm + 'contact = ' + JSON.stringify(contact));
                     // update localStorage and ZeroNet
                     // console.log(pgm + 'calling ls_save_contacts');
                     if (contact) contact.seen_at = new Date().getTime() ;
                     moneyNetworkService.update_chat_notifications() ;
                     moneyNetworkService.ls_save_contacts(true);
+                } ; // step_3_send_message
 
-                } ; // cb
+                // callback function - optional money transaction
+                var step_2_check_money = function () {
+                    var pgm = controller + '.send_chat_msg.step_2_check_money: ';
+                    var unique_texts, i, money_transaction, unique_text, sessions, j, balance, ping_wallet_session,
+                        set_ping_error, wallet_link ;
+                    console.log(pgm + 'show_money = ' + self.show_money) ;
+                    if (!self.show_money) return step_3_send_message() ; // no money - continue
 
-                // send msg. confirm send if chatting to an "old" contact
-                if (contact && (contact.type != 'group') &&
-                    (warning=moneyNetworkService.is_old_contact(contact,true)) &&
-                    (self.confirmed_send_chat != contact.unique_id)) {
-                    ZeroFrame.cmd("wrapperConfirm", [warning + '<br>Send message anyway?', "Send"], function (confirm) {
-                        if (!confirm) return ;
-                        // only ask for confirmation once for contact
-                        self.confirmed_send_chat = contact.unique_id ;
-                        cb() ;
-                    }) ;
-                }
-                else cb() ;
-                if (!warning) self.confirmed_send_chat = null ;
+                    // ping wallet(s). fast response. relevant wallet(s) must be open before sending chat with money transaction(s)
+                    // find unique_texts and sessionids before ping wallets
+                    unique_texts = {} ;
+                    for (i=0 ; i<self.money_transactions.length ; i++) {
+                        money_transaction = self.money_transactions[i] ;
+                        if (!money_transaction.message) money_transaction.message = {} ;
+                        delete money_transaction.message.ping ; // delete any old ping error message
+                        delete money_transaction.message.open_wallet ; // delete any old show wallet link
+                        console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction));
+                        if (self.money_transaction_is_empty(money_transaction)) continue ;
+                        unique_text = money_transaction.currency ;
+                        if (!unique_texts[unique_text]) unique_texts[unique_text] = {
+                            balance: null,
+                            money_transactions: []
+                        } ;
+                        unique_texts[unique_text].money_transactions.push(money_transaction) ;
+                    } // for i
+                    console.log(pgm + 'unique_texts = ' + JSON.stringify(unique_texts)) ;
+                    // unique_texts = ["tBTC Test Bitcoin from MoneyNetworkW2"]
+
+                    sessions = [] ;
+                    for (unique_text in unique_texts) {
+                        for (j=0 ; j<self.currencies.length ; j++) {
+                            balance = self.currencies[j] ;
+                            if (balance.unique_text != unique_text) continue ;
+                            sessions.push(balance) ;
+                            unique_texts[unique_text].balance = balance ;
+                            break ;
+                        } // for j
+                    } // for i
+                    console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
+                    // sessions = [{"code":"tBTC","amount":1.3,"balance_at":1504431366592,"sessionid":"wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1","wallet_sha256":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74","wallet_address":"1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1","wallet_title":"MoneyNetworkW2","wallet_description":"Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro","unique_id":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74/tBTC","name":"Test Bitcoin","url":"https://en.bitcoin.it/wiki/Testnet","units":[{"unit":"BitCoin","factor":1},{"unit":"Satoshi","factor":1e-8}],"unique_text":"tBTC Test Bitcoin from MoneyNetworkW2"}]
+
+                    set_ping_error = function (unique_text, error, show_wallet) {
+                        var pgm = controller + '.send_chat_msg.step_2_check_money.set_ping_error: ';
+                        var i, money_transaction ;
+                        if (!unique_texts[unique_text]) throw pgm + 'System error. Unknown unique_text ' + unique_text ;
+                        if (!unique_texts[unique_text].money_transactions || !unique_texts[unique_text].money_transactions.length) throw pgm + 'System error. No money transactions found for unique_text ' + unique_text ;
+                        for (i=0 ; i<unique_texts[unique_text].money_transactions.length ; i++) {
+                            money_transaction = unique_texts[unique_text].money_transactions[i] ;
+                            if (!money_transaction.message) money_transaction.message = {} ;
+                            money_transaction.message.ping = error ;
+                            if (show_wallet) money_transaction.message.open_wallet = true ;
+                            format_money_transaction_message(money_transaction) ;
+                        }
+                    } ; // set_ping_error
+
+                    // any unknown unique_texts / sessions?
+                    for (unique_text in unique_texts) {
+                        if (!unique_texts[unique_text].balance) set_ping_error(unique_text, 'Cannot ping unknown wallet (unique_text)') ;
+                    }
+
+                    // ping wallet sessions. one loop for each session in sessions array
+                    // results:
+                    // a) ping OK. wallet is ready. ready to send money transaction(s) to wallet session for validation
+                    // b) ping timeout. wallet not ready. user should open or reload wallet in an other browser tab
+                    // c) ping error. system error. cannot send money transaction. stop send_chat_msg
+                    ping_wallet_session = function () {
+                        var pgm = controller + '.send_chat_msg.step_2_check_money.ping_session: ';
+                        var balance, i, money_transaction, errors, error ;
+                        if (!sessions.length) {
+                            // done pinging sessions
+                            errors = 0 ;
+                            for (i=0 ; i<self.money_transactions.length ; i++) {
+                                money_transaction = self.money_transactions[i] ;
+                                if (money_transaction.message.ping) errors++ ;
+                            }
+                            if (errors) {
+                                // one or more wallet ping errors. stop end chat message
+                                self.new_chat_msg_disabled = false ;
+                                $rootScope.$apply() ;
+                                error = 'Sorry. Wallet ping error' + (errors > 1 ? 's' : '') + '<br>Cannot send chat message with money transaction' ;
+                                ZeroFrame.cmd("wrapperNotification", ['error', error, 5000]) ;
+                                return ;
+                            }
+                            // no wallet ping errors. continue
+                            console.log(pgm + 'todo: done pinging wallet sessions. send transactions to wallets for validation');
+                            return step_3_send_message() ;
+                        }
+                        balance = sessions.shift() ;
+                        MoneyNetworkAPILib.get_session(balance.sessionid, function (session) {
+                            var request, error, url ;
+                            if (!session) {
+                                error = 'error. could not ping ' + balance.unique_text + ' wallet. ' +
+                                    'could not find any old session with sessionid ' + balance.sessionid +
+                                    '. please check any previous error in log for sessionid ' + balance.sessionid ;
+                                console.log(pgm + error) ;
+                                set_ping_error(balance.unique_text, 'Cannot ping unknown wallet (sessionid)', false) ;
+                                return ping_wallet_session() ; // next session (if any)
+                            }
+                            // send ping. timeout max 5 seconds. Expects Timeout or OK response
+                            request = { msgtype: 'ping' };
+                            session.encrypt.send_message(request, {response: 5000}, function (response) {
+                                if (response && response.error && response.error.match(/^Timeout /)) {
+                                    // OK. Timeout. Continue with next session
+                                    set_ping_error(balance.unique_text, 'Wallet ping timeout', true) ;
+                                    return ping_wallet_session(); // next session (if any)
+                                }
+                                if (!response || response.error) {
+                                    // Unexpected error.
+                                    error = 'error. ping sessionid ' + balance.sessionid + ' returned ' + JSON.stringify(response) ;
+                                    console.log(pgm + error) ;
+                                    set_ping_error(balance.unique_text, 'Wallet ping error ' + JSON.stringify(response), true) ;
+                                    return ping_wallet_session(); // next session (if any)
+                                }
+                                // ping OK. wallet session
+                                console.log(pgm + 'wallet session ping OK. balance = ' + JSON.stringify(balance)) ;
+                                set_ping_error(balance.unique_text, null) ;
+                                ping_wallet_session() ; // next session (if any)
+                            }) ; // send_message
+
+                        }) ; // get_session callback
+
+                    } ; // ping_session
+                    // start ping loop
+                    ping_wallet_session() ;
+
+                } ; // step_2_check_money
+
+                var step_1_confirm_send = function () {
+                    var pgm = controller + '.send_chat_msg.step_1_confirm_send: ';
+                    // send msg. confirm send if chatting to an "old" contact
+                    var warning ;
+                    if (contact && (contact.type != 'group') &&
+                        (warning=moneyNetworkService.is_old_contact(contact,true)) &&
+                        (self.confirmed_send_chat != contact.unique_id)) {
+                        ZeroFrame.cmd("wrapperConfirm", [warning + '<br>Send message anyway?', "Send"], function (confirm) {
+                            if (!confirm) {
+                                self.new_chat_msg_disabled = false ;
+                                return ;
+                            }
+                            // only ask for confirmation once for contact
+                            self.confirmed_send_chat = contact.unique_id ;
+                            step_2_check_money() ;
+                        }) ;
+                        return ;
+                    }
+                    self.confirmed_send_chat = null ; // no warning
+                    step_2_check_money() ;
+                } ; // step_1_confirm_send
+
+                // start callback chain
+                step_1_confirm_send();
 
             }; // send_chat_msg
 
@@ -1554,7 +1735,25 @@ angular.module('MoneyNetwork')
 
             self.new_chat_add_money = function() {
                 var pgm = controller + '.new_chat_add_money: ' ;
-                var currencies ;
+                var contact, currencies ;
+
+                // money transactions are only allowed from private chat.
+                // check group chat? find/create pseudo contact for this chat group.
+                self.editing_grp_chat = false ;
+                console.log(pgm + 'group_chat = ' + JSON.stringify(self.group_chat));
+                if (self.group_chat) {
+                    contact = find_group_chat_contact() ;
+                    if (!contact) return ;
+                    if (contact.type != 'group') {
+                        self.contact = contact ;
+                        self.group_chat = false;
+                        self.group_chat_contacts = [];
+                    }
+                }
+                if (!self.contact || self.group_chat) {
+                    ZeroFrame.cmd("wrapperNotification", ['info', 'Money transactions are only available in private chat<br>Click on an avatar to start a private chat', 5000]) ;
+                    return ;
+                }
                 console.log(pgm + 'todo: Send, receive or donate money. Pay or receive payment. Not yet implemented') ;
 
                 console.log(pgm + 'todo: currencies. must have a distributed currency list. Symbol 2-5 characters, name and description');
@@ -1641,14 +1840,17 @@ angular.module('MoneyNetwork')
                     units = self.money_get_units(money_transaction) ;
                     if (units.length == 1) money_transaction.unit = units[0] ;
                 } // currency change. reset unit
+
+                console.log(pgm + 'todo: set money_transaction.message. error message and/or wallet balance') ;
+
             } ; // money_currency_changed
 
             // insert money transaction row. tab/enter
             self.money_insert_row = function (money_transaction) {
                 var pgm = controller + '.money_insert_row: ' ;
                 console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
-                if (self.validate_money()) return ; // error. wait with new row
-                if (self.money_is_empty(money_transaction)) return ; // wait. empty row
+                if (self.validate_money_transactions()) return ; // error. wait with new row
+                if (self.money_transaction_is_empty(money_transaction)) return ; // wait. empty row
                 var index ;
                 for (var i=0 ; i<self.money_transactions.length ; i++) if (self.money_transactions[i].$$hashKey == money_transaction.$$hashKey) index = i ;
                 index = index + 1 ;
@@ -1656,49 +1858,86 @@ angular.module('MoneyNetwork')
                 $scope.$apply();
             } ; // money_insert_row
 
-            self.money_delete_row = function (money_transaction) {
+            self.money_transaction_delete_row = function (money_transaction) {
                 var index ;
                 for (var i=0 ; i<self.money_transactions.length ; i++) if (self.money_transactions[i].$$hashKey == money_transaction.$$hashKey) index = i ;
                 // console.log(pgm + 'row = ' + JSON.stringify(row)) ;
                 self.money_transactions.splice(index, 1);
                 if (self.money_transactions.length == 0) self.money_transactions.splice(index, 0, {action: null, currency: null, amount: null, unit: null});
-            } ; // money_delete_row
+            } ; // money_transaction_delete_row
 
-            self.money_is_empty = function (money_transaction) {
+            self.money_transaction_is_empty = function (money_transaction) {
                 return (!money_transaction.action && !money_transaction.currency && !money_transaction.amount && !money_transaction.unit) ;
-            } ; // money_is_empty
-
-            // money transaction field required? all or none
-            self.money_required = function (action, money_transaction) {
-                if (!self.show_money) return false ;
-                if (self.money_is_empty(money_transaction)) return false ;
-                return true ;
-            } ; // money_required
-
+            } ; //money_transaction_is_empty
+            
             self.money_amount_re = '^[+-]?[0-9]*(\.[0-9]+)?$' ;
+
+            function format_money_transaction_message (money_transaction) {
+                var messages = [] ;
+                if (money_transaction.message.balance) messages.push(money_transaction.message.balance) ;
+                if (money_transaction.message.required) messages.push(money_transaction.message.required) ;
+                if (money_transaction.message.ping) messages.push(money_transaction.message.ping) ; // wallet ping error
+                money_transaction.message.html = messages.join('. ') ;
+            } // format_money_transaction_message
+
+            // set money_transaction.message. return error message
+            self.validate_money_transaction = function (money_transaction) {
+                var pgm = controller + '.validate_money_transaction: ' ;
+                var messages, amount, balances, balance, i, units, j, required ;
+                if (!money_transaction.message) money_transaction.message = {} ;
+                money_transaction.message.html = null ;
+                if (self.money_transaction_is_empty(money_transaction)) return null ;
+                // check (old) balance
+                delete money_transaction.message.balance ;
+                if (money_transaction.currency) {
+                    // lookup balance
+                    balances = [] ;
+                    for (i=0 ; i<self.currencies.length ; i++) {
+                        if (self.currencies[i].unique_text != money_transaction.currency) continue ;
+                        amount = self.currencies[i].amount ;
+                        // units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                        units = self.currencies[i].units ;
+                        for (j=0 ; j<units.length ; j++) {
+                            balance = amount / units[j].factor + ' ' + units[j].unit ;
+                            if (units[j].factor == 1) balances.unshift(balance) ;
+                            else balances.push(balance) ;
+                        } // for j
+                    } // for k
+                    if (balances.length) money_transaction.message.balance = 'Wallet balance ' + balances.join(' = ') ;
+                }
+                // validate row (required values)
+                if (!money_transaction.action) required = 'Action (Send/Request) is required' ;
+                else if (!money_transaction.currency) required = 'Currency is required' ;
+                else if (!money_transaction.amount) required = 'Amount is required' ;
+                else if (!money_transaction.unit) required = 'Unit is required' ;
+                if (required) money_transaction.message.required = required ;
+                else delete money_transaction.message.required ;
+                // format message
+                format_money_transaction_message(money_transaction) ;
+                // return any required error message
+                return required ;
+            } ; // validate_money_transaction
 
             // validate money transaction(s). Empty money transaction = no money transaction
             // returns null (ok) or an error message
-            self.validate_money = function (tab) {
-                var pgm = controller + '.validate_money' ;
-                var i, money_transaction, empty_rows ;
+            self.validate_money_transactions = function (tab) {
+                var pgm = controller + '.validate_money_transactions: ' ;
+                var i, money_transaction, empty_rows, errors ;
                 if (!self.show_money) return null ;
                 empty_rows = false ;
+                errors = 0 ;
                 for (i=0 ; i<self.money_transactions.length ; i++) {
                     money_transaction = self.money_transactions[i] ;
-                    if (self.money_is_empty(money_transaction)) {
+                    if (self.money_transaction_is_empty(money_transaction)) {
                         empty_rows = true ;
                         continue ;
                     }
-                    if (!money_transaction.action) return 'Row ' + (i+1) + ': Action (Send/Request) is required' ;
-                    if (!money_transaction.currency) return 'Row ' + (i+1) + ': Currency is required' ;
-                    if (!money_transaction.amount) return 'Row ' + (i+1) + ': Amount is required' ;
-                    if (!money_transaction.unit) return 'Row ' + (i+1) + ': Unit is required' ;
+                    if (self.validate_money_transaction(money_transaction)) errors++ ;
                 }
+                if (errors) return 'Please enter requested information or delete money transaction' + (errors > 1 ? 's' : '');
                 if (empty_rows || !tab) return null ;
                 return 'Press <Tab> to insert extra rows' ;
-
-            } ; // validate_money
+            } ; // validate_money_transaction
 
             // public chat checkbox changed - add/remove public chat from UI
             self.public_chat_changed = function () {

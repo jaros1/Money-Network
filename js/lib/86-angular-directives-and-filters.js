@@ -469,8 +469,6 @@ angular.module('MoneyNetwork')
         // end reactInfoCount
     }])
 
-
-
     // http://stackoverflow.com/questions/16349578/angular-directive-for-a-fallback-image
     .directive('fallbackSrc', function () {
         var fallbackSrc = {

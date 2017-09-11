@@ -1024,7 +1024,7 @@
                                             <td colspan="2" style="width: 99%">
                                                 <textarea class="autosize postfield new_chat_msg" id="new_chat_msg"
                                                           placeholder="{{c.contact|contactPlaceholderText}}" rows="1" required
-                                                          ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)">
+                                                          ng-model="c.new_chat_msg" ng-keyup="c.handleTextAreaHeight($event)" ng-disabled="c.new_chat_msg_disabled">
                                                 </textarea>
                                                 <span ng-show="c.chat_hint_pubkey()">
                                                     Chat not possible for this contact. No public key was found on ZeroNet.
@@ -1050,36 +1050,42 @@
                                                     </tr>
                                                     </thead>
                                                     <tbody>
-                                                    <tr ng-repeat="mt in c.money_transactions">
+                                                    <tr ng-repeat-start="mt in c.money_transactions" style="vertical-align: top">
                                                         <td>
-                                                            <input type="text" placeholder="Action. Start typing ..." style="width: 70px"
-                                                                   ng-model="mt.action" ng-required="c.money_required('action',mt)" ng-change="c.money_transaction_changed('action', mt)"
+                                                            <input type="text" placeholder="Action. Start typing ..." style="width: 70px; margin-bottom: 1px;"
+                                                                   ng-model="mt.action" ng-required="c.money_required('action',mt)" ng-change="c.money_transaction_changed('action', mt)" ng-disabled="c.new_chat_msg_disabled"
                                                                    uib-typeahead="action for action in c.money_actions | filter:$viewValue | limitTo:8"
                                                                    typeahead-editable="false">
                                                         </td>
                                                         <td>
-                                                            <input type="text" placeholder="Currency. Start typing ..." style="width: 300px"
-                                                                   ng-model="mt.currency" ng-required="c.money_required('currency',mt)" ng-change="c.money_transaction_changed('currency', mt)"
+                                                            <input type="text" placeholder="Currency. Start typing ..." style="width: 300px; margin-bottom: 1px;"
+                                                                   ng-model="mt.currency" ng-required="c.money_required('currency',mt)" ng-change="c.money_transaction_changed('currency', mt)" ng-disabled="c.new_chat_msg_disabled"
                                                                    uib-typeahead="currency.unique_text for currency in c.currencies | filter:$viewValue | limitTo:8"
                                                                    typeahead-editable="false">
                                                         </td>
-                                                        <td><input type="text" placeholder="Amount" style="width: 80px" ng-pattern="c.money_amount_re"
-                                                                   ng-model="mt.amount" ng-required="c.money_required('amount',mt)" ng-change="c.money_transaction_changed('amount', mt)">
+                                                        <td><input type="text" placeholder="Amount" style="width: 80px; margin-bottom: 1px;" ng-pattern="c.money_amount_re"
+                                                                   ng-model="mt.amount" ng-required="c.money_required('amount',mt)" ng-change="c.money_transaction_changed('amount', mt)" ng-disabled="c.new_chat_msg_disabled">
                                                         </td>
                                                         <td>
-                                                            <input type="text" placeholder="Unit. Start typing ..." style="width: 80px"
-                                                                   ng-model="mt.unit" ng-required="c.money_required('unit',mt)" ng-change="c.money_transaction_changed('unit', mt)"
+                                                            <input type="text" placeholder="Unit. Start typing ..." style="width: 80px; margin-bottom: 1px;"
+                                                                   ng-model="mt.unit" ng-required="c.money_required('unit',mt)" ng-change="c.money_transaction_changed('unit', mt)" ng-disabled="c.new_chat_msg_disabled"
                                                                    uib-typeahead="unit.unit for unit in c.money_get_units(mt) | filter:$viewValue | limitTo:8"
                                                                    typeahead-editable="false" on-key-enter="c.money_insert_row(mt)">
                                                         </td>
                                                         <td title="Delete row">
-                                                            <span ng-click="c.money_delete_row(mt)"
+                                                            <span ng-click="c.money_transaction_delete_row(mt)" ng-disabled="c.new_chat_msg_disabled"
                                                                   class="glyphicon glyphicon-remove" style="color: red; font-size: larger">
                                                             </span>
                                                         </td>
                                                     </tr>
+                                                    <tr ng-repeat-end>
+                                                        <td colspan="5" style="vertical-align: top">
+                                                            <span ng-bind-html="mt.message.html"></span>
+                                                            <span ng-show="mt.message.open_wallet">. <a href="" ng-click="c.open_wallet(mt)">Open wallet</a></span>
+                                                        </td>
+                                                    </tr>
                                                     <tr>
-                                                        <td colspan="5" ng-bind="c.validate_money(true)"></td>
+                                                        <td colspan="5" ng-bind="c.validate_money_transactions(true)"></td>
                                                     </tr>
                                                     </tbody>
                                                 </table>
@@ -1098,9 +1104,8 @@
                                         <tr>
                                             <td colspan="2" style="width: 99%; text-align: right">
 
-                                                <span ng-show="c.contact"
-                                                      class="glyphicon glyphicon-bitcoin" title="Add money transaction"
-                                                      ng-click="c.new_chat_add_money()"></span>
+                                                <span class="glyphicon glyphicon-bitcoin" title="Add/remove money transaction"
+                                                      ng-click="c.new_chat_add_money()" ng-disabled="c.new_chat_msg_disabled"></span>
 
                                                 <div class="image-upload" title="Add image">
                                                     <label for="file-input2">
@@ -1109,12 +1114,12 @@
                                                     <input id="file-input2" type="file"
                                                            accept=".png, .jpg, .jpeg, .gif, .tif"
                                                            custom-on-change="c.uploadImage"
-                                                           ng-disabled="c.chat_hint_pubkey()"/>
+                                                           ng-disabled="c.new_chat_msg_disabled || c.chat_hint_pubkey()"/>
                                                 </div>
 
                                                 <button type="submit" title="Send chat message"
                                                         ng-click="c.send_chat_msg()"
-                                                        ng-disabled="new_chat_msg_form.$invalid">Send
+                                                        ng-disabled="c.new_chat_msg_disabled || new_chat_msg_form.$invalid">Send
                                                 </button>
                                             </td>
                                         </tr>

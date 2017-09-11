@@ -642,7 +642,7 @@ angular.module('MoneyNetwork')
             // todo: better param name (delayed)
 
             MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, delayed) {
-                var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row ;
+                var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row, unique_texts ;
                 // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
                 //wallet_info = {
                 //    "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74": {
@@ -681,6 +681,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'sessions (after get_currencies) = ' + JSON.stringify(ls_sessions)) ;
 
                 // move currency info (name, url and units) to currency rows for easy filter and sort
+                unique_texts = {} ;
                 for (i=temp_currencies.length-1 ; i>=0 ; i--) {
                     balance = temp_currencies[i] ;
                     if (!balance.currencies || !balance.currencies.length) {
@@ -721,7 +722,16 @@ angular.module('MoneyNetwork')
                         balance[key] = currency[key] ;
                     }
                     balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_title;
+                    if (!unique_texts[balance.unique_text]) unique_texts[balance.unique_text] = 0 ;
+                    unique_texts[balance.unique_text]++ ;
                     delete balance.currencies ;
+                } // for i
+
+                console.log(pgm + 'force unique_text. wallet_title may not be unique') ;
+                for (i=0 ; i<temp_currencies.length ; i++) {
+                    balance = temp_currencies[i] ;
+                    if (unique_texts[balance.unique_text] == 1) continue ; // OK
+                    balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_address;
                 } // for i
 
                 // merge new currencies array into old currencies array (insert, update, delete). used in angularJS UI
