@@ -1,9 +1,9 @@
 angular.module('MoneyNetwork')
     
     .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location',
-        'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', '$window', 'dateFilter',
+        'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', '$window', 'dateFilter', '$sce',
         function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location,
-                  chatEditTextAreaId, chatEditImgId, formatChatMessage, $window, date)
+                  chatEditTextAreaId, chatEditImgId, formatChatMessage, $window, date, $sce)
         {
             
             var self = this;
@@ -1121,7 +1121,48 @@ angular.module('MoneyNetwork')
 
             self.open_wallet = function (money_transaction) {
                 var pgm = controller + '.open_wallet: ' ;
+                var unique_text, i, balance, error, url ;
                 console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
+                //money_transaction = {
+                //    "action": "Send",
+                //    "currency": "tBTC Test Bitcoin from MoneyNetworkW2",
+                //    "amount": "10000",
+                //    "unit": "Satoshi",
+                //    "$$hashKey": "object:3041",
+                //    "message": {
+                //        "html": {},
+                //        "ping": "Wallet ping timeout",
+                //        "open_wallet": true,
+                //        "balance": "Wallet balance 1.3 BitCoin = 130000000 Satoshi"
+                //    }
+                //};
+                unique_text = money_transaction.currency ;
+                //currencies = [{
+                //    "code": "tBTC",
+                //    "amount": 1.3,
+                //    "balance_at": 1504265571720,
+                //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74",
+                //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //    "wallet_title": "MoneyNetworkW2",
+                //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                //    "name": "Test Bitcoin",
+                //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                //}];
+                for (i=0 ; i<self.currencies.length ; i++) {
+                    if (self.currencies[i].unique_text != unique_text) continue ;
+                    balance = self.currencies[i] ;
+                    break ;
+                }
+                if (!balance) {
+                    error = 'error. could not find ' + unique_text + ' wallet' ;
+                    console.log(pgm + error) ;
+                    ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                    return ;
+                }
+                url = '/' + (balance.wallet_domain || balance.wallet_address);
+                ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
             } ; // open_wallet
 
             self.confirmed_send_chat = null ;
@@ -1328,7 +1369,7 @@ angular.module('MoneyNetwork')
                         var pgm = controller + '.send_chat_msg.step_2_check_money.ping_session: ';
                         var balance, i, money_transaction, errors, error ;
                         if (!sessions.length) {
-                            // done pinging sessions
+                            // done pinging sessions. count number of ping errors
                             errors = 0 ;
                             for (i=0 ; i<self.money_transactions.length ; i++) {
                                 money_transaction = self.money_transactions[i] ;
@@ -1338,8 +1379,11 @@ angular.module('MoneyNetwork')
                                 // one or more wallet ping errors. stop end chat message
                                 self.new_chat_msg_disabled = false ;
                                 $rootScope.$apply() ;
-                                error = 'Sorry. Wallet ping error' + (errors > 1 ? 's' : '') + '<br>Cannot send chat message with money transaction' ;
-                                ZeroFrame.cmd("wrapperNotification", ['error', error, 5000]) ;
+                                error =
+                                    'Sorry. Wallet ping error' + (errors > 1 ? 's' : '') + '.' +
+                                    '<br>Cannot validate money transaction.' +
+                                    '<br>Please open and/or check wallet in other browser tab.' ;
+                                ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
                                 return ;
                             }
                             // no wallet ping errors. continue
@@ -1368,8 +1412,9 @@ angular.module('MoneyNetwork')
                                 if (!response || response.error) {
                                     // Unexpected error.
                                     error = 'error. ping sessionid ' + balance.sessionid + ' returned ' + JSON.stringify(response) ;
-                                    console.log(pgm + error) ;
-                                    set_ping_error(balance.unique_text, 'Wallet ping error ' + JSON.stringify(response), true) ;
+                                    console.log(pgm + 'error. ping sessionid ' + balance.sessionid + ' returned ' + JSON.stringify(response)) ;
+                                    error = 'Wallet ping error' + (response.error ? ' ' + $sanitize(response.error) : '') ;
+                                    set_ping_error(balance.unique_text, error, true) ;
                                     return ping_wallet_session(); // next session (if any)
                                 }
                                 // ping OK. wallet session
@@ -1872,12 +1917,17 @@ angular.module('MoneyNetwork')
             
             self.money_amount_re = '^[+-]?[0-9]*(\.[0-9]+)?$' ;
 
+            function red (html) {
+                return '<span style="color:red;">' + html + '</span>' ;
+            }
+
             function format_money_transaction_message (money_transaction) {
                 var messages = [] ;
                 if (money_transaction.message.balance) messages.push(money_transaction.message.balance) ;
-                if (money_transaction.message.required) messages.push(money_transaction.message.required) ;
-                if (money_transaction.message.ping) messages.push(money_transaction.message.ping) ; // wallet ping error
-                money_transaction.message.html = messages.join('. ') ;
+                if (money_transaction.message.required) messages.push(red(money_transaction.message.required)) ;
+                if (money_transaction.message.ping) messages.push(red(money_transaction.message.ping)) ; // wallet ping error
+                if (messages.length) money_transaction.message.html = $sce.trustAsHtml(messages.join('. ') + '.') ;
+                else money_transaction.message.html = null ;
             } // format_money_transaction_message
 
             // set money_transaction.message. return error message
