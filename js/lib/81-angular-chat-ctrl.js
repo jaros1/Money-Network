@@ -1,9 +1,9 @@
 angular.module('MoneyNetwork')
     
     .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location',
-        'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', '$window', 'dateFilter', '$sce',
+        'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', '$window', 'dateFilter', '$sce', '$sanitize',
         function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location,
-                  chatEditTextAreaId, chatEditImgId, formatChatMessage, $window, date, $sce)
+                  chatEditTextAreaId, chatEditImgId, formatChatMessage, $window, date, $sce, $sanitize)
         {
             
             var self = this;
@@ -1144,8 +1144,8 @@ angular.module('MoneyNetwork')
             self.confirmed_send_chat = null ;
             self.send_chat_msg = function () {
                 var pgm = controller + '.send_chat_msg: ';
-                var i, j, contact, my_unique_id, message, error, money_transactions, unique_texts_hash, step_1_confirm_send,
-                    step_2_ping_wallets, step_3_check_transactions, step_4_send_message;
+                var i, j, contact, my_unique_id, message, error, money_transactions, unique_texts_hash, set_ping_error,
+                    step_1_confirm_send, step_2_ping_wallets, step_3_check_transactions, step_4_send_message;
 
                 // disable form elements while checking and sending message
                 self.new_chat_msg_disabled = true ;
@@ -1220,13 +1220,27 @@ angular.module('MoneyNetwork')
                 if (self.show_money) {
                     // non empty money transaction(s)
                     console.log(pgm + 'todo: 1) validate money transaction. send to my wallet. returns error or a wallet specific json to be included in chat to other user') ;
-                    console.log(pgm + 'todo: 2) Press <Tab> to insert extra rows should be pinging wallets (step 2) / checking money transactions (step 3)');
                     console.log(pgm + 'todo: 2) send chat message.') ;
                     console.log(pgm + 'todo: 3) make money transactions table responsive? Not nice on small devices');
                 }
 
                 // unique_texts hash. used in step_2_ping_wallets and step_3_check_transactions
                 unique_texts_hash = {} ;
+
+                set_ping_error = function (unique_text, error, show_wallet) {
+                    var pgm = controller + '.send_chat_msg.step_2_ping_wallets.set_ping_error: ';
+                    var i, money_transaction, j ;
+                    if (!unique_texts_hash[unique_text]) throw pgm + 'System error. Unknown unique_text ' + unique_text ;
+                    if (!unique_texts_hash[unique_text].money_transactions || !unique_texts_hash[unique_text].money_transactions.length) throw pgm + 'System error. No money transactions found for unique_text ' + unique_text ;
+                    for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
+                        j = unique_texts_hash[unique_text].money_transactions[i] ;
+                        money_transaction = self.money_transactions[j] ;
+                        if (!money_transaction.message) money_transaction.message = {} ;
+                        money_transaction.message.ping = error ;
+                        if (show_wallet) money_transaction.message.open_wallet = true ;
+                        format_money_transaction_message(money_transaction) ;
+                    }
+                } ; // set_ping_error
 
                 // callback function - send chat message
                 step_4_send_message = function () {
@@ -1284,20 +1298,38 @@ angular.module('MoneyNetwork')
                     var unique_text, unique_texts_array, check_transaction ;
                     if (!self.show_money) return step_4_send_message() ; // no money - continue with next step
 
-                    // todo: check money transactions
-                    // for each unique_text (wallet)
+                    self.new_chat_msg_disabled = 'Validating money transaction(s)' ;
+                    $rootScope.$apply() ;
+
+                    // check money transactions for each unique_text (wallet)
                     unique_texts_array = [] ;
                     for (unique_text in unique_texts_hash) unique_texts_array.push(unique_text) ;
 
                     // loop for each unique_text / wallet. send money transaction to wallet for validation
                     check_transaction = function () {
                         var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction: ';
-                        var unique_text, session, request, i, j, money_transaction ;
+                        var unique_text, session, request, i, j, money_transaction, factor, units, errors ;
                         unique_text = unique_texts_array.shift() ;
                         if (!unique_text) {
                             // todo: done checking money transactions. count errors. notification, stop or continue
+                            // done pinging wallet sessions. count number of ping errors
+                            errors = 0 ;
+                            for (i=0 ; i<self.money_transactions.length ; i++) {
+                                money_transaction = self.money_transactions[i] ;
+                                if (money_transaction.message.ping) errors++ ;
+                            }
+                            if (errors) {
+                                // one or more wallet ping errors. stop end chat message
+                                self.new_chat_msg_disabled = false ;
+                                $rootScope.$apply() ;
+                                error =
+                                    'Sorry. Wallet validate error' + (errors > 1 ? 's' : '') + '.' +
+                                    '<br>See red error message' + (errors > 1 ? 's' : '') + ' in chat.' ;
+                                ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                                return ;
+                            }
 
-                            // not implemented. stop end chat message
+                            // todo: not implemented. stop send chat message
                             self.new_chat_msg_disabled = false ;
                             $rootScope.$apply() ;
                             error = 'Sorry. Validate money transaction is not yet implemented' ;
@@ -1307,36 +1339,70 @@ angular.module('MoneyNetwork')
                         // get session
                         session = unique_texts_hash[unique_text].session ;
                         // build validate money transactions request
-                        request = { msgtype: 'validate_money_transactions', money_transactions: []} ;
+                        request = { msgtype: 'validate_transactions_request1', money_transactions: []} ;
                         for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
                             j = unique_texts_hash[unique_text].money_transactions[i] ;
                             money_transaction = self.money_transactions[j] ;
-                            //money_transaction = {
-                            //    "action": "Send",
-                            //    "currency": "tBTC Test Bitcoin from MoneyNetworkW2",
-                            //    "amount": "10000",
-                            //    "unit": "Satoshi",
-                            //    "$$hashKey": "object:3019",
-                            //    "message": {
-                            //        "html": "Wallet balance 1.3 BitCoin = 130000000 Satoshi",
-                            //        "balance": "Wallet balance 1.3 BitCoin = 130000000 Satoshi"
-                            //    }
-                            //};
+
+                            // find conversion factor from units definition
+                            units = unique_texts_hash[unique_text].balance.units ;
+                            factor = null ;
+                            for (j=0 ; j<units.length ; j++) if (units[j].unit == money_transaction.unit) {
+                                if ((factor != null) && (factor != units[j].factor)) {
+                                    // doublet unit definition with different conversion factors!
+                                    console.log(pgm + 'System error in units definition. units = ' + JSON.stringify(units)) ;
+                                    set_ping_error(unique_text, 'Could not find conversion factor for ' + money_transaction.unit, false) ;
+                                    return check_transaction() ;
+                                }
+                                factor = units[j].factor ;
+                            }
+                            if (factor == null) {
+                                console.log(pgm + 'System error in units definition. units = ' + JSON.stringify(units)) ;
+                                set_ping_error(unique_text, 'Could not find conversion factor for ' + money_transaction.unit, false) ;
+                                return check_transaction() ;
+                            }
+
                             // todo: convert to unit with factor 1 before sending request to wallet?
                             request.money_transactions.push({
                                 action: money_transaction.action,
                                 code: unique_texts_hash[unique_text].balance.code,
-                                amount: money_transaction.amount,
-                                unit: money_transaction.unit
+                                amount: money_transaction.amount * factor
                             }) ;
                         } // for i
+                        //request = {
+                        //    "msgtype": "validate_money_transactions1",
+                        //    "money_transactions": [{
+                        //        "action": "Send",
+                        //        "code": "tBTC",
+                        //        "amount": "10000"
+                        //    }]
+                        //};
 
                         // send validate money transactions request to wallet (wait max 60 seconds)
                         session.encrypt.send_message(request, {response: 60000}, function (response) {
                             var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction send_message callback: ';
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                            // response = {"error":"Cannot send message. Unknown msgtype validate_money_transactions"}
 
-                            // process result and continue with next wallet
+                            if (response && response.error && response.error.match(/^Timeout /)) {
+                                // OK. Timeout. Continue with next session
+                                set_ping_error(balance.unique_text, 'Wallet validate timeout', true) ;
+                                return check_transaction(); // check next wallet (if any)
+                            }
+                            if (!response || response.error) {
+                                // empty or error.
+                                if (response.error) error = $sanitize(response.error) ;
+                                else {
+                                    console.log(pgm + 'wallet validation error. response = ' + JSON.stringify(response)) ;
+                                    error = 'Wallet validating error' ;
+                                }
+                                set_ping_error(unique_text, error, true) ;
+                                return check_transaction(); // check next wallet (if any)
+                            }
+
+                            // todo: process result
+
+                            // check next wallet (if any)
                             check_transaction() ;
 
                         }) ; // send_message callback
@@ -1345,15 +1411,15 @@ angular.module('MoneyNetwork')
                     // start check_transaction loop
                     check_transaction() ;
 
-
                 } ; // step_3_check_transactions
                 
                 // callback function - optional step - money transactions - ping wallet sessions
                 step_2_ping_wallets = function () {
                     var pgm = controller + '.send_chat_msg.step_2_ping_wallets: ';
-                    var i, money_transaction, unique_text, sessions, j, balance, ping_wallet,
-                        set_ping_error ;
+                    var i, money_transaction, unique_text, sessions, j, balance, ping_wallet ;
                     if (!self.show_money) return step_3_check_transactions() ; // no money - continue with next step
+
+                    self.new_chat_msg_disabled = 'Pinging wallet(s)' ;
 
                     // ping wallet(s). fast response. relevant wallet(s) must be open before sending chat with money transaction(s)
                     // find unique_texts and sessionids before ping wallets
@@ -1389,20 +1455,6 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
                     // sessions = [{"code":"tBTC","amount":1.3,"balance_at":1504431366592,"sessionid":"wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1","wallet_sha256":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74","wallet_address":"1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1","wallet_title":"MoneyNetworkW2","wallet_description":"Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro","unique_id":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74/tBTC","name":"Test Bitcoin","url":"https://en.bitcoin.it/wiki/Testnet","units":[{"unit":"BitCoin","factor":1},{"unit":"Satoshi","factor":1e-8}],"unique_text":"tBTC Test Bitcoin from MoneyNetworkW2"}]
 
-                    set_ping_error = function (unique_text, error, show_wallet) {
-                        var pgm = controller + '.send_chat_msg.step_2_ping_wallets.set_ping_error: ';
-                        var i, money_transaction, j ;
-                        if (!unique_texts_hash[unique_text]) throw pgm + 'System error. Unknown unique_text ' + unique_text ;
-                        if (!unique_texts_hash[unique_text].money_transactions || !unique_texts_hash[unique_text].money_transactions.length) throw pgm + 'System error. No money transactions found for unique_text ' + unique_text ;
-                        for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
-                            j = unique_texts_hash[unique_text].money_transactions[i] ;
-                            money_transaction = self.money_transactions[j] ;
-                            if (!money_transaction.message) money_transaction.message = {} ;
-                            money_transaction.message.ping = error ;
-                            if (show_wallet) money_transaction.message.open_wallet = true ;
-                            format_money_transaction_message(money_transaction) ;
-                        }
-                    } ; // set_ping_error
 
                     // any unknown unique_texts / sessions?
                     for (unique_text in unique_texts_hash) {
@@ -1453,9 +1505,9 @@ angular.module('MoneyNetwork')
                             }
                             // save session. also used in step_3_check_transactions
                             unique_texts_hash[balance.unique_text].session = session ;
-                            // send ping. timeout max 5 seconds. Expects Timeout or OK response
+                            // send ping. timeout max 10 seconds. Expects Timeout or OK response
                             request = { msgtype: 'ping' };
-                            session.encrypt.send_message(request, {response: 5000}, function (response) {
+                            session.encrypt.send_message(request, {response: 10000}, function (response) {
                                 var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet send_message callback 2: ';
                                 if (response && response.error && response.error.match(/^Timeout /)) {
                                     // OK. Timeout. Continue with next session
@@ -2040,7 +2092,9 @@ angular.module('MoneyNetwork')
                 }
                 if (errors) return 'Please enter requested information or delete money transaction' + (errors > 1 ? 's' : '');
                 if (empty_rows || !tab) return null ;
-                return 'Press <Tab> to insert extra rows' ;
+                if (self.new_chat_msg_disabled == true) return 'Validating money transaction(s)' ;
+                else if (self.new_chat_msg_disabled) return self.new_chat_msg_disabled ;
+                else return 'Press <Tab> to insert extra rows' ;
             } ; // validate_money_transaction
 
             // public chat checkbox changed - add/remove public chat from UI

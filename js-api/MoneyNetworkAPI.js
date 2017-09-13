@@ -909,7 +909,31 @@ var MoneyNetworkAPILib = (function () {
             },
             "required": ['msgtype', 'wallet_sha256', 'currencies'],
             "additionalProperties": false
-        } // wallet
+        }, // wallet
+
+        "validate_transactions_request1": {
+            "type": 'object',
+            "title": 'Validate money transactions before send chat message',
+            "description": 'MN: send money transactions to wallet before send chat message. Multiple transactions are allowed. Wallet must return error message or json with transaction details',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^validate_transactions_request1$'},
+                "money_transactions": {
+                    "type": 'array',
+                    "items": {
+                        "type": 'object',
+                        "properties": {
+                            "action": { "type": 'string', "pattern": '^(Send|Request)$'},
+                            "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                            "amount": {"type": 'number'}
+                        },
+                        "required": ['action', 'code', 'amount'],
+                        "additionalProperties": false
+                    }
+                }
+            },
+            "required": ['msgtype', 'money_transactions'],
+            "additionalProperties": false
+        } // validate_transactions_request1
 
     }; // json_schemas
 
@@ -925,12 +949,11 @@ var MoneyNetworkAPILib = (function () {
         if (!json || !json.msgtype) return 'required msgtype is missing in json message';
         json_schema = json_schemas[json.msgtype];
         if (!json_schema) return 'Unknown msgtype ' + json.msgtype;
-        if (request_msgtype) {
+        if (request_msgtype && (json.msgtype != 'response')) {
             // validate request => response combinations
             if (request_msgtype == 'response') return 'Invalid request msgtype ' + request_msgtype;
             if (!json_schemas[request_msgtype]) return 'Unknown request msgtype ' + request_msgtype;
-            if (json.msgtype == 'response') null; // response OK for any request msgtype
-            else if ((request_msgtype == 'pubkeys') && (json.msgtype == 'pubkeys')) null; // OK combination
+            if ((request_msgtype == 'pubkeys') && (json.msgtype == 'pubkeys')) null; // OK combination
             else if ((request_msgtype == 'get_data') && (json.msgtype == 'data')) null; // OK combination
             else if ((request_msgtype == 'get_password') && (json.msgtype == 'password')) null; // OK combination
             else if ((request_msgtype == 'get_balance') && (json.msgtype == 'balance')) null; // OK combination
