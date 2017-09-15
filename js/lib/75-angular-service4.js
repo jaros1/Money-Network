@@ -3,8 +3,8 @@ angular.module('MoneyNetwork')
     // MoneyNetworkWService:
     // - wallet functions
 
-    .factory('MoneyNetworkWService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService',
-                             function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService)
+    .factory('MoneyNetworkWService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService', '$sanitize',
+                             function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService, $sanitize)
     {
         var service = 'MoneyNetworkWService' ;
         console.log(service + ' loaded') ;
@@ -564,6 +564,10 @@ angular.module('MoneyNetwork')
                             session_info.balance = request.balance ;
                             session_info.balance_at = new Date().getTime() ;
                             ls_save_sessions() ;
+                        }
+                        else if (request.msgtype == 'notification') {
+                            // received at notification from a wallet session. just display
+                            ZeroFrame.cmd("wrapperNotification", [request.type, $sanitize(request.message), request.timeout]) ;
                         }
                         else response.error = 'Unknown msgtype ' + request.msgtype ;
 

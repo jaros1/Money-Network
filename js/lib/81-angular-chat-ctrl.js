@@ -1219,9 +1219,10 @@ angular.module('MoneyNetwork')
 
                 if (self.show_money) {
                     // non empty money transaction(s)
-                    console.log(pgm + 'todo: 1) validate money transaction. send to my wallet. returns error or a wallet specific json to be included in chat to other user') ;
-                    console.log(pgm + 'todo: 2) send chat message.') ;
-                    console.log(pgm + 'todo: 3) make money transactions table responsive? Not nice on small devices');
+                    console.log(pgm , 'todo: 1) ping with permissions response? Or permissions check after wallet ping');
+                    console.log(pgm + 'todo: 2) validate money transaction. send to my wallet. returns error or a wallet specific json to be included in chat to other user') ;
+                    console.log(pgm + 'todo: 3) send chat message.') ;
+                    console.log(pgm + 'todo: 4) make money transactions table responsive? Not nice on small devices');
                 }
 
                 // unique_texts hash. used in step_2_ping_wallets and step_3_check_transactions
@@ -1298,7 +1299,7 @@ angular.module('MoneyNetwork')
                     var unique_text, unique_texts_array, check_transaction ;
                     if (!self.show_money) return step_4_send_message() ; // no money - continue with next step
 
-                    self.new_chat_msg_disabled = 'Validating money transaction(s)' ;
+                    self.new_chat_msg_disabled = 'Validating money transaction' + (self.money_transactions.length > 1 ? 's' : '') + ' ...';
                     $rootScope.$apply() ;
 
                     // check money transactions for each unique_text (wallet)
@@ -1339,7 +1340,16 @@ angular.module('MoneyNetwork')
                         // get session
                         session = unique_texts_hash[unique_text].session ;
                         // build validate money transactions request
-                        request = { msgtype: 'validate_transactions_request1', money_transactions: []} ;
+                        // contact. receiver of chat message / money transaction. auth_address is unique user id. cert_user_id and alias are human text fields and are not unique / secure
+                        request = {
+                            msgtype: 'prepare_mt_request',
+                            contact: {
+                                alias: moneyNetworkService.get_contact_name(contact),
+                                cert_user_id: contact.cert_user_id,
+                                auth_address: contact.auth_address
+                            },
+                            money_transactions: []
+                        } ;
                         for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
                             j = unique_texts_hash[unique_text].money_transactions[i] ;
                             money_transaction = self.money_transactions[j] ;
@@ -1369,8 +1379,9 @@ angular.module('MoneyNetwork')
                                 amount: money_transaction.amount * factor
                             }) ;
                         } // for i
+                        console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                         //request = {
-                        //    "msgtype": "validate_money_transactions1",
+                        //    "msgtype": "money1_request",
                         //    "money_transactions": [{
                         //        "action": "Send",
                         //        "code": "tBTC",
@@ -1378,7 +1389,7 @@ angular.module('MoneyNetwork')
                         //    }]
                         //};
 
-                        // send validate money transactions request to wallet (wait max 60 seconds)
+                        // send validate money transactions request to wallet (wait max 60 seconds. wallet may call external API in validation process)
                         session.encrypt.send_message(request, {response: 60000}, function (response) {
                             var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction send_message callback: ';
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
@@ -1419,7 +1430,7 @@ angular.module('MoneyNetwork')
                     var i, money_transaction, unique_text, sessions, j, balance, ping_wallet ;
                     if (!self.show_money) return step_3_check_transactions() ; // no money - continue with next step
 
-                    self.new_chat_msg_disabled = 'Pinging wallet(s)' ;
+                    self.new_chat_msg_disabled = 'Pinging wallet(s) ...' ;
 
                     // ping wallet(s). fast response. relevant wallet(s) must be open before sending chat with money transaction(s)
                     // find unique_texts and sessionids before ping wallets
@@ -1439,7 +1450,7 @@ angular.module('MoneyNetwork')
                         } ;
                         unique_texts_hash[unique_text].money_transactions.push(i) ;
                     } // for i
-                    console.log(pgm + 'unique_texts = ' + JSON.stringify(unique_texts_hash)) ;
+                    // console.log(pgm + 'unique_texts = ' + JSON.stringify(unique_texts_hash)) ;
                     // unique_texts = ["tBTC Test Bitcoin from MoneyNetworkW2"]
 
                     sessions = [] ;
@@ -1452,9 +1463,9 @@ angular.module('MoneyNetwork')
                             break ;
                         } // for j
                     } // for i
-                    console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
+                    // console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
                     // sessions = [{"code":"tBTC","amount":1.3,"balance_at":1504431366592,"sessionid":"wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1","wallet_sha256":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74","wallet_address":"1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1","wallet_title":"MoneyNetworkW2","wallet_description":"Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro","unique_id":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74/tBTC","name":"Test Bitcoin","url":"https://en.bitcoin.it/wiki/Testnet","units":[{"unit":"BitCoin","factor":1},{"unit":"Satoshi","factor":1e-8}],"unique_text":"tBTC Test Bitcoin from MoneyNetworkW2"}]
-
+                    self.new_chat_msg_disabled = 'Pinging wallet' + (sessions.length > 1 ? 's' : '') + ' ...';
 
                     // any unknown unique_texts / sessions?
                     for (unique_text in unique_texts_hash) {

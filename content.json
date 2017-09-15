@@ -14,8 +14,8 @@
    "size": 42
   },
   "README.md": {
-   "sha512": "2f222868a1fee20a3caa05e3374be6590e48ac58fe74a8890705b8f324931a42",
-   "size": 12921
+   "sha512": "670f6466503b197e2fe255456b6123d0f698e5aa0c072096c4ea84cf4ff89c97",
+   "size": 16419
   },
   "css/all.css": {
    "sha512": "d998847816e6f79362dfac17be6e253ffca3185aa0ea670a46d2a57e38a20e2b",
@@ -34,8 +34,8 @@
    "size": 131433
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "5e6e20c5cb92f948dba4fde51c20d85d887fc44ff2b8ca68f0e972ec86d9ab23",
-   "size": 107015
+   "sha512": "116d89280046d27c820897beb1cb4ec56bb5e2d97fd8cfad71ef648bc11cb9da",
+   "size": 109982
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -178,12 +178,12 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "41848142cc5849d62e754784694797c3fd5490e360b776701e765c1cf2cfa468",
-   "size": 1356245
+   "sha512": "b0aa1aa5083122f91c23efd59c9386db259107a8ad511ab0caae96021f9da7b6",
+   "size": 1364707
   },
   "js/all.js.zip": {
-   "sha512": "14c6abf666c5c7e2a404058778f8f034ad124f07b476d93aefe15847e065fcc8",
-   "size": 222812
+   "sha512": "c199294903690eea632451c37e8148537a228de3a6b89bcbcc593c49434784ac",
+   "size": 223916
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -302,7 +302,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1505212793,
+ "modified": 1505490267,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -314,7 +314,7 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G6pik+F+kXZOwYaOliNtHnBGBOf8BXpf+bbpqpjXLtTGOZrUdrb6gn+5UDFFsaBjSboeT5EkIkfeabZ1IvS7k3U="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G05wCzl6DAYSfSHFipjsrXbEtemeHV3FWNM7nL2lu7FKV6UPuSyRINn/o13xmBxXE1Z9h1GOHIml2qVQ5KovXjg="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",

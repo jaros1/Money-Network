@@ -52,229 +52,277 @@ Specific for each external API. For example https://www.blocktrail.com/api/docs 
 
 API1 is at present time very unstable. Json validation for in- and outgoing messages:
 
-json_schemas = {
+    var json_schemas = {
 
-    "pubkeys": {
-        "type": 'object',
-        "title": 'Send pubkeys (JSEncrypt and cryptMessage) to other session',
-        "description": 'MoneyNetwork: sends unencrypted pubkeys message to Wallet without a session password. Wallet: returns an encrypted pubkeys message to MoneyNetwork including a session password. pubkey is public key from JSEncrypt. pubkey2 is public key from cryptMessage. Password used for session restore. See get_password and password messages',
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^pubkeys$'},
-            "pubkey": {"type": 'string'},
-            "pubkey2": {"type": 'string'},
-            "password": {"type": 'string'}
-        },
-        "required": ['msgtype', 'pubkey', 'pubkey2'],
-        "additionalProperties": false
-    }, // pubkeys
+        "pubkeys": {
+            "type": 'object',
+            "title": 'Send pubkeys (JSEncrypt and cryptMessage) to other session',
+            "description": 'MoneyNetwork: sends unencrypted pubkeys message to Wallet without a session password. Wallet: returns an encrypted pubkeys message to MoneyNetwork including a session password. pubkey is public key from JSEncrypt. pubkey2 is public key from cryptMessage. Password used for session restore. See get_password and password messages',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^pubkeys$'},
+                "pubkey": {"type": 'string'},
+                "pubkey2": {"type": 'string'},
+                "password": {"type": 'string'}
+            },
+            "required": ['msgtype', 'pubkey', 'pubkey2'],
+            "additionalProperties": false
+        }, // pubkeys
 
-    "save_data": {
-        "type": 'object',
-        "title": 'Wallet: Save encrypted wallet data in MoneyNetwork',
-        "description": "Optional message. Can be used to save encrypted data in an {key:value} object in MoneyNetwork localStorage.",
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^save_data$'},
-            "data": {
-                "type": 'array',
-                "items": {
-                    "type": 'object',
-                    "properties": {
-                        "key": {"type": 'string'},
-                        "value": {"type": 'string'}
+        "save_data": {
+            "type": 'object',
+            "title": 'Wallet: Save encrypted wallet data in MoneyNetwork',
+            "description": "Optional message. Can be used to save encrypted data in an {key:value} object in MoneyNetwork localStorage.",
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^save_data$'},
+                "data": {
+                    "type": 'array',
+                    "items": {
+                        "type": 'object',
+                        "properties": {
+                            "key": {"type": 'string'},
+                            "value": {"type": 'string'}
+                        },
+                        "required": ['key'],
+                        "additionalProperties": false
                     },
-                    "required": ['key'],
-                    "additionalProperties": false
-                },
-                "minItems": 1
-            }
-        },
-        "required": ['msgtype', 'data'],
-        "additionalProperties": false
-    }, // save_data
-
-    "get_data": {
-        "type": 'object',
-        "title": 'Wallet: Get encrypted data from MoneyNetwork',
-        "description": "Optional message. Can be used to request encrypted wallet data from MoneyNetwork localStorage",
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^get_data$'},
-            "keys": {
-                "type": 'array',
-                "items": {"type": 'string'},
-                "minItems": 1
-            }
-        },
-        "required": ['msgtype', 'keys'],
-        "additionalProperties": false
-    }, // get_data
-
-    "data": {
-        "type": 'object',
-        "title": 'MoneyNetwork: get_data response to with requested encrypted wallet data',
-        "description": "Optional message. Return requested encrypted data to wallet",
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^data$'},
-            "data": {
-                "type": 'array',
-                "items": {
-                    "type": 'object',
-                    "properties": {
-                        "key": {"type": 'string'},
-                        "value": {"type": 'string'}
-                    },
-                    "required": ['key'],
-                    "additionalProperties": false
-                }
-            }
-        }
-    }, // data
-
-    "delete_data": {
-        "type": 'object',
-        "title": 'Wallet: Delete encrypted data saved in MoneyNetwork',
-        "description": "Optional message. Delete encrypted wallet data from MoneyNetwork localStorage. No keys property = delete all data",
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^delete_data$'},
-            "keys": {
-                "type": 'array',
-                "items": {"type": 'string'},
-                "minItems": 1
-            }
-        },
-        "required": ['msgtype'],
-        "additionalProperties": false
-    }, // delete_data
-
-    "get_password": {
-        "type": 'object',
-        "title": 'Wallet: Restore old session. Request pwd2 from MN',
-        "description": 'Pwd2 was sent to MN in first pubkeys message. Session restore. Unlock and return pwd2 to wallet session',
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^get_password$'},
-            "pubkey": {"type": 'string'},
-            "pubkey2": {"type": 'string'},
-            "unlock_pwd2": {"type": 'string'}
-        },
-        "required": ["msgtype", "pubkey", "pubkey2", "unlock_pwd2"],
-        "additionalProperties": false
-    }, // get_password
-
-    "password": {
-        "type": 'object',
-        "title": 'MN: Restore old session. Return unlocked password pwd2 to wallet session',
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^password$'},
-            "password": {"type": 'string'}
-        },
-        "required": ["msgtype", "password"],
-        "additionalProperties": false
-    }, // password
-
-    "response": {
-        "type": 'object',
-        "title": 'Generic response with an optional error message/code',
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^response$'},
-            "error": {"type": 'string'}
-        },
-        "required": ['msgtype'],
-        "additionalProperties": false
-    }, // response
-
-    "ping": {
-        "type": 'object',
-        "title": 'Simple session ping. Expects Timeout or OK response',
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^ping$'},
-        },
-        "required": ['msgtype'],
-        "additionalProperties": false
-    }, // ping
-
-    "get_balance": {
-        "type": 'object',
-        "title": 'MN: send get_balance request to wallet session',
-        "description": 'Wallet session must return a balance (OK) or response (error) message. Boolean flags: Open and/or close wallet before/after get_balance request',
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^get_balance$'},
-            "open_wallet": {"type": 'boolean'},
-            "close_wallet": {"type": 'boolean'}
-        },
-        "required": ['msgtype'],
-        "additionalProperties": false
-    }, // get_balance
-
-    "balance": {
-        "type": 'object',
-        "title": 'Wallet: response. return balance info to MN',
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^balance$'},
-            "balance": {
-                "type": 'array',
-                "items": {
-                    "type": 'object',
-                    "properties": {
-                        "code": {"type": 'string', "minLength": 2, "maxLength": 5},
-                        "amount": {"type": 'number'}
-                    },
-                    "required": ['code', 'amount'],
-                    "additionalProperties": false
+                    "minItems": 1
                 }
             },
-            "balance_at": { "type": "number", "multipleOf": 1.0 }
-        },
-        "required": ['msgtype', 'balance', 'balance_at'],
-        "additionalProperties": false
-    }, // balance
+            "required": ['msgtype', 'data'],
+            "additionalProperties": false
+        }, // save_data
 
-    "wallet": {
-        "type": 'object',
-        "title": 'Public wallet information in wallet.json files',
-        "description": 'wallet_* fields from site_info. currencies is a list of supported currencies and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies} hash',
-        "properties": {
-            "msgtype": {"type": 'string', "pattern": '^wallet$'},
-            "wallet_address": { "type": 'string'},
-            "wallet_domain": { "type": 'string'},
-            "wallet_title": { "type": 'string'},
-            "wallet_description": { "type": 'string'},
-            "currencies": {
-                "type": 'array',
-                "description": 'List of supported currencies. code is a (pseudo) currency iso code. Optional URL to currency information on the www',
-                "items": {
-                    "type": 'object',
-                    "properties": {
-                        "code": {"type": 'string', "minLength": 2, "maxLength": 5},
-                        "name": {"type": 'string'},
-                        "url": {"type": 'string'},
-                        "units": {
-                            "type": 'array',
-                            "description": 'Optional unit list. For example units: [{ unit: BitCoin, factor: 1 },{ unit: Satoshi, factor: 0.00000001 }]',
-                            "items": {
-                                "type": 'object',
-                                "properties": {
-                                    "unit": { "type": 'string'},
-                                    "factor": { "type": 'number'}
+        "get_data": {
+            "type": 'object',
+            "title": 'Wallet: Get encrypted data from MoneyNetwork',
+            "description": "Optional message. Can be used to request encrypted wallet data from MoneyNetwork localStorage",
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^get_data$'},
+                "keys": {
+                    "type": 'array',
+                    "items": {"type": 'string'},
+                    "minItems": 1
+                }
+            },
+            "required": ['msgtype', 'keys'],
+            "additionalProperties": false
+        }, // get_data
+
+        "data": {
+            "type": 'object',
+            "title": 'MoneyNetwork: get_data response to with requested encrypted wallet data',
+            "description": "Optional message. Return requested encrypted data to wallet",
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^data$'},
+                "data": {
+                    "type": 'array',
+                    "items": {
+                        "type": 'object',
+                        "properties": {
+                            "key": {"type": 'string'},
+                            "value": {"type": 'string'}
+                        },
+                        "required": ['key'],
+                        "additionalProperties": false
+                    }
+                }
+            }
+        }, // data
+
+        "delete_data": {
+            "type": 'object',
+            "title": 'Wallet: Delete encrypted data saved in MoneyNetwork',
+            "description": "Optional message. Delete encrypted wallet data from MoneyNetwork localStorage. No keys property = delete all data",
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^delete_data$'},
+                "keys": {
+                    "type": 'array',
+                    "items": {"type": 'string'},
+                    "minItems": 1
+                }
+            },
+            "required": ['msgtype'],
+            "additionalProperties": false
+        }, // delete_data
+
+        "get_password": {
+            "type": 'object',
+            "title": 'Wallet: Restore old session. Request pwd2 from MN',
+            "description": 'Pwd2 was sent to MN in first pubkeys message. Session restore. Unlock and return pwd2 to wallet session',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^get_password$'},
+                "pubkey": {"type": 'string'},
+                "pubkey2": {"type": 'string'},
+                "unlock_pwd2": {"type": 'string'}
+            },
+            "required": ["msgtype", "pubkey", "pubkey2", "unlock_pwd2"],
+            "additionalProperties": false
+        }, // get_password
+
+        "password": {
+            "type": 'object',
+            "title": 'MN: Restore old session. Return unlocked password pwd2 to wallet session',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^password$'},
+                "password": {"type": 'string'}
+            },
+            "required": ["msgtype", "password"],
+            "additionalProperties": false
+        }, // password
+
+        "response": {
+            "type": 'object',
+            "title": 'Generic response with an optional error message/code',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^response$'},
+                "error": {"type": 'string'}
+            },
+            "required": ['msgtype'],
+            "additionalProperties": false
+        }, // response
+
+        "ping": {
+            "type": 'object',
+            "title": 'Simple session ping. Expects Timeout or OK response',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^ping$'},
+            },
+            "required": ['msgtype'],
+            "additionalProperties": false
+        }, // ping
+
+        "get_balance": {
+            "type": 'object',
+            "title": 'MN: send get_balance request to wallet session',
+            "description": 'Wallet session must return a balance (OK) or response (error) message. Boolean flags: Open and/or close wallet before/after get_balance request',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^get_balance$'},
+                "open_wallet": {"type": 'boolean'},
+                "close_wallet": {"type": 'boolean'}
+            },
+            "required": ['msgtype'],
+            "additionalProperties": false
+        }, // get_balance
+
+        "balance": {
+            "type": 'object',
+            "title": 'Wallet: response. return balance info to MN',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^balance$'},
+                "balance": {
+                    "type": 'array',
+                    "items": {
+                        "type": 'object',
+                        "properties": {
+                            "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                            "amount": {"type": 'number'}
+                        },
+                        "required": ['code', 'amount'],
+                        "additionalProperties": false
+                    }
+                },
+                "balance_at": {"type": "number", "multipleOf": 1.0}
+            },
+            "required": ['msgtype', 'balance', 'balance_at'],
+            "additionalProperties": false
+        }, // balance
+
+        "wallet": {
+            "type": 'object',
+            "title": 'Public wallet information in wallet.json files',
+            "description": 'wallet_* fields from site_info. currencies is a list of supported currencies and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies} hash',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^wallet$'},
+                "wallet_address": {"type": 'string'},
+                "wallet_domain": {"type": 'string'},
+                "wallet_title": {"type": 'string'},
+                "wallet_description": {"type": 'string'},
+                "currencies": {
+                    "type": 'array',
+                    "description": 'List of supported currencies. code is a (pseudo) currency iso code. Optional URL to currency information on the www',
+                    "items": {
+                        "type": 'object',
+                        "properties": {
+                            "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                            "name": {"type": 'string'},
+                            "url": {"type": 'string'},
+                            "units": {
+                                "type": 'array',
+                                "description": 'Optional unit list. For example units: [{ unit: BitCoin, factor: 1 },{ unit: Satoshi, factor: 0.00000001 }]',
+                                "items": {
+                                    "type": 'object',
+                                    "properties": {
+                                        "unit": {"type": 'string'},
+                                        "factor": {"type": 'number'}
+                                    },
+                                    "required": ['unit', 'factor'],
+                                    "additionalProperties": false
                                 },
-                                "required": ['unit', 'factor'],
-                                "additionalProperties": false
-                            },
-                            "minItems": 1
-                        }
+                                "minItems": 1
+                            }
+                        },
+                        "required": ['code', 'name'],
+                        "additionalProperties": false
                     },
-                    "required": ['code', 'name'],
+                    "minItems": 1
+                },
+                "wallet_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
+                "hub": {"type": 'string'}
+            },
+            "required": ['msgtype', 'wallet_sha256', 'currencies'],
+            "additionalProperties": false
+        }, // wallet
+
+        "prepare_mt_request": {
+            "type": 'object',
+            "title": 'Validate money transactions before send chat message with money transactions',
+            "description": 'MN: send money transactions to wallet before send chat message to contact. Multiple money transactions are allowed. Wallet must return error message or json with transaction details for each money transaction',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^prepare_mt_request$'},
+                "contact": {
+                    "description": 'Info about receiver of chat message / money transactions request. auth_address is the actual contact id and should be unique. alias and cert_user_id are human text info only and are not unique / secure contact info',
+                    "type": 'object',
+                    "properties": {
+                        "alias": { "type": 'string'},
+                        "cert_user_id": { "type": 'string'},
+                        "auth_address": { "type": 'string'}
+                    },
+                    "required": ['alias', 'cert_user_id', 'auth_address'],
                     "additionalProperties": false
                 },
-                "minItems": 1
+                "money_transactions": {
+                    "type": 'array',
+                    "items": {
+                        "type": 'object',
+                        "properties": {
+                            "action": { "type": 'string', "pattern": '^(Send|Request)$'},
+                            "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                            "amount": {"type": 'number'}
+                        },
+                        "required": ['action', 'code', 'amount'],
+                        "additionalProperties": false
+                    }
+                }
             },
-            "wallet_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$' },
-            "hub": { "type": 'string'}
-        },
-        "required": ['msgtype', 'wallet_sha256', 'currencies'],
-        "additionalProperties": false
-    } // wallet
+            "required": ['msgtype', 'contact', 'money_transactions'],
+            "additionalProperties": false
+        }, // prepare_mt_request
 
+        "notification" : {
+            "type": 'object',
+            "title": 'MN/Wallet. Send notification, see wrapperNotification, to other session',
+            "description": 'For example: wallet session is waiting for user confirmation (money transfer)',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^notification$'},
+                "type": { "type": 'string', "pattern": '^(info|error|done)$'},
+                "message": { "type": 'string'},
+                "timeout": { "type": 'number'}
+            },
+            "required": ['msgtype', 'type'],
+            "additionalProperties": false
+        } // notification
 
-
+    }; // json_schemas
 
 ## Software 
 - html5, ccs3, javascript and some sql. Simple code, lots of comments and code should be "easy"" to follow. 

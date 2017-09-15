@@ -19,6 +19,9 @@
 // - API handshake. MN and wallet sessions will normally use different MoneyNetworkAPI versions. validate all messages before send/after receive.
 //   sessions must exchange list of supported/allowed messages.
 //   json schema compare?
+// - ping with permissions response? Or permissions check after wallet ping.
+//   MN must know if send/receive money permission have been granted and if confirm transaction dialog is needed
+// - wallet.json - add fee info. any fee. fee paid by sender, receiver or shared. fee added or subtracted from transaction amount
 //
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
@@ -911,12 +914,23 @@ var MoneyNetworkAPILib = (function () {
             "additionalProperties": false
         }, // wallet
 
-        "validate_transactions_request1": {
+        "prepare_mt_request": {
             "type": 'object',
-            "title": 'Validate money transactions before send chat message',
-            "description": 'MN: send money transactions to wallet before send chat message. Multiple transactions are allowed. Wallet must return error message or json with transaction details',
+            "title": 'Validate money transactions before send chat message with money transactions',
+            "description": 'MN: send money transactions to wallet before send chat message to contact. Multiple money transactions are allowed. Wallet must return error message or json with transaction details for each money transaction',
             "properties": {
-                "msgtype": {"type": 'string', "pattern": '^validate_transactions_request1$'},
+                "msgtype": {"type": 'string', "pattern": '^prepare_mt_request$'},
+                "contact": {
+                    "description": 'Info about receiver of chat message / money transactions request. auth_address is the actual contact id and should be unique. alias and cert_user_id are human text info only and are not unique / secure contact info',
+                    "type": 'object',
+                    "properties": {
+                        "alias": { "type": 'string'},
+                        "cert_user_id": { "type": 'string'},
+                        "auth_address": { "type": 'string'}
+                    },
+                    "required": ['alias', 'cert_user_id', 'auth_address'],
+                    "additionalProperties": false
+                },
                 "money_transactions": {
                     "type": 'array',
                     "items": {
@@ -931,9 +945,23 @@ var MoneyNetworkAPILib = (function () {
                     }
                 }
             },
-            "required": ['msgtype', 'money_transactions'],
+            "required": ['msgtype', 'contact', 'money_transactions'],
             "additionalProperties": false
-        } // validate_transactions_request1
+        }, // prepare_mt_request
+
+        "notification" : {
+            "type": 'object',
+            "title": 'MN/Wallet. Send notification, see wrapperNotification, to other session',
+            "description": 'For example: wallet session is waiting for user confirmation (money transfer)',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^notification$'},
+                "type": { "type": 'string', "pattern": '^(info|error|done)$'},
+                "message": { "type": 'string'},
+                "timeout": { "type": 'number'}
+            },
+            "required": ['msgtype', 'type'],
+            "additionalProperties": false
+        } // notification
 
     }; // json_schemas
 
@@ -968,6 +996,7 @@ var MoneyNetworkAPILib = (function () {
         // report json error
         json_error = JSON.parse(JSON.stringify(tv4.error));
         delete json_error.stack;
+        console.log(pgm + 'json_error = ', json_error) ;
         return 'Error in ' + json.msgtype + ' JSON. ' + JSON.stringify(json_error);
     } // validate_json
 
