@@ -210,9 +210,9 @@ angular.module('MoneyNetwork')
                 }
             } // for sessionid
 
-            // check sessions. compare list of done files in ls_sessions with incoming files on file system (dbQuery)
+            // check sessions. incoming files. compare list of done files in ls_sessions with incoming files on file system (dbQuery)
             MoneyNetworkAPILib.get_sessions(function (sessions1) {
-                var sessions2, sessions3, i, step_1_find_files, step_2_cleanup_done_files ;
+                var sessions2, sessions3, i, step_1_find_incoming_files, step_2_cleanup_ls_done_files, step_3_find_old_outgoing_files ;
                 sessions2 = {} ; // from other_session_filename to hash with not deleted files (incoming files from other session)
                 sessions3 = {} ; // from sessionid to hash with not deleted files (incoming files from other session)
 
@@ -237,69 +237,16 @@ angular.module('MoneyNetwork')
                 }
                 console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
 
-                // step 1: dbQuery - find not deleted incoming messages
-                step_1_find_files = function (cb3) {
-                    var pgm = service + '.create_sessions.step_1_find_files: ';
-                    var query, first, other_session_filename  ;
-                    if (!Object.keys(sessions2).length) return ; // no sessions
-                    console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+                // callback chain step 1-3
 
-                    // build query
-                    first = true;
-                    query =
-                        "select json.directory, files_optional.filename " +
-                        "from files_optional, json " +
-                        "where ";
-                    for (other_session_filename in sessions2) {
-                        query += first ? "(" : " or ";
-                        query += "files_optional.filename like '" + other_session_filename + ".%'";
-                        first = false ;
-                    }
-                    query +=
-                        ") and json.json_id = files_optional.json_id " +
-                        "order by substr(files_optional.filename, 12)";
-                    console.log(pgm + 'query = ' + query) ;
-                    console.log(pgm + 'todo: add debug_seq to this query') ;
+                // find old outgoing files. dele
+                step_3_find_old_outgoing_files = function(){
 
-                    ZeroFrame.cmd("dbQuery", [query], function (res) {
-                        var pgm = service + '.create_sessions.step_1_find_files dbQuery callback: ';
-                        var i, filename, timestamp, timestamp_re, other_session_filename ;
-                        if (res.error) {
-                            console.log(pgm + 'query failed. error = ' + res.error);
-                            console.log(pgm + 'query = ' + query);
-                            return;
-                        }
-                        // console.log(pgm + 'res = ' + JSON.stringify(res));
-                        //res = [{
-                        //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-                        //    "filename": "3c69e1b778.1500291521896"
-                        //}, {
-                        // ...
-                        //}, {
-                        //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-                        //    "filename": "90ed57c290.1500649849934"
-                        //}];
-                        timestamp_re = /^[0-9]{13}$/ ;
-                        for (i=0 ; i<res.length ; i++) {
-                            filename = res[i].filename;
-                            other_session_filename = filename.substr(0,10) ;
-                            timestamp = filename.substr(11) ;
-                            if (!timestamp.match(timestamp_re)) continue ;
-                            timestamp = parseInt(timestamp) ;
-                            sessions2[other_session_filename].files[timestamp] = true ;
-                        } // for i
-                        //console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
-
-                        // next step
-                        cb3() ;
-
-                    }) ; // dbQuery callback
-
-                }; // step_1_find_files
+                } ; // step_3_find_old_outgoing_files
 
                 // step 2: cleanup done lists in ls_sessions
-                step_2_cleanup_done_files = function() {
-                    var pgm = service + '.create_sessions.step_2_cleanup_done_files: ';
+                step_2_cleanup_ls_done_files = function() {
+                    var pgm = service + '.create_sessions.step_2_cleanup_ls_done_files: ';
                     var other_session_filename, sessionid, timestamp, session_info, delete_timestamps, no_done_deleted ;
                     // console.log(pgm + 'ls_sessions = ' + JSON.stringify(ls_sessions)) ;
                     // console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
@@ -336,13 +283,70 @@ angular.module('MoneyNetwork')
                     // no deleted = 64
                     // no deleted = 0
                     if (no_done_deleted) ls_save_sessions() ;
+                }; // step_2_cleanup_ls_done_files
 
-                }; // step_2_cleanup_done_files
+                // step 1: dbQuery - find incoming not deleted messages
+                step_1_find_incoming_files = function () {
+                    var pgm = service + '.create_sessions.step_1_find_incoming_files: ';
+                    var query, first, other_session_filename  ;
+                    if (!Object.keys(sessions2).length) return ; // no sessions
+                    console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+
+                    // build query
+                    first = true;
+                    query =
+                        "select json.directory, files_optional.filename " +
+                        "from files_optional, json " +
+                        "where ";
+                    for (other_session_filename in sessions2) {
+                        query += first ? "(" : " or ";
+                        query += "files_optional.filename like '" + other_session_filename + ".%'";
+                        first = false ;
+                    }
+                    query +=
+                        ") and json.json_id = files_optional.json_id " +
+                        "order by substr(files_optional.filename, 12)";
+                    console.log(pgm + 'query = ' + query) ;
+                    console.log(pgm + 'todo: add debug_seq to this query') ;
+
+                    ZeroFrame.cmd("dbQuery", [query], function (res) {
+                        var pgm = service + '.create_sessions.step_1_find_incoming_files dbQuery callback: ';
+                        var i, filename, timestamp, timestamp_re, other_session_filename ;
+                        if (res.error) {
+                            console.log(pgm + 'query failed. error = ' + res.error);
+                            console.log(pgm + 'query = ' + query);
+                            return;
+                        }
+                        // console.log(pgm + 'res = ' + JSON.stringify(res));
+                        //res = [{
+                        //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                        //    "filename": "3c69e1b778.1500291521896"
+                        //}, {
+                        // ...
+                        //}, {
+                        //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                        //    "filename": "90ed57c290.1500649849934"
+                        //}];
+                        timestamp_re = /^[0-9]{13}$/ ;
+                        for (i=0 ; i<res.length ; i++) {
+                            filename = res[i].filename;
+                            other_session_filename = filename.substr(0,10) ;
+                            timestamp = filename.substr(11) ;
+                            if (!timestamp.match(timestamp_re)) continue ;
+                            timestamp = parseInt(timestamp) ;
+                            sessions2[other_session_filename].files[timestamp] = true ;
+                        } // for i
+                        //console.log(pgm + 'sessions2 = ' + JSON.stringify(sessions2)) ;
+
+                        // next step
+                        step_2_cleanup_ls_done_files() ;
+
+                    }) ; // dbQuery callback
+
+                }; // step_1_find_files
 
                 // start callback chain step 1-2
-                step_1_find_files(function() {
-                    step_2_cleanup_done_files() ;
-                }) ;
+                step_1_find_incoming_files() ;
 
             }) ; // get_sessions callback
 
@@ -518,7 +522,7 @@ angular.module('MoneyNetwork')
                             // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                             // get unlock_pwd2
                             encrypt2.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
-                                var pgm = service + '.process_incoming_message get_session_filenames callback 3: ';
+                                var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_session_filenames callback: ';
                                 encryptions = [2] ; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
                                 if (session_info.invalid_get_password &&
                                     (session_info.invalid_get_password > 6)) {
@@ -567,7 +571,22 @@ angular.module('MoneyNetwork')
                         }
                         else if (request.msgtype == 'notification') {
                             // received at notification from a wallet session. just display
-                            ZeroFrame.cmd("wrapperNotification", [request.type, $sanitize(request.message), request.timeout]) ;
+                            // adding wallet_title to notification') ;
+                            MoneyNetworkAPILib.get_wallet_info(session_info.wallet_sha256, function (wallet_info, delayed) {
+                                var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_wallet_info callback: ';
+                                var message ;
+                                if (!wallet_info || wallet_info.error || !wallet_info[session_info.wallet_sha256]) {
+                                    response.error = 'could not find wallet information for wallet_sha256 ' + session_info.wallet_sha256 + '. wallet_info = ' + JSON.stringify(wallet_info) ;
+                                    console.log(pgm + response.error) ;
+                                    console.log(pgm + 'ignoring notification = ' + JSON.stringify(request)) ;
+                                    // normally no wait for response for notification messages
+                                    return done_and_send(response, encryptions) ;
+                                }
+                                message = $sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + $sanitize(request.message) ;
+                                ZeroFrame.cmd("wrapperNotification", [request.type, message, request.timeout]) ;
+
+                            }) ;
+                            return ;
                         }
                         else response.error = 'Unknown msgtype ' + request.msgtype ;
 
