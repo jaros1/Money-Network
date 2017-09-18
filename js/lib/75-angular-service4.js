@@ -217,19 +217,24 @@ angular.module('MoneyNetwork')
                 sessions3 = {} ; // from sessionid to hash with not deleted files (incoming files from other session)
 
                 console.log(pgm + 'sessions1 = ' + JSON.stringify(sessions1)) ;
-                //sessions1 = [{
-                //    "other_session_filename": "5eb10feeca",
-                //    "sessionid": "acpo0lstqzcpkskad9olzvbm1xdmgx1zpqbr4cn1jsf39nfexbuaikgcndfe",
-                //    "session_at": 1503043546775
-                //}, {
-                //    "other_session_filename": "f1b4881fc5",
-                //    "sessionid": "uzeptj8mlixhtbrhdnilhdvmxiujufrkk6lp0uj5wpglxsuktcrobm0s2i7n",
-                //    "session_at": 1503043546780
-                //}, {
-                //    "other_session_filename": "c7c627af4d",
-                //    "sessionid": "odcbtal2lclghgcezhf6vzpue46yuvfjskezvt9ixmgnjdziyzug09jrij16",
-                //    "session_at": 1503043546784
-                //}];
+                //sessions1 = [
+                //    {
+                //        "other_session_filename": "1530742720",
+                //        "sessionid": "z1a4wzejn0bifkglpblefqqedevpdiyissdstq5kbppardmbzdytbtrzkp2w",
+                //        "session_at": 1505663493707,
+                //        "this_session_filename": "ddbb4f18a7"
+                //    },
+                //    ...
+                //    {
+                //        "other_session_filename": "16276a26dc",
+                //        "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                //        "session_at": 1505663493709,
+                //        "this_session_filename": "3f6561327a"
+                //    }
+                //];
+
+                // My cert_user_id is jro@zeroid.bit, my auth address is 18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ,
+                // my unique id be4e96172fe3a8cafdf30057a8e8f4409c7b538383b3d7e1b3c35603eaa076d5 and my user data hub is1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh
 
                 // reformat sessions1 array
                 for (i=0 ; i<sessions1.length ; i++) {
@@ -239,8 +244,130 @@ angular.module('MoneyNetwork')
 
                 // callback chain step 1-3
 
-                // find old outgoing files. dele
+                // find old outgoing files. delete old outgoing files except offline transactions
                 step_3_find_old_outgoing_files = function(){
+                    var pgm = service + '.create_sessions.step_3_find_old_outgoing_files: ';
+                    get_my_user_hub(function (hub) {
+                        var pgm = service + '.create_sessions.step_3_find_old_outgoing_files get_my_user_hub callback 1: ';
+                        var query1;
+
+                        // query 1. simple get all optional files for current user directory
+                        // todo: optional files and actual files on file system can be out of sync. Should delete files_optional + sign to be sure that optional files and file system matches
+                        query1 =
+                            "select files_optional.filename from json, files_optional " +
+                            "where directory like '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' " +
+                            "and file_name = 'content.json' " +
+                            "and files_optional.json_id = json.json_id";
+                        console.log(pgm + 'query1 = ' + query1);
+                        console.log(pgm + 'todo: add debug_seq to this query');
+
+                        ZeroFrame.cmd("dbQuery", [query1], function (res) {
+                            var pgm = service + '.create_sessions.step_3_find_old_outgoing_files dbQuery callback 2: ';
+                            var files1, i, re, files2, filename, this_session_filename, timestamp, session_info,
+                                sessionid, session_at ;
+                            if (res.error) {
+                                console.log(pgm + 'query failed. error = ' + res.error);
+                                console.log(pgm + 'query = ' + query1);
+                                return;
+                            }
+                            // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+
+                            // map from valid this_session_filename to session_info and list with any offline transactions
+                            session_at = {} ;
+                            session_info = {} ;
+                            for (i=0 ; i<sessions1.length ; i++) {
+                                this_session_filename = sessions1[i].this_session_filename ;
+                                sessionid = sessions1[i].sessionid ;
+                                if (!ls_sessions[sessionid]) continue ; // error
+                                session_at[this_session_filename] = sessions1[i].session_at ;
+                                session_info[this_session_filename] = ls_sessions[sessionid][SESSION_INFO_KEY] ;
+                            } // i
+                            console.log(pgm + 'session_at = ' + JSON.stringify(session_at)) ;
+                            //session_at = {"ddbb4f18a7":1505752737688,"825c05a018":1505752737681,"3af9a70f1f":1505752737683,"02db2101c5":1505752737685,"3f6561327a":1505752737691};
+
+                            console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
+                            //session_info = {
+                            //    "ddbb4f18a7": {
+                            //        "password": "U2FsdGVkX1+6+X4pSDQOf8/Bb+3xG+nFQDyhr3/7syi+wYXKEZ6UL49dB2ftq1gmC5/LKfI2XfJS2fEsEy5CYscRBDuoUxJEqKNwiiiiXBA=",
+                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCsOMfAvHPTp0K9qZfoItdJ9898\nU3S2gAZZSLuLZ1qMXr1dEnO8AwxS58UvKGwHObT1XQG8WT3Q1/6OGlJms4mYY1rF\nQXzYEV5w0RlcSrMpLz3+nJ7cVb9lYKOO8hHZFWudFRywkYb/aeNh6mAXqrulv92z\noX0S7YMeNd2YrhqefQIDAQAB\n-----END PUBLIC KEY-----",
+                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                            //        "last_request_at": 1503137602267,
+                            //        "done": {},
+                            //        "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
+                            //    },
+                            //    "825c05a018": {
+                            //        "password": "U2FsdGVkX18YSwwUOLQS9lMqivpF7ynNzNXBuOOFvy91i/JApuPUiFRH4ViMQvezXD6tS+4AXZYZJd7f98EeW4V74+RvcfjHg2VFmUQvS4U=",
+                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHzoMPSwwM8z1P7eZzjNFe7Md6Ds\nkMhR0DlUvTlJOtxfZ/KENMsBIl45pize7sGJxpAmIJQG1JQzOp9R0qFW22geoK5q\nbn8WGHNHRyRObjpqDpRkwiovCz5DtP0AFvliawhFj60WEV56gL5sFoJ0/154MbZZ\nt2nA0/i76YJLfZHxAgMBAAE=\n-----END PUBLIC KEY-----",
+                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                            //        "last_request_at": 1501605913768,
+                            //        "done": {}
+                            //    },
+                            //    "3af9a70f1f": {
+                            //        "password": "U2FsdGVkX1/5ItpxUyRH1ZiZuoyN1tCvLUKpSogDnVDvBNLcODVLijUC52N8WBSYf3hBxXzQZYjkRqKdk79oS5Rp/nJ3rq9bSgoodVJPxyU=",
+                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHsgCP4qEflm0HEXYUO5dP+UOENN\n7C5K8H7aFVmhwc32PwySbLcdQDbWpFhX6cKODQOC5gJNSnzoEHqxrNeCO97yXe/P\nyzVVjHlq56a16IC2lB/SSnUh5ipjfC4grFK9ZlMUpHUDN/j5oxzUnK/QLd5L1wLO\nsITFawX1WuxB9FERAgMBAAE=\n-----END PUBLIC KEY-----",
+                            //        "pubkey2": "AjNp+TH4ho3DEmyfa73v447KWgv/W8t3R94/mY+ib/2+",
+                            //        "last_request_at": 1501597939326,
+                            //        "done": {}
+                            //    },
+                            //    "02db2101c5": {
+                            //        "password": "U2FsdGVkX18+bh2RYZzvbeLoCqsGvj12eTfL7T/3frFfO9VQbgLpGAEsO+5QZjH3JrRr9wmGjIe+O6SojshHm8XdgZvYV19msuyWh+HX0XE=",
+                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDjZGACcz2Swp07gN7+use66NvA\nIAxvMpykW7qcG3MP2DTDH3mKg1JlY40U4SwP5CE1LGmOJN7Saymoh2W9i0oHzxvR\n+b+bNcoG09eYZuinH1M7FB9wx8RxcfbNH+lzoAtU4HVnGrtrLG5X2SM9Cx+FN9cw\ncdVCdwU1IqwILPyDCwIDAQAB\n-----END PUBLIC KEY-----",
+                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                            //        "last_request_at": 1503050724533,
+                            //        "done": {}
+                            //    },
+                            //    "3f6561327a": {
+                            //        "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //        "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                            //        "last_request_at": 1505751791641,
+                            //        "done": {
+                            //            "1503315223138": 1503315232562,
+                            //            "1503916247431": 1503916247859,
+                            //            "1504261657652": 1504261664116,
+                            //            "1504261977720": 1504261982693,
+                            //            "1505477436154": 1505477443260,
+                            //            "1505484214619": 1505484217007,
+                            //            "1505484840492": 1505484842795,
+                            //            "1505485442061": 1505485444720,
+                            //            "1505485933357": 1505485934580,
+                            //            "1505487060777": 1505487062463,
+                            //            "1505489780265": 1505489782366,
+                            //            "1505550671820": 1505550725534,
+                            //            "1505576551260": 1505576552166
+                            //        },
+                            //        "balance": [{"code": "tBTC", "amount": 1.3}],
+                            //        "balance_at": 1504431366592,
+                            //        "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                            //    }
+                            //};
+
+                            re = new RegExp('^[0-9a-f]{10}.[0-9]{13}$'); // no user seq (MoneyNetworkAPI messages)
+                            files1 = [] ;
+                            for (i=0 ; i<res.length ; i++) if (res[i].filename.match(re)) files1.push(res[i].filename) ;
+                            console.log(pgm + 'files1 = ' + JSON.stringify(files1)) ;
+                            //files1 = ["3f6561327a.1474665067076", "3f6561327a.1472282567643", "3f6561327a.1475706471612", "3f6561327a.1475685146639", "3f6561327a.1472197202640", "3f6561327a.1471393354195", "3f6561327a.1475916076111", "3f6561327a.1473627685854", "3f6561327a.1475251057063", "3f6561327a.1472104626705", "3f6561327a.1471831583539", "3f6561327a.1474478812729", "3f6561327a.1474804539180", "3f6561327a.1476205886263", "3f6561327a.1473249405340", "3f6561327a.1472026664343", "3f6561327a.1476424181413", "3f6561327a.1471564536590", "3f6561327a.1473646753222", "3f6561327a.1471917524352", "3f6561327a.1471976592878", "3f6561327a.1474745414662", "3f6561327a.1476135581171", "3f6561327a.1474122722696", "3f6561327a.1476073867217", "3f6561327a.1473167872165", "3f6561327a.1476559711025", "3f6561327a.1472449416593", "3f6561327a.1473033703401", "3f6561327a.1475796712277", "3f6561327a.1471856461133", "3f6561327a.1473010786666", "3f6561327a.1474654532839", "3f6561327a.1474248258663", "3f6561327a.1471503749260", "3f6561327a.1471976734587", "3f6561327a.1475238729722", "3f6561327a.1473441766500", "3f6561327a.1473785926028", "3f6561327a.1476013919996", "3f6561327a.1472925485650", "3f6561327a.1473709828898", "3f6561327a.1473449375291", "3f6561327a.1474056537691", "3f6561327a.1471712354236", "3f6561327a.1473731777757", "3f6561327a.1475378942077", "3f6561327a.1473523004275", "3f6561327a.1474437441649", "3f6561327a.1475932891045", "3f6561327a.1476185082949", "3f6561327a.1476240602333", "3f6561327a.1472395916104", "3f6561327a.1473306586555"];
+
+                            // group files by <this_session_filename>. special 0000000000000 file is used for offline transactions.
+                            files2 = {} ;
+                            for (i=0 ; i<files1.length ; i++) {
+                                filename = files1[i] ;
+                                this_session_filename = filename.substr(0,10) ;
+                                timestamp = parseInt(filename.substr(11)) ;
+                                if (timestamp == 0) continue ;
+                                if (!files2[this_session_filename]) files2[this_session_filename] = [] ;
+                                files2[this_session_filename].push(timestamp) ;
+                            } // i
+                            console.log(pgm + 'files2 = ' + JSON.stringify(files2)) ;
+                            //files2 = { "3f6561327a": [1474665067076, 1472282567643, 1475706471612, 1475685146639, 1472197202640, 1471393354195, 1475916076111, 1473627685854, 1475251057063, 1472104626705, 1471831583539, 1474478812729, 1474804539180, 1476205886263, 1473249405340, 1472026664343, 1476424181413, 1471564536590, 1473646753222, 1471917524352, 1471976592878, 1474745414662, 1476135581171, 1474122722696, 1476073867217, 1473167872165, 1476559711025, 1472449416593, 1473033703401, 1475796712277, 1471856461133, 1473010786666, 1474654532839, 1474248258663, 1471503749260, 1471976734587, 1475238729722, 1473441766500, 1473785926028, 1476013919996, 1472925485650, 1473709828898, 1473449375291, 1474056537691, 1471712354236, 1473731777757, 1475378942077, 1473523004275, 1474437441649, 1475932891045, 1476185082949, 1476240602333, 1472395916104, 1473306586555]};
+
+                            // delete all optional files with unknown this_session_filename or with timestamp < session_at
+                            // exception: keep offline transactions with timestamp < session_at
+
+                        }); // dbQuery callback 2
+
+                    }) ; // get_my_user_hub callback 1
 
                 } ; // step_3_find_old_outgoing_files
 
@@ -283,6 +410,8 @@ angular.module('MoneyNetwork')
                     // no deleted = 64
                     // no deleted = 0
                     if (no_done_deleted) ls_save_sessions() ;
+                    // next step
+                    step_3_find_old_outgoing_files() ;
                 }; // step_2_cleanup_ls_done_files
 
                 // step 1: dbQuery - find incoming not deleted messages

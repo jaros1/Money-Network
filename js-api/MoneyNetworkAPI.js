@@ -298,7 +298,7 @@ var MoneyNetworkAPILib = (function () {
     // - constructor: called from MoneyNetworkAPI constructor. error message is not reported back in catch (e) { e.message }
     function add_session(sessionid, options) {
         var pgm = module + '.add_session: ';
-        var cb, encrypt, sha256, other_session_filename, start_demon, constructor, error, session_at ;
+        var cb, encrypt, sha256, constructor, error, session_at ;
         if (typeof options == 'object') constructor = options.constructor ;
         error = function (text) {
             if (constructor) console.log(pgm + text) ; // new MoneyNetworkAPI. no error.message in catch
@@ -320,13 +320,19 @@ var MoneyNetworkAPILib = (function () {
             get_wallet_cbs.push(function() {}) ;
         }
         get_wallet(function (wallet) {
+            var this_session_filename, other_session_filename, start_demon ;
+            this_session_filename = wallet ? sha256.substr(sha256.length - 10) : sha256.substr(0, 10) ;
             other_session_filename = wallet ? sha256.substr(0, 10) : sha256.substr(sha256.length - 10);
             // if (debug) console.log(pgm + 'sessionid = ' + sessionid + ', sha256 = ' + sha256 + ', wallet = ' + wallet + ', other_session_filename = ' + other_session_filename);
             // if (sessions[other_session_filename]) return null; // known sessionid
             start_demon = (Object.keys(sessions).length == 0);
             if (!sessions[other_session_filename]) {
                 console.log(pgm + 'monitoring other_session_filename ' + other_session_filename + ', sessionid = ' + sessionid);
-                sessions[other_session_filename] = {sessionid: sessionid, session_at: session_at};
+                sessions[other_session_filename] = {
+                    sessionid: sessionid,
+                    session_at: session_at,
+                    this_session_filename: this_session_filename
+                };
             }
             if (cb) sessions[other_session_filename].cb = cb ;
             if (encrypt) sessions[other_session_filename].encrypt = encrypt ;
@@ -1860,7 +1866,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                         var inner_path5, save_offline_transaction;
                         self.log(pgm, 'res = ' + JSON.stringify(res));
 
-                        // 6: optional, offline transaction only. add timestamp to optional_transaction array and file
+                        // 6: offline transaction only. add timestamp to optional_transaction array and special file
                         var save_offline_transaction = function (cb) {
                             var pgm = self.module + '.send_message.save_offline_transaction: ';
                             if (!offline_transaction || (offline_transaction == true)) return cb() ; // continue with sign
