@@ -263,8 +263,8 @@ angular.module('MoneyNetwork')
 
                         ZeroFrame.cmd("dbQuery", [query1], function (res) {
                             var pgm = service + '.create_sessions.step_3_find_old_outgoing_files dbQuery callback 2: ';
-                            var files1, i, re, files2, filename, this_session_filename, timestamp, session_info,
-                                sessionid, session_at ;
+                            var files, i, re, filename, this_session_filename, timestamp, session_info, sessionid,
+                                session_at, delete_files, delete_file, delete_ok, delete_failed ;
                             if (res.error) {
                                 console.log(pgm + 'query failed. error = ' + res.error);
                                 console.log(pgm + 'query = ' + query1);
@@ -344,26 +344,72 @@ angular.module('MoneyNetwork')
                             //};
 
                             re = new RegExp('^[0-9a-f]{10}.[0-9]{13}$'); // no user seq (MoneyNetworkAPI messages)
-                            files1 = [] ;
-                            for (i=0 ; i<res.length ; i++) if (res[i].filename.match(re)) files1.push(res[i].filename) ;
-                            console.log(pgm + 'files1 = ' + JSON.stringify(files1)) ;
-                            //files1 = ["3f6561327a.1474665067076", "3f6561327a.1472282567643", "3f6561327a.1475706471612", "3f6561327a.1475685146639", "3f6561327a.1472197202640", "3f6561327a.1471393354195", "3f6561327a.1475916076111", "3f6561327a.1473627685854", "3f6561327a.1475251057063", "3f6561327a.1472104626705", "3f6561327a.1471831583539", "3f6561327a.1474478812729", "3f6561327a.1474804539180", "3f6561327a.1476205886263", "3f6561327a.1473249405340", "3f6561327a.1472026664343", "3f6561327a.1476424181413", "3f6561327a.1471564536590", "3f6561327a.1473646753222", "3f6561327a.1471917524352", "3f6561327a.1471976592878", "3f6561327a.1474745414662", "3f6561327a.1476135581171", "3f6561327a.1474122722696", "3f6561327a.1476073867217", "3f6561327a.1473167872165", "3f6561327a.1476559711025", "3f6561327a.1472449416593", "3f6561327a.1473033703401", "3f6561327a.1475796712277", "3f6561327a.1471856461133", "3f6561327a.1473010786666", "3f6561327a.1474654532839", "3f6561327a.1474248258663", "3f6561327a.1471503749260", "3f6561327a.1471976734587", "3f6561327a.1475238729722", "3f6561327a.1473441766500", "3f6561327a.1473785926028", "3f6561327a.1476013919996", "3f6561327a.1472925485650", "3f6561327a.1473709828898", "3f6561327a.1473449375291", "3f6561327a.1474056537691", "3f6561327a.1471712354236", "3f6561327a.1473731777757", "3f6561327a.1475378942077", "3f6561327a.1473523004275", "3f6561327a.1474437441649", "3f6561327a.1475932891045", "3f6561327a.1476185082949", "3f6561327a.1476240602333", "3f6561327a.1472395916104", "3f6561327a.1473306586555"];
+                            files = [] ;
+                            for (i=0 ; i<res.length ; i++) if (res[i].filename.match(re)) files.push(res[i].filename) ;
+                            console.log(pgm + 'files = ' + JSON.stringify(files)) ;
+                            //files = ["3f6561327a.1474665067076", "3f6561327a.1472282567643", "3f6561327a.1475706471612", "3f6561327a.1475685146639", "3f6561327a.1472197202640", "3f6561327a.1471393354195", "3f6561327a.1475916076111", "3f6561327a.1473627685854", "3f6561327a.1475251057063", "3f6561327a.1472104626705", "3f6561327a.1471831583539", "3f6561327a.1474478812729", "3f6561327a.1474804539180", "3f6561327a.1476205886263", "3f6561327a.1473249405340", "3f6561327a.1472026664343", "3f6561327a.1476424181413", "3f6561327a.1471564536590", "3f6561327a.1473646753222", "3f6561327a.1471917524352", "3f6561327a.1471976592878", "3f6561327a.1474745414662", "3f6561327a.1476135581171", "3f6561327a.1474122722696", "3f6561327a.1476073867217", "3f6561327a.1473167872165", "3f6561327a.1476559711025", "3f6561327a.1472449416593", "3f6561327a.1473033703401", "3f6561327a.1475796712277", "3f6561327a.1471856461133", "3f6561327a.1473010786666", "3f6561327a.1474654532839", "3f6561327a.1474248258663", "3f6561327a.1471503749260", "3f6561327a.1471976734587", "3f6561327a.1475238729722", "3f6561327a.1473441766500", "3f6561327a.1473785926028", "3f6561327a.1476013919996", "3f6561327a.1472925485650", "3f6561327a.1473709828898", "3f6561327a.1473449375291", "3f6561327a.1474056537691", "3f6561327a.1471712354236", "3f6561327a.1473731777757", "3f6561327a.1475378942077", "3f6561327a.1473523004275", "3f6561327a.1474437441649", "3f6561327a.1475932891045", "3f6561327a.1476185082949", "3f6561327a.1476240602333", "3f6561327a.1472395916104", "3f6561327a.1473306586555"];
 
                             // group files by <this_session_filename>. special 0000000000000 file is used for offline transactions.
-                            files2 = {} ;
-                            for (i=0 ; i<files1.length ; i++) {
-                                filename = files1[i] ;
+                            delete_files = [] ;
+                            for (i=0 ; i<files.length ; i++) {
+                                filename = files[i] ;
                                 this_session_filename = filename.substr(0,10) ;
+                                if (!session_info[this_session_filename]) {
+                                    // unknown session
+                                    delete_files.push(filename) ;
+                                    continue ;
+                                }
                                 timestamp = parseInt(filename.substr(11)) ;
-                                if (timestamp == 0) continue ;
-                                if (!files2[this_session_filename]) files2[this_session_filename] = [] ;
-                                files2[this_session_filename].push(timestamp) ;
+                                if (timestamp == 0) {
+                                    // special file with timestamps for offline transactions (encrypted)
+                                    if (!session_info[this_session_filename].offline || !session_info[this_session_filename].offline.length) {
+                                        // no offline transactions. delete file with offline transactions
+                                        delete_files.push(filename) ;
+                                    }
+                                }
+                                else if (timestamp < session_at[this_session_filename]) {
+                                    // old outgoing message
+                                    if (!session_info[this_session_filename].offline || (session_info[this_session_filename].offline.indexOf(timestamp) == -1)) {
+                                        // old outgoing message not in offline transactions
+                                        delete_files.push(filename) ;
+                                    }
+                                }
                             } // i
-                            console.log(pgm + 'files2 = ' + JSON.stringify(files2)) ;
-                            //files2 = { "3f6561327a": [1474665067076, 1472282567643, 1475706471612, 1475685146639, 1472197202640, 1471393354195, 1475916076111, 1473627685854, 1475251057063, 1472104626705, 1471831583539, 1474478812729, 1474804539180, 1476205886263, 1473249405340, 1472026664343, 1476424181413, 1471564536590, 1473646753222, 1471917524352, 1471976592878, 1474745414662, 1476135581171, 1474122722696, 1476073867217, 1473167872165, 1476559711025, 1472449416593, 1473033703401, 1475796712277, 1471856461133, 1473010786666, 1474654532839, 1474248258663, 1471503749260, 1471976734587, 1475238729722, 1473441766500, 1473785926028, 1476013919996, 1472925485650, 1473709828898, 1473449375291, 1474056537691, 1471712354236, 1473731777757, 1475378942077, 1473523004275, 1474437441649, 1475932891045, 1476185082949, 1476240602333, 1472395916104, 1473306586555]};
+                            console.log(pgm + 'delete_files = ' + JSON.stringify(delete_files)) ;
 
-                            // delete all optional files with unknown this_session_filename or with timestamp < session_at
-                            // exception: keep offline transactions with timestamp < session_at
+                            // delete file loop
+                            delete_ok = [] ;
+                            delete_failed = [] ;
+                            delete_file = function() {
+                                var pgm = service + '.create_sessions.step_3_find_old_outgoing_files.delete_file: ';
+                                var filename, inner_path, debug_seq ;
+                                if (!delete_files.length) {
+                                    // finish deleting optional files
+                                    if (!delete_ok.length) return ; // nothing to sign
+                                    inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
+                                    self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+                                        var pgm = service + '.create_sessions.step_3_find_old_outgoing_files.delete_file siteSign callback: ';
+                                        if (res != 'ok') console.log(pgm + inner_path + ' siteSign failed. error = ' + res) ;
+                                        // done with or without errors
+                                    }) ;
+                                    return ;
+                                } // done
+                                filename = delete_files.shift() ;
+                                inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
+                                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete') ;
+                                ZeroFrame.cmd("fileDelete", inner_path, function (res) {
+                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                    if (res == 'ok') delete_ok.push(filename) ;
+                                    else {
+                                        console.log(pgm + inner_path + ' fileDelete failed. error = ' + res) ;
+                                        delete_failed.push(filename) ;
+                                    } ;
+                                    // continue with next file
+                                    delete_file() ;
+                                }); // fileDelete
+                            } ; // delete_file
+                            // start delete file loop
+                            delete_file() ;
 
                         }); // dbQuery callback 2
 
