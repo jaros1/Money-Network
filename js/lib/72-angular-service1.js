@@ -1546,12 +1546,46 @@ angular.module('MoneyNetwork')
             return MN_CONTENT_OPTIONAL ;
         }
 
+        // keep track of other processes updating content.json
+        // 1) publish must wait for other content.json updates to finish (for example cleanup outgoing wallet messages)
+        // 2) other content.json update processes must wait for publish to finish
+        // used by:
+        // 1) moneyNetworkHubService.create_sessions.step_3_find_old_outgoing_files (post login util)
+        var content_status = {
+            publishing: false
+        } ;
+        var content_update_cbs = [] ; // callbacks waiting for publish to finish
+        function start_content_update (pgm, cb) {
+            content_status[pgm] = new Date().getTime() ;
+            if (content_status.publishing) {
+                // wait
+                content_update_cbs.push(cb) ;
+                return ;
+            }
+            cb() ;
+        }
+        function end_content_update (pgm) {
+            var cb ;
+            delete content_status[pgm] ;
+            cb = content_update_cbs.shift() ;
+            if (cb) cb() ;
+        }
+
         // user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
         // params:
         // - cb: optional callback function. post publish processing. used in i_am_online. check pubkey2 takes long time and best done after publish
         var zeronet_site_publish_interval = 0 ;
         function zeronet_site_publish(cb) {
             var pgm = service + '.zeronet_site_publish: ' ;
+            var wait ;
+
+            // any other process updatering content?
+            if (Object.keys(content_status).length > 1) {
+                console.log(pgm + 'wait with publish. other process is updating content. content_status = ' + JSON.stringify(content_status)) ;
+                wait = function() { zeronet_site_publish(cb) } ;
+                $timeout(wait, 1000) ;
+                return ;
+            }
 
             get_my_user_hub(function (hub) {
                 var pgm = service + '.zeronet_site_publish get_my_user_path callback 1: ';
@@ -3039,6 +3073,8 @@ angular.module('MoneyNetwork')
             check_sha256_addresses: check_sha256_addresses,
             get_z_content_optional: get_z_content_optional,
             get_mn_content_optional: get_mn_content_optional,
+            start_content_update: start_content_update,
+            end_content_update: end_content_update,
             zeronet_site_publish: zeronet_site_publish,
             write_empty_chat_file: write_empty_chat_file,
             save_my_files_optional: save_my_files_optional,

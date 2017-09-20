@@ -21,8 +21,8 @@
 //   json schema compare?
 // - ping with permissions response? Or permissions check after wallet ping.
 //   MN must know if send/receive money permission have been granted and if confirm transaction dialog is needed
-// - wallet.json - add fee info. any fee. fee paid by sender, receiver or shared. fee added or subtracted from transaction amount
-//
+// - wallet.json - add fee info. fee paid by sender, receiver or shared. fee added or subtracted from transaction amount
+// - wallet.json - add external api url. for example https://www.blocktrail.com/api/docs for W2 (url er currency info)
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
 var MoneyNetworkAPILib = (function () {
@@ -879,7 +879,7 @@ var MoneyNetworkAPILib = (function () {
         "wallet": {
             "type": 'object',
             "title": 'Public wallet information in wallet.json files',
-            "description": 'wallet_* fields from site_info. currencies is a list of supported currencies and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies} hash',
+            "description": 'wallet_* fields from site_info. currencies is a list of supported currencies, api_url is optional url to external API and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies, api_url} hash',
             "properties": {
                 "msgtype": {"type": 'string', "pattern": '^wallet$'},
                 "wallet_address": {"type": 'string'},
@@ -915,6 +915,7 @@ var MoneyNetworkAPILib = (function () {
                     },
                     "minItems": 1
                 },
+                "api_url": {"type": 'string'},
                 "wallet_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
                 "hub": {"type": 'string'}
             },
@@ -1021,7 +1022,8 @@ var MoneyNetworkAPILib = (function () {
             wallet_domain: wallet.wallet_domain,
             wallet_title: wallet.wallet_title,
             wallet_description: wallet.wallet_description,
-            currencies: wallet.currencies
+            currencies: wallet.currencies,
+            api_url: wallet.api_url
         } ;
         wallet_sha256 = CryptoJS.SHA256(JSON.stringify(wallet_sha256_json)).toString();
         return wallet_sha256 ;
@@ -1154,6 +1156,7 @@ var MoneyNetworkAPILib = (function () {
                         wallet_title: wallet.wallet_title,
                         wallet_description: wallet.wallet_description,
                         currencies: wallet.currencies,
+                        api_url: wallet.api_url,
                         wallet_sha256: row.wallet_sha256
                     } ;
                     wallet_info_cache[row.wallet_sha256] = JSON.parse(JSON.stringify(results[row.wallet_sha256])) ;

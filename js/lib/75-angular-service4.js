@@ -264,7 +264,7 @@ angular.module('MoneyNetwork')
                         ZeroFrame.cmd("dbQuery", [query1], function (res) {
                             var pgm = service + '.create_sessions.step_3_find_old_outgoing_files dbQuery callback 2: ';
                             var files, i, re, filename, this_session_filename, timestamp, session_info, sessionid,
-                                session_at, delete_files, delete_file, delete_ok, delete_failed ;
+                                session_at, delete_files, content_lock_pgm ;
                             if (res.error) {
                                 console.log(pgm + 'query failed. error = ' + res.error);
                                 console.log(pgm + 'query = ' + query1);
@@ -349,7 +349,6 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'files = ' + JSON.stringify(files)) ;
                             //files = ["3f6561327a.1474665067076", "3f6561327a.1472282567643", "3f6561327a.1475706471612", "3f6561327a.1475685146639", "3f6561327a.1472197202640", "3f6561327a.1471393354195", "3f6561327a.1475916076111", "3f6561327a.1473627685854", "3f6561327a.1475251057063", "3f6561327a.1472104626705", "3f6561327a.1471831583539", "3f6561327a.1474478812729", "3f6561327a.1474804539180", "3f6561327a.1476205886263", "3f6561327a.1473249405340", "3f6561327a.1472026664343", "3f6561327a.1476424181413", "3f6561327a.1471564536590", "3f6561327a.1473646753222", "3f6561327a.1471917524352", "3f6561327a.1471976592878", "3f6561327a.1474745414662", "3f6561327a.1476135581171", "3f6561327a.1474122722696", "3f6561327a.1476073867217", "3f6561327a.1473167872165", "3f6561327a.1476559711025", "3f6561327a.1472449416593", "3f6561327a.1473033703401", "3f6561327a.1475796712277", "3f6561327a.1471856461133", "3f6561327a.1473010786666", "3f6561327a.1474654532839", "3f6561327a.1474248258663", "3f6561327a.1471503749260", "3f6561327a.1471976734587", "3f6561327a.1475238729722", "3f6561327a.1473441766500", "3f6561327a.1473785926028", "3f6561327a.1476013919996", "3f6561327a.1472925485650", "3f6561327a.1473709828898", "3f6561327a.1473449375291", "3f6561327a.1474056537691", "3f6561327a.1471712354236", "3f6561327a.1473731777757", "3f6561327a.1475378942077", "3f6561327a.1473523004275", "3f6561327a.1474437441649", "3f6561327a.1475932891045", "3f6561327a.1476185082949", "3f6561327a.1476240602333", "3f6561327a.1472395916104", "3f6561327a.1473306586555"];
 
-                            // group files by <this_session_filename>. special 0000000000000 file is used for offline transactions.
                             delete_files = [] ;
                             for (i=0 ; i<files.length ; i++) {
                                 filename = files[i] ;
@@ -376,40 +375,49 @@ angular.module('MoneyNetwork')
                                 }
                             } // i
                             console.log(pgm + 'delete_files = ' + JSON.stringify(delete_files)) ;
+                            if (!delete_files.length) return ;
 
-                            // delete file loop
-                            delete_ok = [] ;
-                            delete_failed = [] ;
-                            delete_file = function() {
-                                var pgm = service + '.create_sessions.step_3_find_old_outgoing_files.delete_file: ';
-                                var filename, inner_path, debug_seq ;
-                                if (!delete_files.length) {
-                                    // finish deleting optional files
-                                    if (!delete_ok.length) return ; // nothing to sign
-                                    inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
-                                    self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
-                                        var pgm = service + '.create_sessions.step_3_find_old_outgoing_files.delete_file siteSign callback: ';
-                                        if (res != 'ok') console.log(pgm + inner_path + ' siteSign failed. error = ' + res) ;
-                                        // done with or without errors
-                                    }) ;
-                                    return ;
-                                } // done
-                                filename = delete_files.shift() ;
-                                inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
-                                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete') ;
-                                ZeroFrame.cmd("fileDelete", inner_path, function (res) {
-                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                    if (res == 'ok') delete_ok.push(filename) ;
-                                    else {
-                                        console.log(pgm + inner_path + ' fileDelete failed. error = ' + res) ;
-                                        delete_failed.push(filename) ;
-                                    } ;
-                                    // continue with next file
-                                    delete_file() ;
-                                }); // fileDelete
-                            } ; // delete_file
-                            // start delete file loop
-                            delete_file() ;
+                            // start content update. publish and content update cannot run at the same time
+                            content_lock_pgm = pgm ;
+                            moneyNetworkHubService.start_content_update(content_lock_pgm, function() {
+                                var delete_ok, delete_failed, delete_file ;
+
+                                // delete file loop
+                                delete_ok = [] ;
+                                delete_failed = [] ;
+                                delete_file = function() {
+                                    var pgm = service + '.create_sessions.step_3_find_old_outgoing_files.delete_file: ';
+                                    var filename, inner_path, debug_seq ;
+                                    if (!delete_files.length) {
+                                        // finish deleting optional files
+                                        if (!delete_ok.length) return ; // nothing to sign
+                                        inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
+                                        self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+                                            var pgm = service + '.create_sessions.step_3_find_old_outgoing_files.delete_file siteSign callback: ';
+                                            if (res != 'ok') console.log(pgm + inner_path + ' siteSign failed. error = ' + res) ;
+                                            // done with or without errors. end content update.
+                                            moneyNetworkHubService.end_content_update(content_lock_pgm) ;
+                                        }) ;
+                                        return ;
+                                    } // done
+                                    filename = delete_files.shift() ;
+                                    inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
+                                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete') ;
+                                    ZeroFrame.cmd("fileDelete", inner_path, function (res) {
+                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                        if (res == 'ok') delete_ok.push(filename) ;
+                                        else {
+                                            console.log(pgm + inner_path + ' fileDelete failed. error = ' + res) ;
+                                            delete_failed.push(filename) ;
+                                        }
+                                        // continue with next file
+                                        delete_file() ;
+                                    }); // fileDelete
+                                } ; // delete_file
+                                // start delete file loop
+                                delete_file() ;
+
+                            }) ; // start_content_update callback
 
                         }); // dbQuery callback 2
 
