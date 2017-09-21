@@ -1753,6 +1753,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
 //   - timestamp: timestamp to be used in filename for outgoing message. Only used when sending response
 //   - msgtype: request msgtype. only used when sending response. Used for json validation
 //   - request: request timestamp. only used when sending response. Added to response json after validation. used for offline transactions
+//   - timeout_at: timestamp. only used when sending response. other session expects response before timeout_at. cleanup response after timeout
 //   - offline: boolean or an array. start an offline transaction (send, receive, pay, receive payment).
 //     true: calling app must handle offline transaction administration (cleanup)
 //     array: add timestamp to array and to <this_session_filename>.0000000000000 file
@@ -1760,7 +1761,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
     var self, response, request_msgtype, request_timestamp, encryptions, error, request_at, request_file_timestamp,
-        default_timeout, timeout_at, month, year, cleanup_in, offline_transaction ;
+        default_timeout, timeout_at, month, year, cleanup_in, offline_transaction, request_timeout_at ;
     self = this;
     this.check_destroyed(pgm) ;
 
@@ -1775,6 +1776,11 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     if (options.offline) {
         if (Array.isArray(options.offline)) offline_transaction = options.offline ;
         else offline_transaction = true ;
+    }
+    if (options.timeout_at && (typeof options.timeout_at == 'number')) {
+        // sending a response to a previous request
+        request_timeout_at = options.timeout_at ;
+        if (request_at > request_timeout_at) return cb({error: 'Cannot send message. Request timeout at ' + request_timeout_at}) ;
     }
 
     encryptions = options.hasOwnProperty('encryptions') ? options.encryptions : [1, 2, 3];
@@ -1819,7 +1825,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     // response? true, false or a number (timeout in milliseconds).
     default_timeout = 10000 ;
     if (response) {
-        // response requested. true or number. wait for response. use a random timestamp 1 year ago as response filename
+        // response requested. true or number. wait for response.
         if (typeof response == 'number') {
             if (response < 100) response = 100 ; // timeout minimum 0.1 second
         }
@@ -1828,9 +1834,11 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         timeout_at = request_at + response;
         year = 1000 * 60 * 60 * 24 * 365.2425;
         month = year / 12;
+        // use a random timestamp 1 year ago as response filename
         response = request_at - 11 * month - Math.floor(Math.random() * month * 2); // random timestamp one year ago
         request = JSON.parse(JSON.stringify(request));
         request.response = response;
+        request.timeout_at = timeout_at ;
     }
 
     // 1: recheck this_user_path before sending message. can have changed. user may have logged out
@@ -1904,7 +1912,14 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                 var delete_request, cleanup_job_id, inner_path6 ;
                                 self.log(pgm, 'res = ' + JSON.stringify(res));
 
-                                if (offline_transaction || !response) return cb({}); // exit. response was not requested or offline transaction
+                                if (request.request) {
+                                    console.log(pgm + 'sending a response to a previous request. start cleanup job to response. must delete response file after request timeout');
+                                    cleanup_in = request_timeout_at - request_at ;
+                                    console.log(pgm + 'request_at          = ' + request_at) ;
+                                    console.log(pgm + 'request_timeout_at  = ' + request_timeout_at) ;
+                                    console.log(pgm + 'cleanup_in          = ' + cleanup_in) ;
+                                }
+                                if (offline_transaction || (!response && !request.request)) return cb({}); // exit. offline transaction or not response and no request cleanup job
 
                                 // delete request file. submit cleanup job
                                 delete_request = function() {
@@ -1919,6 +1934,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                 }; // delete_request
                                 console.log(pgm + 'Submit delete_request job for ' + inner_path3 + '. starts delete_request job in ' + (cleanup_in || default_timeout) + ' milliseconds' ) ;
                                 cleanup_job_id = setTimeout(delete_request, (cleanup_in || default_timeout)) ;
+                                if (!response) return cb({}) ; // exit. response was not requested. request cleanup job started
 
                                 // 8: is MoneyNetworkAPIDemon monitoring incoming messages for this sessionid?
                                 MoneyNetworkAPILib.is_session(self.sessionid, function (is_session) {
@@ -1938,6 +1954,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                             var encrypted_response, error, request_timestamp;
                                             if (!response_str) return cb({error: 'fileGet for receipt failed. Request was ' + JSON.stringify(request) + '. inner_path was ' + inner_path});
                                             encrypted_response = JSON.parse(response_str);
+                                            console.log(pgm + 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid) ;
                                             // read response. run cleanup job now
                                             if (cleanup_job_id) clearTimeout(cleanup_job_id);
                                             setTimeout(delete_request, 0) ;

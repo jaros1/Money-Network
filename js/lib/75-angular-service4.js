@@ -592,13 +592,20 @@ angular.module('MoneyNetwork')
                     encrypted_json = JSON.parse(json_str) ;
                     encrypt2.decrypt_json(encrypted_json, function (request) {
                         var pgm = service + '.process_incoming_message decrypt_json callback 2: ';
-                        var response_timestamp, request_timestamp, error, response, i, key, value, encryptions, done_and_send ;
+                        var response_timestamp, request_timestamp, request_timeout_at, error, response, i, key, value, encryptions, done_and_send ;
                         // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                         encryptions = [1,2,3] ;
 
                         // remove any response timestamp before validation (used in response filename)
                         response_timestamp = request.response ; delete request.response ; // request received. must use response_timestamp in response filename
                         request_timestamp = request.request ; delete request.request ; // response received. todo: must be a response to previous send request with request timestamp in request filename
+                        request_timeout_at = request.timeout_at ; delete request.timeout_at ; // request received. when does request expire. how long does other session wait for response
+
+                        // request timeout?
+                        if (request_timeout_at < (new Date().getTime())) {
+                            console.log(pgm + 'warning. request timeout. ignoring request = ' + JSON.stringify(request) + ', filename = ' + filename) ;
+                            return ;
+                        }
 
                         done_and_send = function (response, encryptions) {
                             // marked as done. do not process same message twice
@@ -623,7 +630,7 @@ angular.module('MoneyNetwork')
                             else return ; // exit. no response was requested
 
                             // send response to other session
-                            encrypt2.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, encryptions: encryptions}, function (res)  {
+                            encrypt2.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, timeout_at: request_timeout_at, encryptions: encryptions}, function (res)  {
                                 var pgm = service + '.process_incoming_message send_message callback 3: ';
                                 console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                             }) ; // send_message callback 3
