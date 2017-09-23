@@ -1372,7 +1372,7 @@ angular.module('MoneyNetwork')
                                 return check_transaction() ;
                             }
 
-                            // todo: convert to unit with factor 1 before sending request to wallet?
+                            // convert amount to base unit (factor 1) before sending request to wallet
                             request.money_transactions.push({
                                 action: money_transaction.action,
                                 code: unique_texts_hash[unique_text].balance.code,
@@ -1381,11 +1381,11 @@ angular.module('MoneyNetwork')
                         } // for i
                         console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                         //request = {
-                        //    "msgtype": "money1_request",
+                        //    "msgtype": "prepare_mt_request",
                         //    "money_transactions": [{
                         //        "action": "Send",
                         //        "code": "tBTC",
-                        //        "amount": "10000"
+                        //        "amount": "0.00001"
                         //    }]
                         //};
 
@@ -1925,6 +1925,10 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'currencies = ' + JSON.stringify(currencies));
 
                     if (!self.currencies) self.currencies = currencies ; // initialize currencies array used in UI
+                    if (!self.currencies.length) {
+                        ZeroFrame.cmd("wrapperNotification", ['info', 'Cannot start money transaction<br>No wallets/currencies were found', 5000]) ;
+                        return ;
+                    }
 
                     // show/hide money. always reset money transactions array
                     self.money_transactions.splice(0,self.money_transactions.length) ;

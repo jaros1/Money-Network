@@ -879,7 +879,7 @@ var MoneyNetworkAPILib = (function () {
         "wallet": {
             "type": 'object',
             "title": 'Public wallet information in wallet.json files',
-            "description": 'wallet_* fields from site_info. currencies is a list of supported currencies, api_url is optional url to external API and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies, api_url} hash',
+            "description": 'wallet_* fields from site_info. currencies is a list of supported currencies, api_url is optional url to external API documentation and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies, api_url} hash',
             "properties": {
                 "msgtype": {"type": 'string', "pattern": '^wallet$'},
                 "wallet_address": {"type": 'string'},
@@ -888,13 +888,15 @@ var MoneyNetworkAPILib = (function () {
                 "wallet_description": {"type": 'string'},
                 "currencies": {
                     "type": 'array',
-                    "description": 'List of supported currencies. code is a (pseudo) currency iso code. Optional URL to currency information on the www',
+                    "description": 'List of supported currencies. code is a (pseudo) currency iso code, short currency name, optional currency description (text), optional URL with currency information, optional fee information (text) and optional list with currency units',
                     "items": {
                         "type": 'object',
                         "properties": {
                             "code": {"type": 'string', "minLength": 2, "maxLength": 5},
                             "name": {"type": 'string'},
+                            "description": {"type": 'string'},
                             "url": {"type": 'string'},
+                            "fee_info": {"type": 'string'},
                             "units": {
                                 "type": 'array',
                                 "description": 'Optional unit list. For example units: [{ unit: BitCoin, factor: 1 },{ unit: Satoshi, factor: 0.00000001 }]',
@@ -1010,22 +1012,60 @@ var MoneyNetworkAPILib = (function () {
     } // validate_json
 
     // helper. calculate wallet_sha256 from other wallet fields (minimize wallet.json disk usage)
+    // wallet must be valid json (see validate_json). return null if doublet code or doublet units
     function calc_wallet_sha256 (wallet) {
         var pgm = module + '.calc_wallet_sha256: ';
-        var wallet_sha256_json, wallet_sha256 ;
-        if (!wallet.wallet_address || !wallet.wallet_title || !wallet.wallet_description || !wallet.currencies) {
-            this.log(pgm + 'cannot calculate wallet_sha256 for wallet ' + JSON.stringify(wallet))  ;
-            return null ;
-        }
-        wallet_sha256_json = {
+        var new_wallet, wallet_sha256, i, codes, currency, new_currency, j, unit, units ;
+        if (validate_json(pgm, wallet)) return null ; // wallet is invalid
+        if (debug) console.log(pgm + 'todo: normalize currencies list. sort and  fixed order of properties. see wallet schema definition');
+        new_wallet = {
             wallet_address: wallet.wallet_address,
             wallet_domain: wallet.wallet_domain,
             wallet_title: wallet.wallet_title,
             wallet_description: wallet.wallet_description,
-            currencies: wallet.currencies,
+            currencies: [],
             api_url: wallet.api_url
         } ;
-        wallet_sha256 = CryptoJS.SHA256(JSON.stringify(wallet_sha256_json)).toString();
+        codes = [] ;
+        for (i=0 ; i<wallet.currencies.length ; i++) {
+            // check doublet currency code
+            currency = wallet.currencies[i] ;
+            if (codes.indexOf(currency.code) != -1) {
+                console.log(pgm + 'doublet currency code ' + currency.code + ' in wallet ' + JSON.stringify(wallet)) ;
+                return null ;
+            }
+            codes.push(currency.code) ;
+            // insert normalized currency into currencies array
+            new_currency = {
+                code: currency.code,
+                name: currency.name,
+                description: currency.description,
+                url: currency.url,
+                fee_info: currency.fee_info,
+                units: currency.units ? [] : null
+            } ;
+            new_wallet.currencies.push(new_currency) ;
+            if (!currency.units) continue ;
+            // add units to currency
+            units = [] ;
+            for (j=0 ; j<currency.units.length ; j++) {
+                unit = currency.units[j] ;
+                // check doublet unit code
+                if (units.indexOf(unit.unit) != -1) {
+                    console.log(pgm + 'doublet unit ' + unit.unit + ' in wallet ' + JSON.stringify(wallet)) ;
+                    return null ;
+                }
+                units.push(unit.unit) ;
+                // insert normalized unit into units array
+                new_currency.units.push({ unit: unit.unit, factor: unit.factor }) ;
+            } // for j
+            // sort units array
+            new_currency.units.sort(function(a,b) { return b.unit > a.unit ? 1 : -1 }) ;
+        } // for i
+        // sort currencies array
+        new_wallet.currencies.sort(function (a,b) { return b.code > a.code ? 1 : -1 }) ;
+        // to json + sha256
+        wallet_sha256 = CryptoJS.SHA256(JSON.stringify(new_wallet)).toString();
         return wallet_sha256 ;
     } // calc_wallet_sha256
 
@@ -1037,7 +1077,7 @@ var MoneyNetworkAPILib = (function () {
         var i, re, results, query, sha256 ;
         if (!wallet_sha256) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
         if (typeof wallet_sha256 == 'string') wallet_sha256 = [wallet_sha256] ;
-        if (!wallet_sha256.length) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
+        if (!Array.isArray(wallet_sha256)) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
         re = new RegExp('^[0-9a-f]{64}$') ;
         for (i=0 ; i<wallet_sha256.length ; i++) {
             if (typeof wallet_sha256[i] != 'string') return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
@@ -1047,6 +1087,7 @@ var MoneyNetworkAPILib = (function () {
         if (!ZeroFrame) cb({error: 'invalid call. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into this library'});
 
         results = {} ; // sha256 => wallet_info
+        if (!wallet_sha256.length) return cb(results,false) ;
 
         // check cache
         for (i=wallet_sha256.length-1 ; i>=0 ; i--) {
