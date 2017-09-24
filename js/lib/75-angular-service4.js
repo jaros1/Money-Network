@@ -857,7 +857,8 @@ angular.module('MoneyNetwork')
 
             MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, delayed) {
                 var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row, unique_texts,
-                    sessionid, changed_wallet_sha256_values, status, step_1_get_session, step_2_other_user_path, step_n_done ;
+                    sessionid, changed_wallet_sha256_values, status, step_1_get_session, step_2_ping_other_session,
+                    step_3_other_user_path, step_n_done ;
                 // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
                 //wallet_info = {
                 //    "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74": {
@@ -1005,13 +1006,11 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'changed_wallet_sha256_values = ' + JSON.stringify(changed_wallet_sha256_values)) ;
 
                 // todo: fix problems with lost/changed wallet_sha256 values ...
-                console.log(pgm + 'todo: 1) check encrypt.other_user_path. set by first message from wallet session') ;
                 console.log(pgm + 'todo: 2) save wallet session directory in session info after session handshake?') ;
                 console.log(pgm + 'todo: 3) send a ping to wallet session. should respond with a OK and set encrypt.other_user_path') ;
                 console.log(pgm + 'todo: 4) send a offline ping to wallet session. wallet session should respond later with a OK') ;
                 console.log(pgm + 'todo: 5) start wallet session if no ping response?') ;
-
-
+                
                 // create callback chain
                 status = { refresh_currencies: false, no_done: 0 } ;
 
@@ -1020,31 +1019,31 @@ angular.module('MoneyNetwork')
                     else console.log(pgm + 'refresh wallet_sha256 failed') ;
                 } ; // step_n_done
 
-                // step 2 - check other_user_path - use fileGet to get current wallet_sha256 value
-                step_2_other_user_path = function (i) {
-                    var pgm = service + '.get_currencies.step_2_other_user_path: ' ;
+                // step 3 - check other_user_path - use fileGet to get current wallet_sha256 value
+                step_3_other_user_path = function (i) {
+                    var pgm = service + '.get_currencies.step_3_other_user_path: ' ;
                     var encrypt, inner_path, debug_seq ;
                     if (i >= changed_wallet_sha256_values.length) {
                         // next step in callback chain
                         if (status.no_done == changed_wallet_sha256_values.length) return step_n_done();
-                        return step_n_done();
+                        else return step_n_done();
                     }
-                    if (changed_wallet_sha256_values[i].done) return step_2_other_user_path(i+1) ;
+                    if (changed_wallet_sha256_values[i].done) return step_3_other_user_path(i+1) ;
                     encrypt = changed_wallet_sha256_values[i].session_info.encrypt ;
-                    if (!encrypt.other_user_path) return step_2_other_user_path(i+1) ;
+                    if (!encrypt.other_user_path) return step_3_other_user_path(i+1) ;
                     sessionid = changed_wallet_sha256_values[i].sessionid ;
                     console.log(pgm + 'found other_user_path for session ' + sessionid + '. reading wallet.json file') ;
                     inner_path = encrypt.other_user_path + 'wallet.json';
                     debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
                     ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
-                        var pgm = service + '.get_currencies.step_2_other_user_path fileGet callback ' ;
+                        var pgm = service + '.get_currencies.step_3_other_user_path fileGet callback ' ;
                         var wallet, old_wallet_sha256 ;
                         MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                         if (!wallet_str) {
                             console.log(pgm + 'error. could not find wallet ' + inner_path + '. other_user_path must be invalid') ;
                             changed_wallet_sha256_values[i].done = true ;
                             status.no_done++ ;
-                            return step_2_other_user_path(i+1) ;
+                            return step_3_other_user_path(i+1) ;
                         }
                         // found wallet.json
                         wallet = JSON.parse(wallet_str) ;
@@ -1055,7 +1054,7 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'system error for sessionid ' + sessionid + '. unchanged wallet_sha256 ' + old_wallet_sha256) ;
                             changed_wallet_sha256_values[i].done = true ;
                             status.no_done++ ;
-                            return step_2_other_user_path(i+1) ;
+                            return step_3_other_user_path(i+1) ;
                         }
                         // wallet_sha256 lookup ok
                         ls_sessions[sessionid][SESSION_INFO_KEY].wallet_sha256 = wallet.wallet_sha256 ;
@@ -1064,24 +1063,86 @@ angular.module('MoneyNetwork')
                         status.no_done++ ;
                         status.refresh_currencies = true ;
                         // next row
-                        step_2_other_user_path(i+1) ;
+                        step_3_other_user_path(i+1) ;
                     }) ; // fileGet callback
 
                 } ; // step_2_other_user_path
 
-                // step 1 - get session info
+                // step 2 - optional ping other session
+                step_2_ping_other_session = function(i) {
+                    var pgm = service + '.get_currencies.step_2_ping_other_session: ' ;
+                    var encrypt, request ;
+                    if (i >= changed_wallet_sha256_values.length) {
+                        // next step in callback chain
+                        if (status.no_done == changed_wallet_sha256_values.length) return step_n_done();
+                        else return step_3_other_user_path(0);
+                    }
+                    if (changed_wallet_sha256_values[i].done) return step_2_ping_other_session(i+1) ;
+                    encrypt = changed_wallet_sha256_values[i].session_info.encrypt ;
+                    if (encrypt.other_user_path) return step_2_ping_other_session(i+1) ;
+
+                    // no other_user_path. ping other session. should respond with OK if up and running
+
+                    // send ping. timeout max 5 seconds. Expects Timeout ... or OK response
+                    request = { msgtype: 'ping' };
+                    encrypt.send_message(request, {response: 5000}, function (response) {
+                        var pgm = service + '.get_currencies.step_2_ping_other_session send_message callback: ' ;
+                        var sessionid, session_info, message, refresh_job ;
+                        sessionid = changed_wallet_sha256_values[i].sessionid ;
+                        if (response && response.error && response.error.match(/^Timeout /)) {
+                            // OK. Timeout. Continue with next session.
+                            console.log(pgm + 'ping sessionid ' + sessionid + ' timeout');
+                            session_info = ls_sessions[sessionid][SESSION_INFO_KEY] ;
+                            if (session_info.url) {
+                                // ask user to open wallet session
+                                console.log(pgm + 'timeout. ask user to confirm open wallet ' + session_info.url) ;
+                                message = 'Could not find wallet info<br>Open wallet ' + session_info.url + '<br>to update wallet information?<br>' ;
+                                ZeroFrame.cmd("wrapperConfirm", [message, 'OK'], function (confirm) {
+                                    if (!confirm) return ;
+                                    // open wallet site
+                                    console.log(pgm + 'confirmed. open wallet ' + session_info.url + ', wait 5 seconds and refresh currency information') ;
+                                    ZeroFrame.cmd("wrapperOpenWindow", [session_info.url, "_blank"]);
+                                    ZeroFrame.cmd("wrapperNotification", ['info', 'Opened wallet ' + session_info.url + '<br>in a new browser tab', 5000]);
+                                    // wait 5 seconds and run get_currencies once more
+                                    refresh_job = function() {
+                                        var message = 'Updating wallet info for<br>wallet ' + session_info.url ;
+                                        console.log(pgm + message) ;
+                                        ZeroFrame.cmd("wrapperNotification", ['info', message, 5000]);
+                                        get_currencies(function() {}) ;
+                                    };
+                                    $timeout(refresh_job, 5000) ;
+                                }) ;
+                            }
+                            else console.log(pgm + 'Error. Cannot ask user to open wallet. No wallet URL was found in session info ' + JSON.stringify(session_info)) ;
+                        }
+                        else if (!response || response.error) {
+                            // Unexpected error.
+                            console.log(pgm + 'ping sessionid ' + sessionid + ' returned ' + JSON.stringify(response));
+                            changed_wallet_sha256_values[i].done = true ;
+                            status.no_done++ ;
+                        }
+                        else {
+                            // ping OK.
+                            console.log(pgm + 'other_user_path = ' + encrypt.other_user_path);
+                        }
+                        // next row
+                        step_2_ping_other_session(i+1) ;
+                    }) ;
+                }; // step_2_ping_other_session
+
+                // step 1 - get session info from MoneyNetworkAPI (sessions loaded from localStorage - see ls_sessions hash)
                 step_1_get_session = function(i) {
-                    var pgm = service + '.get_currencies.step_2_other_user_path: ' ;
+                    var pgm = service + '.get_currencies.get_session: ' ;
                     var sessionid ;
                     if (i >= changed_wallet_sha256_values.length) {
                         // next step in callback chain
                         if (status.no_done == changed_wallet_sha256_values.length) return step_n_done();
-                        return step_2_other_user_path(0) ;
+                        return step_2_ping_other_session(0) ;
                     }
                     changed_wallet_sha256_values[i].done = false ;
                     sessionid = changed_wallet_sha256_values[i].sessionid ;
                     MoneyNetworkAPILib.get_session(sessionid, function (session_info) {
-                        var pgm = service + '.get_currencies.step_2_other_user_path get_session callback: ' ;
+                        var pgm = service + '.get_currencies.step_1_get_session callback: ' ;
                         if (!session_info || !session_info.encrypt) {
                             // session lookup failed
                             console.log(pgm + 'error. could not find session info for sessionid ' + sessionid) ;
