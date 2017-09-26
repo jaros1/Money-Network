@@ -1005,12 +1005,11 @@ angular.module('MoneyNetwork')
                 if (!changed_wallet_sha256_values.length) return ;
                 console.log(pgm + 'changed_wallet_sha256_values = ' + JSON.stringify(changed_wallet_sha256_values)) ;
 
-                // todo: fix problems with lost/changed wallet_sha256 values ...
-                console.log(pgm + 'todo: 2) save wallet session directory in session info after session handshake?') ;
-                console.log(pgm + 'todo: 3) send a ping to wallet session. should respond with a OK and set encrypt.other_user_path') ;
-                console.log(pgm + 'todo: 4) send a offline ping to wallet session. wallet session should respond later with a OK') ;
-                console.log(pgm + 'todo: 5) start wallet session if no ping response?') ;
-                
+                // fix problems with lost/changed wallet_sha256 values:
+                // 1) get session info
+                // 2) optional ping wallet session
+                // 3) use other_user_path to find wallet.wallet_sha256
+
                 // create callback chain
                 status = { refresh_currencies: false, no_done: 0 } ;
 

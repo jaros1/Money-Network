@@ -928,7 +928,7 @@ var MoneyNetworkAPILib = (function () {
         "prepare_mt_request": {
             "type": 'object',
             "title": 'Validate money transactions before send chat message with money transactions',
-            "description": 'MN: send money transactions to wallet before send chat message to contact. Multiple money transactions are allowed. Wallet must return error message or json with transaction details for each money transaction',
+            "description": 'MN: send money transactions to wallet before send chat message to contact. Multiple money transactions are allowed. Boolean flags: Open and/or close wallet before/after prepare_mt_request request. Wallet must return error message or json with transaction details for each money transaction',
             "properties": {
                 "msgtype": {"type": 'string', "pattern": '^prepare_mt_request$'},
                 "contact": {
@@ -942,6 +942,8 @@ var MoneyNetworkAPILib = (function () {
                     "required": ['alias', 'cert_user_id', 'auth_address'],
                     "additionalProperties": false
                 },
+                "open_wallet": {"type": 'boolean'},
+                "close_wallet": {"type": 'boolean'},
                 "money_transactions": {
                     "type": 'array',
                     "items": {
@@ -959,6 +961,21 @@ var MoneyNetworkAPILib = (function () {
             "required": ['msgtype', 'contact', 'money_transactions'],
             "additionalProperties": false
         }, // prepare_mt_request
+
+        "prepare_mt_response": {
+            "type": 'object',
+            "title": 'prepare_mt_request response',
+            "description": 'array with json to be included in chat message to contact. One json for each money transaction in prepare_mt_request',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^prepare_mt_response$'},
+                "jsons": {
+                    "type": 'array',
+                    "minItems": 1
+                }
+            },
+            "required": ['msgtype', 'jsons'],
+            "additionalProperties": false
+        }, // prepare_mt_response
 
         "notification" : {
             "type": 'object',

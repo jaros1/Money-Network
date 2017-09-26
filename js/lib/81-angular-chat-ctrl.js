@@ -1348,6 +1348,7 @@ angular.module('MoneyNetwork')
                                 cert_user_id: contact.cert_user_id,
                                 auth_address: contact.auth_address
                             },
+                            open_wallet: true,
                             money_transactions: []
                         } ;
                         for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
