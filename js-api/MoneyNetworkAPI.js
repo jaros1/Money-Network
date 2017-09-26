@@ -1013,6 +1013,7 @@ var MoneyNetworkAPILib = (function () {
             else if ((request_msgtype == 'get_data') && (json.msgtype == 'data')) null; // OK combination
             else if ((request_msgtype == 'get_password') && (json.msgtype == 'password')) null; // OK combination
             else if ((request_msgtype == 'get_balance') && (json.msgtype == 'balance')) null; // OK combination
+            else if ((request_msgtype == 'prepare_mt_request') && (json.msgtype == 'prepare_mt_response')) null; // OK combination
             else return 'Invalid ' + request_msgtype + ' request ' + json.msgtype + ' response combination';
         }
         if (typeof tv4 === 'undefined') {

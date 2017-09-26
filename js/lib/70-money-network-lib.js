@@ -1040,6 +1040,24 @@ var MoneyNetworkHelper = (function () {
             "sender_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
             "old_local_msg_seq": {"type": 'integer'},
             "image": {"type": ['string', 'boolean']},
+            "money_transactions": {
+                "description": 'Optional array with money transactions to be included in private chat message',
+                "type": 'array',
+                "items": {
+                    "type": 'object',
+                    "properties": {
+                        "wallet_url": { "type": 'string'},
+                        "wallet_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+                        "action": { "type": 'string', "pattern": '^(Send|Request)$'},
+                        "code": { "type": 'string', "minLength": 2, "maxLength": 5},
+                        "amount": { "type": 'number'},
+                        "json": {}
+                    },
+                    "required": ['wallet_url', 'wallet_sha256', 'action', 'code', 'amount', 'json'],
+                    "additionalProperties": false
+                },
+                "minItems": 1
+            },
             "parent": {"type": 'string', "pattern": '^[0-9]{13},1[0-9a-zA-Z]{3}$'},
             "feedback": {
                 "type": 'object',

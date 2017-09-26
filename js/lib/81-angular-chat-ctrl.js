@@ -1246,15 +1246,89 @@ angular.module('MoneyNetwork')
                 // callback function - send chat message
                 step_4_send_message = function () {
                     var pgm = controller + '.send_chat_msg.step_4_send_message: ';
-                    // ready to send. hide any money transactions.
-                    self.show_money = false ;
+                    var i, money_transaction, unique_text, balance ;
                     // send chat message to contact
                     message = {
                         msgtype: 'chat msg',
                         message: self.new_chat_msg
                     };
                     if (self.new_chat_src) message.image = self.new_chat_src ;
+                    if (self.show_money) {
+
+                        console.log(pgm + 'todo: keep money transaction secure and small. chat messages are saved in data.json msg array') ;
+                        // todo: save some transaction information in a optional file? For example as offline money transaction in wallet session
+                        // todo: allow wallets to communicate direct for fast transaction handshake?
+                        // todo: use MoneyNetworkAPI for W2W communication (publish is required)?
+                        // todo: use a transaction specific sessionid for W2W communication (public keys + sessionid)?
+
+                        message.money_transactions = [] ;
+                        for (i=0 ; i<self.money_transactions.length ; i++) {
+                            money_transaction = self.money_transactions[i] ;
+                            // money_transaction = {
+                            //    "action": "Send",
+                            //    "currency": "tBTC Test Bitcoin from MoneyNetworkW2",
+                            //    "amount": "10000",
+                            //    "unit": "Satoshi",
+                            //    "$$hashKey": "object:3041",
+                            //    "message": {
+                            //        "html": {},
+                            //        "ping": null,
+                            //        "balance": "Wallet balance 1.3 BitCoin = 130000000 Satoshi"
+                            //    },
+                            //    "factor": 1e-8,
+                            //    "json": {"return_address": "2NDjx7ye6jfUQBrQP8YPJ3ppXhtwzHZrCsS"}
+                            //};
+                            // balance = {
+                            //    "code": "tBTC",
+                            //    "amount": 1.3,
+                            //    "balance_at": 1506416329497,
+                            //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                            //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                            //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //    "wallet_title": "MoneyNetworkW2",
+                            //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                            //    "api_url": "https://www.blocktrail.com/api/docs",
+                            //    "unique_id": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7/tBTC",
+                            //    "name": "Test Bitcoin",
+                            //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                            //    "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                            //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
+                            //    "unique_text": "tBTC Test Bitcoin from MoneyNetworkW2"
+                            //};
+                            console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
+                            unique_text = money_transaction.currency ;
+                            balance = unique_texts_hash[unique_text].balance ;
+                            console.log(pgm + 'balance = ' + JSON.stringify(balance)) ;
+
+                            message.money_transactions.push({
+                                wallet_url: balance.wallet_domain || balance.wallet_address, // url for open wallet session
+                                wallet_sha256: balance.wallet_sha256, // link to full wallet information (wallet.json files)
+                                action: money_transaction.action, // Send or Request
+                                code: balance.code, // currency code
+                                amount: money_transaction.amount * money_transaction.factor, // amount without unit (factor = 1)
+                                json: money_transaction.json // wallet specific json. any type
+                            }) ;
+                        } // for i
+                        console.log(pgm + 'todo: edit "chat msg" schema definition') ;
+                    } // if show_money
+                    // ready to send. hide any money transactions.
+                    self.show_money = false ;
+
+
                     MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
+message = {
+    "msgtype": "chat msg",
+    "message": "test 5",
+    "money_transactions": [{
+        "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+        "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+        "action": "Send",
+        "code": "tBTC",
+        "amount": 0.0001,
+        "json": {"return_address": "2N9zERzTiWew8mUuBfRT89ScnMDVf6BuR7f"}
+    }]
+};
+
                     // validate json
                     error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
                     if (error) {
@@ -1309,7 +1383,7 @@ angular.module('MoneyNetwork')
                     // loop for each unique_text / wallet. send money transaction to wallet for validation
                     check_transaction = function () {
                         var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction: ';
-                        var unique_text, session, request, i, j, money_transaction, factor, units, errors ;
+                        var unique_text, session, request, i, j, money_transaction, factor, units, errors, error ;
                         unique_text = unique_texts_array.shift() ;
                         if (!unique_text) {
                             // todo: done checking money transactions. count errors. notification, stop or continue
@@ -1333,6 +1407,7 @@ angular.module('MoneyNetwork')
                             // todo: not implemented. stop send chat message
                             self.new_chat_msg_disabled = false ;
                             $rootScope.$apply() ;
+                            step_4_send_message() ;
                             error = 'Sorry. Validate money transaction is not yet implemented' ;
                             ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
                             return ;
@@ -1354,6 +1429,7 @@ angular.module('MoneyNetwork')
                         for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
                             j = unique_texts_hash[unique_text].money_transactions[i] ;
                             money_transaction = self.money_transactions[j] ;
+                            delete money_transaction.factor ;
 
                             // find conversion factor from units definition
                             units = unique_texts_hash[unique_text].balance.units ;
@@ -1372,6 +1448,7 @@ angular.module('MoneyNetwork')
                                 set_ping_error(unique_text, 'Could not find conversion factor for ' + money_transaction.unit, false) ;
                                 return check_transaction() ;
                             }
+                            money_transaction.factor = factor ;
 
                             // convert amount to base unit (factor 1) before sending request to wallet
                             request.money_transactions.push({
@@ -1389,12 +1466,21 @@ angular.module('MoneyNetwork')
                         //        "amount": "0.00001"
                         //    }]
                         //};
+                        if (request.money_transactions.length != unique_texts_hash[unique_text].money_transactions.length) {
+                            error = 'Error. Expected ' + unique_texts_hash[unique_text].money_transactions.length + ' money transactions in request. found ' + request.money_transactions.length;
+                            console.log(pgm + error) ;
+                            set_ping_error(unique_text, error, false) ;
+                            return check_transaction() ;
+                        }
 
                         // send validate money transactions request to wallet (wait max 60 seconds. wallet may call external API in validation process)
                         session.encrypt.send_message(request, {response: 60000}, function (response) {
                             var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction send_message callback: ';
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-                            // response = {"error":"Cannot send message. Unknown msgtype validate_money_transactions"}
+                            //response = {
+                            //    "msgtype": "prepare_mt_response",
+                            //    "jsons": [{"return_address": "2N4msGN4EZEJGbMpPVndRKkyQzHCzeQxF4X"}]
+                            //};
 
                             if (response && response.error && response.error.match(/^Timeout /)) {
                                 // OK. Timeout. Continue with next session
@@ -1411,8 +1497,44 @@ angular.module('MoneyNetwork')
                                 set_ping_error(unique_text, error, true) ;
                                 return check_transaction(); // check next wallet (if any)
                             }
-
-                            // todo: process result
+                            if (request.money_transactions.length != response.jsons.length) {
+                                error = 'Wallet validating error. Invalid response. Expected ' + request.money_transactions.length + ' jsons. Found ' + response.jsons.length + ' jsons' ;
+                                console.log(pgm + error) ;
+                                set_ping_error(unique_text, error, true);
+                                return check_transaction(); // check next wallet (if any)
+                            }
+                            // copy jsons to self.money_transactions
+                            for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
+                                j = unique_texts_hash[unique_text].money_transactions[i] ;
+                                money_transaction = self.money_transactions[j] ;
+                                money_transaction.json = response.jsons[i];
+                            }
+                            console.log(pgm + 'self.money_transactions = ' + JSON.stringify(self.money_transactions));
+                            //money_transactions = [{
+                            //    "action": "Send",
+                            //    "currency": "tBTC Test Bitcoin from MoneyNetworkW2",
+                            //    "amount": "10000",
+                            //    "unit": "Satoshi",
+                            //    "$$hashKey": "object:3041",
+                            //    "message": {
+                            //        "html": {},
+                            //        "ping": null,
+                            //        "balance": "Wallet balance 1.3 BitCoin = 130000000 Satoshi"
+                            //    },
+                            //    "json": {"return_address": "2MvFbmMufMUfuGEFdaRqMaA67rx4cTCEbNS"}
+                            //}, {
+                            //    "action": "Request",
+                            //    "currency": "tBTC Test Bitcoin from MoneyNetworkW2",
+                            //    "amount": "20000",
+                            //    "unit": "Satoshi",
+                            //    "$$hashKey": "object:3084",
+                            //    "message": {
+                            //        "html": {},
+                            //        "ping": null,
+                            //        "balance": "Wallet balance 1.3 BitCoin = 130000000 Satoshi"
+                            //    },
+                            //    "json": {"address": "2N4sf597YmDugmqR92bLwg3ddxE8EsMefyp"}
+                            //}];
 
                             // check next wallet (if any)
                             check_transaction() ;
