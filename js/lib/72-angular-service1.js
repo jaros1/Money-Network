@@ -28,10 +28,11 @@ angular.module('MoneyNetwork')
 
 
         // inject functions from calling services
-        var get_user_reactions, ls_save_contacts ;
+        var get_user_reactions, ls_save_contacts, symbol_to_unicode ;
         function inject_functions (hash) {
             if (hash.get_user_reactions) get_user_reactions = hash.get_user_reactions ;
             if (hash.ls_save_contacts) ls_save_contacts = hash.ls_save_contacts ;
+            if (hash.symbol_to_unicode) symbol_to_unicode = hash.symbol_to_unicode ;
         }
 
         //// convert data.json file to newest version / structure

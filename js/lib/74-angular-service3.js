@@ -78,6 +78,9 @@ angular.module('MoneyNetwork')
         function add_message_parent_index (message) {
             return moneyNetworkHubService.add_message_parent_index (message)
         }
+        function add_message(contact, message, load_contacts) {
+            return moneyNetworkHubService.add_message(contact, message, load_contacts) ;
+        }
 
         /// optional files format:
         //// - public chat        : <to unix timestamp>-<from unix timestamp>-<user seq>-chat.json (timestamps are timestamp for last and first message in file)
@@ -86,12 +89,13 @@ angular.module('MoneyNetwork')
         var Z_CONTENT_OPTIONAL = moneyNetworkHubService.get_z_content_optional() ;
 
         // inject functions from calling services
-        var ls_save_contacts, next_local_msg_seq ;
+        var ls_save_contacts, next_local_msg_seq, check_reactions, add_msg ;
         function inject_functions (hash) {
             if (hash.ls_save_contacts) ls_save_contacts = hash.ls_save_contacts ;
             if (hash.next_local_msg_seq) next_local_msg_seq = hash.next_local_msg_seq ;
+            if (hash.check_reactions) check_reactions = hash.check_reactions ;
+            if (hash.add_msg) add_msg = hash.add_msg ;
         }
-
 
         // find max size of user directory
         var user_contents_max_size = null ; // max size of user directory. from data/users/content

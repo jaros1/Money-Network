@@ -128,6 +128,7 @@ angular.module('MoneyNetwork')
             for (i=0 ; i<symbols.length ; i++) symbols_hex.push(symbols[i].toString(16)) ;
             return symbols_hex.join('_');
         } // symbol_to_unicode
+        moneyNetworkHubService.inject_functions({symbol_to_unicode: symbol_to_unicode}) ;
         function unicode_to_symbol (unicode) {
             var symbols_hex, symbols, i ;
             symbols_hex = unicode.split('_') ;

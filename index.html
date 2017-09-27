@@ -272,10 +272,10 @@
                                                       title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
                                                 <span class="speech-time" title="{{m|messageOutSentTitle}}">
                                                     <i class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)"></a>
+                                <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)" title="Edit message"></a>
                                                 <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
                                                       ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment" ng-click="c.show_comment(m)">
+                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Add comment" ng-click="c.show_comment(m)">
                                 <message-react message="m" folder="outbox" react="c.react"></message-react>
                             </td></tr>
                             <tr><td><table style="margin-right: 0; margin-left: auto;">
@@ -428,7 +428,7 @@
                                                       ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
                                 <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
                                    ng-click="c.enter_password(m)" title="Click to verify"></a>
-                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Comment" ng-click="c.show_comment(m)">
+                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Add comment" ng-click="c.show_comment(m)">
                                 <message-react message="m" folder="inbox" react="c.react"></message-react>
                             </td></tr>
                             <tr><td><table style="margin-right: 0; margin-left: auto;">

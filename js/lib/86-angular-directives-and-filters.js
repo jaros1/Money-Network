@@ -110,7 +110,7 @@ angular.module('MoneyNetwork')
     // https://github.com/jaros1/Zeronet-Money-Network/issues/127
     .directive('messageReact', ['$compile', '$timeout', '$rootScope', 'MoneyNetworkService', function($compile, $timeout, $rootScope, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
-        var no_reaction = { src: "public/images/react.png", title: "Add your reaction", selected: true} ;
+        var no_reaction = { src: "public/images/react.png", title: "Add reaction", selected: true} ;
         var user_reactions = moneyNetworkService.get_user_reactions() ;
         var i, content_html ;
         content_html = '<table><tbody><tr>' ;

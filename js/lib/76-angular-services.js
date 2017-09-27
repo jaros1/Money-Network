@@ -3866,6 +3866,7 @@ angular.module('MoneyNetwork')
             if (js_messages_row.message.z_filename) check_public_reactions(js_messages_row) ;
             else check_private_reactions(js_messages_row) ;
         } // check_reactions
+        moneyNetworkZService.inject_functions({check_reactions: check_reactions}) ;
 
         // after login - check for new ingoing messages since last login
         var watch_receiver_sha256 = moneyNetworkZService.get_watch_receiver_sha256() ; // listen for sha256 addresses
@@ -4328,6 +4329,7 @@ angular.module('MoneyNetwork')
             if (arguments.length != 2) throw pgm + 'invalid call. add_msg must be called with 2 arguments! param3 = ' + JSON.stringify(param3) ;
             return moneyNetworkHubService.add_msg(contact, message) ;
         } // add_msg
+        moneyNetworkZService.inject_functions({add_msg: add_msg}) ;
 
         // delete previously send message. returns true if ZeroNet must be updated after calling the method
         // todo: also a remove_msg function in moneyNetworkHubService but with not identical. remove?
