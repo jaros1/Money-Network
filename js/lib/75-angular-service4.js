@@ -946,7 +946,8 @@ angular.module('MoneyNetwork')
                         if (!currency.hasOwnProperty(key)) continue ;
                         balance[key] = currency[key] ;
                     }
-                    balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_title;
+                    balance.wallet_name = balance.wallet_title ;
+                    balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_name;
                     if (!unique_texts[balance.unique_text]) unique_texts[balance.unique_text] = 0 ;
                     unique_texts[balance.unique_text]++ ;
                     delete balance.currencies ;
@@ -956,7 +957,8 @@ angular.module('MoneyNetwork')
                 for (i=0 ; i<temp_currencies.length ; i++) {
                     balance = temp_currencies[i] ;
                     if (unique_texts[balance.unique_text] == 1) continue ; // OK
-                    balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_address;
+                    balance.wallet_name = balance.wallet_address ;
+                    balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_name;
                 } // for i
 
                 // merge new currencies array into old currencies array (insert, update, delete). used in angularJS UI

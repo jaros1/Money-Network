@@ -1119,11 +1119,32 @@ angular.module('MoneyNetwork')
                 element.style.height = element.scrollHeight + 'px';
             };
 
-            self.open_wallet = function (money_transaction) {
+            // money transaction. open wallet link
+            // 1: new chat message. wallet ping timeout or error.
+            // 2: old chat message. ping wallet before open window call. wallet may or may not be open
+            self.open_wallet = function (money_transaction, linkno) {
                 var pgm = controller + '.open_wallet: ' ;
                 var unique_text, i, balance, error, url ;
                 // find wallet url from currency = unique_text
-                console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
+                console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction) + ', linkno = ' + linkno) ;
+                if (linkno == 2) {
+                    //money_transaction = {
+                    //    "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                    //    "wallet_name": "MoneyNetworkW2",
+                    //    "action": "Send",
+                    //    "code": "tBTC",
+                    //    "name": "Test Bitcoin",
+                    //    "amount": 0.0001,
+                    //    "json": {"return_address": "2MuDZs8yo375NyNVVQtpNwWuJt1dUVCefLK"},
+                    //    "$$hashKey": "object:502"
+                    //};
+                    console.log(pgm + 'todo: ping wallet before open wallet command. no need to open an already open wallet');
+                    // open wallet
+                    url = '/' + money_transaction.wallet_url;
+                    ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
+                    return ;
+                }
                 unique_text = money_transaction.currency ;
                 for (i=0 ; i<self.currencies.length ; i++) {
                     if (self.currencies[i].unique_text != unique_text) continue ;
@@ -1220,9 +1241,7 @@ angular.module('MoneyNetwork')
                 if (self.show_money) {
                     // non empty money transaction(s)
                     console.log(pgm , 'todo: 1) ping with permissions response? Or permissions check after wallet ping');
-                    console.log(pgm + 'todo: 2) validate money transaction. send to my wallet. returns error or a wallet specific json to be included in chat to other user') ;
-                    console.log(pgm + 'todo: 3) send chat message.') ;
-                    console.log(pgm + 'todo: 4) make money transactions table responsive? Not nice on small devices');
+                    console.log(pgm + 'todo: 2) make money transactions table responsive? Not nice on small devices');
                 }
 
                 // unique_texts hash. used in step_2_ping_wallets and step_3_check_transactions
@@ -1256,8 +1275,8 @@ angular.module('MoneyNetwork')
                     if (self.show_money) {
 
                         console.log(pgm + 'todo: keep money transaction secure and small. chat messages are saved in data.json msg array') ;
-                        // todo: save some transaction information in a optional file? For example as offline money transaction in wallet session
-                        // todo: allow wallets to communicate direct for fast transaction handshake?
+                        // todo: save some transaction information in an optional file? For example as offline money transaction in wallet session
+                        // todo: allow wallets to communicate direct for faster transaction handshake?
                         // todo: use MoneyNetworkAPI for W2W communication (publish is required)?
                         // todo: use a transaction specific sessionid for W2W communication (public keys + sessionid)?
 
@@ -1303,31 +1322,33 @@ angular.module('MoneyNetwork')
                             message.money_transactions.push({
                                 wallet_url: balance.wallet_domain || balance.wallet_address, // url for open wallet session
                                 wallet_sha256: balance.wallet_sha256, // link to full wallet information (wallet.json files)
+                                wallet_name: balance.wallet_name, // display info. wallet_title or wallet_address at transaction start time
                                 action: money_transaction.action, // Send or Request
                                 code: balance.code, // currency code
+                                name: balance.name, // display info. currency name at transaction start time
                                 amount: money_transaction.amount * money_transaction.factor, // amount without unit (factor = 1)
                                 json: money_transaction.json // wallet specific json. any type
                             }) ;
                         } // for i
-                        console.log(pgm + 'todo: edit "chat msg" schema definition') ;
                     } // if show_money
                     // ready to send. hide any money transactions.
                     self.show_money = false ;
 
-
                     MoneyNetworkHelper.debug('outbox && unencrypted', pgm + 'message = ' + JSON.stringify(message));
-message = {
-    "msgtype": "chat msg",
-    "message": "test 5",
-    "money_transactions": [{
-        "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-        "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
-        "action": "Send",
-        "code": "tBTC",
-        "amount": 0.0001,
-        "json": {"return_address": "2N9zERzTiWew8mUuBfRT89ScnMDVf6BuR7f"}
-    }]
-};
+                    //message = {
+                    //    "msgtype": "chat msg",
+                    //    "message": "test 6",
+                    //    "money_transactions": [{
+                    //        "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //        "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                    //        "wallet_name": "MoneyNetworkW2",
+                    //        "action": "Send",
+                    //        "code": "tBTC",
+                    //        "name": "Test Bitcoin",
+                    //        "amount": 0.0001,
+                    //        "json": {"return_address": "2MuDZs8yo375NyNVVQtpNwWuJt1dUVCefLK"}
+                    //    }]
+                    //};
 
                     // validate json
                     error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
@@ -1408,7 +1429,7 @@ message = {
                             self.new_chat_msg_disabled = false ;
                             $rootScope.$apply() ;
                             step_4_send_message() ;
-                            error = 'Sorry. Validate money transaction is not yet implemented' ;
+                            error = 'Sorry. Money transaction is not yet implemented<br>Todo: receive chat with money transaction' ;
                             ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
                             return ;
                         }
@@ -2045,7 +2066,9 @@ message = {
 
                 // get list of currencies from connected wallets
                 moneyNetworkService.get_currencies(function (currencies, delayed) {
+
                     console.log(pgm + 'currencies = ' + JSON.stringify(currencies));
+                    console.log(pgm + 'todo: more currency info in ls_sessions. get_currencies call should be more like a refresh currencies request. currency info is used in chat (money transaction) and before get_currencies has been called');
 
                     if (!self.currencies) self.currencies = currencies ; // initialize currencies array used in UI
                     if (!self.currencies.length) {

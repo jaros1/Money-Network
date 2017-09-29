@@ -1046,14 +1046,16 @@ var MoneyNetworkHelper = (function () {
                 "items": {
                     "type": 'object',
                     "properties": {
-                        "wallet_url": { "type": 'string'},
+                        "wallet_url": { "type": 'string', "description": 'Open wallet url (wallet domain or wallet address)'},
                         "wallet_sha256": { "type": 'string', "pattern": '^[0-9a-f]{64}$'},
+                        "wallet_name": { "type": 'string', "description": 'Display wallet name. Wallet title or address at transaction start time'},
                         "action": { "type": 'string', "pattern": '^(Send|Request)$'},
-                        "code": { "type": 'string', "minLength": 2, "maxLength": 5},
+                        "code": { "type": 'string', "minLength": 2, "maxLength": 5, "description": 'Pseudo currency iso code'},
+                        "name": { "type": 'string', "description": 'Display currency name at transaction start time'},
                         "amount": { "type": 'number'},
                         "json": {}
                     },
-                    "required": ['wallet_url', 'wallet_sha256', 'action', 'code', 'amount', 'json'],
+                    "required": ['wallet_url', 'wallet_sha256', 'wallet_name', 'action', 'code', 'name', 'amount', 'json'],
                     "additionalProperties": false
                 },
                 "minItems": 1

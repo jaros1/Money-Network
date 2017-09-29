@@ -306,6 +306,36 @@
                         <a href="" ng-click="c.hide_overflow(m)">Show more text</a>
                     </td>
                 </tr>
+                <tr ng-show="m.message.message.money_transactions">
+                    <td colspan="2">
+                        <table>
+                            <thead>
+                            <tr><td colspan="7">&nbsp;</td></tr>
+                            <tr><td colspan="7">Included money transactions:</td></tr>
+                            <tr>
+                                <th>Action</th>
+                                <th>&nbsp;</th>
+                                <th>Currency</th>
+                                <th>&nbsp;</th>
+                                <th>Wallet</th>
+                                <th>&nbsp;</th>
+                                <th>Amount</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr ng-repeat="mt in m.message.message.money_transactions" style="vertical-align: top">
+                                <td ng-bind="mt.action"></td>
+                                <td></td>
+                                <td ng-bind="mt.name"></td>
+                                <td></td>
+                                <td><a href="" ng-click="c.open_wallet(mt,2)" ng-bind="mt.wallet_name"></a></td>
+                                <td></td>
+                                <td ng-bind="mt.amount" style="text-align: right"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
                 <tr ng-show="c.show_image(m)">
                     <td colspan="2">
                         <img ng-src="{{m.message.message.image}}">
@@ -1081,7 +1111,7 @@
                                                     <tr ng-repeat-end>
                                                         <td colspan="5" style="vertical-align: top">
                                                             <span ng-bind-html="mt.message.html"></span>
-                                                            <span ng-show="mt.message.open_wallet"><a href="" ng-click="c.open_wallet(mt)">Open wallet</a></span>
+                                                            <span ng-show="mt.message.open_wallet"><a href="" ng-click="c.open_wallet(mt,1)">Open wallet</a></span>
                                                         </td>
                                                     </tr>
                                                     <tr>
