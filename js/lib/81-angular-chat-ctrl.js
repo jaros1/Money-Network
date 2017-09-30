@@ -1124,42 +1124,134 @@ angular.module('MoneyNetwork')
             // 2: old chat message. ping wallet before open window call. wallet may or may not be open
             self.open_wallet = function (money_transaction, linkno) {
                 var pgm = controller + '.open_wallet: ' ;
-                var unique_text, i, balance, error, url ;
+                var unique_text, i, balance, error, url, open_wallet_url ;
                 // find wallet url from currency = unique_text
                 console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction) + ', linkno = ' + linkno) ;
-                if (linkno == 2) {
-                    //money_transaction = {
-                    //    "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
-                    //    "wallet_name": "MoneyNetworkW2",
-                    //    "action": "Send",
-                    //    "code": "tBTC",
-                    //    "name": "Test Bitcoin",
-                    //    "amount": 0.0001,
-                    //    "json": {"return_address": "2MuDZs8yo375NyNVVQtpNwWuJt1dUVCefLK"},
-                    //    "$$hashKey": "object:502"
-                    //};
-                    console.log(pgm + 'todo: ping wallet before open wallet command. no need to open an already open wallet');
+                if (linkno == 1) {
+                    // open wallet link in new chat message (wallet ping timeout or error)
+                    unique_text = money_transaction.currency ;
+                    for (i=0 ; i<self.currencies.length ; i++) {
+                        if (self.currencies[i].unique_text != unique_text) continue ;
+                        balance = self.currencies[i] ;
+                        break ;
+                    }
+                    if (!balance) {
+                        error = 'error. could not find ' + unique_text + ' wallet' ;
+                        console.log(pgm + error) ;
+                        ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                        return ;
+                    }
                     // open wallet
-                    url = '/' + money_transaction.wallet_url;
+                    url = '/' + (balance.wallet_domain || balance.wallet_address);
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
                     return ;
                 }
-                unique_text = money_transaction.currency ;
-                for (i=0 ; i<self.currencies.length ; i++) {
-                    if (self.currencies[i].unique_text != unique_text) continue ;
-                    balance = self.currencies[i] ;
-                    break ;
-                }
-                if (!balance) {
-                    error = 'error. could not find ' + unique_text + ' wallet' ;
-                    console.log(pgm + error) ;
-                    ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
-                    return ;
-                }
-                // open wallet
-                url = '/' + (balance.wallet_domain || balance.wallet_address);
-                ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
+                // linkno = 2. open wallet link in old chat message. ping wallet before open window is called
+
+                //message.money_transactions.push({
+                //    wallet_url: balance.wallet_domain || balance.wallet_address, // url for open wallet session
+                //    wallet_sha256: balance.wallet_sha256, // link to full wallet information (wallet.json files)
+                //    wallet_name: balance.wallet_name, // display info. wallet_title or wallet_address at transaction start time
+                //    action: money_transaction.action, // Send or Request
+                //    code: balance.code, // currency code
+                //    name: balance.name, // display info. currency name at transaction start time
+                //    amount: money_transaction.amount * money_transaction.factor, // amount without unit (factor = 1)
+                //    json: money_transaction.json // wallet specific json. any type
+                //}) ;
+
+                //money_transaction = {
+                //    "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                //    "wallet_name": "MoneyNetworkW2",
+                //    "action": "Send",
+                //    "code": "tBTC",
+                //    "name": "Test Bitcoin",
+                //    "amount": 0.0001,
+                //    "json": {"return_address": "2MuDZs8yo375NyNVVQtpNwWuJt1dUVCefLK"},
+                //    "$$hashKey": "object:502"
+                //};
+
+                //currencies = [{
+                //    "code": "tBTC",
+                //    "amount": 1.3,
+                //    "balance_at": 1506416329497,
+                //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
+                //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //    "wallet_title": "MoneyNetworkW2",
+                //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                //    "api_url": "https://www.blocktrail.com/api/docs",
+                //    "unique_id": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7/tBTC",
+                //    "name": "Test Bitcoin",
+                //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                //    "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
+                //    "wallet_name": "MoneyNetworkW2",
+                //    "unique_text": "tBTC Test Bitcoin from MoneyNetworkW2"
+                //}];
+
+                // get list of currencies from connected wallets
+                open_wallet_url = function() {
+                    var url ;
+                    url = '/' + money_transaction.wallet_url;
+                    ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
+                } ;
+                moneyNetworkService.get_currencies(function (currencies, delayed) {
+                    var pgm = controller + '.open_wallet get_currencies callback 1: ' ;
+                    var sessionid, i, balance ;
+                    if (!self.currencies) self.currencies = currencies; // initialize currencies array used in UI
+                    if (!currencies || !currencies.length) {
+                        console.log(pgm + 'error. no currencies list was found. just open wallet without ping') ;
+                        return open_wallet_url() ;
+                    }
+                    // find sessionid - compare money transaction with currencies. some currency info may have changed since chat msg was sent/received
+                    for (i=0 ; i<currencies.length ; i++) {
+                        balance = currencies[i] ;
+                        if ((money_transaction.wallet_sha256 == balance.wallet_sha256) ||
+                            (money_transaction.wallet_url == balance.wallet_domain) ||
+                            (money_transaction.wallet_url == balance.wallet_address)) {
+                            sessionid = balance.sessionid ;
+                            break ;
+                        }
+                    } // for i
+                    console.log(pgm + 'sessionid = ' + sessionid) ;
+                    if (!sessionid) {
+                        console.log(pgm + 'warning. wallet session was not found. maybe old no longer used wallet. just open wallet') ;
+                        return open_wallet_url() ;
+                    }
+                    MoneyNetworkAPILib.get_session (sessionid, function (session) {
+                        var pgm = controller + '.open_wallet get_session callback 2: ' ;
+                        var request ;
+                        if (!session) {
+                            console.log(pgm + 'error. could not find session info for wallet session with sessionid ' + sessionid + ' just open wallet') ;
+                            return open_wallet_url() ;
+                        }
+
+                        // send ping. timeout max 5 seconds. Expects Timeout or OK response
+                        ZeroFrame.cmd("wrapperNotification", ['info', 'Checking if wallet is already<br>open in an other browser tab', 3000]) ;
+                        request = { msgtype: 'ping' };
+                        session.encrypt.send_message(request, {response: 5000}, function (response) {
+                            var pgm = controller + '.open_wallet send_message callback 3: ' ;
+                            if (response && response.error && response.error.match(/^Timeout /)) {
+                                // OK. Timeout. Continue with next session
+                                console.log(pgm + 'OK wallet ping timeout. open wallet') ;
+                                return open_wallet_url();
+                            }
+                            if (!response || response.error) {
+                                // Unexpected error.
+                                console.log(pgm + 'error. ping sessionid ' + sessionid + ' returned ' + JSON.stringify(response)) ;
+                                return open_wallet_url();
+                            }
+                            // ping OK. wallet session. notification instead of open window command
+                            console.log(pgm + 'wallet session ping OK. notify user. do not open extra wallet session') ;
+                            ZeroFrame.cmd("wrapperNotification", ['info', 'Wallet is already open in an other browser tab', 5000]) ;
+
+                        }) ; // send_message callback 3
+
+                    }) ; // get_session callback 2
+
+                }) ; // get_currencies callback 1
+
             } ; // open_wallet
 
             self.confirmed_send_chat = null ;
