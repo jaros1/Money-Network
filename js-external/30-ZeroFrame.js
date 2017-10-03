@@ -19,6 +19,7 @@ ZeroFrame = (function() {
         this.connect();
         this.next_message_id = 1;
         this.event_callbacks = [] ;
+        this.confirm_dialog = false ;
         this.init();
     }
 
@@ -138,21 +139,26 @@ ZeroFrame = (function() {
     ZeroFrame.prototype.checkCertUserId = function() {
         // user must be logged in with a money network cert
         if (this.site_info.cert_user_id) return ; // already logged in
-        // login to ZeroNet with an anonymous money network account
-        // copy/paste from "Nanasi text board" - http://127.0.0.1:43110/16KzwuSAjFnivNimSHuRdPrYd1pNPhuHqN/
-        // short documention can be in posts on "Nanasi text board"
-        // http://127.0.0.1:43110/Talk.ZeroNetwork.bit/?Topic:6_13hcYDp4XW3GQo4LMtmPf8qUZLZcxFSmVw
-        var bitcoin_public_key = "1D2f1XV3zEDDvhDjcD9ugehNJEzv68Dhmf" ;
-        var bitcoin_private_key = "5KDc1KoCEPmxxbjvzNdQNCAguaVrFa89LdtfqCKb1PxeSdtmStC" ;
-        var bitcoin_keypair = bitcoin.ECPair.fromWIF(bitcoin_private_key);
-        var cert;
-        cert = bitcoin.message.sign(bitcoin_keypair, (this.site_info.auth_address + "#web/") + this.site_info.auth_address.slice(0, 13)).toString("base64");
-        // console.log(pgm + 'cert = ' + JSON.stringify(cert)) ;
-        // add cert - no certSelect dialog - continue with just created money network cert
-        // this.log("checkCertUserId: add moneynetwork cert");
+        if (this.confirm_dialog) return ; // confirm dialog already open
+        this.confirm_dialog = true ;
         this.cmd("wrapperConfirm", ['Create anonymous moneynetwork certificate?', 'OK'], (function(_this) {
             return function (confirm) {
                 if (confirm) {
+
+                    // login to ZeroNet with an anonymous money network account
+                    // copy/paste from "Nanasi text board" - http://127.0.0.1:43110/16KzwuSAjFnivNimSHuRdPrYd1pNPhuHqN/
+                    // short documention can be in posts on "Nanasi text board"
+                    // http://127.0.0.1:43110/Talk.ZeroNetwork.bit/?Topic:6_13hcYDp4XW3GQo4LMtmPf8qUZLZcxFSmVw
+                    var bitcoin_public_key = "1D2f1XV3zEDDvhDjcD9ugehNJEzv68Dhmf" ;
+                    var bitcoin_private_key = "5KDc1KoCEPmxxbjvzNdQNCAguaVrFa89LdtfqCKb1PxeSdtmStC" ;
+                    var bitcoin_keypair = bitcoin.ECPair.fromWIF(bitcoin_private_key);
+                    var cert;
+                    _this.log('ZeroFrame.prototype.checkCertUserId. generating cert') ;
+                    cert = bitcoin.message.sign(bitcoin_keypair, (_this.site_info.auth_address + "#web/") + _this.site_info.auth_address.slice(0, 13)).toString("base64");
+                    // console.log(pgm + 'cert = ' + JSON.stringify(cert)) ;
+                    // add cert - no certSelect dialog - continue with just created money network cert
+                    // this.log("checkCertUserId: add moneynetwork cert");
+                    
                     // create anonymous moneynetwork.bit certificate
                     _this.cmd("certAdd", ["moneynetwork.bit", "web", _this.site_info.auth_address.slice(0, 13), cert], function (res) {
                             var pgm = "checkCertUserId: certAdd callback: ";

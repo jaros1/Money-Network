@@ -42,6 +42,9 @@ angular.module('MoneyNetwork')
         }
 
         //// wrappers for data.json, status.json and like.json fileGet and fileWrite operations
+        function z_file_get (pgm, options, cb) {
+            moneyNetworkHubService.z_file_get(pgm, options, cb) ;
+        }
         function get_data_json (cb) {
             moneyNetworkHubService.get_data_json(cb) ;
         }
@@ -4404,8 +4407,12 @@ angular.module('MoneyNetwork')
         function event_file_done (hub, event, filename) {
             var pgm = service + '.event_file_done: ' ;
             var debug_seq, merged_filename ;
-            // console.log(pgm + 'event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename) + ', hub = ' + hub);
             if (event != 'file_done') return ;
+            if (hub == '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk') {
+                // console.log(pgm + 'ignoring file_done event for ' + hub) ;
+                return ;
+            }
+            console.log(pgm + 'hub = ' + JSON.stringify(hub) + ', event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
             if (!z_cache.user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
             // process user files:
             // - data/users/<auth_address>/content.json - check for avatar uploads
@@ -6797,7 +6804,8 @@ angular.module('MoneyNetwork')
             symbol_to_unicode: symbol_to_unicode,
             get_my_user_hub: get_my_user_hub,
             generate_random_password: moneyNetworkZService.generate_random_password,
-            get_currencies: moneyNetworkWService.get_currencies
+            get_currencies: moneyNetworkWService.get_currencies,
+            z_file_get: z_file_get
         };
 
         // end MoneyNetworkService

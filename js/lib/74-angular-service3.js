@@ -36,6 +36,9 @@ angular.module('MoneyNetwork')
 
 
         //// wrappers for data.json, status.json and like.json fileGet and fileWrite operations
+        function z_file_get (pgm, options, cb) {
+            moneyNetworkHubService.z_file_get(pgm, options, cb) ;
+        }
         function get_data_json (cb) {
             moneyNetworkHubService.get_data_json(cb) ;
         }
@@ -108,10 +111,8 @@ angular.module('MoneyNetwork')
                 var pgm = service + ".load_user_contents_max_size get_my_user_hub callback 1: " ;
                 var inner_path, debug_seq ;
                 inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/content.json' ;
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-                ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (data) {
+                z_file_get(pgm, {inner_path: inner_path, required: false}, function (data) {
                     var pgm = service + ".load_user_contents_max_size fileGet callback 2: " ;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     if (!data) {
                         console.log(pgm + 'Error. Cannot find max user directory size. Content.json lookup failed. Path was ' + inner_path) ;
                         user_contents_max_size = -1 ;
@@ -481,11 +482,9 @@ angular.module('MoneyNetwork')
 
                 // 1) get content.json - check if user already has uploaded an avatar
                 var user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + "/content.json fileGet") ;
-                ZeroFrame.cmd("fileGet", [user_path + "/content.json", false], function (content) {
+                z_file_get(pgm, {inner_path: user_path + "/content.json", required: false}, function (content) {
                     var pgm = service + '.load_avatar fileGet callback 2: ';
                     var ls_avatar, public_avatars, index ;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     if (content) content = JSON.parse(content);
                     else content = { files: {} } ;
                     // console.log(pgm + 'content = ' + JSON.stringify(content));
