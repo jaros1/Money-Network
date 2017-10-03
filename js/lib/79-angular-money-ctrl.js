@@ -1,6 +1,6 @@
 angular.module('MoneyNetwork')
 
-    .controller('MoneyCtrl', ['$window', '$http', '$timeout', function ($window, $http, $timeout) {
+    .controller('MoneyCtrl', ['$window', '$http', '$timeout', 'MoneyNetworkService', function ($window, $http, $timeout, moneyNetworkService) {
         var self = this;
         var controller = 'MoneyCtrl';
         console.log(controller + ' loaded');
@@ -83,10 +83,10 @@ angular.module('MoneyNetwork')
 
         self.money_network_w2_6 = function () {
             var pgm = controller + '.money_network_w2_6: ' ;
-            console.log(pgm + 'test 6 - use fileGet to read Money Network W2 file') ;
+            console.log(pgm + 'test 6 - use z_file_get to read Money Network W2 file') ;
 
-            // fileGet returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
-            ZeroFrame.cmd("fileGet", {inner_path: '/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1/js/all.js', required: false}, function (script) {
+            // z_file_get returns script=null. OK with a shortcut link from Money Metwork to Money Network W2
+            moneyNetworkService.z_file_get(pgm, {inner_path: '/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1/js/all.js', required: false}, function (script) {
                 console.log(pgm + 'script = ', script) ;
             }) ;
 

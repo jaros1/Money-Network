@@ -506,11 +506,9 @@ angular.module('MoneyNetwork')
                     info.status = 'Running' ;
 
                     inner_path = encrypt2.other_user_path + 'wallet.json' ;
-                    debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-                    ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
-                        var pgm = controller + '.test7.run fileGet callback 1: ' ;
+                    moneyNetworkHubService.z_file_get(pgm, {inner_path: inner_path, required: false}, function (wallet_str) {
+                        var pgm = controller + '.test7.run z_file_get callback 1: ' ;
                         var wallet, error, calc_wallet_sha256, query, debug_seq1, session_info ;
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                         if (!wallet_str) {
                             console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path) ;
                             return test_done('Test failed') ;
@@ -554,7 +552,7 @@ angular.module('MoneyNetwork')
                             return test_ok(wallet2) ;
                         }) ; // get_wallet_info callback 1
 
-                    }) ; // fileGet callback 1
+                    }) ; // z_file_get callback 1
 
                 } // end if else
             } // run

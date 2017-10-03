@@ -112,7 +112,7 @@ angular.module('MoneyNetwork')
                 var inner_path, debug_seq ;
                 inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/content.json' ;
                 z_file_get(pgm, {inner_path: inner_path, required: false}, function (data) {
-                    var pgm = service + ".load_user_contents_max_size fileGet callback 2: " ;
+                    var pgm = service + ".load_user_contents_max_size z_file_get callback 2: " ;
                     if (!data) {
                         console.log(pgm + 'Error. Cannot find max user directory size. Content.json lookup failed. Path was ' + inner_path) ;
                         user_contents_max_size = -1 ;
@@ -141,7 +141,7 @@ angular.module('MoneyNetwork')
                     if (!permission_rules[".*"].hasOwnProperty('max_size')) { z_update_1_data_json (lock_pgm) ; return }
                     user_contents_max_size = permission_rules[".*"].max_size ;
                     if (lock_pgm) z_update_1_data_json (lock_pgm) ; // called from z_update_1_data_json. continue data.json update
-                }) ; // fileGet callback 2
+                }) ; // z_file_get callback 2
 
             }) ; // get_my_user_hub callback 1
 
@@ -483,7 +483,7 @@ angular.module('MoneyNetwork')
                 // 1) get content.json - check if user already has uploaded an avatar
                 var user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
                 z_file_get(pgm, {inner_path: user_path + "/content.json", required: false}, function (content) {
-                    var pgm = service + '.load_avatar fileGet callback 2: ';
+                    var pgm = service + '.load_avatar z_file_get callback 2: ';
                     var ls_avatar, public_avatars, index ;
                     if (content) content = JSON.parse(content);
                     else content = { files: {} } ;
@@ -525,7 +525,7 @@ angular.module('MoneyNetwork')
                     $rootScope.$apply() ;
                     z_cache.user_setup.avatar = public_avatars[index] ;
                     MoneyNetworkHelper.ls_save();
-                }); // fileGet callback 2
+                }); // z_file_get callback 2
 
             }) ; // get_my_user_hub callback 1
 
@@ -627,7 +627,7 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info)) ;
 
                         // update json table with public key and search words
-                        // console.log(pgm + 'calling fileGet');
+                        // console.log(pgm + 'calling get_data_json');
                         get_data_json(function (data) {
                             var pgm = service + '.z_update_1_data_json get_data_json callback 4: ' ;
                             var local_storage_updated, data_str, row, pubkey, pubkey2, short_avatar, max_user_seq, i,
@@ -1271,7 +1271,7 @@ angular.module('MoneyNetwork')
                             debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                             z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
-                        }); // fileGet callback 4
+                        }); // get_data_json callback 4
 
                     }); // dbQuery callback 3
 
@@ -2218,11 +2218,9 @@ angular.module('MoneyNetwork')
 
                             // read optional file
                             file_path = user_path + '/' + z_filename ;
-                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + file_path + ' fileGet') ;
-                            ZeroFrame.cmd("fileGet", [file_path, false], function (chat) {
-                                var pgm = service + '.z_update_5_public_chat fileGet callback 2a: ' ;
+                            z_file_get(pgm, {inner_path: file_path, required: false}, function (chat) {
+                                var pgm = service + '.z_update_5_public_chat z_file_get callback 2a: ' ;
                                 var callback, j, json_raw, error, message_with_envelope2, msg_found, cache_status, k, chat_lng, issue_84 ;
-                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                 callback = function () {
                                     delete message_with_envelope.z_filename ;
                                     message_with_envelope.cleanup_at = now ;
@@ -2413,7 +2411,7 @@ angular.module('MoneyNetwork')
                                     }
                                 }
 
-                            }) ; // fileGet callback 1a
+                            }) ; // z_file_get callback 1a
 
                             return ;
                             // callback to z_update_5_public_chat in fileWrite /write_empty_chat_file callback
@@ -2466,11 +2464,9 @@ angular.module('MoneyNetwork')
                             new_file_path = user_path + '/' + new_z_filename ;
 
                             // ready. read old chat file
-                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + file_path + ' fileGet') ;
-                            ZeroFrame.cmd("fileGet", [file_path, false], function (chat) {
-                                var pgm = service + '.z_update_5_public_chat fileGet callback 2b: ';
+                            z_file_get(pgm, {inner_path: file_path, required: false}, function (chat) {
+                                var pgm = service + '.z_update_5_public_chat z_file_get callback 2b: ';
                                 var chat_lng, new_msg, json_raw, issue_84, error ;
-                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                 if (!chat || (chat.length <= 2)) chat = { version: 8, msg: []} ;
                                 else {
                                     // todo: this length is not always correct. Must use size from content.json in cache_status
@@ -2607,7 +2603,7 @@ angular.module('MoneyNetwork')
                                     write_empty_chat_file(file_path, function () { write_file() });
                                 }
 
-                            }) ; // fileGet callback 1b
+                            }) ; // z_file_get callback 1b
 
                             // stop. callback to z_update_5_public_chat in fileWrite
                             return ;

@@ -2010,11 +2010,9 @@ angular.module('MoneyNetwork')
 
                 // ready for image download
                 debug('inbox', pgm + 'downloading image ' + image_path) ;
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + image_path + ' fileGet') ;
-                ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
-                    var pgm = service + '.download_json_image_file fileGet callback 2: ' ;
+                z_file_get(pgm, {inner_path: image_path, required: true}, function (image) {
+                    var pgm = service + '.download_json_image_file z_file_get callback 2: ' ;
                     var data, actions, action, error ;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     if (!image || (z_cache.user_setup.test && z_cache.user_setup.test.image_timeout)) { // test: force download error
                         console.log(pgm + 'Error. image download timeout for ' + image_path) ;
                         if (cb) cb(false) ;
@@ -2063,7 +2061,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'Ok. image ' + image_path + ' downloaded') ;
                     $rootScope.$apply() ;
                     if (cb) cb(true) ;
-                }) ; // fileGet callback 2
+                }) ; // z_file_get callback 2
 
             }) ; // dbQuery callback 1
 
@@ -2532,13 +2530,11 @@ angular.module('MoneyNetwork')
                         // OK. optional image json file exist. start download. will trigger a event_file_done when ready
                         image_path = "merged-MoneyNetwork/" + query_res[0].directory + '/' + query_res[0].filename;
                         debug('inbox', pgm + 'downloading image ' + image_path);
-                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + image_path + ' fileGet') ;
-                        ZeroFrame.cmd("fileGet", [image_path, true], function (image) {
-                            var pgm = service + '.process_incoming_cryptmessage fileGet callback 4: ';
-                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        z_file_get(pgm, {inner_path: image_path, required: true}, function (image) {
+                            var pgm = service + '.process_incoming_cryptmessage z_file_get callback 4: ';
                             debug('inbox', pgm + 'downloaded image ' + image_path);
 
-                        }); // fileGet callback 4
+                        }); // z_file_get callback 4
 
                     }); // dbQuery callback 3
 
@@ -4308,12 +4304,10 @@ angular.module('MoneyNetwork')
                         }
                         else {
                             console.log(pgm + 'Not downloaded. Starting a new download for ' + filename);
-                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + ' fileGet') ;
-                            ZeroFrame.cmd("fileGet", {inner_path: filename, required: true}, function (res) {
-                                var pgm = service + '.check_image_download_failed fileGet callback 3: ' ;
-                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                            z_file_get(pgm, {inner_path: filename, required: true}, function (res) {
+                                var pgm = service + '.check_image_download_failed z_file_get callback 3: ' ;
                                 if (!res) console.log(pgm + 'download timeout for file ' + filename) ;
-                            }) ;
+                            }) ; // z_file_get callback 3
                         }
                         // next res
                         get_file_info() ;
@@ -4426,12 +4420,10 @@ angular.module('MoneyNetwork')
 
             // read json file (content.json, data.json, status.json, -chat.json or -image.json)
             merged_filename = 'merged-MoneyNetwork/' + hub + '/' + filename ;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + merged_filename + ' fileGet') ;
-            ZeroFrame.cmd("fileGet", [merged_filename, false], function (res) {
-                var pgm = service + '.event_file_done fileGet callback 1: ';
+            z_file_get(pgm, {inner_path: merged_filename, required: false}, function (res) {
+                var pgm = service + '.event_file_done z_file_get callback 1: ';
                 var i, contact, auth_address, contacts_updated, index, my_pubkey_sha256, using_my_pubkey,
                     cleanup_inbox_messages_lng1, cleanup_inbox_messages_lng2, cleanup_inbox_messages_lng3, timestamp ;
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                 if (!res) res = {} ;
                 else res = JSON.parse(res) ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
@@ -4987,7 +4979,7 @@ angular.module('MoneyNetwork')
 
                 console.log(pgm + 'unknown json file ' + filename);
 
-            }); // end fileGet callback 1
+            }); // end z_file_get callback 1
 
         } // end event_file_done
         ZeroFrame.bind_event(event_file_done);
@@ -5010,10 +5002,8 @@ angular.module('MoneyNetwork')
             // not in z_cache. check zeronet
             // console.log(pgm + 'files_option was not in cache. reading content.json file');
             user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + user_path + '/content.json fileGet') ;
-            ZeroFrame.cmd("fileGet", {inner_path: user_path + '/content.json', required: false}, function (content) {
-                var pgm = service + '.get_user_seq fileGet 1 callback: ';
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+            z_file_get(pgm, {inner_path: user_path + '/content.json', required: false}, function (content) {
+                var pgm = service + '.get_user_seq z_file_get callback 1: ';
                 if (!content) {
                     // console.log(pgm + 'content.json file was not found') ;
                     if (cb) cb(null) ;
@@ -5028,7 +5018,7 @@ angular.module('MoneyNetwork')
                 if (!content.files_optional) content.files_optional = {} ;
                 save_my_files_optional(content.files_optional) ;
                 if (cb) cb(content.files_optional) ;
-            }) ; // fileGet 1 callback
+            }) ; // z_file_get callback 1
             // zeronet callback executing. files_optional is not yet ready
             return null ;
         } // get_files_optional
@@ -5903,7 +5893,7 @@ angular.module('MoneyNetwork')
                     debug('public_chat || issue_112', pgm + 'start download ' + cache_filename) ;
                     debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + cache_filename + ' fileGet') ;
                     file_get_callback_2 = function (chat) {
-                        var pgm = service + '.get_and_load_chat_file fileGet callback 2: ';
+                        var pgm = service + '.get_and_load_chat_file z_file_get callback 2: ';
                         var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
                             file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                             new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
@@ -5913,7 +5903,7 @@ angular.module('MoneyNetwork')
                         // update cache_status
                         cache_status.is_pending = false;
                         debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
-                        if (chat == 'timeout') console.log(pgm + 'fileGet operation for ' + cache_filename + ' aborted after 60 seconds') ;
+                        if (chat == 'timeout') console.log(pgm + 'z_file_get operation for ' + cache_filename + ' aborted after 60 seconds') ;
                         if (!chat || (chat == 'timeout')) {
                             cache_status.is_downloaded = false;
                             if (!cache_status.download_failed_at) cache_status.download_failed_at = [] ;
@@ -6163,7 +6153,7 @@ angular.module('MoneyNetwork')
 
                     } ;// file_get_callback_2
                     MoneyNetworkHelper.debug_z_api_operation_timeout(debug_seq, function () {file_get_callback_2('timeout')}) ;
-                    ZeroFrame.cmd("fileGet", {inner_path: cache_filename, required: true}, file_get_callback_2);
+                    z_file_get(pgm, {inner_path: cache_filename, required: true}, file_get_callback_2);
 
                 }) ; // get_user_seq callback 1
 

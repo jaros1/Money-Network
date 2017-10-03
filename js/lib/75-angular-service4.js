@@ -26,6 +26,9 @@ angular.module('MoneyNetwork')
         }
 
         // import functions from other services
+        function z_file_get (pgm, options, cb) {
+            moneyNetworkHubService.z_file_get(pgm, options, cb) ;
+        }
         function get_my_user_hub (cb) {
             moneyNetworkHubService.get_my_user_hub(cb) ;
         }
@@ -577,11 +580,9 @@ angular.module('MoneyNetwork')
                     }
                 }
 
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + filename + ' fileGet') ;
-                ZeroFrame.cmd("fileGet", {inner_path: filename, required: false}, function (json_str) {
-                    var pgm = service + '.process_incoming_message fileGet callback 1: ';
+                z_file_get(pgm, {inner_path: filename, required: false}, function (json_str) {
+                    var pgm = service + '.process_incoming_message z_file_get callback 1: ';
                     var encrypted_json;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                     if (!json_str) {
                         // OK. other session has deleted this message. normally deleted after a short time
                         if (session_info) session_info.done[file_timestamp] = true ;
@@ -784,7 +785,7 @@ angular.module('MoneyNetwork')
                         done_and_send(response, encryptions) ;
 
                     }) ; // decrypt_json callback 2
-                }) ; // fileGet callback 1
+                }) ; // z_file_get callback 1
 
             } // try
             catch (e) {
@@ -1020,7 +1021,7 @@ angular.module('MoneyNetwork')
                     else console.log(pgm + 'refresh wallet_sha256 failed') ;
                 } ; // step_n_done
 
-                // step 3 - check other_user_path - use fileGet to get current wallet_sha256 value
+                // step 3 - check other_user_path - use z_file_get to get current wallet_sha256 value
                 step_3_other_user_path = function (i) {
                     var pgm = service + '.get_currencies.step_3_other_user_path: ' ;
                     var encrypt, inner_path, debug_seq ;
@@ -1035,11 +1036,9 @@ angular.module('MoneyNetwork')
                     sessionid = changed_wallet_sha256_values[i].sessionid ;
                     console.log(pgm + 'found other_user_path for session ' + sessionid + '. reading wallet.json file') ;
                     inner_path = encrypt.other_user_path + 'wallet.json';
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-                    ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
-                        var pgm = service + '.get_currencies.step_3_other_user_path fileGet callback ' ;
+                    z_file_get(pgm, {inner_path: inner_path, required: false}, function (wallet_str) {
+                        var pgm = service + '.get_currencies.step_3_other_user_path z_file_get callback ' ;
                         var wallet, old_wallet_sha256 ;
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                         if (!wallet_str) {
                             console.log(pgm + 'error. could not find wallet ' + inner_path + '. other_user_path must be invalid') ;
                             changed_wallet_sha256_values[i].done = true ;
@@ -1065,7 +1064,7 @@ angular.module('MoneyNetwork')
                         status.refresh_currencies = true ;
                         // next row
                         step_3_other_user_path(i+1) ;
-                    }) ; // fileGet callback
+                    }) ; // z_file_get callback
 
                 } ; // step_2_other_user_path
 
