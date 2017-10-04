@@ -1310,7 +1310,7 @@ angular.module('MoneyNetwork')
                 else contact = self.contact ;
 
                 // money transaction?
-                if (contact.type == 'group') self.show_money = false ;
+                if (contact && (contact.type == 'group')) self.show_money = false ;
                 if (self.show_money) {
                     if (self.validate_money_transactions()) {
                         // error in money transaction(s)

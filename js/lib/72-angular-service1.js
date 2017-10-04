@@ -229,14 +229,12 @@ angular.module('MoneyNetwork')
             match2 = inner_path.match(inner_path_re2) ;
             if (match2) {
                 hub = match2[1] ;
-                console.log(pgm + 'match2. hub = ' + hub) ;
                 if (new_user_data_hub_cbs[hub]) {
-                    console.log(pgm + 'new data hub ' + hub + '. wait with fileGet request for ' + inner_path) ;
+                    console.log(pgm + 'new data hub ' + hub + '. waiting with fileGet request for ' + inner_path) ;
                     new_user_data_hub_cbs[hub].push(function() { z_file_get (pgm, options, cb) }) ;
                     return ;
                 }
             }
-            else console.log(pgm + 'no match2. inner_path = ' + inner_path) ;
 
             debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
             ZeroFrame.cmd("fileGet", options, function (data) {
@@ -1790,10 +1788,14 @@ angular.module('MoneyNetwork')
                                                 if (!filename.match(/^[0-9]{13}-/)) continue ;
                                                 timestamp = parseInt(filename.substr(0,13)) ;
                                                 if (timestamp < some_time_ago) {
-                                                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + user_path + '/' + filename + ' fileDelete') ;
-                                                    ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {
-                                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                                    }) ;
+                                                    // closure. debug_seq in a loop. debug_seq may change before fileDelete callback is ready to execute
+                                                    (function(){
+                                                        var debug_seq ;
+                                                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + user_path + '/' + filename + ' fileDelete') ;
+                                                        ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function () {
+                                                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                                        }) ;
+                                                    })();
                                                     content_updated = true ;
                                                     continue ;
                                                 }

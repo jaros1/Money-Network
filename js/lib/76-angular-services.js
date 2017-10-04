@@ -1566,8 +1566,15 @@ angular.module('MoneyNetwork')
             for (i=0 ; i<z_cache.user_info.length ; i++) {
                 row = z_cache.user_info[i] ;
                 if (['Search','Hidden'].indexOf(row.privacy) == -1) continue ;
+                if (!row.hasOwnProperty('tag')) row.tag = '' ;
                 row.tag = row.tag.replace(/'/g, "''") ; // escape ' in strings
-                row.value = row.value.replace(/'/g, "''") ; // escape ' in strings
+                if (!row.hasOwnProperty('value')) row.value = '' ;
+                try {
+                    row.value = row.value.replace(/'/g, "''") ; // escape ' in strings
+                }
+                catch (e) {
+                    console.log(pgm + 'row.value.replace failed. error = ' + e.message + ', i = ' + i + ', row = ' + JSON.stringify(row) + ', user_info = ' + JSON.stringify(z_cache.user_info)) ;
+                }
                 if (my_search_query) my_search_query = my_search_query + " union all" ;
                 my_search_query = my_search_query + " select '" + row.tag + "' as tag, '" + row.value + "' as value"
             }
@@ -4406,7 +4413,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'ignoring file_done event for ' + hub) ;
                 return ;
             }
-            console.log(pgm + 'hub = ' + JSON.stringify(hub) + ', event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
+            // console.log(pgm + 'hub = ' + JSON.stringify(hub) + ', event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
             if (!z_cache.user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
             // process user files:
             // - data/users/<auth_address>/content.json - check for avatar uploads

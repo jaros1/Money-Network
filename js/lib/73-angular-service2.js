@@ -314,10 +314,11 @@ angular.module('MoneyNetwork')
             var pgm = service + '.new_account_user_info: ' ;
             var cert_user_id, index, name, alias, timezone, language ;
             cert_user_id = ZeroFrame.site_info.cert_user_id ;
+            name = 'n/a' ;
             if (!cert_user_id) name = MoneyNetworkHelper.get_fake_name() ;
             else {
                 index = cert_user_id.indexOf('@') ;
-                if (cert_user_id.substr(index) == '@moneynetwork') name = MoneyNetworkHelper.get_fake_name() ;
+                if (cert_user_id.substr(index) == '@moneynetwork.bit') name = MoneyNetworkHelper.get_fake_name() ;
                 else name = cert_user_id.substr(0,index) ;
             }
             index = name.indexOf(' ') ;
