@@ -884,7 +884,7 @@ angular.module('MoneyNetwork')
         function get_message_by_sender_sha256 (sender_sha256) { return moneyNetworkHubService.get_message_by_sender_sha256 (sender_sha256) }
         function get_message_by_local_msg_seq (local_msg_seq) { return moneyNetworkHubService.get_message_by_local_msg_seq (local_msg_seq) }
         function remove_message (js_messages_row) { moneyNetworkHubService.remove_message (js_messages_row) } 
-        function recursive_delete_message (message) { moneyNetworkHubService.recursive_delete_message (message) }
+        function recursive_delete_message (message) { return moneyNetworkHubService.recursive_delete_message (message) }
 
         // wrappers
         function get_last_online (contact) {

@@ -1505,7 +1505,7 @@ angular.module('MoneyNetwork')
 
                             // group chat. last online = timestamp for last message
                             if (contact.type == 'group') {
-                                last_online = get_last_online(contact) || 0 ;
+                                last_online = MoneyNetworkHelper.get_last_online(contact) || 0 ;
                                 if (Math.round(sent_at/1000) > last_online) set_last_online(contact, Math.round(sent_at/1000)) ;
                             }
 
@@ -1976,7 +1976,7 @@ angular.module('MoneyNetwork')
                         if (!contact.messages[k].zeronet_msg_id) continue;
                         if (contact.messages[k].zeronet_msg_id != data.msg[i].message_sha256) continue;
                         // found outbox message
-                        contact_last_online = get_last_online(contact);
+                        contact_last_online = MoneyNetworkHelper.get_last_online(contact);
                         if (contact_last_online > contact.messages[k].sent_at) {
                             debug('data_cleanup', 'd: removing old probably received outbox message from Zeronet. ' +
                                 'contact.last_online = ' + contact_last_online +
