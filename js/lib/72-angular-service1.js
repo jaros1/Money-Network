@@ -170,6 +170,7 @@ angular.module('MoneyNetwork')
         } // z_migrate_status
 
 
+        // fix "Merger site (MoneyNetwork) does not have permission for merged site: xxx" errors
         // wait for mergerSiteAdd event to finish. see event_file_done and get_my_user_hub.step_4_get_and_add_default_user_hub
         var new_user_data_hub_cbs = {} ; // hub => array with (fileGet) callbacks waiting for hub to be ready
 

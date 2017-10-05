@@ -1075,10 +1075,20 @@ var MoneyNetworkAPILib = (function () {
 
     // helper. calculate wallet_sha256 from other wallet fields (minimize wallet.json disk usage)
     // wallet must be valid json (see validate_json). return null if doublet code or doublet units
+    var pseudo_wallet_sha256 = '0000000000000000000000000000000000000000000000000000000000000000' ;
     function calc_wallet_sha256 (wallet) {
         var pgm = module + '.calc_wallet_sha256: ';
-        var new_wallet, wallet_sha256, i, codes, currency, new_currency, j, unit, units ;
-        if (validate_json(pgm, wallet)) return null ; // wallet is invalid
+        var new_wallet, wallet_sha256, i, codes, currency, new_currency, j, unit, units, pseudo_wallet_sha256_added ;
+        if (!wallet.wallet_sha256) {
+            wallet.wallet_sha256 = pseudo_wallet_sha256 ;
+            pseudo_wallet_sha256_added = true ;
+        }
+        if (validate_json(pgm, wallet)) {
+            // wallet is invalid. abort wallet_sha256 calc
+            if (pseudo_wallet_sha256_added) delete wallet.wallet_sha256 ;
+            return null ;
+        }
+        if (pseudo_wallet_sha256_added) delete wallet.wallet_sha256 ;
         if (debug) console.log(pgm + 'todo: normalize currencies list. sort and  fixed order of properties. see wallet schema definition');
         new_wallet = {
             wallet_address: wallet.wallet_address,

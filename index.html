@@ -70,6 +70,25 @@
             </ul>
             <br>
 
+            Click to show/hide screendumps:
+            <a href="" ng-click="a.show_hide('-mn-login-')">Log in page</a>,
+            <a href="" ng-click="a.show_hide('-mn-account-')">Account page</a>,
+            <a href="" ng-click="a.show_hide('-mn-chat')">Chat page</a>,
+            <a href="" ng-click="a.show_hide('-mn-wallet-')">Wallet page</a> and
+            <a href="" ng-click="a.show_hide('-w2-start-')">Test bitcoin wallet (w2)</a>
+            <table style="width: 100%">
+                <tbody ng-repeat="s in a.screendumps|filter:true">
+                <tr><td>&nbsp;</td></tr>
+                <tr><td ng-bind="s.text"></td></tr>
+                <tr>
+                    <td>
+                        <img ng-src="{{s.src}}" style="border:1px solid black">
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <br>
+
             Contact info: I am not using ZeroMail.
             Send a <a href="/moneynetwork.bit/?path=/chat2/jro@zeroid.bit" target="_top" rel="noopener noreferrer">PM ✉</a>
             , use "@jro:" in ZeroMe or create a <a href="http://github.com/jaros1/Zeronet-Money-Network" target="_top" rel="noopener noreferrer">GitHub</a> issue with question or issue.
