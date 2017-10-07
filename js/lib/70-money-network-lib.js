@@ -337,6 +337,7 @@ var MoneyNetworkHelper = (function () {
                         'Total ' + emojis_total_no + ' emoji files (' + emojis_total_mb + ' Mb). ' +
                         emojis_downloaded_pct + '% already downloaded (' + emojis_downloaded_mb + ' Mb). ' +
                         'Up to ' + emojis_remaining_no + ' more emoji files (' + emojis_remaining_mb + ' Mb) may be downloaded on this server. ' +
+                        'Max 2 emojis every second. ' +
                         'Thank you for your support.') ;
                     // Is proxy server. Downloading emojis (optional files). Total 13763 emoji files (19.1 Mb). 94.6% already downloaded (18.1 Mb). Up to 744 more emoji files (1 Mb) may be downloaded on this server. Thank you for your support.
                 }
@@ -351,8 +352,8 @@ var MoneyNetworkHelper = (function () {
                     var pgm = module + '.load_public_avatars.step_4_download_emojis fileGet callback: ';
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                     if (!res) console.log(pgm + 'fileGet ' + inner_path + ' failed') ;
-                    // next emoji
-                    step_4_download_emojis() ;
+                    setTimeout(step_4_download_emojis,500) ;
+                    //step_4_download_emojis() ;
                 }) ; // fileGet callback
 
             }; // step_3_download_emojis
