@@ -519,11 +519,18 @@ angular.module('MoneyNetwork')
                     // 3) assign random avatar from public/images/avatar
                     // console.log(pgm + 'assigned random avatar') ;
                     public_avatars = MoneyNetworkHelper.get_public_avatars() ;
-                    index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
-                    avatar.src = "public/images/avatar" + public_avatars[index] ;
+                    if (!public_avatars.length) {
+                        console.log(pgm + 'warning. public_avatars array is empty. Maybe not finished loading? Using avatar1.png') ;
+                        avatar.src = "public/images/avatar1.png" ;
+                        z_cache.user_setup.avatar = '1.png' ;
+                    }
+                    else {
+                        index = Math.floor(Math.random() * (public_avatars.length-1)); // avatarz.png is used for public contact
+                        avatar.src = "public/images/avatar" + public_avatars[index] ;
+                        z_cache.user_setup.avatar = public_avatars[index] ;
+                    }
                     avatar.loaded = true ;
                     $rootScope.$apply() ;
-                    z_cache.user_setup.avatar = public_avatars[index] ;
                     MoneyNetworkHelper.ls_save();
                 }); // z_file_get callback 2
 

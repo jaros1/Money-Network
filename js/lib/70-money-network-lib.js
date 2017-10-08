@@ -210,6 +210,7 @@ var MoneyNetworkHelper = (function () {
                 if (!res.files.hasOwnProperty(key)) continue ;
                 if (key.substr(0,20) == 'public/images/avatar') public_avatars.push(key.substr(20,key.length-20)) ;
             } // for key
+            if (public_avatars.length != 11) console.log(pgm + 'finished loading public avatars. found ' + public_avatars.length + ' public avatars') ;
             if (!res.files_optional) res.files_optional = {} ;
             for (key in res.files_optional) {
                 if (key.substr(0,6) != 'emoji/') continue ;

@@ -1,6 +1,6 @@
 angular.module('MoneyNetwork')
 
-    .controller('AboutCtrl', ['MoneyNetworkService', function (moneyNetworkService) {
+    .controller('AboutCtrl', ['MoneyNetworkService', '$rootScope', function (moneyNetworkService, $rootScope) {
         var self = this;
         var controller = 'AboutCtrl';
         console.log(controller + ' loaded');
@@ -162,6 +162,7 @@ angular.module('MoneyNetwork')
                     if (data) {
                         for (i=0 ; i<self.screendumps.length ; i++) if (self.screendumps[i].filename == filename) self.screendumps[i].files = true ;
                         console.log(pgm + filename + ' download OK') ;
+                        $rootScope.$apply() ;
                     }
                     else console.log(pgm + filename + ' download failed') ;
                     // next download
