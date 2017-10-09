@@ -1576,7 +1576,7 @@ var MoneyNetworkHelper = (function () {
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
             'issue_112', 'emoji', 'site_info', 'reaction', 'issue_131', 'z_file_write', 'z_file_get', 'z_db_query',
-            'z_site_publish', 'z_file_delete', 'z_server_info', 'z_crypt_message'];
+            'z_site_publish', 'z_file_delete', 'z_server_info', 'z_crypt_message', 'money_network_api'];
         for (i = 0; i < debug_keys.length; i++) {
             key = debug_keys[i];
             if (user_setup.debug[key]) debug_value = 'true';

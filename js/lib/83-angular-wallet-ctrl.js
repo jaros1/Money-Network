@@ -13,6 +13,12 @@ angular.module('MoneyNetwork')
 
         var BITCOIN_ADDRESS_PATTERN = '1[a-km-zA-HJ-NP-Z1-9]{25,34}' ;
 
+        // cache some important informations from zeronet files
+        // - user_seq: from users array in data.json file. using "pubkey" as index to users array
+        // - user_seqs: from users array in data.json file.
+        // - files_optional: from content.json file. loaded at startup and updated after every sign and publish
+        var z_cache = moneyNetworkHubService.get_z_cache() ;
+
         // create new sessionid for MoneyNetwork and MoneyNetwork wallet communication
         // sessionid: a "secret" sessionid URL parameter used when opening MoneyNetwork wallet site (only a secret when running ZeroNet local)
         // no event file done for "internal" cross site communication. dbQuery fetching will be used to detect new messages
@@ -29,7 +35,7 @@ angular.module('MoneyNetwork')
                 sessionid: test_sessionid,
                 prvkey: MoneyNetworkHelper.getItem('prvkey'), // for JSEncrypt (decrypt incoming message)
                 userid2: MoneyNetworkHelper.getUserId(), // for cryptMessage (decrypt incoming message)
-                debug: true,
+                debug: z_cache.user_setup.debug && z_cache.user_setup.debug.money_network_api,
                 extra: { url: url}
             }) ;
         } // new_sessionid

@@ -1289,7 +1289,7 @@ angular.module('MoneyNetwork')
                         }
                         if (contact.pubkey) {
                             unique_id = CryptoJS.SHA256(contact.auth_address + '/'  + contact.pubkey).toString();
-                            index2 = res[i].hub + ',' + unique_id ;
+                            index2 = contact.hub + ',' + unique_id ;
                             if (source2_avatars.hasOwnProperty(index2)) {
                                 contact.avatar = source2_avatars[index2] ;
                                 continue ;

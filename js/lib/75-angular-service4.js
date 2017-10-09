@@ -35,7 +35,7 @@ angular.module('MoneyNetwork')
 
         // setup MoneyNetworkLib. Most important. inject ZeroFrame into library
         MoneyNetworkAPILib.config({
-            debug: true,
+            debug: z_cache.user_setup.debug && z_cache.user_setup.debug.money_network_api,
             ZeroFrame: ZeroFrame,
             optional: moneyNetworkHubService.get_z_content_optional()
         }) ;
@@ -205,7 +205,7 @@ angular.module('MoneyNetwork')
                         sessionid: sessionid,
                         pubkey: session_info.pubkey,
                         pubkey2: session_info.pubkey2,
-                        debug: true
+                        debug: z_cache.user_setup.debug && z_cache.user_setup.debug.money_network_api
                     }) ;
                 }
                 catch (e) {

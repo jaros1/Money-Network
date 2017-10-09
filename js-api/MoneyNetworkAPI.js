@@ -23,6 +23,9 @@
 //   MN must know if send/receive money permission have been granted and if confirm transaction dialog is needed
 // - wallet.json - add fee info. fee paid by sender, receiver or shared. fee added or subtracted from transaction amount
 // - wallet.json - add external api url. for example https://www.blocktrail.com/api/docs for W2 (url er currency info)
+// - use MN log syntax in in log. for example: <inner_path> fileWrite started. <inner_path> fileWrite finished. res = <res>
+// - add MN debug messages for ZeroNet API calls. See debug_z_api_operation_start and debug_z_api_operation_end
+
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
 var MoneyNetworkAPILib = (function () {
@@ -198,7 +201,8 @@ var MoneyNetworkAPILib = (function () {
         // console.log(pgm + 'this_session_userid2 = ' + this_session_userid2) ;
     } // set_this_session_userid2
 
-    var debug, ZeroFrame, process_message_cb, interval, optional;
+    var debug = false, debug_seq = 0, debug_operations = {}, ZeroFrame, process_message_cb, interval, optional;
+
     function config(options) {
         var pgm = module + '.config: ';
         var error, regexp, check_auth_address ;
@@ -254,6 +258,38 @@ var MoneyNetworkAPILib = (function () {
         return this_session_userid2 ;
     }
 
+    // debug ZeroFrame API calls.
+    // call debug_z_api_operation_start before API call and debug_z_api_operation_end after API call
+    function debug_z_api_operation_pending () {
+        var keys = Object.keys(debug_operations) ;
+        if (keys.length == 0) return 'No pending ZeroNet API operations' ;
+        if (keys.length == 1) return '1 pending ZeroNet API operation (' + keys[0] + ')' ;
+        return keys.length + ' pending ZeroNet API operations (' + keys.join(',') + ')' ;
+    }
+    function debug_z_api_operation_start (pgm, inner_path, cmd) {
+        debug_seq++ ;
+        debug_operations[debug_seq] = {
+            pgm: pgm,
+            inner_path: inner_path,
+            cmd: cmd,
+            started_at: new Date().getTime()
+        } ;
+        if (debug) console.log(pgm + inner_path + ' ' + cmd + ' started (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+        return debug_seq ;
+    } // debug_z_api_operation_start
+    function debug_z_api_operation_end (debug_seq, res) {
+        var pgm, inner_path, cmd, started_at, finished_at, elapsed_time ;
+        if (!debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
+        pgm = debug_operations[debug_seq].pgm ;
+        inner_path = debug_operations[debug_seq].inner_path ;
+        cmd = debug_operations[debug_seq].cmd ;
+        started_at = debug_operations[debug_seq].started_at ;
+        delete debug_operations['' + debug_seq] ;
+        finished_at = new Date().getTime() ;
+        elapsed_time = finished_at - started_at ;
+        if (debug) console.log(pgm + inner_path + ' ' + cmd + ' finished' + (res ? '. res = ' + JSON.stringify(res) : '') + '. elapsed time ' + elapsed_time + ' ms (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+    } // debug_z_api_operation_end
+
     // wallet:
     // - false; MoneyNetwork, site_address !=  1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk
     // - true: MoneyNetwork wallet. site_address == '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk
@@ -262,21 +298,24 @@ var MoneyNetworkAPILib = (function () {
     var get_wallet_cbs = []; // callbacks waiting for get_wallet response
     function get_wallet(cb) {
         var pgm = module + '.get_wallet: ';
+        var debug_seq ;
         if (!ZeroFrame) throw pgm + 'ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into this library';
         if (!cb) cb = function () {};
         if (wallet == 'x') {
             // wait. first get_wallet request is executing
             get_wallet_cbs.push(cb);
-            console.log(pgm + 'wallet = x. get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
+            if (debug) console.log(pgm + 'wallet = x. get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
             return;
         }
         if ([true, false].indexOf(wallet) != -1) return cb(wallet); // ready
         // first get_wallet request. check site address and set wallet = true or false. x while executing
         wallet = 'x';
+        debug_seq = debug_z_api_operation_start(pgm, 'n/a', 'siteInfo') ;
         ZeroFrame.cmd("siteInfo", {}, function (site_info) {
-            var pgm = module + '.get_wallet siteInfo callback' ;
+            var pgm = module + '.get_wallet siteInfo callback: ' ;
+            debug_z_api_operation_end(debug_seq, site_info ? 'Ok' : 'Failed') ;
             wallet = (site_info.address != '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk');
-            console.log(pgm + 'wallet = ' + wallet + '. get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
+            if (debug) console.log(pgm + 'wallet = ' + wallet + '. get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
             cb(wallet);
             while (get_wallet_cbs.length) {
                 cb = get_wallet_cbs.shift();
@@ -316,7 +355,7 @@ var MoneyNetworkAPILib = (function () {
         if (encrypt) encrypt.session_at = session_at ;
         sha256 = CryptoJS.SHA256(sessionid).toString();
         if (typeof wallet == 'undefined') {
-            console.log(pgm + 'first get_wallet request. get_sessions request must wait for get_wallet request to finish') ;
+            if (debug) console.log(pgm + 'first get_wallet request. get_sessions request must wait for get_wallet request to finish') ;
             get_wallet_cbs.push(function() {}) ;
         }
         get_wallet(function (wallet) {
@@ -327,7 +366,7 @@ var MoneyNetworkAPILib = (function () {
             // if (sessions[other_session_filename]) return null; // known sessionid
             start_demon = (Object.keys(sessions).length == 0);
             if (!sessions[other_session_filename]) {
-                console.log(pgm + 'monitoring other_session_filename ' + other_session_filename + ', sessionid = ' + sessionid);
+                if (debug) console.log(pgm + 'monitoring other_session_filename ' + other_session_filename + ', sessionid = ' + sessionid);
                 sessions[other_session_filename] = {
                     sessionid: sessionid,
                     session_at: session_at,
@@ -345,9 +384,9 @@ var MoneyNetworkAPILib = (function () {
 
     // return session
     function get_session (sessionid, cb) {
-        var pgm = module + '.get_sessions: ' ;
-        var retry_get_session, fake_get_wallet_cb, other_session_filename, session_info ;
-        console.log(pgm + 'get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
+        var pgm = module + '.get_session: ' ;
+        var retry_get_session, fake_get_allet_cb, other_session_filename, session_info ;
+        if (debug) console.log(pgm + 'get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
         if (get_wallet_cbs.length) {
             // wait for get_wallet queue to empty before returning sessions (get_session_filenames)
             retry_get_session = function() {
@@ -364,7 +403,7 @@ var MoneyNetworkAPILib = (function () {
             session_info = sessions[other_session_filename];
             if (session_info.encrypt && session_info.encrypt.destroyed) continue;
             if (session_info.sessionid != sessionid) continue ;
-            console.log(pgm + 'found session with sessionid ' + sessionid) ;
+            if (debug) console.log(pgm + 'found session with sessionid ' + sessionid) ;
             return cb(session_info) ;
         }
         cb() ;
@@ -373,7 +412,7 @@ var MoneyNetworkAPILib = (function () {
     function get_sessions (cb) {
         var pgm = module + '.get_sessions: ' ;
         var array, other_session_filename, session_info1, session_info2, key, retry_get_sessions, fake_get_wallet_cb ;
-        console.log(pgm + 'get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
+        if (debug) console.log(pgm + 'get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
         if (get_wallet_cbs.length) {
             // wait for get_wallet queue to empty before returning sessions (get_session_filenames)
             retry_get_sessions = function() {
@@ -472,28 +511,26 @@ var MoneyNetworkAPILib = (function () {
         if (done[response_filename]) return 'Error. ' + response_filename + ' already done or callback object already defined';
         if (!cb) {
             if (debug) console.log(pgm + 'ignoring incoming message with filename ' + response_filename + '. request = ' + JSON.stringify(request)) ;
-            else console.log(pgm + 'no debug 1') ;
             done[response_filename] = true ;
             return null ;
         }
         if (!timeout_at) timeout_at = (new Date().getTime()) + 30000;
         done[response_filename] = {request: request, timeout_at: timeout_at, cb: cb};
         if (debug) console.log(pgm + 'added a callback function for ' + response_filename + '. request = ' + JSON.stringify(request) + ', done[' + response_filename + '] = ' + JSON.stringify(done[response_filename]));
-        else console.log(pgm + 'no debug 2') ;
         return null;
     } // wait_for_file
 
     var timestamp_re = /^[0-9]{13}$/ ;
     function demon() {
         var pgm = module + '.demon: ';
-        var filename, query, session_filename, first, now;
+        var filename, query, session_filename, first, now, debug_seq;
         // check for expired callbacks. processes waiting for a response
         now = new Date().getTime();
         for (filename in done) {
             if (done[filename] == true) continue;
-            console.log(pgm + 'done[' + filename + ']=' + JSON.stringify(done[filename]) + ', now = ' + now) ;
+            if (debug) console.log(pgm + 'done[' + filename + ']=' + JSON.stringify(done[filename]) + ', now = ' + now) ;
             if (done[filename].timeout_at > now) continue;
-            console.log(pgm + 'timeout. running callback for ' + filename);
+            if (debug) console.log(pgm + 'timeout. running callback for ' + filename);
             try {
                 done[filename].cb({error: 'Timeout while waiting for ' + filename + '. request was ' + JSON.stringify(done[filename].request)});
             }
@@ -522,10 +559,12 @@ var MoneyNetworkAPILib = (function () {
             return;
         }
         // if (debug) console.log(pgm + 'query = ' + query) ;
+        // debug_seq = debug_z_api_operation_start(pgm, query, 'dbQuery') ;
         ZeroFrame.cmd("dbQuery", [query], function (res) {
             var pgm = module + '.demon dbQuery callback: ';
             var i, directory, filename, session_filename, file_timestamp, cb, other_user_path, inner_path, encrypt,
                 loading_offline_transactions, start_load_offline_transactions, old_timestamps, file_timestamps;
+            // debug_z_api_operation_end(debug_seq, !res || res.error ? 'failed' : 'OK') ;
             if (res.error) {
                 console.log(pgm + 'query failed. error = ' + res.error);
                 console.log(pgm + 'query = ' + query);
@@ -631,7 +670,7 @@ var MoneyNetworkAPILib = (function () {
     // that is messages with timestamp < session_at (session added/started) that must be read at startup
     function load_offline_transactions(directory, filename1) {
         var pgm = module + '.load_offline_transactions: ' ;
-        var error, session_filename, encrypt, other_user_path, inner_path ;
+        var error, session_filename, encrypt, other_user_path, inner_path, debug_seq ;
         session_filename = filename1.substr(0,10) ;
         error = function (text) {
             console.log(pgm + text) ;
@@ -645,15 +684,17 @@ var MoneyNetworkAPILib = (function () {
         if (!encrypt.other_user_path) encrypt.setup_encryption({other_user_path: other_user_path}) ;
         if (other_user_path != encrypt.other_user_path) return error('Rejected incoming message ' + inner_path + '. Expected incoming messages for this session to come from ' + encrypt.other_user_path) ;
         // 1: get file
+        debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet') ;
         ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (json_str) {
             var pgm = module + '.load_offline_transactions fileGet callback 1: ';
             var encrypted_json ;
+            debug_z_api_operation_end(debug_seq, json_str ? 'OK' : 'Failed') ;
             if (!json_str) return error('filename ' + inner_path + ' was not found') ;
             encrypted_json = JSON.parse(json_str) ;
             // 2: decrypt
             encrypt.decrypt_json(encrypted_json, function (array) {
                 var pgm = module + '.load_offline_transactions decrypt_json callback 2: ';
-                var query ;
+                var query, debug_seq ;
                 if (!array) return error(inner_path + ' decrypt failed') ;
                 // 3: dbQuery. find old incoming messages not in offline transactions array. must be marked as done
                 query =
@@ -663,9 +704,11 @@ var MoneyNetworkAPILib = (function () {
                     "and json.json_id = files_optional.json_id " +
                     "order by substr(files_optional.filename, 12)";
                 // if (debug) console.log(pgm + 'query = ' + query) ;
+                debug_seq = debug_z_api_operation_start(pgm, query, 'dbQuery');
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = module + '.load_offline_transactions dbQuery callback 3: ';
                     var i, filename2, file_timestamp ;
+                    debug_z_api_operation_end(debug_seq, !res || res.error ? 'Failed' : 'Ok') ;
                     if (res.error) return error('query failed. error = ' + res.error + ', query = ' + query);
                     for (i=0 ; i<res.length ; i++) {
                         filename2 = res[i].filename;
@@ -1146,7 +1189,7 @@ var MoneyNetworkAPILib = (function () {
     var wallet_info_cache = {} ; // sha256 => wallet_info
     function get_wallet_info (wallet_sha256, cb) {
         var pgm = module + '.get_wallet_info: ';
-        var i, re, results, query, sha256 ;
+        var i, re, results, query, sha256, debug_seq ;
         if (!wallet_sha256) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
         if (typeof wallet_sha256 == 'string') wallet_sha256 = [wallet_sha256] ;
         if (!Array.isArray(wallet_sha256)) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
@@ -1190,9 +1233,11 @@ var MoneyNetworkAPILib = (function () {
             "having count(*) >= 4" ;
 
         if (debug) console.log(pgm + 'query ? = ' + query);
+        debug_seq = debug_z_api_operation_start(pgm, query, 'dbQuery') ;
         ZeroFrame.cmd("dbQuery", [query], function (wallets) {
             var pgm = module + '.get_wallet_info dbQuery callback: ' ;
             var error, check_wallet ;
+            debug_z_api_operation_end(debug_seq, !res || res.error ? 'Failed' : 'OK') ;
             if (wallets.error) {
                 error = 'failed to find full wallet information. error = ' + wallets.error ;
                 console.log(pgm + error);
@@ -1210,15 +1255,17 @@ var MoneyNetworkAPILib = (function () {
             // lookup and check wallets one by one. One fileGet for each wallet.json file
             check_wallet = function () {
                 var pgm = module + '.get_wallet_info.check_wallet: ' ;
-                var row, inner_path ;
+                var row, inner_path, debug_seq ;
                 row = wallets.shift() ;
                 if (!row) return cb(results, true) ; // done
                 if (results[row.wallet_sha256]) return check_wallet() ; // wallet info is already found for this sha256 value
                 // check wallet.json file
                 inner_path = 'merged-MoneyNetwork/' + row.directory + '/wallet.json' ;
+                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet');
                 ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
                     var pgm = module + '.get_wallet_info.check_wallet fileGet callback: ' ;
                     var wallet, error, calculated_sha256 ;
+                    debug_z_api_operation_end(debug_seq, wallet_str ? 'OK' : 'Not found') ;
                     if (!wallet_str) {
                         console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path);
                         return check_wallet(); // next wallet
@@ -1312,7 +1359,9 @@ var MoneyNetworkAPILib = (function () {
         aes_decrypt: aes_decrypt,
         validate_json: validate_json,
         calc_wallet_sha256: calc_wallet_sha256,
-        get_wallet_info: get_wallet_info
+        get_wallet_info: get_wallet_info,
+        debug_z_api_operation_start:debug_z_api_operation_start,
+        debug_z_api_operation_end: debug_z_api_operation_end
     };
 
 })(); // MoneyNetworkAPILib
@@ -1614,28 +1663,34 @@ MoneyNetworkAPI.prototype.decrypt_1 = function (encrypted_text_1, cb) {
 // 2: cryptMessage encrypt/decrypt using ZeroNet cryptMessage plugin (pubkey2)
 MoneyNetworkAPI.prototype.encrypt_2 = function (encrypted_text_1, cb) {
     var pgm = this.module + '.encrypt_2: ';
-    var self = this;
+    var self, debug_seq0 ;
+    self = this;
     this.check_destroyed(pgm) ;
     if (!this.ZeroFrame) throw pgm + 'encryption failed. ZeroFrame is missing in encryption setup';
     if (!this.other_session_pubkey2) throw pgm + 'encryption failed. Pubkey2 is missing in encryption setup';
     // 1a. get random password
     this.log(pgm, 'encrypted_text_1 = ' + encrypted_text_1 + '. calling aesEncrypt');
+    debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'n/a', 'aesEncrypt') ;
     this.ZeroFrame.cmd("aesEncrypt", [""], function (res1) {
         var pgm = self.module + '.encrypt_2 aesEncrypt callback 1: ';
-        var password;
+        var password, debug_seq1;
+        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, res1[0] ? 'OK' : 'Failed') ;
         password = res1[0];
         self.check_destroyed(pgm) ;
-        self.log(pgm, 'aesEncrypt OK. password = ' + password + '. calling eciesEncrypt');
         // 1b. encrypt password
+        debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'n/a', 'eciesEncrypt') ;
         self.ZeroFrame.cmd("eciesEncrypt", [password, self.other_session_pubkey2], function (key) {
             var pgm = self.module + '.encrypt_2 eciesEncrypt callback 2: ';
+            var debug_seq2 ;
+            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, key ? 'OK' : 'Failed') ;
             self.log(pgm, 'self.other_session_pubkey2 = ' + self.other_session_pubkey2 + ', key = ' + key);
             // 1c. encrypt text
             self.check_destroyed(pgm) ;
-            self.log(pgm, 'eciesEncrypt OK. calling aesEncrypt');
+            debug_seq2 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'n/a', 'aesEncrypt') ;
             self.ZeroFrame.cmd("aesEncrypt", [encrypted_text_1, password], function (res3) {
                 var pgm = self.module + '.encrypt_2 aesEncrypt callback 3: ';
                 var iv, encrypted_text, encrypted_array, encrypted_text_2;
+                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res3 ? 'OK' : 'Failed');
                 self.log(pgm, 'aesEncrypt OK');
                 // forward encrypted result to next function in encryption chain
                 iv = res3[1];
@@ -1650,7 +1705,7 @@ MoneyNetworkAPI.prototype.encrypt_2 = function (encrypted_text_1, cb) {
 }; // encrypt_2
 MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     var pgm = this.module + '.decrypt_2: ';
-    var self, encrypted_array, key, iv, encrypted_text;
+    var self, encrypted_array, key, iv, encrypted_text, debug_seq0;
     this.check_destroyed(pgm) ;
     self = this;
     if (!this.ZeroFrame) throw pgm + 'decryption failed. ZeroFrame is missing in encryption setup';
@@ -1660,14 +1715,17 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, cb) {
     iv = encrypted_array[1];
     encrypted_text = encrypted_array[2];
     // 1a. decrypt key = password
-    this.log(pgm, 'calling eciesDecrypt');
+    debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, key, 'eciesDecrypt') ;
     this.ZeroFrame.cmd("eciesDecrypt", [key, this.this_session_userid2], function (password) {
         var pgm = self.module + '.decrypt_2 eciesDecrypt callback 1: ';
+        var debug_seq1 ;
+        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, password ? 'OK' : 'Failed') ;
         if (!password) throw pgm + 'key eciesDecrypt failed. key = ' + key + ', userid2 = ' + JSON.stringify(self.this_session_userid2 + ', MoneyNetworkAPILib.get_this_session_userid2 = ' + MoneyNetworkAPILib.get_this_session_userid2());
         // 1b. decrypt encrypted_text
-        self.log(pgm, 'eciesDecrypt OK. password = ' + password + ', calling aesDecrypt');
+        debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, null, 'aesDecrypt') ;
         self.ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (encrypted_text_1) {
             var pgm = self.module + '.decrypt_2 aesDecrypt callback 2: ';
+            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, encrypted_text_1 ? 'OK' : 'Failed') ;
             self.log(pgm, 'aesDecrypt OK. encrypted_text_1 = ' + encrypted_text_1);
             cb(encrypted_text_1);
         }); // aesDecrypt callback 2
@@ -1779,15 +1837,19 @@ MoneyNetworkAPI.prototype.decrypt_json = function (json, cb) {
 // helper: get and write content.json file
 MoneyNetworkAPI.prototype.get_content_json = function (cb) {
     var pgm = this.module + '.get_content_json: ';
-    var self, inner_path;
+    var self, inner_path, debug_seq0;
     this.check_destroyed(pgm) ;
     self = this;
     if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
     if (!this.this_user_path) return cb(); // error. user_path is required
     inner_path = this.this_user_path + 'content.json';
     // 1: fileGet
+    this.log(pgm, inner_path + ' fileGet started') ;
+    debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet') ;
     this.ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (content_str) {
-        var content, json_raw;
+        var pgm = self.module + '.get_content_json fileGet callback 1: ';
+        var content, json_raw, debug_seq1;
+        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, content_str ? 'OK' : 'Not found') ;
         if (content_str) {
             content = JSON.parse(content_str);
             return cb(content);
@@ -1797,18 +1859,26 @@ MoneyNetworkAPI.prototype.get_content_json = function (cb) {
         // 2: fileWrite (empty content.json file)
         // new content.json file and optional files support requested. write + sign + get
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
+        debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileWrite');
         self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
             var pgm = self.module + '.get_content_json fileWrite callback 2: ';
+            var debug_seq2 ;
+            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
             self.log(pgm, 'res = ' + JSON.stringify(res));
             if (res != 'ok') return cb(); // error: fileWrite failed
             // 3: siteSign
+            debug_seq2 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'siteSign');
             self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
                 var pgm = self.module + '.get_content_json siteSign callback 3: ';
+                var debug_seq3 ;
+                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res)) ;
                 self.log(pgm, 'res = ' + JSON.stringify(res));
                 if (res != 'ok') return cb(); // error: siteSign failed
                 // 4: fileGet
+                debug_seq3 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet') ;
                 self.ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (content_str) {
                     var content;
+                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq3, content_str ? 'OK' : 'Not found');
                     if (!content_str) return cb(); // error. second fileGet failed
                     content = JSON.parse(content_str);
                     cb(content);
@@ -1834,7 +1904,8 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
     // ready for checking/adding optional files support in/to content.json file
     // 1: get content.json. will create empty signed content.json if content.json is missing
     this.get_content_json(function (content) {
-        var inner_path, json_raw;
+        var pgm = self.module + '.add_optional_files_support get_content_json callback 1: ';
+        var inner_path, json_raw, debug_seq1;
         if (!content) return cb({error: 'fileGet content.json failed'});
         if (content.optional == self.this_optional) return cb({}); // optional files support already OK
         // add optional files support
@@ -1842,13 +1913,18 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
         // 2: write content.json
         inner_path = self.this_user_path + 'content.json';
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
+        debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileWrite');
         self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
             var pgm = self.module + '.add_optional_files_support fileWrite callback 2: ';
+            var debug_seq2 ;
+            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
             self.log(pgm, 'res = ' + JSON.stringify(res));
             if (res != 'ok') return cb({error: 'fileWrite failed. error = ' + res}); // error: fileWrite failed
             // 3: siteSign
+            debug_seq2 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'siteSign');
             self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
                 var pgm = self.module + '.add_optional_files_support siteSign callback 3: ';
+                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                 self.log(pgm, 'res = ' + JSON.stringify(res));
                 if (res != 'ok') return cb({error: 'siteSign failed. error = ' + res}); // error: siteSign failed
                 // optional files support added
@@ -1874,7 +1950,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
     var self, response, request_msgtype, request_timestamp, encryptions, error, request_at, request_file_timestamp,
-        default_timeout, timeout_at, month, year, cleanup_in, offline_transaction, request_timeout_at ;
+        default_timeout, timeout_at, month, year, cleanup_in, offline_transaction, request_timeout_at, debug_seq0 ;
     self = this;
     this.check_destroyed(pgm) ;
 
@@ -1955,9 +2031,11 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     }
 
     // 1: recheck this_user_path before sending message. can have changed. user may have logged out
+    debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, null, 'siteInfo') ;
     this.ZeroFrame.cmd("siteInfo", {}, function (site_info) {
         var pgm = self.module + '.send_message siteInfo callback 1: ';
         var regexp ;
+        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, site_info ? 'OK' : 'Failed');
         if (!site_info.cert_user_id) {
             self.destroy('User log out') ;
             return cb({error: 'invalid call. this_user_path must be null for a not logged in user'}) ;
@@ -1979,17 +2057,16 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                 // 4: add optional files support
                 self.add_optional_files_support(function (res) {
                     var pgm = self.module + '.send_message add_optional_files_support callback 4: ';
-                    var inner_path3, json_raw;
+                    var inner_path4, json_raw, debug_seq4;
                     if (!res || res.error) return cb({error: 'Cannot send message. Add optional files support failed. ' + JSON.stringify(res)});
                     // 5: write file
-                    inner_path3 = self.this_user_path + this_session_filename + '.' + request_file_timestamp;
+                    inner_path4 = self.this_user_path + this_session_filename + '.' + request_file_timestamp;
                     json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
-                    self.log(pgm, 'writing optional file ' + inner_path3);
-                    self.ZeroFrame.cmd("fileWrite", [inner_path3, btoa(json_raw)], function (res) {
+                    debug_seq4 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileWrite') ;
+                    self.ZeroFrame.cmd("fileWrite", [inner_path4, btoa(json_raw)], function (res) {
                         var pgm = self.module + '.send_message fileWrite callback 5: ';
-                        var inner_path5, save_offline_transaction;
-                        self.log(pgm, 'res = ' + JSON.stringify(res));
-
+                        var save_offline_transaction;
+                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq4, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                         // 6: offline transaction only. add timestamp to optional_transaction array and special file
                         var save_offline_transaction = function (cb) {
                             var pgm = self.module + '.send_message.save_offline_transaction: ';
@@ -2000,14 +2077,13 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             // add to file <this_session_filename>.0000000000000
                             self.encrypt_json(offline_transaction, encryptions, function (encrypted_offline_transaction) {
                                 var pgm = self.module + '.send_message.save_offline_transaction encrypt_json callback 6.1: ';
-                                var inner_path1, json_raw ;
-
+                                var inner_path1, json_raw, debug_seq6 ;
                                 inner_path1 = self.this_user_path + this_session_filename + '.0000000000000' ;
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_offline_transaction, null, "\t")));
-                                self.log(pgm, 'writing optional file ' + inner_path1);
+                                debug_seq6 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path1, 'fileWrite');
                                 self.ZeroFrame.cmd("fileWrite", [inner_path1, btoa(json_raw)], function (res) {
                                     var pgm = self.module + '.send_message.save_offline_transaction fileWrite callback 6.2: ';
-                                    self.log(pgm, 'res = ' + JSON.stringify(res));
+                                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq6, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                                     // continue with sign
                                     cb() ;
                                 }) ; // fileWrite callback 2
@@ -2017,35 +2093,39 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                         } ; // save_offline_transaction
                         save_offline_transaction(function() {
                             var pgm = self.module + '.send_message.save_offline_transaction callback 6: ';
+                            var inner_path5, debug_seq6 ;
                             // 7: siteSign. publish not needed for within client communication
                             inner_path5 = self.this_user_path + 'content.json';
-                            self.log(pgm, 'sign content.json with new optional file ' + inner_path3);
+                            self.log(pgm, 'sign content.json with new optional file ' + inner_path4);
+                            debug_seq6 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path5, 'siteSign');
                             self.ZeroFrame.cmd("siteSign", {inner_path: inner_path5}, function (res) {
                                 var pgm = self.module + '.send_message siteSign callback 7: ';
                                 var delete_request, cleanup_job_id, inner_path6 ;
+                                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq6, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                                 self.log(pgm, 'res = ' + JSON.stringify(res));
 
                                 if (request.request) {
-                                    console.log(pgm + 'sending a response to a previous request. start cleanup job to response. must delete response file after request timeout');
+                                    self.log(pgm, 'sending a response to a previous request. start cleanup job to response. must delete response file after request timeout');
                                     cleanup_in = request_timeout_at - request_at ;
-                                    console.log(pgm + 'request_at          = ' + request_at) ;
-                                    console.log(pgm + 'request_timeout_at  = ' + request_timeout_at) ;
-                                    console.log(pgm + 'cleanup_in          = ' + cleanup_in) ;
+                                    self.log(pgm, 'request_at          = ' + request_at) ;
+                                    self.log(pgm, 'request_timeout_at  = ' + request_timeout_at) ;
+                                    self.log(pgm, 'cleanup_in          = ' + cleanup_in) ;
                                 }
                                 if (offline_transaction || (!response && !request.request)) return cb({}); // exit. offline transaction or not response and no request cleanup job
 
                                 // delete request file. submit cleanup job
                                 delete_request = function() {
                                     var pgm = self.module + '.send_message.delete_request callback: ';
+                                    var debug_seq ;
                                     cleanup_job_id = null ;
-                                    console.log(pgm + 'deleting ' + inner_path3) ;
-                                    ZeroFrame.cmd("fileDelete", inner_path3, function (res) {
+                                    debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileDelete');
+                                    ZeroFrame.cmd("fileDelete", inner_path4, function (res) {
                                         var pgm = self.module + '.send_message.delete_request fileDelete callback: ';
-                                        console.log(pgm + 'deleted ' + inner_path3 + ', res = ' + JSON.stringify(res));
+                                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                                         // no need for siteSign. file will be removed from content.json at next sign/publish
                                     }) ; // deleteDelete
                                 }; // delete_request
-                                console.log(pgm + 'Submit delete_request job for ' + inner_path3 + '. starts delete_request job in ' + (cleanup_in || default_timeout) + ' milliseconds' ) ;
+                                self.log(pgm, 'Submit delete_request job for ' + inner_path4 + '. starts delete_request job in ' + (cleanup_in || default_timeout) + ' milliseconds' ) ;
                                 cleanup_job_id = setTimeout(delete_request, (cleanup_in || default_timeout)) ;
                                 if (!response) return cb({}) ; // exit. response was not requested. request cleanup job started
 
@@ -2058,16 +2138,19 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     // fileGet and json_decrypt
                                     get_and_decrypt = function (inner_path) {
                                         var pgm = self.module + '.send_message.get_and_decrypt: ';
+                                        var debug_seq0 ;
                                         if (typeof inner_path == 'object') {
                                             self.log(pgm, 'inner_path is an object. must be a timeout error returned from MoneyNetworkAPILib.wait_for_file function. inner_path = ' + JSON.stringify(inner_path)) ;
                                             return cb(inner_path);
                                         }
+                                        debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet');
                                         self.ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (response_str) {
                                             var pgm = self.module + '.send_message.get_and_decrypt fileGet callback 8.1: ';
                                             var encrypted_response, error, request_timestamp;
+                                            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, response_str ? 'OK' : 'Not found');
                                             if (!response_str) return cb({error: 'fileGet for receipt failed. Request was ' + JSON.stringify(request) + '. inner_path was ' + inner_path});
                                             encrypted_response = JSON.parse(response_str);
-                                            console.log(pgm + 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid) ;
+                                            self.log(pgm, 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid) ;
                                             // read response. run cleanup job now
                                             if (cleanup_job_id) clearTimeout(cleanup_job_id);
                                             setTimeout(delete_request, 0) ;
@@ -2120,13 +2203,15 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                         // loop
                                         wait_for_response = function () {
                                             var pgm = self.module + '.send_message.wait_for_response 8: ';
-                                            var now;
+                                            var now, debug_seq8;
                                             now = new Date().getTime();
                                             if (now > timeout_at) return cb({error: 'Timeout while waiting for response. Request was ' + JSON.stringify(request) + '. Expected response filename was ' + response_filename});
                                             // 9: dbQuery
+                                            debug_seq8 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, query, 'dbQuery');
                                             self.ZeroFrame.cmd("dbQuery", [query], function (res) {
                                                 var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 9: ';
                                                 var inner_path9;
+                                                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq8, (!res || res.error) ? 'Failed' : 'OK');
                                                 if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error});
                                                 if (!res.length) {
                                                     setTimeout(wait_for_response, 500);
