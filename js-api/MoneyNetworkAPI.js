@@ -964,7 +964,7 @@ var MoneyNetworkAPILib = (function () {
                 "wallet_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
                 "hub": {"type": 'string'}
             },
-            "required": ['msgtype', 'wallet_sha256', 'currencies'],
+            "required": ['msgtype', 'wallet_sha256'],
             "additionalProperties": false
         }, // wallet
 
@@ -1237,7 +1237,7 @@ var MoneyNetworkAPILib = (function () {
         ZeroFrame.cmd("dbQuery", [query], function (wallets) {
             var pgm = module + '.get_wallet_info dbQuery callback: ' ;
             var error, check_wallet ;
-            debug_z_api_operation_end(debug_seq, !res || res.error ? 'Failed' : 'OK') ;
+            debug_z_api_operation_end(debug_seq, !wallets || wallets.error ? 'Failed' : 'OK') ;
             if (wallets.error) {
                 error = 'failed to find full wallet information. error = ' + wallets.error ;
                 console.log(pgm + error);

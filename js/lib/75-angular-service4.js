@@ -393,16 +393,23 @@ angular.module('MoneyNetwork')
                                     var filename, inner_path, debug_seq ;
                                     if (!delete_files.length) {
                                         // finish deleting optional files
-                                        if (!delete_ok.length) return ; // nothing to sign
+                                        if (!delete_ok.length) {
+                                            // nothing to sign
+                                            moneyNetworkHubService.end_content_update(content_lock_pgm) ;
+                                            return ;
+                                        }
                                         inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
-                                        self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+                                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + 'sign') ;
+                                        ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
                                             var pgm = service + '.create_sessions.step_3_find_old_outgoing_files.delete_file siteSign callback: ';
+                                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                             if (res != 'ok') console.log(pgm + inner_path + ' siteSign failed. error = ' + res) ;
                                             // done with or without errors. end content update.
                                             moneyNetworkHubService.end_content_update(content_lock_pgm) ;
                                         }) ;
                                         return ;
-                                    } // done
+                                    }
+                                    // delete next file
                                     filename = delete_files.shift() ;
                                     inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
                                     debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete') ;

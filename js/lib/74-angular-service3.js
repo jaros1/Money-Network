@@ -1275,7 +1275,6 @@ angular.module('MoneyNetwork')
                             // insert and encrypt new outgoing messages into data.json
                             // using callback technique (not required for JSEncrypt but used in cryptMessage plugin)
                             // will call data cleanup, write and publish when finished encrypting messages
-                            debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                             z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
                         }); // get_data_json callback 4
@@ -1472,7 +1471,6 @@ angular.module('MoneyNetwork')
                                 message_with_envelope.encryption = 2 ;
                                 // 3 callbacks. 1) generate password, 2) encrypt password=key and 3) encrypt message,
                                 if (resend) debug('lost_message', pgm + 'resend. calling z_update_data_cryptmessage for old message with local_msg_seq ' + local_msg_seq) ;
-                                debug('issue_112', pgm + 'issue  #112 - calling z_update_2b_data_json_encrypt');
                                 z_update_2b_data_json_encrypt (
                                     true, data_json_max_size, data, data_str,
                                     contact.pubkey2, message_with_envelope, receiver_sha256, sent_at
@@ -1543,7 +1541,6 @@ angular.module('MoneyNetwork')
                                 if (error) {
                                     console.log(pgm + 'cannot write -image.json file ' + image_path + '. json is invalid: ' + error) ;
                                     // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
-                                    debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                                     z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str);
                                     return ;
                                 }
@@ -1557,7 +1554,6 @@ angular.module('MoneyNetwork')
                                     debug('outbox', pgm + 'res = ' + JSON.stringify(res));
                                     console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
                                     // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
-                                    debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                                     z_update_2a_data_json_encrypt (true, data_json_max_size, data, data_str)
                                 }); // fileWrite
                                 return ; // stop- writeFile callback will continue process
@@ -1586,11 +1582,9 @@ angular.module('MoneyNetwork')
                 // no more messages to encrypt. continue with cleanup, write and publish data.json
 
                 // update data.json step 3. cleanup. try to keep data.json file small. check max user dictionary size
-                debug('issue_112', pgm + 'issue  #112 - calling z_update_3_data_json_cleanup');
                 if (z_update_3_data_json_cleanup (local_storage_updated, data_json_max_size, data)) {
                     // Cleanup OK - write data.json file and continue with any public outbox messages
                     if (detected_client_log_out(pgm)) return ;
-                    debug('issue_112', pgm + 'issue  #112 - calling z_update_4_data_json_write');
                     z_update_4_data_json_write (data, data_str) ;
                 }
                 else {
@@ -1622,21 +1616,18 @@ angular.module('MoneyNetwork')
             get_my_user_hub(function (hub) {
                 var pgm = service + '.z_update_2b_data_json_encrypt get_my_user_hub callback 1: ';
                 var debug_seq1 ;
-                debug('issue_112', pgm + 'issue #112 - calling aesEncrypt');
                 debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + 'aesEncrypt') ;
                 ZeroFrame.cmd("aesEncrypt", [""], function (res) {
                     var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 2: ';
                     var password, debug_seq2 ;
                     password = res[0];
                     MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1) ;
-                    debug('issue_112', pgm + 'issue #112 - calling eciesEncrypt');
                     debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + 'eciesEncrypt') ;
                     ZeroFrame.cmd("eciesEncrypt", [password, pubkey2], function (key) {
                         var pgm = service + '.z_update_2b_data_json_encrypt eciesEncrypt callback 3: ';
                         var debug_seq3 ;
                         MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
                         // encrypt step 3 - aes encrypt message
-                        debug('issue_112', pgm + 'issue #112 - calling aesEncrypt');
                         debug_seq3 = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + 'aesEncrypt') ;
                         ZeroFrame.cmd("aesEncrypt", [JSON.stringify(message_with_envelope.message), password], function (msg_res) {
                             var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 4: ';
@@ -1694,7 +1685,6 @@ angular.module('MoneyNetwork')
                                 // message with image. must encrypt and upload image as an optional json file
                                 // cryptMessage encrypt image using same key/password as for message
                                 // encrypt step 4 - aes encrypt image
-                                debug('issue_112', pgm + 'issue #112 - calling aesEncrypt for image');
                                 debug_seq4 = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + 'aesEncrypt') ;
                                 ZeroFrame.cmd("aesEncrypt", [message.image, password], function (image_res) {
                                     var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 4: ';
@@ -1745,7 +1735,6 @@ angular.module('MoneyNetwork')
                                         console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
 
                                         // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
-                                        debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                                         z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
                                     }); // fileWrite callback 5
@@ -1757,7 +1746,6 @@ angular.module('MoneyNetwork')
                             }
 
                             // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
-                            debug('issue_112', pgm + 'issue  #112 - calling z_update_2a_data_json_encrypt');
                             z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
 
                         }); // aesEncrypt callback 4

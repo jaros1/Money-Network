@@ -258,6 +258,7 @@ angular.module('MoneyNetwork')
             if (self.setup.encryption != self.setup_copy.encryption) {
                 ZeroFrame.cmd('wrapperNotification', ['info', 'Preferred encryption was changed.<br>Save user information or send a new message to publish change to peers', 5000]);
             }
+            MoneyNetworkAPILib.config({debug: self.setup.debug && self.setup.debug.money_network_api}) ;
 
             copy_setup() ;
             moneyNetworkService.save_user_setup() ;

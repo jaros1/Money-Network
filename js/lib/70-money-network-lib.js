@@ -348,10 +348,10 @@ var MoneyNetworkHelper = (function () {
                     return ; // done
                 }
                 inner_path = emojis_keys.shift() ;
-                debug_seq = debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+                // debug_seq = debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ; // dropped. too many log lines
                 ZeroFrame.cmd("fileGet", [inner_path, true, 'base64'], function (res) {
                     var pgm = module + '.load_public_avatars.step_4_download_emojis fileGet callback: ';
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq); // dropped. too many log lines
                     if (!res) console.log(pgm + 'fileGet ' + inner_path + ' failed') ;
                     setTimeout(step_4_download_emojis,500) ;
                     //step_4_download_emojis() ;
@@ -1515,33 +1515,6 @@ var MoneyNetworkHelper = (function () {
         debug(keys, text + ' started (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
         return debug_seq ;
     } // debug_z_api_operation_start
-    var api_operation_timeout = null ;
-    function check_api_operation_timeout () {
-        var pgm = module + '.check_api_operation_timeout: ' ;
-        var now, debug_seq, started_at, remaining, max_remaining ;
-        api_operation_timeout = null ;
-        now = new Date().getTime() ;
-        max_remaining = 0 ;
-        for (debug_seq in debug_operations) {
-            if (!debug_operations[debug_seq].cb) continue ;
-            started_at = debug_operations [debug_seq].started_at ;
-            remaining = 60000 - now + started_at ;
-            if (remaining <= 0) {
-                console.log(pgm +
-                    'timeout for ' + debug_operations[debug_seq].text + ' after 60 seconds. ' +
-                    'todo: check for lost merger:MoneyNetwork permission') ;
-                setTimeout(debug_operations [debug_seq].cb, 0) ;
-            }
-            else if (remaining > max_remaining) max_remaining = remaining ;
-        }
-        if (remaining) api_operation_timeout = setTimeout(check_api_operation_timeout, remaining) ;
-    }
-    function debug_z_api_operation_timeout (debug_seq, cb) {
-        var pgm = module + '.debug_z_api_operation_timeout: ' ;
-        if (!debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
-        debug_operations[debug_seq].cb = cb ;
-        if (!api_operation_timeout) api_operation_timeout = setTimeout(check_api_operation_timeout, 60000) ;
-    }
     function debug_z_api_operation_end (debug_seq) {
         var pgm = module + '.debug_z_api_operation_end: ' ;
         var keys, text, started_at, finished_at, elapsed_time ;
@@ -1575,7 +1548,7 @@ var MoneyNetworkHelper = (function () {
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
             'unencrypted', 'encrypted', 'file_done', 'select', 'inbox', 'outbox', 'data_cleanup', 'no_pubkey',
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
-            'issue_112', 'emoji', 'site_info', 'reaction', 'issue_131', 'z_file_write', 'z_file_get', 'z_db_query',
+            'emoji', 'site_info', 'reaction', 'issue_131', 'z_file_write', 'z_file_get', 'z_db_query',
             'z_site_publish', 'z_file_delete', 'z_server_info', 'z_crypt_message', 'money_network_api'];
         for (i = 0; i < debug_keys.length; i++) {
             key = debug_keys[i];
@@ -1662,7 +1635,6 @@ var MoneyNetworkHelper = (function () {
         load_user_setup: load_user_setup,
         debug: debug,
         debug_z_api_operation_start: debug_z_api_operation_start,
-        debug_z_api_operation_timeout: debug_z_api_operation_timeout,
         debug_z_api_operation_end: debug_z_api_operation_end,
         stringify: stringify,
         get_fake_name: get_fake_name,

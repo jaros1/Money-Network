@@ -222,11 +222,11 @@ angular.module('MoneyNetwork')
         var inner_path_re1 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
         var inner_path_re2 = /^merged-MoneyNetwork\/(.*?)\/data\/users\// ; // extract hub
         function z_file_get (pgm, options, cb) {
-            var inner_path, match2, hub, debug_seq ;
+            var inner_path, match2, hub, timeout, cb2_done, debug_seq, process_id, cb2 ;
             inner_path = options.inner_path ;
 
+            // check inner_path.
             if (inner_path.match(inner_path_re1)) throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
-
             match2 = inner_path.match(inner_path_re2) ;
             if (match2) {
                 hub = match2[1] ;
@@ -237,11 +237,25 @@ angular.module('MoneyNetwork')
                 }
             }
 
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-            ZeroFrame.cmd("fileGet", options, function (data) {
+            // extend cb. add debug and timeout processing.
+            // run as fileGet callback or run by $timeout (problem with optional fileGet operation running forever
+            cb2_done = false ;
+            cb2 = function (data) {
+                if (process_id) {
+                    try {$timeout.cancel(process_id)}
+                    catch (e) {}
+                    process_id = null ;
+                } ;
+                if (cb2_done) return ; // cb2 has already run
+                cb2_done = true ;
                 MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                 cb(data) ;
-            }) ; // fileGet callback
+            } ; // fileGet callback
+
+            timeout = options.timeout || 300 ; // timeout in seconds
+            process_id = $timeout(cb2, timeout*1000) ;
+            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+            ZeroFrame.cmd("fileGet", options, cb2) ;
         } // z_file_get
 
         function get_default_user_hub () {

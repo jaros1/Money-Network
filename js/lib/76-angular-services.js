@@ -1473,7 +1473,6 @@ angular.module('MoneyNetwork')
                 // update localStorage and zeronet
                 $timeout(function () {
                     MoneyNetworkHelper.ls_save() ;
-                    debug('issue_112', pgm + 'issue  #112 - calling z_update_1_data_json');
                     z_update_1_data_json(pgm) ;
                 })
             }
@@ -5896,10 +5895,9 @@ angular.module('MoneyNetwork')
                     // read optional file. can take some time depending of number of peers
                     cache_status.is_pending = true;
 
-                    // fileGet with callback.
-                    debug('public_chat || issue_112', pgm + 'start download ' + cache_filename) ;
+                    // fileGet with callback. wait max 60 seconds for optional chat file.
                     debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + cache_filename + ' fileGet') ;
-                    file_get_callback_2 = function (chat) {
+                    z_file_get(pgm, {inner_path: cache_filename, required: true, timeout: 60}, function (chat) {
                         var pgm = service + '.get_and_load_chat_file z_file_get callback 2: ';
                         var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
                             file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
@@ -5910,15 +5908,14 @@ angular.module('MoneyNetwork')
                         // update cache_status
                         cache_status.is_pending = false;
                         debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
-                        if (chat == 'timeout') console.log(pgm + 'z_file_get operation for ' + cache_filename + ' aborted after 60 seconds') ;
-                        if (!chat || (chat == 'timeout')) {
+                        if (!chat) {
                             cache_status.is_downloaded = false;
                             if (!cache_status.download_failed_at) cache_status.download_failed_at = [] ;
                             cache_status.download_failed_at.push(new Date().getTime()) ;
                             chat_page_context.failures.push(cache_filename) ;
                             console.log(pgm + 'download failed for ' + cache_filename + ', failures = ' + chat_page_context.failures.length) ;
                             return cb2() ;
-                        }
+                        } // test
                         // cache_filename = merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/13CMaVD3fimSq8Zr1Xr3UkbZqhA8BupBAf/1495700749498-1495700684383-1-chat.json
                         file_hub = cache_filename.split('/')[1] ;
                         file_auth_address = cache_filename.split('/')[4] ;
@@ -6158,9 +6155,7 @@ angular.module('MoneyNetwork')
                         // callback to chatCtrl, update UI and maybe read more optional files with public chat messages
                         cb2(page_updated);
 
-                    } ;// file_get_callback_2
-                    MoneyNetworkHelper.debug_z_api_operation_timeout(debug_seq, function () {file_get_callback_2('timeout')}) ;
-                    z_file_get(pgm, {inner_path: cache_filename, required: true}, file_get_callback_2);
+                    }); // file_get_callback_2
 
                 }) ; // get_user_seq callback 1
 

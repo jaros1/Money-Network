@@ -402,6 +402,7 @@ angular.module('MoneyNetwork')
             if (!z_cache.user_setup.hasOwnProperty('two_panel_chat')) z_cache.user_setup.two_panel_chat = true ;
             if (!z_cache.user_setup.alias) z_cache.user_setup.alias = 'Me';
             if (!z_cache.user_setup.encryption) z_cache.user_setup.encryption = keysize == 256 ? '2' : '1' ;
+            MoneyNetworkAPILib.config({debug: z_cache.user_setup.debug && z_cache.user_setup.debug.money_network_api}) ;
         }
         function save_user_setup () {
             var i ;

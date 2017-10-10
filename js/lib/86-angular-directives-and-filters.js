@@ -752,7 +752,6 @@ angular.module('MoneyNetwork')
         return function (message) {
             var text, no_receivers, no_feedback ;
             if (!message.message.sent_at) {
-                // https://github.com/jaros1/Zeronet-Money-Network/issues/112#issuecomment-274316500
                 text = 'Sending message: todo: add info about any problems' ;
                 return text ;
             }

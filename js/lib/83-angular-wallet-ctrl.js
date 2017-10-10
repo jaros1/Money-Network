@@ -147,7 +147,7 @@ angular.module('MoneyNetwork')
                 var url, request, old_sessions, sessionid, session_info, test_old_session ;
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // continue with next test
-                    console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no + 1));
+                    console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status + '. start test ' + (info.no + 1)) ;
                     info.disabled = true;
                     test2_open_url.run();
                 }
@@ -260,7 +260,7 @@ angular.module('MoneyNetwork')
                 var url, request ;
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // continue with next test
-                    console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no + 1));
+                    console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status + '. start test ' + (info.no + 1)) ;
                     info.disabled = true;
                     test3_allow_popup.run();
                 }
@@ -273,9 +273,8 @@ angular.module('MoneyNetwork')
                     url = get_relative_url(self.new_wallet_url) ;
                     new_sessionid(url) ;
                     url = updateURLParameter(url, 'sessionid', test_sessionid) ;
-                    console.log(pgm + 'url = ' + url) ;
+                    console.log(pgm + 'opening url ' + url + " in a new browser tab. maybe blocked. chrome+opera: Uncaught TypeError: Cannot set property 'opener' of null") ;
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
-
                     // send unencrypted pubkeys message to wallet session. Do not wait for any response.
                     // encrypted pubkeys response will be processed by process_incoming_message callback function
                     request = {
@@ -307,7 +306,7 @@ angular.module('MoneyNetwork')
             function run () {
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // continue with next test
-                    console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no+1)) ;
+                    console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status + '. start test ' + (info.no + 1)) ;
                     info.disabled = true ;
                     test4_select_zeroid.run() ;
                 }
@@ -338,7 +337,7 @@ angular.module('MoneyNetwork')
             function run () {
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // continue with next test
-                    console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no+1)) ;
+                    console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status + '. start test ' + (info.no + 1)) ;
                     info.disabled = true ;
                     test5_merger_moneynetwork.run() ;
                 }
@@ -364,7 +363,7 @@ angular.module('MoneyNetwork')
             function run () {
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // continue with next test
-                    console.log(pgm + 'test ' + info.no + ' done. start test ' + (info.no+1)) ;
+                    console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status + '. start test ' + (info.no + 1)) ;
                     info.disabled = true ;
                     test6_check_session.run() ;
                 }
@@ -390,6 +389,7 @@ angular.module('MoneyNetwork')
             function run () {
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     // next test
+                    console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status + '. start test ' + (info.no + 1)) ;
                     info.disabled = true ;
                     test7_check_wallet.run() ;
                 }
@@ -506,7 +506,10 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'error. no match between test url ' + url + ' and wallet ' + JSON.stringify(wallet)) ;
                     return false ;
                 } ;
-                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) return test_done() ;
+                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
+                    console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status + '. start test ' + (info.no + 1)) ;
+                    return test_done() ;
+                }
                 else {
                     // start test 7. read wallet.json
                     info.status = 'Running' ;
@@ -587,7 +590,10 @@ angular.module('MoneyNetwork')
                     // finish. update UI just to be sure everything is OK
                     $rootScope.$apply();
                 } ;
-                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) return test_done() ;
+                if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
+                    console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status) ;
+                    return test_done() ;
+                }
                 else {
                     // start test 8. send get_balance request. expects a balance response. long timeout. wallet operations may take some time
                     info.status = 'Running' ;
