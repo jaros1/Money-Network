@@ -266,28 +266,33 @@ var MoneyNetworkAPILib = (function () {
         if (keys.length == 1) return '1 pending ZeroNet API operation (' + keys[0] + ')' ;
         return keys.length + ' pending ZeroNet API operations (' + keys.join(',') + ')' ;
     }
-    function debug_z_api_operation_start (pgm, inner_path, cmd) {
+    // debug: "global" MoneyNetworkAPI debug option (null, true, false or a string)
+    // debug_this: null, true or false. debug option only for this call
+    // cmd: ZeroFrame cmd
+    function debug_z_api_operation_start (pgm, inner_path, cmd, debug_this) {
         debug_seq++ ;
         debug_operations[debug_seq] = {
             pgm: pgm,
             inner_path: inner_path,
             cmd: cmd,
+            debug_this: debug_this,
             started_at: new Date().getTime()
         } ;
-        if (debug) console.log(pgm + inner_path + ' ' + cmd + ' started (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+        if (debug || debug_this) console.log(pgm + (inner_path ? inner_path + ' ' : '') + cmd + ' started (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
         return debug_seq ;
     } // debug_z_api_operation_start
     function debug_z_api_operation_end (debug_seq, res) {
-        var pgm, inner_path, cmd, started_at, finished_at, elapsed_time ;
+        var pgm, inner_path, cmd, debug_this, started_at, finished_at, elapsed_time ;
         if (!debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
         pgm = debug_operations[debug_seq].pgm ;
         inner_path = debug_operations[debug_seq].inner_path ;
         cmd = debug_operations[debug_seq].cmd ;
+        debug_this = debug_operations[debug_seq].debug_this ;
         started_at = debug_operations[debug_seq].started_at ;
         delete debug_operations['' + debug_seq] ;
         finished_at = new Date().getTime() ;
         elapsed_time = finished_at - started_at ;
-        if (debug) console.log(pgm + inner_path + ' ' + cmd + ' finished' + (res ? '. res = ' + JSON.stringify(res) : '') + '. elapsed time ' + elapsed_time + ' ms (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+        if (debug || debug_this) console.log(pgm + inner_path + ' ' + cmd + ' finished' + (res ? '. res = ' + JSON.stringify(res) : '') + '. elapsed time ' + elapsed_time + ' ms (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
     } // debug_z_api_operation_end
 
     // wallet:

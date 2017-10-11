@@ -1531,18 +1531,14 @@ var MoneyNetworkHelper = (function () {
     // output debug info in log. For key, see user page and setup.debug hash
     // keys: simple expressions are supported. For example inbox && unencrypted
     var debug_cache = {} ;
-    function debug (keys, text) {
-        var pgm = module + '. debug: ' ;
+
+    // keys => true or false
+    function show_debug (keys) {
+        var pgm = module + '.show_debug: ' ;
+        var old_keys, show, debug_keys, i, key, debug_value, regexp;
         if (!keys) throw pgm + 'Invalid call. key is missing' ;
-        if (!text) throw pgm + 'Invalid call. text is missing' ;
-        if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return ;
-        if (debug_cache.hasOwnProperty(keys)) {
-            // keys expression already in cache
-            if (debug_cache[keys]) console.log(shorten_long_strings(text)) ;
-            return ;
-        }
-        // new keys expression
-        var old_keys, show_debug, debug_keys, i, key, debug_value, regexp;
+        if (!user_setup || !user_setup.debug || !user_setup.debug.enabled) return false;
+        if (debug_cache.hasOwnProperty(keys)) return debug_cache[keys]; // keys expression already in cache
         old_keys = keys ;
         debug_keys = [
             'show_contact_action_filter', 'contact_order_by', 'chat_order_by', 'chat_filter', 'invalid_avatars',
@@ -1550,6 +1546,7 @@ var MoneyNetworkHelper = (function () {
             'edit_alias', 'feedback_info', 'lost_message', 'spam_filter', 'public_chat', 'infinite_scroll',
             'emoji', 'site_info', 'reaction', 'issue_131', 'z_file_write', 'z_file_get', 'z_db_query',
             'z_site_publish', 'z_file_delete', 'z_server_info', 'z_crypt_message', 'money_network_api'];
+        // new keys expression
         for (i = 0; i < debug_keys.length; i++) {
             key = debug_keys[i];
             if (user_setup.debug[key]) debug_value = 'true';
@@ -1559,17 +1556,24 @@ var MoneyNetworkHelper = (function () {
         }
         // console.log(pgm + 'new keys = ' + keys);
         try {
-            show_debug = eval(keys) ;
+            show = eval(keys) ;
         }
         catch (err) {
             console.log(pgm + 'invalid call. keys = ' + keys + ', text = ' + text + ', error = ' + err.message) ;
-            return ;
+            show = false ;
         }
-        if (show_debug) console.log(shorten_long_strings(text)) ;
         // add to cache
-        debug_cache[old_keys] = show_debug ;
-    } // debug
+        debug_cache[old_keys] = show ;
+        return show ;
+    } // show_debug
 
+    // keys => true or false.
+    function debug (keys, text) {
+        var pgm = module + '. debug: ' ;
+        if (!keys) throw pgm + 'Invalid call. key is missing' ;
+        if (!text) throw pgm + 'Invalid call. text is missing' ;
+        if (show_debug(keys)) console.log(shorten_long_strings(text)) ;
+    } // debug
 
     // fake user names. dummy user setup for guests and lazy users
     var fake_user_names = ["Annalise Glover", "Hollis Ortiz", "Bertha Schaefer", "Santino Grant", "Elbert Greenfelder",
@@ -1633,6 +1637,7 @@ var MoneyNetworkHelper = (function () {
         decompress1: decompress1,
         validate_json: validate_json,
         load_user_setup: load_user_setup,
+        show_debug: show_debug,
         debug: debug,
         debug_z_api_operation_start: debug_z_api_operation_start,
         debug_z_api_operation_end: debug_z_api_operation_end,
