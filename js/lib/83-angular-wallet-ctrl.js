@@ -274,7 +274,7 @@ angular.module('MoneyNetwork')
                     url = get_relative_url(self.new_wallet_url) ;
                     new_sessionid(url) ;
                     url = updateURLParameter(url, 'sessionid', test_sessionid) ;
-                    console.log(pgm + 'opening url ' + url + " in a new browser tab. maybe blocked. chrome+opera: Uncaught TypeError: Cannot set property 'opener' of null") ;
+                    console.log(pgm + 'opening url ' + url + " in a new browser tab. open window maybe blocked in browser. chrome+opera: Uncaught TypeError: Cannot set property 'opener' of null") ;
                     ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
                     // send unencrypted pubkeys message to wallet session. Do not wait for any response.
                     // encrypted pubkeys response will be processed by process_incoming_message callback function
@@ -395,22 +395,47 @@ angular.module('MoneyNetwork')
                     test7_check_wallet.run() ;
                 }
                 else {
-                    // start test 6. wait for wallet feedback (pubkeys message)
+                    // start test 6. wait for wallet feedback
+                    // - new wallet session : wait for pubkeys message using test_sessionid
+                    // - old wallet session : wait for ping request using old sessionid
                     info.status = 'Running' ;
 
                     // wait for session to start. expects a pubkeys message from MoneyNetwork wallet session
                     // incoming messages are received by MoneyNetworkAPI.demon process in process_incoming_message callback
                     // wait for pubkeys information to be inserted into sessions hash. wait max 1 minute
                     var check_session = function(cb, count) {
-                        var job ;
+                        var url, old_sessionid, old_session_info, job ;
                         if (!count) count = 0;
-                        if (count > 60) return cb({ error: "timeout" }) ;
-                        if (!ls_sessions[test_sessionid] || !ls_sessions[test_sessionid][SESSION_INFO_KEY]) {
-                            // wait. pubkeys message not yet received
-                            job = function () { check_session(cb, count+1) };
-                            $timeout(job, 1000) ;
-                            return ;
+                        if (count > 60) return cb({ error: "timeout. pubkeys message was not received from wallet session" }) ;
+                        // checking for new wallet session (incoming pubkeys message)
+                        if (ls_sessions[test_sessionid] && ls_sessions[test_sessionid][SESSION_INFO_KEY]) {
+                            // received pubkeys message from new wallet session
+                            cb(ls_sessions[test_sessionid][SESSION_INFO_KEY]) ;
                         }
+                        // checking for old wallet session (incoming ping request)
+                        if (test_session_at) {
+                            // test_session_at = timestamp for wrapperWindowOpen. start for new wallet session
+                            url = get_relative_url(self.new_wallet_url) ;
+                            for (old_sessionid in ls_sessions) {
+                                old_session_info = ls_sessions[old_sessionid][SESSION_INFO_KEY] ;
+                                if (!old_session_info) continue ;
+                                if (!old_session_info.last_request_at) continue ;
+                                if (old_session_info.last_request_at < test_session_at) continue ;
+                                if (old_session_info.url != url) continue ;
+                                console.log(pgm + 'found old_sessionid = ' + old_sessionid + ', ls_sessions[old_sessionid] = ' + JSON.stringify(ls_sessions[old_sessionid])) ;
+                                MoneyNetworkAPILib.get_session(old_sessionid, function(old_session) {
+                                    encrypt2 = old_session.encrypt ;
+                                    info.status = 'Test OK' ;
+                                    info.disabled = true ;
+                                    test7_check_wallet.run() ;
+                                }) ;
+                                return ;
+                            } // for
+                        }
+                        // wait. pubkeys message or ping not yet received
+                        job = function () { check_session(cb, count+1) };
+                        $timeout(job, 1000) ;
+                        return ;
                         // done. pubkeys message from wallet session was received by process_incoming_message callback
                         cb(ls_sessions[test_sessionid][SESSION_INFO_KEY]) ;
                     }; // check_session
@@ -428,8 +453,10 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'new wallet session was found. pubkey2 = ' + res.pubkey2 + ', waited ' + Math.round(elapsed / 1000) + ' seconds') ;
                             info.status = 'Test OK' ;
                             info.disabled = true ;
+                            test7_check_wallet.run() ;
                         }
                         console.log(pgm + 'check_session. res = ' + JSON.stringify(res)) ;
+
                         //res = {
                         //    "msgtype": "pubkeys",
                         //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCIsVzGN462DlwPYxJ+ZvLKWxIL\ndEYLhjMOrwRA91yd/9toIlBMjGy4wEvYgSn2bZKcymiCOHBl63Zx8o7XDBrM+v4e\nl6iHVeGPyui+vYneCY+4dez+DJeZFyAGvYuELXaEJCCmeXItQdpZgZZC9Kx7QmrB\nXA2/72e63uKPI47gfQIDAQAB\n-----END PUBLIC KEY-----",

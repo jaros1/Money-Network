@@ -2140,7 +2140,6 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                         ZeroFrame.cmd("fileDelete", inner_path4, function (res2) {
                                             var pgm = self.module + '.send_message.delete_request fileDelete callback 2: ';
                                             var debug_seq3;
-                                            self.log(pgm, 'res2 = ' + JSON.stringify(res2));
                                             if ((res2 == 'ok') || (!res2.error.match(/No such file or directory/))) {
                                                 MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res2 == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res2));
                                                 return;
