@@ -33,6 +33,7 @@ Todo:
 - https://fuckcf.cf/moneynetwork.bit/
 - https://proxy.th3nd.com/moneynetwork.bit/
 - https://proxy.zeronet.a0z.ru/moneynetwork.bit/
+- https://zero.acelewis.com/#moneynetwork.bit/ (redirect to a ZeroNet proxy server) 
 
 This demo should be safe to check out on a ZeroNet proxy server. 
 You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNet cert on a ZeroNet proxy server. An Anonymous moneynetwork.bit certificate can be used instead. And do not use real money on a proxy server.
