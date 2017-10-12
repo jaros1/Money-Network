@@ -14,8 +14,8 @@
    "size": 42
   },
   "README.md": {
-   "sha512": "670f6466503b197e2fe255456b6123d0f698e5aa0c072096c4ea84cf4ff89c97",
-   "size": 16419
+   "sha512": "b10e245eac770254500395a4004ca95c5c6d6f5aa3183ea910319a9c8adf855a",
+   "size": 16505
   },
   "css/all.css": {
    "sha512": "d998847816e6f79362dfac17be6e253ffca3185aa0ea670a46d2a57e38a20e2b",
@@ -30,12 +30,12 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "f4f3ea513ac6652f73cc7f5e832bf3c869e68f84116e024328a21853be17e063",
+   "sha512": "2e7770d9b5bac161d6b05d81d6c4a76de06625b95ccc4867c4bb7e25f8e60c05",
    "size": 134200
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "d850fffc1c9aae8686e4a9711a7dc513f555cad46c7dc07cea67f0b6dec72e53",
-   "size": 131597
+   "sha512": "4979098525849df5173d063df948859b7bee69b2e21361d1ca52d46fbac4955c",
+   "size": 131598
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -177,13 +177,9 @@
    "sha512": "ecaadaad552d2610336995b48360253cd6d847b6aa590fc3d96e7245a5d5fe11",
    "size": 53602
   },
-  "js/all.js": {
-   "sha512": "3e3c21fd0bc1100a812095fc636fd0a2e4418423d746a340f44888c90fe2880d",
-   "size": 1450268
-  },
   "js/all.js.zip": {
-   "sha512": "6207d509201f9cf9157ee954f227af5dd87de2942df111566662467bc83e51a8",
-   "size": 237259
+   "sha512": "ae402711e682db752e0f18e080573bfa0c60032751b5f972b9118c2898063e0c",
+   "size": 237606
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -306,7 +302,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1507809035,
+ "modified": 1507823573,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -318,7 +314,7 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HHSiK5FBLqQyDmr/0E2KRmajQWL5A1GSTaadR8C0lhgJHcl0ibFl/bDkMFV7Be8rEUN2I+v5uvUKn+7Qs3sytbw="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G1L/+a9ZOzR7afpujRaeFlYcHtfOWHm05U6PNbFgJJaVdEQfc9IslDAK1FKsB1E1o71t0owWMiPy7MdV3/wnEbY="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",

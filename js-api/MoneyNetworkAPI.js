@@ -390,7 +390,7 @@ var MoneyNetworkAPILib = (function () {
     // return session
     function get_session (sessionid, cb) {
         var pgm = module + '.get_session: ' ;
-        var retry_get_session, fake_get_allet_cb, other_session_filename, session_info ;
+        var retry_get_session, fake_get_wallet_cb, other_session_filename, session_info ;
         if (debug) console.log(pgm + 'get_wallet_cbs.length = ' + get_wallet_cbs.length) ;
         if (get_wallet_cbs.length) {
             // wait for get_wallet queue to empty before returning sessions (get_session_filenames)
