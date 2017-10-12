@@ -9,10 +9,6 @@ angular.module('MoneyNetwork')
         var service = 'MoneyNetworkWService' ;
         console.log(service + ' loaded') ;
 
-        function debug (keys, text) {
-            MoneyNetworkHelper.debug(keys, text) ;
-        } // debug
-
         // cache some important informations from zeronet files
         // - user_seq: from users array in data.json file. using "pubkey" as index to users array
         // - user_seqs: from users array in data.json file.
@@ -23,6 +19,23 @@ angular.module('MoneyNetwork')
             if (z_cache.user_id) return false ;
             console.log(pgm + 'stop. client log out. stopping ' + pgm + ' process') ;
             return true ;
+        }
+
+        // debug wrappers
+        function show_debug (keys) {
+            return MoneyNetworkHelper.show_debug(keys) ;
+        } // show_debug
+        function debug (keys, text) {
+            MoneyNetworkHelper.debug(keys, text) ;
+        } // debug
+        function debug_z_api_operation_start (pgm, inner_path, cmd, debug_this) {
+            return MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, cmd, debug_this) ;
+        }
+        function debug_z_api_operation_end (debug_seq, res) {
+            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, res) ;
+        }
+        function format_res (res) {
+            return res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res) ;
         }
 
         // import functions from other services
@@ -399,10 +412,12 @@ angular.module('MoneyNetwork')
                                             return ;
                                         }
                                         inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
-                                        debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + 'sign') ;
+                                        // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + 'sign') ;
+                                        debug_seq = debug_z_api_operation_start(pgm, inner_path, 'siteSign', show_debug('z_site_publish')) ;
                                         ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
                                             var pgm = service + '.create_sessions.step_3_find_old_outgoing_files.delete_file siteSign callback: ';
-                                            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                            // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                            debug_z_api_operation_end(debug_seq, format_res(res)) ;
                                             if (res != 'ok') console.log(pgm + inner_path + ' siteSign failed. error = ' + res) ;
                                             // done with or without errors. end content update.
                                             moneyNetworkHubService.end_content_update(content_lock_pgm) ;
@@ -412,9 +427,11 @@ angular.module('MoneyNetwork')
                                     // delete next file
                                     filename = delete_files.shift() ;
                                     inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
-                                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete') ;
+                                    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete') ;
+                                    debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileDelete', show_debug('z_file_delete')) ;
                                     ZeroFrame.cmd("fileDelete", inner_path, function (res) {
-                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                        debug_z_api_operation_end(debug_seq, format_res(res)) ;
                                         if (res == 'ok') delete_ok.push(filename) ;
                                         else {
                                             console.log(pgm + inner_path + ' fileDelete failed. error = ' + res) ;
@@ -594,7 +611,7 @@ angular.module('MoneyNetwork')
                         // OK. other session has deleted this message. normally deleted after a short time
                         if (session_info) session_info.done[file_timestamp] = true ;
                         ls_save_sessions() ;
-                        return ;
+                        return ; //
                     }
                     // console.log(pgm + 'this_session_userid2 = ' + encrypt2.this_session_userid2) ;
                     encrypted_json = JSON.parse(json_str) ;

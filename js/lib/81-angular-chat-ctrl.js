@@ -807,9 +807,16 @@ angular.module('MoneyNetwork')
                         if (!private_key) return ;
 
                         // delete files
+                        console.log(pgm + 'todo: fileDelete and sitePublish must run in a callback chain') ;
                         for (i=0 ; i<file_names.length ; i++) {
-                            file_name = user_path + "/" + file_names[i] ;
-                            ZeroFrame.cmd("fileDelete", file_name, function (res) {});
+                            (function() {
+                                var file_name, debug_seq ;
+                                file_name = user_path + "/" + file_names[i] ;
+                                debug_seq = MoneyNetworkAPILib.f(pgm, file_name, 'fileDelete', MoneyNetworkHelper.show_debug('z_file_delete'));
+                                ZeroFrame.cmd("fileDelete", file_name, function (res) {
+                                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, res == 'OK' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+                                });
+                            })() ;
                         }
 
                         // sign and publish

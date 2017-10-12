@@ -19,6 +19,26 @@ angular.module('MoneyNetwork')
             return true ;
         }
 
+        // debug wrappers
+        function show_debug (keys) {
+            return MoneyNetworkHelper.show_debug(keys) ;
+        } // show_debug
+        function debug (keys, text) {
+            MoneyNetworkHelper.debug(keys, text) ;
+        } // debug
+        function debug_z_api_operation_start (pgm, inner_path, cmd, debug_this) {
+            return MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, cmd, debug_this) ;
+        }
+        function debug_z_api_operation_end (debug_seq, res) {
+            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, res) ;
+        }
+        function format_res (res) {
+            return res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res) ;
+        }
+        function format_q_res (res) {
+            return (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK' ;
+        }
+
         // lost Merger:MoneyNetwork permission after fileGet operation to a "bad" file
         // https://github.com/HelloZeroNet/ZeroNet/issues/944 & https://github.com/HelloZeroNet/ZeroNet/issues/965
         var bad_files = [
@@ -1095,10 +1115,12 @@ angular.module('MoneyNetwork')
                 "and status.json_id = status_json.json_id " +
                 "and status.user_seq = users.user_seq" ;
             debug('select', pgm + 'query 3 (MS OK) = ' + query);
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 3') ;
+            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 3') ;
+            debug_seq = debug_z_api_operation_start(pgm, 'query 3', 'dbQuery', show_debug('z_db_query')) ;
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.ls_load_contacts dbQuery callback 1: ';
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                 // console.log(pgm + 'res.length = ' + res.length);
                 if (res.error) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for public keys: " + res.error, 5000]);
@@ -1228,11 +1250,13 @@ angular.module('MoneyNetwork')
                     "where users.avatar is not null " +
                     "and json.json_id = users.json_id" ;
                 debug('select', pgm + 'query 4 (MS OK) = ' + query) ;
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 4') ;
+                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 4') ;
+                debug_seq = debug_z_api_operation_start(pgm, 'query 4', 'dbQuery', show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = service + '.ls_load_contacts dbQuery callback 2: ' ;
                     var i, unique_id, source1_avatars, source2_avatars, contact, index1, index2 ;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
 
                     // console.log(pgm + 'res.length = ' + res.length);
                     if (res.error) {
@@ -1627,12 +1651,14 @@ angular.module('MoneyNetwork')
                     "and users.json_id = json.json_id " +
                     "and users.pubkey = '" + pubkey + "'";
                 debug('select', pgm + 'query 5 (MS OK) = ' + query) ;
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 5') ;
+                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 5') ;
+                debug_seq = debug_z_api_operation_start(pgm, 'query 5', 'dbQuery', show_debug('z_db_query')) ;
                 // if (auth_address) debug('file_done', pgm + 'query 1 = ' + query) ;
                 ZeroFrame.cmd("dbQuery", [query], function(res) {
                     var pgm = service + '.z_contact_search dbQuery callback 2: ' ;
                     var error ;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                     if (detected_client_log_out(pgm)) return ;
                     // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     if (res.error) {
@@ -1730,11 +1756,13 @@ angular.module('MoneyNetwork')
                         "and contacts.data_json_id = search.json_id and contacts.user_seq = search.user_seq " +
                         "order by contacts.auth_address, contacts.modified desc, contacts.hub";
                     debug('select', pgm + 'query 7 (MS OK) = ' + query) ;
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 7') ;
+                    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 7') ;
+                    debug_seq = debug_z_api_operation_start(pgm, 'query 7', 'dbQuery', show_debug('z_db_query')) ;
 
                     ZeroFrame.cmd("dbQuery", [query], function(res) {
                         var pgm = service + '.z_contact_search dbQuery callback 3: ';
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                         if (detected_client_log_out(pgm)) return ;
                         // console.log(pgm + 'res = ' + JSON.stringify(res));
                         if (res.error) {
@@ -1986,12 +2014,13 @@ angular.module('MoneyNetwork')
                 "and ( files_optional.filename = '" + message_with_envelope.sent_at + '-image.json' + "'" +        // old format without <user_seq> in filename
                 "   or files_optional.filename like '" + message_with_envelope.sent_at + '-%-image.json' + "' )" ; // new format with <user_seq> in filename
             debug('select', pgm + 'query 8 = ' + query) ;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 8') ;
-
+            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 8') ;
+            debug_seq = debug_z_api_operation_start(pgm, 'query 8', 'dbQuery', show_debug('z_db_query')) ;
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.download_json_image_file dbQuery callback 1: ' ;
                 var now ;
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                 if (res.error) {
                     console.log(pgm + "image download check failed: " + res.error) ;
                     console.log(pgm + 'query = ' + query) ;
@@ -2059,9 +2088,11 @@ angular.module('MoneyNetwork')
                     }
                     ls_save_contacts(false) ;
                     // ZeroFrame.cmd("fileDelete", image_path, function () {}) ;
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + image_path + ' optionalFileDelete') ;
-                    ZeroFrame.cmd("optionalFileDelete", {inner_path: image_path}, function () {
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + image_path + ' optionalFileDelete') ;
+                    debug_seq = debug_z_api_operation_start(pgm, image_path, 'optionalFileDelete', show_debug('z_file_delete')) ;
+                    ZeroFrame.cmd("optionalFileDelete", {inner_path: image_path}, function (res) {
+                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        debug_z_api_operation_end(debug_seq, format_res(res)) ;
                     });
                     // done. update UI + callbacks
                     // console.log(pgm + 'Ok. image ' + image_path + ' downloaded') ;
@@ -2517,10 +2548,12 @@ angular.module('MoneyNetwork')
                         "and  ( files_optional.filename = '" + message.sent_at + '-image.json' + "'" +
                         "    or files_optional.filename like '" + message.sent_at + '-%-image.json' + "' )";
                     debug('select', pgm + 'query 9 = ' + query);
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 9') ;
+                    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 9') ;
+                    debug_seq = debug_z_api_operation_start(pgm, 'query 9', 'dbQuery', show_debug('z_db_query')) ;
                     ZeroFrame.cmd("dbQuery", [query], function (query_res) {
                         var pgm = service + '.process_incoming_cryptmessage dbQuery callback 3: ';
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        debug_z_api_operation_end(debug_seq, format_q_res(query_res)) ;
                         // console.log(pgm + 'res = ' + JSON.stringify(res));
                         if (query_res.error) {
                             console.log(pgm + "image download check failed: " + query_res.error);
@@ -3316,15 +3349,17 @@ angular.module('MoneyNetwork')
             var message_array = res.message.split(',') ;
             var iv = message_array[0] ;
             var encrypted = message_array[1] ;
-            var debug_seq ;
+            var debug_seq0 ;
             // console.log(pgm + 'iv = ' + iv + ', encrypted = ' + encrypted) ;
 
             // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling eciesDecrypt with " + JSON.stringify([res.key, user_id])) ;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + ' eciesDecrypt') ;
+            // debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + ' eciesDecrypt') ;
+            debug_seq0 = debug_z_api_operation_start(pgm, null, 'eciesDecrypt', show_debug('z_crypt_message')) ;
             ZeroFrame.cmd("eciesDecrypt", [res.key, z_cache.user_id], function(password) {
                 var pgm = service + '.process_incoming_cryptmessage eciesDecrypt callback 1: ' ;
-                var pubkey, query, contact, i, message_with_envelope, message, debug_seq ;
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                var pubkey, query, contact, i, message_with_envelope, message, debug_seq1 ;
+                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0) ;
+                debug_z_api_operation_end(debug_seq0, password ? 'OK' : 'Failed. No password') ;
                 // console.log(pgm + 'password = ' + password) ;
                 if (!password) {
                     // cryptMessage decrypt error!
@@ -3363,12 +3398,13 @@ angular.module('MoneyNetwork')
                         "and status.json_id = status_json.json_id " +
                         "and status.user_seq = users.user_seq" ;
                     debug('select', pgm + 'query 10 = ' + query) ;
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 10') ;
+                    // debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 10') ;
+                    debug_seq1 = debug_z_api_operation_start(pgm, 'query 10', 'dbQuery', show_debug('z_db_query')) ;
                     ZeroFrame.cmd("dbQuery", [query], function (res2) {
                         var pgm = service + '.process_incoming_cryptmessage dbQuery callback 1: ';
                         var cert_user_ids, i, lost_message, error, local_msg_seq, lost_message_with_envelope, contact ;
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-
+                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        debug_z_api_operation_end(debug_seq1, format_q_res(res2)) ;
                         if (res2.error) {
                             console.log(pgm + "certificate check failed: " + res2.error) ;
                             console.log(pgm + 'query = ' + query) ;
@@ -3437,12 +3473,14 @@ angular.module('MoneyNetwork')
 
                 // decrypt step 2 - password OK - decrypt message
                 console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + ' aesDecrypt') ;
+                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + ' aesDecrypt') ;
+                debug_seq = debug_z_api_operation_start(pgm, null, 'aesDecrypt', show_debug('z_crypt_message')) ;
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
                     var decrypted_message, contact, image_path, query ;
                     // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    debug_z_api_operation_end(debug_seq, null) ;
 
                     decrypted_message = JSON.parse(decrypted_message_str) ;
                     if (sent_at) {
@@ -3593,11 +3631,13 @@ angular.module('MoneyNetwork')
                 "and keyvalue.json_id = content_json.json_id " +
                 "and keyvalue.key = 'cert_user_id'" ;
             debug('select', pgm + 'contacts_query 11 = ' + contacts_query) ;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 11') ;
+            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 11') ;
+            debug_seq = debug_z_api_operation_start(pgm, 'query 11', 'dbQuery', show_debug('z_db_query')) ;
             ZeroFrame.cmd("dbQuery", [contacts_query], function (res) {
                 var pgm = service  + '.create_unknown_contacts dbQuery callback: ';
                 var found_auth_addresses = [], i, unique_id, new_contact, public_avatars, index, j, last_updated ;
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                 if (detected_client_log_out(pgm)) return ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 if (res.error) {
@@ -3750,11 +3790,13 @@ angular.module('MoneyNetwork')
                 "and users.json_id = data_json.json_id " +
                 "and users.user_seq = like.user_seq" ;
             debug('select', pgm + 'query 12 = ' + query) ;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 12') ;
+            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 12') ;
+            debug_seq = debug_z_api_operation_start(pgm, 'query 12', 'dbQuery', show_debug('z_db_query')) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.check_public_reactions dbQuery callback: ';
                 var emoji_folder, user_reactions, i, title, unicode, j, sum, count, emoji ;
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                 if (res.error) {
                     console.log(pgm + "Search for reactions failed: " + res.error);
                     console.log(pgm + 'query = ' + query);
@@ -4003,10 +4045,12 @@ angular.module('MoneyNetwork')
                 "and users.user_seq = messages.user_seq " +
                 "and json.json_id = messages.json_id" ;
             debug('select', pgm + 'query 13 (MS OK) = ' + query) ;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 13') ;
+            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 13') ;
+            debug_seq = debug_z_api_operation_start(pgm, 'query 13', 'dbQuery', show_debug('z_db_query')) ;
             ZeroFrame.cmd("dbQuery", [query], function(res) {
                 var pgm = service + '.local_storage_read_messages dbQuery callback: ';
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 //res = [{
                 //    "timestamp": 1476103057083,
@@ -4264,12 +4308,14 @@ angular.module('MoneyNetwork')
             }
             query += ')' ;
             debug('select', pgm + 'query 14 = ' + query) ;
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 14') ;
+            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 14') ;
+            debug_seq = debug_z_api_operation_start(pgm, 'query 14', 'dbQuery', show_debug('z_db_query')) ;
             console.log(pgm + 'todo: add hub to image_index in query 14?');
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.check_image_download_failed dbQuery callback 1: ' ;
                 var found_image_files, i, image_index, get_file_info ;
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                 if (res.error) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for image json files: " + res.error, 5000]);
                     console.log(pgm + "Search for image json files failed: " + res.error);
@@ -4798,10 +4844,13 @@ angular.module('MoneyNetwork')
                         // helper: delete optional file and send receipt. note. sending receipt even if there is errors in image.json
                         var send_image_receipt = function (send_receipt) {
                             var pgm = service + '.event_file_done.send_image_receipt: ';
+                            var debug_seq ;
                             // received a chat message with an image. Cleanup
-                            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + filename + ' optionalFileDelete') ;
-                            ZeroFrame.cmd("optionalFileDelete", {inner_path: filename}, function () {
-                                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + filename + ' optionalFileDelete') ;
+                            debug_seq = debug_z_api_operation_start(pgm, filename, 'optionalFileDelete', show_debug('z_file_delete')) ;
+                            ZeroFrame.cmd("optionalFileDelete", {inner_path: filename}, function (res) {
+                                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                debug_z_api_operation_end(debug_seq, format_res(res)) ;
                             });
                             delete message_with_envelope.image_download_failed;
                             $rootScope.$apply();
@@ -4898,10 +4947,12 @@ angular.module('MoneyNetwork')
                                     encrypted = image_array[1] ;
                                     // ready for aesDecrypt
                                     debug('inbox', pgm + 'calling aesDecrypt') ;
-                                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + ' aesDecrypt') ;
+                                    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + ' aesDecrypt') ;
+                                    debug_seq = debug_z_api_operation_start(pgm, null, 'aesDecrypt', show_debug('z_crypt_message')) ;
                                     ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_str) {
                                         var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 5: ';
-                                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                        debug_z_api_operation_end(debug_seq, decrypted_str ? 'OK' : 'Failed') ;
                                         debug('inbox', pgm + 'aesDecrypt ok') ;
                                         data = decrypted_str ;
                                         loop(end_of_loop_cb) ;
@@ -5278,14 +5329,16 @@ angular.module('MoneyNetwork')
                     if (z_cache.user_setup.block_guests) query += "and users.guest is null " ; // check spam filter: guests
                     query += "order by files_optional.filename desc" ;
                     debug('select', pgm + 'query 15 = ' + query) ;
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 15') ;
+                    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 15') ;
+                    debug_seq = debug_z_api_operation_start(pgm, 'query 15', 'dbQuery', show_debug('z_db_query')) ;
                     ZeroFrame.cmd("dbQuery", [query], function (res) {
                         var pgm = service + '.get_public_chat dbQuery callback 3: ';
                         var i, cache_filename, cache_status, j, pending_files, get_no_peers, unique_id,
                             contact, compare_files1, compare_files2, auth_address, filename, interval_obj, user_seq, key,
                             hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
                             deleted_messages, message, cb_status, js_messages_row, one_hour_ago, k, delete_file ;
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                        debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                         if (res.error == "'NoneType' object has no attribute 'execute'") {
                             // maybe a problem with deleted optional files. content.db out of sync with file system
                             console.log(pgm + "Search for public chat failed: " + res.error + MERGER_ERROR);
@@ -5341,9 +5394,11 @@ angular.module('MoneyNetwork')
                             // new debug_seq for each optionalFileDelete request
                             delete_file = function () {
                                 var debug_seq ;
-                                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + cache_filename + ' optionalFileDelete') ;
-                                ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function () {
-                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + cache_filename + ' optionalFileDelete') ;
+                                debug_seq = debug_z_api_operation_start(pgm, cache_filename, 'optionalFileDelete', show_debug('z_file_delete')) ;
+                                ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function (res) {
+                                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                    debug_z_api_operation_end(debug_seq, format_res(res)) ;
                                 }) ;
                             }; // delete_file
                             delete_file() ;
@@ -5896,7 +5951,6 @@ angular.module('MoneyNetwork')
                     cache_status.is_pending = true;
 
                     // fileGet with callback. wait max 60 seconds for optional chat file.
-                    debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + cache_filename + ' fileGet') ;
                     z_file_get(pgm, {inner_path: cache_filename, required: true, timeout: 60}, function (chat) {
                         var pgm = service + '.get_and_load_chat_file z_file_get callback 2: ';
                         var i, page_updated, timestamp, j, k, message, local_msg_seq, message_with_envelope, contact,
@@ -5904,7 +5958,6 @@ angular.module('MoneyNetwork')
                             new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
                             image, byteAmount, chat_bytes, chat_length, error, auth_address, index, break_point,
                             reactions_index, reactions_info, file_hub ;
-                        MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                         // update cache_status
                         cache_status.is_pending = false;
                         debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
@@ -5944,9 +5997,11 @@ angular.module('MoneyNetwork')
                             }
                             else {
                                 // file must be old/changed. trigger a new file download
-                                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + cache_filename + ' optionalFileDelete') ;
-                                ZeroFrame.cmd("optionalFileDelete", {inner_path: cache_filename}, function () {
-                                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + cache_filename + ' optionalFileDelete') ;
+                                debug_seq = debug_z_api_operation_start(pgm, cache_filename, 'optionalFileDelete', show_debug('z_file_delete')) ;
+                                ZeroFrame.cmd("optionalFileDelete", {inner_path: cache_filename}, function (res) {
+                                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                                    debug_z_api_operation_end(debug_seq, format_res(res)) ;
                                 });
                             }
                             // chat page must call get_publish_chat again even if no messages were read
@@ -6297,10 +6352,12 @@ angular.module('MoneyNetwork')
             var debug_seq ;
             // console.log(pgm);
             if (Object.keys(server_info).length) return ; // already loaded
-            debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_server_info', pgm + 'serverInfo') ;
+            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_server_info', pgm + 'serverInfo') ;
+            debug_seq = debug_z_api_operation_start(pgm, null, 'serverInfo', show_debug('z_server_info')) ;
             ZeroFrame.cmd("serverInfo", {}, function (new_server_info) {
                 var pgm = service + '.load_server_info serverInfo callback: ';
-                MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                debug_z_api_operation_end(debug_seq, new_server_info ? 'OK' : 'Failed. Not found') ;
                 // console.log(pgm + 'server_info = ' + JSON.stringify(new_server_info)) ;
                 var key ;
                 for (key in server_info) delete server_info[key] ;
@@ -6565,12 +6622,6 @@ angular.module('MoneyNetwork')
             return msg ;
         } // is_old_contact
 
-
-        // output debug info in log. For key, see user page and setup.debug hash
-        // keys: simple expressions are supported. For example inbox && unencrypted
-        function debug (keys, text) {
-            MoneyNetworkHelper.debug(keys, text) ;
-        } // debug
 
         // notification. little red number in menu and (x) in title
         var chat_notifications = 0 ;

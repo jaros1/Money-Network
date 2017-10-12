@@ -422,10 +422,12 @@ angular.module('MoneyNetwork')
                 var debug_seq ;
                 if (!count) count = 0;
                 if (count > 60) return cb({ error: "timeout" }) ;
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 18') ;
+                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 18') ;
+                debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'query 18', 'dbQuery', MoneyNetworkHelper.show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [query], function (res) {
                     var pgm = controller + '.money_network_w2_11.check_session: ' ;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
                     if (res.error) {
                         console.log(pgm + 'Error when checking for new wallet session. error = ' + res.error) ;
                         console.log(pgm + 'query = ' + query) ;

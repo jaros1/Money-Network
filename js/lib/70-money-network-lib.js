@@ -193,17 +193,19 @@ var MoneyNetworkHelper = (function () {
     var debug_seq = 0 ;
     var debug_operations = {} ;
 
+
     // initialize array with public avatars from public/images/avatar
     var public_avatars = [] ;
     var emojis = {} ;
     function load_public_avatars () {
         var pgm = module + '.load_public_avatars: ' ;
-        var debug_seq = debug_z_api_operation_start('z_file_get', pgm + 'content.json fileGet') ;
+        var debug_seq = debug_z_api_operation_start(pgm, 'content.json', 'fileGet', show_debug('z_file_get')) ;
         ZeroFrame.cmd("fileGet", ['content.json', false], function (res) {
             var pgm = module + '.load_public_avatars fileGet callback: ';
             var folders, key, emojis_keys, emojis_total_no, emojis_total_bytes, emojis_total_mb,
                 step_1_read_sub_content, step_2_check_context, step_3_check_optional_file_list, step_4_download_emojis ;
-            MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+            // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
+            debug_z_api_operation_end(debug_seq, res ? 'OK' : 'Not found') ;
             if (res) res = JSON.parse(res) ;
             else res = { files: {} } ;
             for (key in res.files) {
@@ -246,7 +248,8 @@ var MoneyNetworkHelper = (function () {
                 ZeroFrame.cmd("fileGet", [inner_path, false], function (res) {
                     var pgm = module + '.load_public_avatars.read_sub_content fileGet callback: ';
                     var folder, key ;
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    debug_z_api_operation_end(debug_seq, res ? 'OK' : 'Not found');
                     if (!res) {
                         console.log(pgm + 'fileGet ' + inner_path + ' failed') ;
                         return step_1_read_sub_content(cb2) ;
@@ -281,10 +284,13 @@ var MoneyNetworkHelper = (function () {
                 if (ZeroFrame.site_info.cert_user_id == 'jro@zeroid.bit') return cb3('money developer') ;
 
                 // is proxy server?
-                debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_server_info', pgm + 'serverInfo') ;
+                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_server_info', pgm + 'serverInfo') ;
+                // not logged in: show_debug('z_server_info') is always returning false
+                debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, null, 'serverInfo', show_debug('z_server_info')) ;
                 ZeroFrame.cmd("serverInfo", {}, function (server_info) {
                     var pgm = module + '.load_public_avatars.step_2_check_context serverInfo callback: ';
-                    MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, server_info ? 'OK' : 'Failed');
                     // console.log(pgm + 'server_info = '+ JSON.stringify(server_info));
                     if (!server_info.ip_external) return ; // not a proxy server
                     if (server_info.plugins.indexOf('Multiuser') == -1) return  ; // not a proxy server
@@ -1497,36 +1503,43 @@ var MoneyNetworkHelper = (function () {
         return shorten_long_strings(str) ;
     }
 
-    // some debug information before and after ZeroNet API operations
-    // debug info in log before and after each operation
-    function debug_z_api_operation_pending () {
-        var keys = Object.keys(debug_operations) ;
-        if (keys.length == 0) return 'No pending ZeroNet API operations' ;
-        if (keys.length == 1) return '1 pending ZeroNet API operation (' + keys[0] + ')' ;
-        return keys.length + ' pending ZeroNet API operations (' + keys.join(',') + ')' ;
+    // Moved to MoneyNetworkAPILib
+    //// some debug information before and after ZeroNet API operations
+    //// debug info in log before and after each operation
+    //function debug_z_api_operation_pending () {
+    //    var keys = Object.keys(debug_operations) ;
+    //    if (keys.length == 0) return 'No pending ZeroNet API operations' ;
+    //    if (keys.length == 1) return '1 pending ZeroNet API operation (' + keys[0] + ')' ;
+    //    return keys.length + ' pending ZeroNet API operations (' + keys.join(',') + ')' ;
+    //}
+    //function debug_z_api_operation_start (keys, text) {
+    //    debug_seq++ ;
+    //    debug_operations[debug_seq] = {
+    //        keys: keys,
+    //        text: text,
+    //        started_at: new Date().getTime()
+    //    } ;
+    //    debug(keys, text + ' started (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+    //    return debug_seq ;
+    //} // debug_z_api_operation_start
+    //function debug_z_api_operation_end (debug_seq) {
+    //    var pgm = module + '.debug_z_api_operation_end: ' ;
+    //    var keys, text, started_at, finished_at, elapsed_time ;
+    //    if (!debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
+    //    keys = debug_operations[debug_seq].keys ;
+    //    text = debug_operations[debug_seq].text ;
+    //    started_at = debug_operations[debug_seq].started_at ;
+    //    delete debug_operations['' + debug_seq] ;
+    //    finished_at = new Date().getTime() ;
+    //    elapsed_time = finished_at - started_at ;
+    //    debug(keys, text + ' finished. elapsed time ' + elapsed_time + ' ms (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
+    //} // debug_z_api_operation_end
+    function debug_z_api_operation_start (pgm, inner_path, cmd, debug_this) {
+        return MoneyNetworkAPILib.debug_z_api_operation_start (pgm, inner_path, cmd, debug_this)
     }
-    function debug_z_api_operation_start (keys, text) {
-        debug_seq++ ;
-        debug_operations[debug_seq] = {
-            keys: keys,
-            text: text,
-            started_at: new Date().getTime()
-        } ;
-        debug(keys, text + ' started (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
-        return debug_seq ;
-    } // debug_z_api_operation_start
-    function debug_z_api_operation_end (debug_seq) {
-        var pgm = module + '.debug_z_api_operation_end: ' ;
-        var keys, text, started_at, finished_at, elapsed_time ;
-        if (!debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
-        keys = debug_operations[debug_seq].keys ;
-        text = debug_operations[debug_seq].text ;
-        started_at = debug_operations[debug_seq].started_at ;
-        delete debug_operations['' + debug_seq] ;
-        finished_at = new Date().getTime() ;
-        elapsed_time = finished_at - started_at ;
-        debug(keys, text + ' finished. elapsed time ' + elapsed_time + ' ms (' + debug_seq + '). ' + debug_z_api_operation_pending()) ;
-    } // debug_z_api_operation_end
+    function debug_z_api_operation_end (debug_seq, res) {
+        MoneyNetworkAPILib.debug_z_api_operation_end (debug_seq, res) ;
+    }
 
     // output debug info in log. For key, see user page and setup.debug hash
     // keys: simple expressions are supported. For example inbox && unencrypted
@@ -1639,8 +1652,6 @@ var MoneyNetworkHelper = (function () {
         load_user_setup: load_user_setup,
         show_debug: show_debug,
         debug: debug,
-        debug_z_api_operation_start: debug_z_api_operation_start,
-        debug_z_api_operation_end: debug_z_api_operation_end,
         stringify: stringify,
         get_fake_name: get_fake_name,
         sha256: sha256
