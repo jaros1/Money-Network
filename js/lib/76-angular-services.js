@@ -6847,6 +6847,7 @@ angular.module('MoneyNetwork')
             symbol_to_unicode: symbol_to_unicode,
             get_my_user_hub: get_my_user_hub,
             generate_random_password: moneyNetworkZService.generate_random_password,
+            open_window: moneyNetworkWService.open_window,
             get_currencies: moneyNetworkWService.get_currencies,
             z_file_get: z_file_get
         };

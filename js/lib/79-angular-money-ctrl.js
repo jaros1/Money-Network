@@ -1,6 +1,6 @@
 angular.module('MoneyNetwork')
 
-    .controller('MoneyCtrl', ['$window', '$http', '$timeout', 'MoneyNetworkService', function ($window, $http, $timeout, moneyNetworkService) {
+    .controller('MoneyCtrl', ['$window', '$http', '$timeout', 'MoneyNetworkService', 'MoneyNetworkWService', function ($window, $http, $timeout, moneyNetworkService, moneyNetworkWService) {
         var self = this;
         var controller = 'MoneyCtrl';
         console.log(controller + ' loaded');
@@ -29,9 +29,7 @@ angular.module('MoneyNetwork')
             console.log(pgm + 'test 2 - use ZeroNet wrapperOpenWindow') ;
 
             //// not working - no window object is returned. cannot start communication from money network app
-            var x = ZeroFrame.cmd("wrapperOpenWindow", ["/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1", "_blank"], function (res) {
-                console.log(pgm +'res = ' + JSON.stringify(res)) ;
-            }) ;
+            var x = moneyNetworkWService.open_window(pgm, "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1") ;
             console.log(pgm + 'x = ' + JSON.stringify(x)) ;
 
         }; // money_network_w2_2
@@ -403,7 +401,7 @@ angular.module('MoneyNetwork')
             sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
             url = "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1?sessionid=" + sessionid ;
             console.log(pgm + 'test 11 - use ZeroNet wrapperOpenWindow. url = ' + url) ;
-            ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]) ;
+            moneyNetworkWService.open_window(url) ;
 
             // wait for session to start. no event file done event. wait for db update. max 1 minute
             sessionid_sha256 = CryptoJS.SHA256(sessionid).toString();

@@ -1148,7 +1148,7 @@ angular.module('MoneyNetwork')
                     }
                     // open wallet
                     url = '/' + (balance.wallet_domain || balance.wallet_address);
-                    ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
+                    moneyNetworkService.open_window(pgm, url);
                     return ;
                 }
                 // linkno = 2. open wallet link in old chat message. ping wallet before open window is called
@@ -1199,7 +1199,7 @@ angular.module('MoneyNetwork')
                 open_wallet_url = function() {
                     var url ;
                     url = '/' + money_transaction.wallet_url;
-                    ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
+                    moneyNetworkService.open_window(pgm, url);
                 } ;
                 moneyNetworkService.get_currencies(function (currencies, delayed) {
                     var pgm = controller + '.open_wallet get_currencies callback 1: ' ;
@@ -1672,6 +1672,7 @@ angular.module('MoneyNetwork')
                     if (!self.show_money) return step_3_check_transactions() ; // no money - continue with next step
 
                     self.new_chat_msg_disabled = 'Pinging wallet(s) ...' ;
+                    console.log(pgm + self.new_chat_msg_disabled);
 
                     // ping wallet(s). fast response. relevant wallet(s) must be open before sending chat with money transaction(s)
                     // find unique_texts and sessionids before ping wallets
@@ -1707,6 +1708,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
                     // sessions = [{"code":"tBTC","amount":1.3,"balance_at":1504431366592,"sessionid":"wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1","wallet_sha256":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74","wallet_address":"1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1","wallet_title":"MoneyNetworkW2","wallet_description":"Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro","unique_id":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74/tBTC","name":"Test Bitcoin","url":"https://en.bitcoin.it/wiki/Testnet","units":[{"unit":"BitCoin","factor":1},{"unit":"Satoshi","factor":1e-8}],"unique_text":"tBTC Test Bitcoin from MoneyNetworkW2"}]
                     self.new_chat_msg_disabled = 'Pinging wallet' + (sessions.length > 1 ? 's' : '') + ' ...';
+                    console.log(pgm + self.new_chat_msg_disabled) ;
 
                     // any unknown unique_texts / sessions?
                     for (unique_text in unique_texts_hash) {
@@ -1744,6 +1746,7 @@ angular.module('MoneyNetwork')
                             return step_3_check_transactions() ;
                         }
                         balance = sessions.shift() ;
+                        console.log(pgm + 'getting session. sessionid = ' + balance.sessionid + ', balance = ' + JSON.stringify(balance));
                         MoneyNetworkAPILib.get_session(balance.sessionid, function (session) {
                             var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet get_session callback 1: ';
                             var request, error, url ;

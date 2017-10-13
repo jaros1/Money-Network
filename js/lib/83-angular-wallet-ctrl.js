@@ -274,8 +274,7 @@ angular.module('MoneyNetwork')
                     url = get_relative_url(self.new_wallet_url) ;
                     new_sessionid(url) ;
                     url = updateURLParameter(url, 'sessionid', test_sessionid) ;
-                    console.log(pgm + 'opening url ' + url + " in a new browser tab. open window maybe blocked in browser. chrome+opera: Uncaught TypeError: Cannot set property 'opener' of null") ;
-                    ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
+                    moneyNetworkWService.open_window(pgm, url);
                     // send unencrypted pubkeys message to wallet session. Do not wait for any response.
                     // encrypted pubkeys response will be processed by process_incoming_message callback function
                     request = {

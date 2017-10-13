@@ -1190,11 +1190,14 @@ var MoneyNetworkAPILib = (function () {
     } // calc_wallet_sha256
 
     // helper. get wallet info from sha256 value (minimize wallet.json disk usage)
-    // param: wallet_sha256. sha256 string or array with sha256 strings
+    // param:
+    // - wallet_sha256. sha256 string or array with sha256 strings
+    // - cb. callback. return hash with full wallet info for each wallet_sha256 + refresh_ui = true/false
     var wallet_info_cache = {} ; // sha256 => wallet_info
     function get_wallet_info (wallet_sha256, cb) {
         var pgm = module + '.get_wallet_info: ';
-        var i, re, results, query, sha256, debug_seq ;
+        var i, re, results, query, sha256, debug_seq, refresh_angular_ui ;
+        refresh_angular_ui = false ;
         if (!wallet_sha256) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
         if (typeof wallet_sha256 == 'string') wallet_sha256 = [wallet_sha256] ;
         if (!Array.isArray(wallet_sha256)) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
@@ -1207,7 +1210,7 @@ var MoneyNetworkAPILib = (function () {
         if (!ZeroFrame) cb({error: 'invalid call. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into this library'});
 
         results = {} ; // sha256 => wallet_info
-        if (!wallet_sha256.length) return cb(results,false) ;
+        if (!wallet_sha256.length) return cb(results,refresh_angular_ui) ;
 
         // check cache
         for (i=wallet_sha256.length-1 ; i>=0 ; i--) {
@@ -1217,7 +1220,7 @@ var MoneyNetworkAPILib = (function () {
             results[sha256] = JSON.parse(JSON.stringify(wallet_info_cache[sha256])) ;
             wallet_sha256.splice(i,1) ;
         }
-        if (!wallet_sha256.length) return cb(results) ; // all sha256 values were found in cache
+        if (!wallet_sha256.length) return cb(results, refresh_angular_ui) ; // all sha256 values were found in cache
 
         // find wallets with full wallet info for the missing wallet_sha256 values
         query =
@@ -1243,6 +1246,7 @@ var MoneyNetworkAPILib = (function () {
             var pgm = module + '.get_wallet_info dbQuery callback: ' ;
             var error, check_wallet ;
             debug_z_api_operation_end(debug_seq, !wallets || wallets.error ? 'Failed' : 'OK') ;
+            refresh_angular_ui = true ;
             if (wallets.error) {
                 error = 'failed to find full wallet information. error = ' + wallets.error ;
                 console.log(pgm + error);
@@ -1262,7 +1266,7 @@ var MoneyNetworkAPILib = (function () {
                 var pgm = module + '.get_wallet_info.check_wallet: ' ;
                 var row, inner_path, debug_seq ;
                 row = wallets.shift() ;
-                if (!row) return cb(results, true) ; // done
+                if (!row) return cb(results, refresh_angular_ui) ; // done
                 if (results[row.wallet_sha256]) return check_wallet() ; // wallet info is already found for this sha256 value
                 // check wallet.json file
                 inner_path = 'merged-MoneyNetwork/' + row.directory + '/wallet.json' ;
@@ -2178,10 +2182,14 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     // fileGet and json_decrypt
                                     get_and_decrypt = function (inner_path) {
                                         var pgm = self.module + '.send_message.get_and_decrypt: ';
-                                        var debug_seq0 ;
+                                        var debug_seq0, now ;
                                         if (typeof inner_path == 'object') {
                                             self.log(pgm, 'inner_path is an object. must be a timeout error returned from MoneyNetworkAPILib.wait_for_file function. inner_path = ' + JSON.stringify(inner_path)) ;
                                             return cb(inner_path);
+                                        }
+                                        if (timeout_at) {
+                                            now = new Date().getTime() ;
+                                            self.log(pgm, 'todo: fileGet: add timeout to fileGet call. required must also be false. now = ' + now + ', timeout_at = ' + new Date().getTime() + ', timeout = ' + (timeout_at-now));
                                         }
                                         debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet');
                                         self.ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (response_str) {

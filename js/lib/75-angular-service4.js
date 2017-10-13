@@ -79,7 +79,14 @@ angular.module('MoneyNetwork')
                     delete_sessions.push(sessionid) ;
                     continue ;
                 }
-                if (!session_info[SESSION_INFO_KEY].last_request_at) delete_sessions.push(sessionid) ;
+                if (!session_info[SESSION_INFO_KEY].last_request_at) {
+                    delete_sessions.push(sessionid) ;
+                    continue ;
+                }
+                if (!session_info[SESSION_INFO_KEY].url) {
+                    delete_sessions.push(sessionid) ;
+                    continue ;
+                }
             }
             while (delete_sessions.length) {
                 sessionid = delete_sessions.shift() ;
@@ -845,12 +852,21 @@ angular.module('MoneyNetwork')
             MoneyNetworkAPILib.delete_all_sessions() ;
         }
 
+        // open wallet url in a new browser tab
+        // write warning in console.log. exception is raised in parent frame and cannot be catch here
+        function open_window (pgm, url) {
+            console.log(pgm + 'opening url ' + url + " in a new browser tab. open window maybe blocked in browser. chrome+opera: Uncaught TypeError: Cannot set property 'opener' of null") ;
+            return ZeroFrame.cmd("wrapperOpenWindow", [url, "_blank"]);
+        } // open_window
+
         // return list with currencies. currencies array is used in angularJS UI (minimum updates)
         var currencies = [] ;
         function get_currencies (cb) {
             var pgm = service + '.get_currencies: ' ;
             var temp_currencies, wallet_sha256_values, sessionid, session_info, i, balance ;
             if (!ls_sessions) return [] ; // error?
+            // copy all old known wallet balances from localStorage to temp_currencies array.
+            // must lookup full wallet info with wallet_sha256 values. wallet_sha256 value may change and there has been added a workaround for this issue.
             temp_currencies = [] ;
             wallet_sha256_values = [] ;
             for (sessionid in ls_sessions) {
@@ -866,7 +882,7 @@ angular.module('MoneyNetwork')
                     balance.wallet_sha256 = session_info.wallet_sha256 ;
                     temp_currencies.push(balance) ;
                     // changed wallet_sha256 = null value here
-                    if (session_info.wallet_sha256) wallet_sha256_values.push(session_info.wallet_sha256) ;
+                    if (session_info.wallet_sha256 && (wallet_sha256_values.indexOf(session_info.wallet_sha256) == -1)) wallet_sha256_values.push(session_info.wallet_sha256) ;
                 } // for i
             }
             if (!temp_currencies.length) {
@@ -876,11 +892,8 @@ angular.module('MoneyNetwork')
             }
 
             // find full wallet info from sha256 values
-            console.log(pgm + 'wallet_sha256_values = ' + JSON.stringify(wallet_sha256_values)) ;
-
-            // todo: better param name (delayed)
-
-            MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, delayed) {
+            console.log(pgm + 'find full wallet info from wallet_sha256_values array = ' + JSON.stringify(wallet_sha256_values)) ;
+            MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, refresh_angular_ui) {
                 var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row, unique_texts,
                     sessionid, changed_wallet_sha256_values, status, step_1_get_session, step_2_ping_other_session,
                     step_3_other_user_path, step_n_done ;
@@ -905,18 +918,18 @@ angular.module('MoneyNetwork')
                 else for (wallet_sha256 in wallet_info) {
                     for (i=0 ; i<temp_currencies.length ; i++) {
                         if (wallet_sha256 != temp_currencies[i].wallet_sha256) continue ;
-                        // copy wallet info to currency (wallet_address, wallet_title, wallet_description and currencies
+                        // copy full wallet info to currency (wallet_address, wallet_title, wallet_description and currencies
                         for (key in wallet_info[wallet_sha256]) {
                             temp_currencies[i][key] = wallet_info[wallet_sha256][key] ;
                         } // for key
-                        break ; // break currencies loop. next sha256 value
                     } // for i
                 } // for wallet_sha256
 
                 // copy full wallet info into currencies array
                 changed_wallet_sha256_values = [] ;
                 for (i=temp_currencies.length-1 ; i >= 0 ; i--) {
-                    if (temp_currencies[i].wallet_address) continue ;
+                    if (temp_currencies[i].wallet_address) continue ; // OK. Full wallet info found from wallet_sha256 address
+                    // full wallet info could not be found from wallet_sha256 address. must try some workarounds to get new updated wallet_sha256 address. see step_1_get_session,
                     console.log(pgm + 'removing currency/balance info with unknown wallet_sha256. ' + JSON.stringify(temp_currencies[i])) ;
                     // removing currency/balance info with unknown wallet_sha256. {"code":"tBTC","amount":1.3,"balance_at":1504431366592,"sessionid":"wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1","wallet_sha256":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"}
                     sessionid = temp_currencies[i].sessionid ;
@@ -1027,7 +1040,7 @@ angular.module('MoneyNetwork')
                 } // for unique_id
 
                 // return list of currencies to chat controller
-                cb(currencies, delayed) ;
+                cb(currencies, refresh_angular_ui) ;
 
                 if (!changed_wallet_sha256_values.length) return ;
                 console.log(pgm + 'changed_wallet_sha256_values = ' + JSON.stringify(changed_wallet_sha256_values)) ;
@@ -1061,7 +1074,7 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'found other_user_path for session ' + sessionid + '. reading wallet.json file') ;
                     inner_path = encrypt.other_user_path + 'wallet.json';
                     z_file_get(pgm, {inner_path: inner_path, required: false}, function (wallet_str) {
-                        var pgm = service + '.get_currencies.step_3_other_user_path z_file_get callback ' ;
+                        var pgm = service + '.get_currencies.step_3_other_user_path z_file_get callback: ' ;
                         var wallet, old_wallet_sha256 ;
                         if (!wallet_str) {
                             console.log(pgm + 'error. could not find wallet ' + inner_path + '. other_user_path must be invalid') ;
@@ -1124,10 +1137,10 @@ angular.module('MoneyNetwork')
                                 ZeroFrame.cmd("wrapperConfirm", [message, 'OK'], function (confirm) {
                                     if (!confirm) return ;
                                     // open wallet site
-                                    console.log(pgm + 'confirmed. open wallet ' + session_info.url + ', wait 5 seconds and refresh currency information') ;
-                                    ZeroFrame.cmd("wrapperOpenWindow", [session_info.url, "_blank"]);
+                                    console.log(pgm + 'confirmed. open wallet ' + session_info.url + ', wait 5 seconds and refresh currency information. ') ;
+                                    open_window(pgm, session_info.url);
                                     ZeroFrame.cmd("wrapperNotification", ['info', 'Opened wallet ' + session_info.url + '<br>in a new browser tab', 5000]);
-                                    // wait 5 seconds and run get_currencies once more
+                                    // wait 5 seconds and run get_currencies once more.
                                     refresh_job = function() {
                                         var message = 'Updating wallet info for<br>wallet ' + session_info.url ;
                                         console.log(pgm + message) ;
@@ -1136,6 +1149,7 @@ angular.module('MoneyNetwork')
                                     };
                                     $timeout(refresh_job, 5000) ;
                                 }) ;
+                                return ;
                             }
                             else console.log(pgm + 'Error. Cannot ask user to open wallet. No wallet URL was found in session info ' + JSON.stringify(session_info)) ;
                         }
@@ -1146,7 +1160,7 @@ angular.module('MoneyNetwork')
                             status.no_done++ ;
                         }
                         else {
-                            // ping OK.
+                            // ping OK. found other_user_path. To be used in step_3_other_user_path to lookup wallet.json file with correct wallet_sha256
                             console.log(pgm + 'other_user_path = ' + encrypt.other_user_path);
                         }
                         // next row
@@ -1196,6 +1210,7 @@ angular.module('MoneyNetwork')
             ls_save_sessions: ls_save_sessions,
             w_login: w_login,
             w_logout: w_logout,
+            open_window: open_window,
             get_currencies: get_currencies
         };
 
