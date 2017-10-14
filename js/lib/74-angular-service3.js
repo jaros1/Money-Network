@@ -43,6 +43,14 @@ angular.module('MoneyNetwork')
             return res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res) ;
         }
 
+        // administrator helpers.
+        function is_admin () {
+            return moneyNetworkHubService.is_admin() ;
+        }
+        function get_admin_key() {
+            return moneyNetworkHubService.get_admin_key() ;
+        }
+
         var ls_contacts = moneyNetworkHubService.get_ls_contacts() ; // array with contacts
         var ls_reactions = moneyNetworkHubService.get_ls_reactions() ;
         var js_messages = moneyNetworkHubService.get_js_messages() ; // array with { :contact => contact, :message => message } - one row for each message

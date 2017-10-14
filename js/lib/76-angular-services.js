@@ -3313,10 +3313,11 @@ angular.module('MoneyNetwork')
         // sent_at parameter is only used when called from recheck_old_decrypt_errors
         function process_incoming_cryptmessage (res, unique_id, sent_at) {
             var pgm = service + '.process_incoming_cryptmessage : ' ;
+            var cb, message_array, iv, encrypted, debug_seq0 ;
             debug('lost_message', pgm + 'sent_at = ' + sent_at) ;
 
             // callback to process_incoming_message when done
-            var cb = function () {
+            cb = function () {
                 // callback with error to process_incoming_message
                 var contacts_updated = false ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
@@ -3346,10 +3347,9 @@ angular.module('MoneyNetwork')
 
             } ; // cb
 
-            var message_array = res.message.split(',') ;
-            var iv = message_array[0] ;
-            var encrypted = message_array[1] ;
-            var debug_seq0 ;
+            message_array = res.message.split(',') ;
+            iv = message_array[0] ;
+            encrypted = message_array[1] ;
             // console.log(pgm + 'iv = ' + iv + ', encrypted = ' + encrypted) ;
 
             // console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling eciesDecrypt with " + JSON.stringify([res.key, user_id])) ;
@@ -3474,13 +3474,13 @@ angular.module('MoneyNetwork')
                 // decrypt step 2 - password OK - decrypt message
                 console.log(pgm + "res.message_sha256 = " + res.message_sha256 + ", calling aesDecrypt with " + JSON.stringify([iv, encrypted, password]));
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + ' aesDecrypt') ;
-                debug_seq = debug_z_api_operation_start(pgm, null, 'aesDecrypt', show_debug('z_crypt_message')) ;
+                debug_seq1 = debug_z_api_operation_start(pgm, null, 'aesDecrypt', show_debug('z_crypt_message')) ;
                 ZeroFrame.cmd("aesDecrypt", [iv, encrypted, password], function (decrypted_message_str) {
                     var pgm = service + '.process_incoming_cryptmessage aesDecrypt callback 2: ' ;
                     var decrypted_message, contact, image_path, query ;
                     // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                    debug_z_api_operation_end(debug_seq, null) ;
+                    debug_z_api_operation_end(debug_seq1, null) ;
 
                     decrypted_message = JSON.parse(decrypted_message_str) ;
                     if (sent_at) {
