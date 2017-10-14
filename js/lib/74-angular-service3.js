@@ -22,6 +22,10 @@ angular.module('MoneyNetwork')
             return true ;
         }
 
+        function set_last_online (contact, last_online) {
+            MoneyNetworkHelper.set_last_online(contact, last_online) ;
+        }
+
         // debug wrappers
         function show_debug (keys) {
             return MoneyNetworkHelper.show_debug(keys) ;
@@ -167,6 +171,18 @@ angular.module('MoneyNetwork')
         } // get_max_image_size
 
 
+        // issue #199: angularJS $$hashKey is added to money_transactions in chat msg before send
+        // most be removed again before JSON validation and before encryption
+        function remove_hashkey (message) {
+            var i ;
+            if (message.msgtype != 'chat msg') return message ;
+            if (!message.money_transactions) return message ;
+            message = JSON.parse(JSON.stringify(message)) ;
+            for (i=0 ; i<message.money_transactions.length ; i++) delete message.money_transactions[i]['$$hashKey'] ;
+            return message ;
+        } //  remove_hashkey
+
+
         // feedback section. two parts:
         // - a) feedback hash inside the sent/received messages
         //      feedback.sent array - array with sent messages where sender is waiting for feedback (has the message been received or not?)
@@ -190,7 +206,7 @@ angular.module('MoneyNetwork')
 
             // check that json still is valid before adding feedback information to outgoing messages
             // problem with null values in sent and received arrays
-            message = message_with_envelope.message ;
+            message = remove_hashkey(message_with_envelope.message) ;
             error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'cannot add feedback info to invalid outgoing message');
             if (error) {
                 console.log(pgm , error) ;
@@ -440,19 +456,15 @@ angular.module('MoneyNetwork')
 
                 // check that json still is valid after adding feedback information to outgoing messages
                 // problem with null values in sent and received arrays
-                message = message_with_envelope.message ;
+                message = remove_hashkey(message_with_envelope.message) ;
                 error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'cannot add invalid feedback info to outgoing message');
                 if (error) {
                     console.log(pgm , error) ;
                     delete message_with_envelope.message.feedback ;
                 }
-
             }
 
         } // add_feedback_info
-
-
-
 
         // return avatar for user or assign a random avatar to user
         var avatar = { src: "public/images/avatar1.png", loaded: false } ;
@@ -1430,7 +1442,7 @@ angular.module('MoneyNetwork')
                             }
 
 
-                            // move image to envelope before send and back to message after send
+                            // move image (UI) to envelope before send and back to message after send
                             delete message_with_envelope.image ;
                             upload_image_json = false ;
                             if (message.replace_unchanged_image_with_x) {
@@ -1496,7 +1508,7 @@ angular.module('MoneyNetwork')
                             }
 
                             // same post encryption cleanup as in z_update_data_cryptmessage
-                            encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(message), password);
+                            encrypted_message_str = MoneyNetworkHelper.encrypt(JSON.stringify(remove_hashkey(message)), password);
                             if (message_with_envelope.image) {
                                 // restore image
                                 message.image = message_with_envelope.image ;
@@ -1652,7 +1664,7 @@ angular.module('MoneyNetwork')
                         // encrypt step 3 - aes encrypt message
                         // debug_seq3 = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + 'aesEncrypt') ;
                         debug_seq3 = debug_z_api_operation_start(pgm, null, 'aesEncrypt', show_debug('z_crypt_message')) ;
-                        ZeroFrame.cmd("aesEncrypt", [JSON.stringify(message_with_envelope.message), password], function (msg_res) {
+                        ZeroFrame.cmd("aesEncrypt", [JSON.stringify(remove_hashkey(message_with_envelope.message)), password], function (msg_res) {
                             var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 4: ';
                             var iv, encrypted_message_str, message, upload_image_json, debug_seq4 ;
                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq3) ;

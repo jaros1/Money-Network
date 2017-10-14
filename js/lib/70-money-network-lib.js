@@ -244,7 +244,7 @@ var MoneyNetworkHelper = (function () {
                     return cb2() ;
                 }
                 inner_path = folders.shift() ;
-                debug_seq = debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', show_debug('z_file_get')) ;
                 ZeroFrame.cmd("fileGet", [inner_path, false], function (res) {
                     var pgm = module + '.load_public_avatars.read_sub_content fileGet callback: ';
                     var folder, key ;

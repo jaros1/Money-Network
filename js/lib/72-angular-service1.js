@@ -1472,7 +1472,7 @@ angular.module('MoneyNetwork')
                 data = z_cache.data_json || {} ;
                 json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/data.json fileWrite') ;
-                debug_seq = debug_z_api_operation_start(pgm, 'z_file_write',  + user_path + '/data.json fileWrite') ;
+                debug_seq = debug_z_api_operation_start(pgm, user_path + '/data.json', 'fileWrite', show_debug('z_file_write')) ;
                 ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, format_res(res)) ;

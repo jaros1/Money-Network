@@ -1337,7 +1337,7 @@ angular.module('MoneyNetwork')
 
                 if (self.show_money) {
                     // non empty money transaction(s)
-                    console.log(pgm , 'todo: 1) ping with permissions response? Or permissions check after wallet ping');
+                    console.log(pgm + 'todo: 1) ping with permissions response? Or permissions check after wallet ping');
                     console.log(pgm + 'todo: 2) make money transactions table responsive? Not nice on small devices');
                 }
 
@@ -1518,6 +1518,8 @@ angular.module('MoneyNetwork')
                                 error =
                                     'Sorry. Wallet validate error' + (errors > 1 ? 's' : '') + '.' +
                                     '<br>See red error message' + (errors > 1 ? 's' : '') + ' in chat.' ;
+                                console.log(pgm + error) ;
+                                console.log(pgm + 'self.new_chat_msg_disabled = ' + self.new_chat_msg_disabled);
                                 ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
                                 return ;
                             }
@@ -1527,6 +1529,8 @@ angular.module('MoneyNetwork')
                             $rootScope.$apply() ;
                             step_4_send_message() ;
                             error = 'Sorry. Money transaction is not yet implemented<br>Todo: receive chat with money transaction' ;
+                            console.log(pgm + error) ;
+                            console.log(pgm + 'self.new_chat_msg_disabled = ' + self.new_chat_msg_disabled);
                             ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
                             return ;
                         }
@@ -1548,6 +1552,7 @@ angular.module('MoneyNetwork')
                             j = unique_texts_hash[unique_text].money_transactions[i] ;
                             money_transaction = self.money_transactions[j] ;
                             delete money_transaction.factor ;
+
 
                             // find conversion factor from units definition
                             units = unique_texts_hash[unique_text].balance.units ;
@@ -1746,7 +1751,7 @@ angular.module('MoneyNetwork')
                             return step_3_check_transactions() ;
                         }
                         balance = sessions.shift() ;
-                        console.log(pgm + 'getting session. sessionid = ' + balance.sessionid + ', balance = ' + JSON.stringify(balance));
+                        console.log(pgm + 'getting session. using balance.sessionid = ' + balance.sessionid + '. maybe wrong sessionid. see issue #208');
                         MoneyNetworkAPILib.get_session(balance.sessionid, function (session) {
                             var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet get_session callback 1: ';
                             var request, error, url ;
