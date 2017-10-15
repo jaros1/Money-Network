@@ -185,8 +185,10 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
         "ping": {
             "type": 'object',
             "title": 'Simple session ping. Expects Timeout or OK response',
+            "description": 'Permissions=true: request permissions info in ping response (open_wallet, request_balance etc)',
             "properties": {
                 "msgtype": {"type": 'string', "pattern": '^ping$'},
+                "permissions": {"type": 'boolean'}
             },
             "required": ['msgtype'],
             "additionalProperties": false
@@ -231,7 +233,7 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
         "wallet": {
             "type": 'object',
             "title": 'Public wallet information in wallet.json files',
-            "description": 'wallet_* fields from site_info. currencies is a list of supported currencies and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies} hash',
+            "description": 'wallet_* fields from site_info. currencies is a list of supported currencies, api_url is optional url to external API documentation and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies, api_url} hash',
             "properties": {
                 "msgtype": {"type": 'string', "pattern": '^wallet$'},
                 "wallet_address": {"type": 'string'},
@@ -240,13 +242,15 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
                 "wallet_description": {"type": 'string'},
                 "currencies": {
                     "type": 'array',
-                    "description": 'List of supported currencies. code is a (pseudo) currency iso code. Optional URL to currency information on the www',
+                    "description": 'List of supported currencies. code is a (pseudo) currency iso code, short currency name, optional currency description (text), optional URL with currency information, optional fee information (text) and optional list with currency units',
                     "items": {
                         "type": 'object',
                         "properties": {
                             "code": {"type": 'string', "minLength": 2, "maxLength": 5},
                             "name": {"type": 'string'},
+                            "description": {"type": 'string'},
                             "url": {"type": 'string'},
+                            "fee_info": {"type": 'string'},
                             "units": {
                                 "type": 'array',
                                 "description": 'Optional unit list. For example units: [{ unit: BitCoin, factor: 1 },{ unit: Satoshi, factor: 0.00000001 }]',
@@ -267,17 +271,19 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
                     },
                     "minItems": 1
                 },
+                "api_url": {"type": 'string'},
                 "wallet_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
                 "hub": {"type": 'string'}
             },
-            "required": ['msgtype', 'wallet_sha256', 'currencies'],
+            "required": ['msgtype', 'wallet_sha256'],
             "additionalProperties": false
         }, // wallet
 
+        // send money transaction step 1: validate and optional return some json to be included in chat msg with money transactions
         "prepare_mt_request": {
             "type": 'object',
             "title": 'Validate money transactions before send chat message with money transactions',
-            "description": 'MN: send money transactions to wallet before send chat message to contact. Multiple money transactions are allowed. Wallet must return error message or json with transaction details for each money transaction',
+            "description": 'MN: validate money transactions in wallet session before send chat message to contact. Multiple money transactions are allowed. Money_transactionid. Wallet must return error message or json with transaction details for each money transaction',
             "properties": {
                 "msgtype": {"type": 'string', "pattern": '^prepare_mt_request$'},
                 "contact": {
@@ -291,6 +297,8 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
                     "required": ['alias', 'cert_user_id', 'auth_address'],
                     "additionalProperties": false
                 },
+                "open_wallet": {"type": 'boolean', "description": 'Open wallet before prepare_mt_request?'},
+                "close_wallet": {"type": 'boolean', "description": 'Close wallet after prepare_mt_request?'},
                 "money_transactions": {
                     "type": 'array',
                     "items": {
@@ -302,12 +310,85 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
                         },
                         "required": ['action', 'code', 'amount'],
                         "additionalProperties": false
-                    }
+                    },
+                    "minItems": 1
+                },
+                "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60, "description": 'Transaction id or session id. Random string. Unique for this money transaction chat message. Shared between 2 MN sessions and 2 wallet sessions'}
+            },
+            "required": ['msgtype', 'contact', 'money_transactions', 'money_transactionid'],
+            "additionalProperties": false
+        }, // prepare_mt_request
+
+        "prepare_mt_response": {
+            "type": 'object',
+            "title": 'prepare_mt_request response',
+            "description": 'array with json to be included in chat message to contact. One json for each money transaction in prepare_mt_request',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^prepare_mt_response$'},
+                "jsons": {
+                    "type": 'array',
+                    "minItems": 1
+                }
+            },
+            "required": ['msgtype', 'jsons'],
+            "additionalProperties": false
+        }, // prepare_mt_response
+
+        // send money transaction step 2: tell wallet session that chat msg with money transactions has been sent to receiver
+        "send_mt": {
+            "type": 'object',
+            "title": 'Send money transaction(s) to receiver',
+            "description": 'MN: tell wallet session that money transactions chat message has been send to receiver. wallet must prepare for wallet to wallet communication',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^send_mt$'},
+                "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60, "description": 'Same money_transactionid as in prepare_mt_request'}
+            },
+            "required": ['msgtype', 'money_transactionid'],
+            "additionalProperties": false
+        }, // send_mt
+
+        "execute_mt_request": {
+            "type": 'object',
+            "title": 'execute money transactions received from contact in chat message',
+            "description": 'See prepare_mt_request and prepare_mt_response for details.',
+            "properties": {
+                "msgtype": { "type": 'string', "pattern": '^execute_mt_request$'},
+                "contact": {
+                    "description": 'Info about sender of chat message / money transactions request. auth_address is the actual contact id and should be unique. alias and cert_user_id are human text info only and are not unique / secure contact info',
+                    "type": 'object',
+                    "properties": {
+                        "alias": { "type": 'string'},
+                        "cert_user_id": { "type": 'string'},
+                        "auth_address": { "type": 'string'}
+                    },
+                    "required": ['alias', 'cert_user_id', 'auth_address'],
+                    "additionalProperties": false
+                },
+                "open_wallet": {"type": 'boolean'},
+                "close_wallet": {"type": 'boolean'},
+                "money_transactions": {
+                    "type": 'array',
+                    "items": {
+                        "type": 'object',
+                        "properties": {
+                            "action": { "type": 'string', "pattern": '^(Send|Request)$'},
+                            "code": {"type": 'string', "minLength": 2, "maxLength": 5},
+                            "amount": {"type": 'number'},
+                            "json": {}
+                        },
+                        "required": ['action', 'code', 'amount', 'json'],
+                        "additionalProperties": false
+                    },
+                    "minItems": 1
                 }
             },
             "required": ['msgtype', 'contact', 'money_transactions'],
             "additionalProperties": false
-        }, // prepare_mt_request
+        }, // execute_mt_request
+
+        "execute_mt_response": {
+
+        }, // execute_mt_response
 
         "notification" : {
             "type": 'object',
@@ -324,6 +405,7 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
         } // notification
 
     }; // json_schemas
+
 
 ## Software 
 - html5, ccs3, javascript and some sql. Simple code, lots of comments and code should be "easy"" to follow. 
