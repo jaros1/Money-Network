@@ -29,7 +29,7 @@ angular.module('MoneyNetwork')
         var encrypt2 ;
         function new_sessionid (url) {
             var pgm = controller + '.new_sessionid: ' ;
-            test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
+            test_sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase(); // to lower - used in url
             // monitor incoming messages from this new wallet session
             encrypt2 = new MoneyNetworkAPI({
                 sessionid: test_sessionid,

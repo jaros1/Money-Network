@@ -3032,9 +3032,9 @@ angular.module('MoneyNetwork')
                 if (load_contacts) check_overflow() ;
                 // if (!load_contacts) debug('outbox && unencrypted', pgm + 'contact.messages.last = ' + JSON.stringify(contact.messages[contact.messages.length-1])) ;
 
-                if ((message.message.msgtype == 'chat msg') && message.message.message.match(/money/)) {
-                    console.log(pgm + 'message = ' + JSON.stringify(message.message));
-                }
+                //if ((message.message.msgtype == 'chat msg') && message.message.message.match(/money/)) {
+                //    console.log(pgm + 'message = ' + JSON.stringify(message.message));
+                //}
 
             }) ; // get_like_json callback 1
         } // add_message

@@ -1061,6 +1061,7 @@ var MoneyNetworkHelper = (function () {
                         "code": { "type": 'string', "minLength": 2, "maxLength": 5, "description": 'Pseudo currency iso code'},
                         "name": { "type": 'string', "description": 'Display currency name at transaction start time'},
                         "amount": { "type": 'number'},
+                        "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60},
                         "json": {}
                     },
                     "required": ['wallet_url', 'wallet_sha256', 'wallet_name', 'action', 'code', 'name', 'amount', 'json'],

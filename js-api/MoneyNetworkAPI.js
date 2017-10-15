@@ -973,10 +973,11 @@ var MoneyNetworkAPILib = (function () {
             "additionalProperties": false
         }, // wallet
 
+        // send money transaction step 1: validate and optional return some json to be included in chat msg with money transactions
         "prepare_mt_request": {
             "type": 'object',
             "title": 'Validate money transactions before send chat message with money transactions',
-            "description": 'MN: send money transactions to wallet before send chat message to contact. Multiple money transactions are allowed. Boolean flags: Open and/or close wallet before/after prepare_mt_request request. Wallet must return error message or json with transaction details for each money transaction',
+            "description": 'MN: validate money transactions in wallet session before send chat message to contact. Multiple money transactions are allowed. Money_transactionid. Wallet must return error message or json with transaction details for each money transaction',
             "properties": {
                 "msgtype": {"type": 'string', "pattern": '^prepare_mt_request$'},
                 "contact": {
@@ -990,8 +991,8 @@ var MoneyNetworkAPILib = (function () {
                     "required": ['alias', 'cert_user_id', 'auth_address'],
                     "additionalProperties": false
                 },
-                "open_wallet": {"type": 'boolean'},
-                "close_wallet": {"type": 'boolean'},
+                "open_wallet": {"type": 'boolean', "description": 'Open wallet before prepare_mt_request?'},
+                "close_wallet": {"type": 'boolean', "description": 'Close wallet after prepare_mt_request?'},
                 "money_transactions": {
                     "type": 'array',
                     "items": {
@@ -1005,9 +1006,10 @@ var MoneyNetworkAPILib = (function () {
                         "additionalProperties": false
                     },
                     "minItems": 1
-                }
+                },
+                "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60, "description": 'Transaction id or session id. Random string. Unique for this money transaction chat message. Shared between 2 MN sessions and 2 wallet sessions'}
             },
-            "required": ['msgtype', 'contact', 'money_transactions'],
+            "required": ['msgtype', 'contact', 'money_transactions', 'money_transactionid'],
             "additionalProperties": false
         }, // prepare_mt_request
 
@@ -1025,6 +1027,19 @@ var MoneyNetworkAPILib = (function () {
             "required": ['msgtype', 'jsons'],
             "additionalProperties": false
         }, // prepare_mt_response
+
+        // send money transaction step 2: tell wallet session that chat msg with money transactions has been sent to receiver
+        "send_mt": {
+            "type": 'object',
+            "title": 'Send money transaction(s) to receiver',
+            "description": 'MN: tell wallet session that money transactions chat message has been send to receiver. wallet must prepare for wallet to wallet communication',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^send_mt$'},
+                "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60, "description": 'Same money_transactionid as in prepare_mt_request'}
+            },
+            "required": ['msgtype', 'money_transactionid'],
+            "additionalProperties": false
+        }, // send_mt
 
         "execute_mt_request": {
             "type": 'object',

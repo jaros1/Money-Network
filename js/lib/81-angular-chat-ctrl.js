@@ -1263,7 +1263,8 @@ angular.module('MoneyNetwork')
             self.send_chat_msg = function () {
                 var pgm = controller + '.send_chat_msg: ';
                 var i, j, contact, my_unique_id, message, error, money_transactions, unique_texts_hash, set_ping_error,
-                    step_1_confirm_send, step_2_ping_wallets, step_3_check_transactions, step_4_send_message;
+                    step_1_confirm_send, step_2_ping_wallets, step_3_check_transactions, step_4_send_message,
+                    step_5_send_send_mt ;
 
                 // disable form elements while checking and sending message
                 self.new_chat_msg_disabled = true ;
@@ -1339,9 +1340,16 @@ angular.module('MoneyNetwork')
                     // non empty money transaction(s)
                     console.log(pgm + 'todo: 1) ping with permissions response? Or permissions check after wallet ping');
                     console.log(pgm + 'todo: 2) make money transactions table responsive? Not nice on small devices');
+                    console.log(pgm + 'todo: 3) receive money transaction. receiver must approve, reject or edit (approve, reject, reverse transaction and send). Maybe as a nested comment?');
+                    console.log(pgm + 'todo: 4) allow edit money transaction. very nice when communication about a deal. Maybe not OK in a payment context') ;
+                    console.log(pgm + 'todo: 5) basic money transaction status in MN chat (not approved, approved, rejected, processing, failed, completed)') ;
+                    console.log(pgm + 'todo: 6) money transaction status from W2W communication for an approved but not yet processed money transaction');
+                    console.log(pgm + 'todo: 7) money transaction status from external API. BitCoins: block deep of money transaction');
+                    console.log(pgm + 'todo: 6) allow cancel after approval and before money transaction has been completed by wallets?');
+                    console.log(pgm + 'todo: 7) how to save completed money transaction result? best as optional files to prevent ');
                 }
 
-                // unique_texts hash. used in step_2_ping_wallets and step_3_check_transactions
+                // unique_texts hash. money transactions only. used in step_2_ping_wallets and step_3_check_transactions
                 unique_texts_hash = {} ;
 
                 set_ping_error = function (unique_text, error, show_wallet) {
@@ -1359,10 +1367,49 @@ angular.module('MoneyNetwork')
                     }
                 } ; // set_ping_error
 
+                // callback function - optional step - tell wallet session about just send chat msg with money transaction(s)
+                step_5_send_send_mt = function() {
+                    var pgm = controller + '.send_chat_msg.step_5_send_send_mt: ';
+                    var unique_texts_array, unique_text, send_mt ;
+
+                    // one send_mt message for wallet in
+                    unique_texts_array = [] ;
+                    for (unique_text in unique_texts_hash) unique_texts_array.push(unique_text) ;
+                    if (!unique_texts_array.length) return ; // not a money transaction chat msg
+
+                    // loop for each unique_text / wallet. send money transaction to wallet for validation
+                    send_mt = function () {
+                        var pgm = controller + '.send_chat_msg.send_chat_msg.step_5_send_send_mt.send_mt: ';
+                        var unique_text, session, money_transactionid, request ;
+                        unique_text = unique_texts_array.shift() ;
+                        if (!unique_text) return ; // done
+
+                        // build request
+                        session = unique_texts_hash[unique_text].session ;
+                        money_transactionid = unique_texts_hash[unique_text].money_transactionid ;
+                        request = {
+                            msgtype: "send_mt",
+                            money_transactionid: money_transactionid
+                        } ;
+                        // send message. wallet session should be ready and running. have just pinged and validated money transaction
+                        session.encrypt.send_message(request, {response: 10000}, function (response) {
+                            var pgm = controller + '.send_chat_msg.send_chat_msg.step_5_send_send_mt.send_mt send_message callback: ';
+                            console.log(pgm + 'response = ' + JSON.stringify(response));
+                            // response = {"msgtype":"response","error":"message is invalid. Unknown msgtype send_mt"}
+
+                            // todo: fallback to offline transaction after timeout?
+
+                            // next wallet
+                            send_mt() ;
+                        }) ; // send_message
+                    } ; // send_mt
+                    send_mt() ;
+                }; // step_5_send_send_mt
+
                 // callback function - send chat message
                 step_4_send_message = function () {
                     var pgm = controller + '.send_chat_msg.step_4_send_message: ';
-                    var i, money_transaction, unique_text, balance ;
+                    var i, money_transaction, unique_text, balance, money_transactionid ;
                     // send chat message to contact
                     message = {
                         msgtype: 'chat msg',
@@ -1380,40 +1427,10 @@ angular.module('MoneyNetwork')
                         message.money_transactions = [] ;
                         for (i=0 ; i<self.money_transactions.length ; i++) {
                             money_transaction = self.money_transactions[i] ;
-                            // money_transaction = {
-                            //    "action": "Send",
-                            //    "currency": "tBTC Test Bitcoin from MoneyNetworkW2",
-                            //    "amount": "10000",
-                            //    "unit": "Satoshi",
-                            //    "$$hashKey": "object:3041",
-                            //    "message": {
-                            //        "html": {},
-                            //        "ping": null,
-                            //        "balance": "Wallet balance 1.3 BitCoin = 130000000 Satoshi"
-                            //    },
-                            //    "factor": 1e-8,
-                            //    "json": {"return_address": "2NDjx7ye6jfUQBrQP8YPJ3ppXhtwzHZrCsS"}
-                            //};
-                            // balance = {
-                            //    "code": "tBTC",
-                            //    "amount": 1.3,
-                            //    "balance_at": 1506416329497,
-                            //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
-                            //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
-                            //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                            //    "wallet_title": "MoneyNetworkW2",
-                            //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                            //    "api_url": "https://www.blocktrail.com/api/docs",
-                            //    "unique_id": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7/tBTC",
-                            //    "name": "Test Bitcoin",
-                            //    "url": "https://en.bitcoin.it/wiki/Testnet",
-                            //    "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
-                            //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
-                            //    "unique_text": "tBTC Test Bitcoin from MoneyNetworkW2"
-                            //};
                             console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
                             unique_text = money_transaction.currency ;
                             balance = unique_texts_hash[unique_text].balance ;
+                            money_transactionid = unique_texts_hash[unique_text].money_transactionid ;
                             console.log(pgm + 'balance = ' + JSON.stringify(balance)) ;
 
                             message.money_transactions.push({
@@ -1424,6 +1441,7 @@ angular.module('MoneyNetwork')
                                 code: balance.code, // currency code
                                 name: balance.name, // display info. currency name at transaction start time
                                 amount: money_transaction.amount * money_transaction.factor, // amount without unit (factor = 1)
+                                money_transactionid: money_transactionid,
                                 json: money_transaction.json // wallet specific json. any type
                             }) ;
                         } // for i
@@ -1451,9 +1469,17 @@ angular.module('MoneyNetwork')
                     error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
                     if (error) {
                         self.new_chat_msg_disabled = false ;
+                        console.log(pgm + error) ;
                         ZeroFrame.cmd("wrapperNotification", ["Error", error]);
                         return;
                     }
+
+                    if (message.money_transactions) {
+                        error = 'Sorry. Money transaction is not yet implemented<br>Todo: receive chat with money transaction' ;
+                        console.log(pgm + error) ;
+                        ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                    }
+
                     // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                     // send message
                     moneyNetworkService.add_msg(contact, message);
@@ -1483,6 +1509,10 @@ angular.module('MoneyNetwork')
                     if (contact) contact.seen_at = new Date().getTime() ;
                     moneyNetworkService.update_chat_notifications() ;
                     moneyNetworkService.ls_save_contacts(true);
+
+                    // tell wallet(s) that chat message with money transactions has been sent to receiver
+                    // wallet must prepare for encrypted wallet to wallet communication
+                    if (message.money_transactions) step_5_send_send_mt() ;
                 } ; // step_4_send_message
 
                 // callback function - optional step - money transactions - check money transactions
@@ -1501,7 +1531,7 @@ angular.module('MoneyNetwork')
                     // loop for each unique_text / wallet. send money transaction to wallet for validation
                     check_transaction = function () {
                         var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction: ';
-                        var unique_text, session, request, i, j, money_transaction, factor, units, errors, error ;
+                        var unique_text, session, request, i, j, money_transaction, factor, units, errors, error, money_transactionid ;
                         unique_text = unique_texts_array.shift() ;
                         if (!unique_text) {
                             // todo: done checking money transactions. count errors. notification, stop or continue
@@ -1528,16 +1558,19 @@ angular.module('MoneyNetwork')
                             self.new_chat_msg_disabled = false ;
                             $rootScope.$apply() ;
                             step_4_send_message() ;
-                            error = 'Sorry. Money transaction is not yet implemented<br>Todo: receive chat with money transaction' ;
-                            console.log(pgm + error) ;
-                            console.log(pgm + 'self.new_chat_msg_disabled = ' + self.new_chat_msg_disabled);
-                            ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
                             return ;
                         }
+
+                        // generate transaction id. one transactionid for each wallet. used in the same way as sessionid in MoneyNetworkAPI (session filenames, symmetric encryption)
+                        // each row in money transactions array has transactionid-<line number>
+                        money_transactionid = MoneyNetworkHelper.generate_random_password(60, true) ;
+                        unique_texts_hash[unique_text].money_transactionid = money_transactionid ;
+
                         // get session
                         session = unique_texts_hash[unique_text].session ;
                         // build validate money transactions request
                         // contact. receiver of chat message / money transaction. auth_address is unique user id. cert_user_id and alias are human text fields and are not unique / secure
+
                         request = {
                             msgtype: 'prepare_mt_request',
                             contact: {
@@ -1546,15 +1579,15 @@ angular.module('MoneyNetwork')
                                 auth_address: contact.auth_address
                             },
                             open_wallet: true,
-                            money_transactions: []
+                            money_transactions: [],
+                            money_transactionid: money_transactionid
                         } ;
                         for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
                             j = unique_texts_hash[unique_text].money_transactions[i] ;
                             money_transaction = self.money_transactions[j] ;
-                            delete money_transaction.factor ;
-
 
                             // find conversion factor from units definition
+                            delete money_transaction.factor ;
                             units = unique_texts_hash[unique_text].balance.units ;
                             factor = null ;
                             for (j=0 ; j<units.length ; j++) if (units[j].unit == money_transaction.unit) {

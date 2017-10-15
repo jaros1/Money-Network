@@ -924,6 +924,7 @@ angular.module('MoneyNetwork')
             if (msgtype == 'chat msg') {
                 //str = $sanitize(message.message.message.message) ;
                 str = message.message.message.message ;
+                if (!str) return str ; // delete message?
                 str = str.replace(/&#10;/g, "\n").replace(/\r\n/g,"\n").replace(/\r/g,"\n") ;
                 str = md.render(str) ;
                 str = moneyNetworkService.replace_emojis(str) ;
