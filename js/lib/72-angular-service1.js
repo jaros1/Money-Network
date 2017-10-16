@@ -616,7 +616,7 @@ angular.module('MoneyNetwork')
                                         // # https://github.com/HelloZeroNet/ZeroNet/issues/1147
                                         // check files_optional after sign
                                         z_file_get(pgm, {inner_path: inner_path, required: false}, function (content_str) {
-                                            var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file:_get callback 4: ';
+                                            var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 4: ';
                                             var content ;
                                             content = JSON.parse(content_str) ;
                                             console.log(pgm + 'issue #1147. issue_1147 = ' + show_debug('issue_1147') + ', files_optional = ' + JSON.stringify(content.files_optional)) ;
