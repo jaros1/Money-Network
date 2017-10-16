@@ -473,8 +473,12 @@ angular.module('MoneyNetwork')
                     // step 2 - cleanup data.json
 
                     var step_2_delete_data_json = function (user_seq) {
+                        var pgm = controller + '.delete_user2.step_2_delete_data_json: ' ;
+                        var debug_seq ;
+                        debug_seq = debug_z_api_operation_start(pgm, user_path + '/' + 'data.json', 'fileDelete', show_debug('z_file_delete'));
                         ZeroFrame.cmd("fileDelete", user_path + '/' + 'data.json', function (res) {
                             var pgm = controller + '.delete_user2.step_2_delete_data_json: ' ;
+                            debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                             step_3_update_or_delete_status_json(user_seq);
                         }) ;
