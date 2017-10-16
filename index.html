@@ -1884,6 +1884,11 @@
                     <td>&nbsp;&nbsp;</td>
                     <td><input type="checkbox" ng-model="u.setup.debug.money_network_api" ng-change="u.debug_settings_changed()"></td>
                 </tr>
+                <tr title="Click for delete content.file_optional before siteSign">
+                    <td>ZeroNet issue #1147</td>
+                    <td>&nbsp;&nbsp;</td>
+                    <td><input type="checkbox" ng-model="u.setup.debug.issue_1147" ng-change="u.debug_settings_changed()"></td>
+                </tr>
                 </tbody>
             </table>
 
@@ -2209,9 +2214,9 @@
   all.js ~= 1.3 Mb and distribution is slow on zeronet
   js/all.js.zip is small and distributed fast (~= 200 Kb)
  -->
-<script type="text/javascript" src="js/all.js"></script>
+<!--script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->

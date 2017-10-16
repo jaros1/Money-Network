@@ -572,7 +572,20 @@ angular.module('MoneyNetwork')
                                 if (content_str) content = JSON.parse(content_str) ;
                                 else content = {} ;
                                 content.optional = Z_CONTENT_OPTIONAL ;
-                                // delete content.files_optional ;
+
+                                // # https://github.com/HelloZeroNet/ZeroNet/issues/1147
+                                if (!content.files_optional || !Object.keys(content.files_optional).length) {
+                                    console.log(pgm + 'issue #1147: no optional files in content.json') ;
+                                }
+                                else {
+                                    console.log(pgm + 'issue #1147: content.files_optional = ' + JSON.stringify(content.files_optional)) ;
+                                    if (show_debug('issue_1147')) {
+                                        console.log(pgm + 'issue #1147 = true: old workaround for siteSign failure. deleting content.files_optional before sign') ;
+                                        delete content.files_optional ;
+                                    }
+                                    else console.log(pgm + 'issue #1147 = false: new fix. keeping content.files_optional') ;
+                                }
+
                                 // 2: write content.json
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(content)));
                                 // debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite');
@@ -597,10 +610,22 @@ angular.module('MoneyNetwork')
                                             console.log(pgm + inner_path + ' siteSign failed. error = ' + JSON.stringify(res));
                                             return step_3_find_user_hubs() ; // error - continue with next step;
                                         }
-                                        // sign OK
-                                        if (!dictionaries.length) return step_3_find_user_hubs() ; // done - continue with next step
-                                        // next sign in 1 second to keep modified sequence
-                                        setTimeout(sign, 1000) ;
+
+                                        // sign ok
+
+                                        // # https://github.com/HelloZeroNet/ZeroNet/issues/1147
+                                        // check files_optional after sign
+                                        z_file_get(pgm, {inner_path: inner_path, required: false}, function (content_str) {
+                                            var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file:_get callback 4: ';
+                                            var content ;
+                                            content = JSON.parse(content_str) ;
+                                            console.log(pgm + 'issue #1147. issue_1147 = ' + show_debug('issue_1147') + ', files_optional = ' + JSON.stringify(content.files_optional)) ;
+
+                                            if (!dictionaries.length) return step_3_find_user_hubs() ; // done - continue with next step
+                                            // next sign in 1 second to keep modified sequence
+                                            setTimeout(sign, 1000) ;
+
+                                        }) ; // z_file_get callback 4
 
                                     }) ; // siteSign callback 3
 

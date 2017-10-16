@@ -616,7 +616,7 @@ angular.module('MoneyNetwork')
                                     'contact2.deleted_outbox_messages = ' + JSON.stringify(contact2.deleted_outbox_messages) +
                                     ', Object.keys(contact2.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact2.deleted_outbox_messages)) ;
                             }
-                        }
+                        } // i
                         console.log(pgm + error) ;
                     }
                 } // if (received)
@@ -5657,6 +5657,17 @@ angular.module('MoneyNetwork')
                                 res[i].delete = true ;
                                 continue ;
                             }
+                            // todo: auth_address == my_auth_address not correct for different machines using same user cert.
+                            //       optional file download from other machine failed. downloaded = false and no timestamps array
+                            //12:56:42.123 all.js:15751 MoneyNetworkService.get_public_chat dbQuery callback 3: issue #84. cache_status.timestamps is null. res[1] = {"guest":null,"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh","from_timestamp":1508145257162,"filename":"1508145257162-1508145257162-2-chat.json","to_timestamp":1508145257162,"auth_address":"18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ","user_seq":2,"pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0pMuMJyynH1BmhMJ6vvd\nQZplIBgiiOQSqwu2SpYKICm+P1gGNHnICQic/Nuqi9t93rxJLfWCsl0+lCtoJLen\nf78xz4XzEcGPBeBFn2TbQqPO9loylNlaOgiqDG5qcSc9n7yEF0xmpReDGATwzECi\nJrpZBImwhUMO48iS08b4IfQaMsbnUVY8hdUeJiQ831kMkNQLtxWaeRiyn8cTbKQ6\nLXCDG7GDaFN6t+x3cv/xBX06+ykuYQ0gNIBySiIz69RYzhvOkqOQggLWPF+NMW1J\nO6VRqvX7Sybwm51v3kGGKWeX4znvGY+GwVCpwiH+b2hbGZHIqFp9ogimGVE0WPgu\nnwIDAQAB\n-----END PUBLIC KEY-----","size":341,"delete":true}, cache_status = {"is_downloaded":false,"is_pending":false,"size":341,"download_failed_at":[1508151402020]}
+                            //12:56:42.123 all.js:15754 Uncaught TypeError: Cannot read property 'length' of undefined
+                            //at Object.<anonymous> (all.js:15754)
+                            //at ZeroFrame.onMessage (30-ZeroFrame.js:42)
+                            //at 30-ZeroFrame.js:7
+                            //(anonymous) @ all.js:15754
+                            //ZeroFrame.onMessage @ 30-ZeroFrame.js:42
+                            //(anonymous) @ 30-ZeroFrame.js:7
+
                             if ((res[i].auth_address == my_auth_address) || (cache_status && cache_status.is_downloaded)) {
                                 // is either
                                 // - my public public outbox chat messages
