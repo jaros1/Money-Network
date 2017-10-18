@@ -241,7 +241,7 @@ angular.module('MoneyNetwork')
         var inner_path_re1 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
         var inner_path_re2 = /^merged-MoneyNetwork\/(.*?)\/data\/users\// ; // extract hub
         function z_file_get (pgm, options, cb) {
-            var inner_path, match2, hub, timeout, cb2_done, debug_seq, process_id, cb2 ;
+            var inner_path, match2, hub, pos, filename, optional_file, get_optional_file_info ;
             inner_path = options.inner_path ;
 
             // check inner_path.
@@ -256,27 +256,77 @@ angular.module('MoneyNetwork')
                 }
             }
 
-            // extend cb. add debug and timeout processing.
-            // run as fileGet callback or run by $timeout (problem with optional fileGet operation running forever
-            cb2_done = false ;
-            cb2 = function (data) {
-                if (process_id) {
-                    try {$timeout.cancel(process_id)}
-                    catch (e) {}
-                    process_id = null ;
-                } ;
-                if (cb2_done) return ; // cb2 has already run
-                cb2_done = true ;
-                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
-                debug_z_api_operation_end(debug_seq, data ? 'OK' : 'Not found');
-                cb(data) ;
-            } ; // fileGet callback
+            // optional fileGet operation?
+            // https://github.com/jaros1/Money-Network/issues/227
+            // problem with fileGet operation for delete optional files. timeout after > 60 seconds.
+            // check of optional files exists before fileGet operation starts
+            // files_allowed": "((data|status|like).json|avatar.(jpg|png))"
+            pos = inner_path.lastIndexOf('/') ;
+            filename = inner_path.substr(pos+1, inner_path.length-pos) ;
+            optional_file = (['content.json', 'data.json', 'status.json', 'like.json', 'avatar.jpg', 'avatar.png'].indexOf(filename) == -1);
+            debug('z_file_get', pgm + 'filename = ' + JSON.stringify(filename) + ', optional_file = ' + optional_file) ;
 
-            timeout = options.timeout || 300 ; // timeout in seconds
-            process_id = $timeout(cb2, timeout*1000) ;
-            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-            debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', show_debug('z_file_get')) ;
-            ZeroFrame.cmd("fileGet", options, cb2) ;
+            // optional step. get info about optional file before fileGet operation
+            get_optional_file_info = function (cb) {
+                if (!optional_file) return cb(true) ;
+                ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
+                    debug('z_file_get', pgm + 'file_info = ' + JSON.stringify(file_info)) ;
+                    //file_info = {
+                    //    "inner_path": "data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/1508311915217-1508311915217-1-chat.json",
+                    //    "uploaded": 0,
+                    //    "is_pinned": 1,
+                    //    "time_accessed": 0,
+                    //    "site_id": 6,
+                    //    "is_downloaded": 0,
+                    //    "file_id": 19984,
+                    //    "peer": 0,
+                    //    "time_added": 1508311916,
+                    //    "hash_id": 514,
+                    //    "time_downloaded": 0,
+                    //    "size": 293
+                    //};
+                    if (file_info) {
+                        if (!file_info.is_downloaded && !file_info.peer) {
+                            debug('z_file_get', pgm + 'abort optional file download. No peers') ;
+                            return cb(false)
+                        }
+                    }
+                    else debug('z_file_get', pgm + 'error. no file_info for optional file ' + inner_path) ;
+
+                    cb(true) ;
+                }) ; // optionalFileInfo
+            } ; // get_optional_file_info
+            get_optional_file_info(function(ok) {
+                var cb2_done, cb2, timeout, process_id, debug_seq ;
+                if (!ok) {
+                    debug('z_file_get', pgm + 'abort fileGet operation for ' + inner_path + '. optional file without any peers') ;
+                    return cb() ;
+                }
+
+                // extend cb. add debug and timeout processing.
+                // run as fileGet callback or run by $timeout (problem with optional fileGet operation running forever
+                cb2_done = false ;
+                cb2 = function (data) {
+                    if (process_id) {
+                        try {$timeout.cancel(process_id)}
+                        catch (e) {}
+                        process_id = null ;
+                    }
+                    if (cb2_done) return ; // cb2 has already run
+                    cb2_done = true ;
+                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+                    debug_z_api_operation_end(debug_seq, data ? 'OK' : 'Not found');
+                    cb(data) ;
+                } ; // fileGet callback
+
+                timeout = options.timeout || 300 ; // timeout in seconds
+                process_id = $timeout(cb2, timeout*1000) ;
+                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', show_debug('z_file_get')) ;
+                ZeroFrame.cmd("fileGet", options, cb2) ;
+
+            }) ;
+
         } // z_file_get
 
         function get_default_user_hub () {
@@ -562,11 +612,14 @@ angular.module('MoneyNetwork')
                         // loop. sign each content.json file (remove files_optional and add optional)
                         sign = function () {
                             var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign: ';
-                            var dictionary, inner_path, debug_seq0 ;
+                            var dictionary, hub, inner_path  ;
                             dictionary = dictionaries.shift() ;
+                            hub = dictionary.substr(0,dictionary.indexOf('/')) ;
+                            console.log(pgm + 'dictionary = ' + dictionary + ', hub = ' + hub) ;
                             // 1: read content.json
                             inner_path = 'merged-MoneyNetwork/' + dictionary + '/content.json' ;
-                            z_file_get(pgm, {inner_path: inner_path, required: false}, function (content_str) {
+
+                            z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
                                 var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 1: ';
                                 var content, json_raw, debug_seq1 ;
                                 if (content_str) content = JSON.parse(content_str) ;
@@ -575,15 +628,15 @@ angular.module('MoneyNetwork')
 
                                 // # https://github.com/HelloZeroNet/ZeroNet/issues/1147
                                 if (!content.files_optional || !Object.keys(content.files_optional).length) {
-                                    console.log(pgm + 'issue #1147: no optional files in content.json') ;
+                                    console.log(pgm + 'issue #1147: ' + hub + ': no optional files in content.json') ;
                                 }
                                 else {
                                     console.log(pgm + 'issue #1147: content.files_optional = ' + JSON.stringify(content.files_optional)) ;
                                     if (show_debug('issue_1147')) {
-                                        console.log(pgm + 'issue #1147 = true: old workaround for siteSign failure. deleting content.files_optional before sign') ;
+                                        console.log(pgm + 'issue #1147: ' + hub + ': issue_1147=true: old workaround for siteSign failure. deleting content.files_optional before sign') ;
                                         delete content.files_optional ;
                                     }
-                                    else console.log(pgm + 'issue #1147 = false: new fix. keeping content.files_optional') ;
+                                    else console.log(pgm + 'issue #1147: ' + hub + ':issue_1147=false: new fix. keeping content.files_optional') ;
                                 }
 
                                 // 2: write content.json
@@ -619,7 +672,7 @@ angular.module('MoneyNetwork')
                                             var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 4: ';
                                             var content ;
                                             content = JSON.parse(content_str) ;
-                                            console.log(pgm + 'issue #1147. issue_1147 = ' + show_debug('issue_1147') + ', files_optional = ' + JSON.stringify(content.files_optional)) ;
+                                            console.log(pgm + 'issue #1147. ' + hub + ': issue_1147 = ' + show_debug('issue_1147') + ', files_optional = ' + JSON.stringify(content.files_optional)) ;
 
                                             if (!dictionaries.length) return step_3_find_user_hubs() ; // done - continue with next step
                                             // next sign in 1 second to keep modified sequence
