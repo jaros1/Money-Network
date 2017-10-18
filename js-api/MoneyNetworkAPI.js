@@ -337,7 +337,7 @@ var MoneyNetworkAPILib = (function () {
     var done = {}; // filename => cb or true. cb: callback waiting for file. true: processed
     var offline = {}; // other session filename => true (loading) or array with offline transactions
     // options:
-    // - cb: session level callback function to handle incoming messages for this sessionide
+    // - cb: session level callback function to handle incoming messages for this sessionid
     // - encrypt: MoneyNetworkAPI instance for this sessionid. Used for encrypt and decrypt. injected into callback function
     // - constructor: called from MoneyNetworkAPI constructor. error message is not reported back in catch (e) { e.message }
     function add_session(sessionid, options) {
@@ -1775,7 +1775,7 @@ MoneyNetworkAPI.prototype.decrypt_3 = function (encrypted_text_3, cb) {
 }; // decrypt_3
 
 // encrypt/decrypt json messages
-// encryptions: integer or array of integers: 1 cryptMessage, 2 JSEncrypt, 3 symmetric encryption
+// encryption layers: integer or array of integers: 1 JSEncrypt, 2, cryptMessage, 3 symmetric encryption
 MoneyNetworkAPI.prototype.encrypt_json = function (json, encryptions, cb) {
     var pgm = this.module + '.encrypt_json: ';
     var self, encryption;

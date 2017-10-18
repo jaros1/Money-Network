@@ -6391,7 +6391,39 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.load_server_info serverInfo callback: ';
                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                 debug_z_api_operation_end(debug_seq, new_server_info ? 'OK' : 'Failed. Not found') ;
-                // console.log(pgm + 'server_info = ' + JSON.stringify(new_server_info)) ;
+                console.log(pgm + 'server_info = ' + JSON.stringify(new_server_info));
+                // comp 1: zeronet with vpn and zeronet port open
+                //server_info = {
+                //    "ip_external": true,
+                //    "fileserver_ip": "*",
+                //    "tor_enabled": false,
+                //    "plugins": ["AnnounceZero", "Bigfile", "Cors", "CryptMessage", "FilePack", "MergerSite", "Mute", "Newsfeed", "OptionalManager", "PeerDb", "Sidebar", "Stats", "TranslateSite", "Trayicon", "Zeroname"],
+                //    "fileserver_port": 37344,
+                //    "language": "en",
+                //    "ui_port": 43110,
+                //    "rev": 3098,
+                //    "ui_ip": "127.0.0.1",
+                //    "platform": "linux2",
+                //    "version": "0.6.0",
+                //    "tor_status": "Error ([Errno 111] Connection refused)",
+                //    "debug": true
+                //};
+                // comp 2: zeronet running tor and zeronet port closed
+                //server_info = {
+                //    "ip_external": false,
+                //    "fileserver_ip": "*",
+                //    "tor_enabled": true,
+                //    "plugins": ["AnnounceZero", "Bigfile", "Cors", "CryptMessage", "FilePack", "MergerSite", "Mute", "Newsfeed", "OptionalManager", "PeerDb", "Sidebar", "Stats", "TranslateSite", "Trayicon", "Zeroname"],
+                //    "fileserver_port": 41139,
+                //    "language": "en",
+                //    "ui_port": 43110,
+                //    "rev": 3097,
+                //    "ui_ip": "127.0.0.1",
+                //    "platform": "linux2",
+                //    "version": "0.6.0",
+                //    "tor_status": "OK (10 onions running)",
+                //    "debug": true
+                //};
                 var key ;
                 for (key in server_info) delete server_info[key] ;
                 for (key in new_server_info) server_info[key] = new_server_info[key] ;
