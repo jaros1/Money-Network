@@ -6391,7 +6391,7 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.load_server_info serverInfo callback: ';
                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                 debug_z_api_operation_end(debug_seq, new_server_info ? 'OK' : 'Failed. Not found') ;
-                console.log(pgm + 'server_info = ' + JSON.stringify(new_server_info));
+                // console.log(pgm + 'server_info = ' + JSON.stringify(new_server_info));
                 // comp 1: zeronet with vpn and zeronet port open
                 //server_info = {
                 //    "ip_external": true,

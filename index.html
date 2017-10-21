@@ -513,7 +513,7 @@
                         <table>
                             <thead>
                             <tr><td colspan="7">&nbsp;</td></tr>
-                            <tr><td colspan="7">Included money transactions:</td></tr>
+                            <tr><td colspan="7" style="text-align: left">Included money transactions:</td></tr>
                             <tr>
                                 <th>Action</th>
                                 <th>&nbsp;</th>
@@ -526,14 +526,23 @@
                             </thead>
                             <tbody>
                             <tr ng-repeat="mt in m.message.message.money_transactions" style="vertical-align: top">
-                                <td ng-bind="mt.action"></td>
+                                <td ng-bind="mt.action" style="text-align: left"></td>
                                 <td></td>
-                                <td ng-bind="mt.name"></td>
+                                <td ng-bind="mt.name" style="text-align: left"></td>
                                 <td></td>
-                                <td><a href="" ng-click="c.open_wallet(mt,2)" ng-bind="mt.wallet_name"></a></td>
+                                <td style="text-align: left"><a href="" ng-click="c.open_wallet(mt,2)" ng-bind="mt.wallet_name"></a></td>
                                 <td></td>
-                                <td ng-bind="mt.amount" style="text-align: right"></td>
+                                <td ng-bind="mt.amount"></td>
                             </tr>
+                            </tbody>
+                            <tbody>
+                            <tr><td colspan="7">&nbsp;</td></tr>
+                            <tr><td colspan="7" style="text-align: left">
+                                Action:
+                                <span ng-click="c.approve_money_transactions(m)" title="Approve money transactions?">Approve <span class="glyphicon glyphicon-ok" ></span></span>&nbsp;
+                                <span ng-click="c.reject_money_transactions(m)" title="Reject money transactions?"> Reject <span class="glyphicon glyphicon-remove" ></span></span>&nbsp;
+                                <span ng-click="c.edit_money_transactions(m)" title="Reject, edit and return money transactions?"> Edit <span class="glyphicon glyphicon-pencil" ></span></span>
+                            </td></tr>
                             </tbody>
                         </table>
                     </td>

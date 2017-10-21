@@ -1153,48 +1153,6 @@ angular.module('MoneyNetwork')
                 }
                 // linkno = 2. open wallet link in old chat message. ping wallet before open window is called
 
-                //message.money_transactions.push({
-                //    wallet_url: balance.wallet_domain || balance.wallet_address, // url for open wallet session
-                //    wallet_sha256: balance.wallet_sha256, // link to full wallet information (wallet.json files)
-                //    wallet_name: balance.wallet_name, // display info. wallet_title or wallet_address at transaction start time
-                //    action: money_transaction.action, // Send or Request
-                //    code: balance.code, // currency code
-                //    name: balance.name, // display info. currency name at transaction start time
-                //    amount: money_transaction.amount * money_transaction.factor, // amount without unit (factor = 1)
-                //    json: money_transaction.json // wallet specific json. any type
-                //}) ;
-
-                //money_transaction = {
-                //    "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
-                //    "wallet_name": "MoneyNetworkW2",
-                //    "action": "Send",
-                //    "code": "tBTC",
-                //    "name": "Test Bitcoin",
-                //    "amount": 0.0001,
-                //    "json": {"return_address": "2MuDZs8yo375NyNVVQtpNwWuJt1dUVCefLK"},
-                //    "$$hashKey": "object:502"
-                //};
-
-                //currencies = [{
-                //    "code": "tBTC",
-                //    "amount": 1.3,
-                //    "balance_at": 1506416329497,
-                //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
-                //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
-                //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                //    "wallet_title": "MoneyNetworkW2",
-                //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                //    "api_url": "https://www.blocktrail.com/api/docs",
-                //    "unique_id": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7/tBTC",
-                //    "name": "Test Bitcoin",
-                //    "url": "https://en.bitcoin.it/wiki/Testnet",
-                //    "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
-                //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
-                //    "wallet_name": "MoneyNetworkW2",
-                //    "unique_text": "tBTC Test Bitcoin from MoneyNetworkW2"
-                //}];
-
                 // get list of currencies from connected wallets
                 open_wallet_url = function() {
                     var url ;
@@ -1703,7 +1661,7 @@ angular.module('MoneyNetwork')
 
                 } ; // step_3_check_transactions
                 
-                // callback function - optional step - money transactions - ping wallet sessions
+                // callback function - optional step - money transactions only - ping wallet sessions
                 step_2_ping_wallets = function () {
                     var pgm = controller + '.send_chat_msg.step_2_ping_wallets: ';
                     var i, money_transaction, unique_text, sessions, j, balance, ping_wallet ;
@@ -1711,6 +1669,8 @@ angular.module('MoneyNetwork')
 
                     self.new_chat_msg_disabled = 'Pinging wallet(s) ...' ;
                     console.log(pgm + self.new_chat_msg_disabled);
+
+                    // todo: unique_text is unique text for wallet and currency. not unique text for wallet only. only one ping for each wallet. Not one ping for each currency code in wallet. test with a wallet with two currencies
 
                     // ping wallet(s). fast response. relevant wallet(s) must be open before sending chat with money transaction(s)
                     // find unique_texts and sessionids before ping wallets
@@ -1758,6 +1718,7 @@ angular.module('MoneyNetwork')
                     // a) ping OK. wallet is ready. ready to send money transaction(s) to wallet session for validation
                     // b) ping timeout. wallet not ready. user should open or reload wallet in an other browser tab
                     // c) ping error. system error. cannot send money transaction. stop send_chat_msg
+                    // todo: DRY: see also approve_money_transactions.step_2_ping_wallets. almost identical code
                     ping_wallet = function () {
                         var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet: ';
                         var balance, i, money_transaction, errors, error ;
@@ -2395,6 +2356,211 @@ angular.module('MoneyNetwork')
                 else if (self.new_chat_msg_disabled) return self.new_chat_msg_disabled ;
                 else return 'Press <Tab> to insert extra rows' ;
             } ; // validate_money_transaction
+
+            self.approve_money_transactions = function (m) {
+                var pgm = controller + '.approve_money_transactions: ' ;
+                var step_1_check_unknown_wallets, step_2_ping_wallets, unknown_wallets, balances, unique_texts_hash ;
+                console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
+                //message = {
+                //    "local_msg_seq": 5925,
+                //    "folder": "inbox",
+                //    "message": {
+                //        "msgtype": "chat msg",
+                //        "message": "receive money trans test 1",
+                //        "money_transactions": [{
+                //            "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                //            "wallet_name": "MoneyNetworkW2",
+                //            "action": "Send",
+                //            "code": "tBTC",
+                //            "name": "Test Bitcoin",
+                //            "amount": 0.0001,
+                //            "money_transactionid": "HdJE73WG31rdYRNipjDnQCJcTVcNVAy56jUcIFLJp2hjZ7SFV87GXTSCzvdv",
+                //            "json": {"return_address": "2NEmsmUENZVmSxH4FqFTuTpKVKxiNrHEHDV"},
+                //            "$$hashKey": "object:1467"
+                //        }],
+                //        "local_msg_seq": 13
+                //    },
+                //    "zeronet_msg_id": "c2c32077baf0a2cd28f49166dbc6830b4c037abc7ace8a72cb6ff30a4f915cb4",
+                //    "sender_sha256": "13db423419e1751d7642c4fce94dba69dc4d67654ce8dab09de866d54ff01196",
+                //    "sent_at": 1508506998144,
+                //    "received_at": 1508507001863,
+                //    "encryption": 1,
+                //    "ls_msg_size": 796,
+                //    "seq": 221,
+                //    "reactions": []
+                //};
+
+                // approve process:
+                // - add wallet(s) to MN if unknown wallet
+                // - user registering in wallet(s)
+                // - ping wallet(s)
+                // - validate wallet transaction(s) - all or nothing
+                // - approve transactions(s) - wallet sessions will to the rest
+                // - approved transaction(s) may fail with error message(s) in wallet(s) processing
+
+                // unique_texts hash. used in step_2_ping_wallets and todo:
+                balances = [] ; // from index in money_transactions to balance record in currencies
+                unique_texts_hash = {} ;
+
+                // create callback chain step 1.. todo: n
+
+                // todo: DRY: copy/paste from send_chat_msg.step_2_ping_wallets + small changes
+                step_2_ping_wallets = function () {
+                    var pgm = controller + '.approve_money_transactions.step_2_ping_wallets: ' ;
+                    var i, money_transaction, balance, unique_text, ping_wallet ;
+
+                    // todo: only one ping for each wallet. Not one ping for each currency code in wallet. test with a wallet with two currencies
+
+                    // ping wallet(s). fast response. relevant wallet(s) must be open before sending chat with money transaction(s)
+                    // find unique_texts and sessionids before ping wallets
+                    // unique_texts_hash is also used in step_3_check_transactions
+                    for (i=0 ; i< m.message.message.money_transactions.length ; i++) {
+                        money_transaction = m.message.message.money_transactions[i] ;
+                        balance = balances[i] ;
+                        if (!money_transaction.message) money_transaction.message = {} ;
+                        delete money_transaction.message.ping ; // delete any old ping error message
+                        console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction));
+                        unique_text = balance.unique_text ;
+                        if (!unique_texts_hash[unique_text]) unique_texts_hash[unique_text] = {
+                            balance: balance, // object from self.currencies array (currency = unique_text
+                            money_transactions: [], // index to rows in self.money_transactions
+                            session: null // session object. from get_session request.
+                        } ;
+                        unique_texts_hash[unique_text].money_transactions.push(i) ;
+                    } // for i
+                    console.log(pgm + 'unique_texts_hash = ' + JSON.stringify(unique_texts_hash)) ;
+                    //unique_texts_hash = {
+                    //    "tBTC Test Bitcoin from 1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1": {
+                    //        "balance": {
+                    //            "code": "tBTC",
+                    //            "amount": 0,
+                    //            "balance_at": 1507824156612,
+                    //            "sessionid": "jmy0rxlogb3dhapw5s0eq6jorcm51l9uw4vejmryeg1mlltts4x6bn7tfqzx",
+                    //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                    //            "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //            "wallet_title": "MoneyNetworkW2",
+                    //            "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                    //            "api_url": "https://www.blocktrail.com/api/docs",
+                    //            "unique_id": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7/tBTC",
+                    //            "name": "Test Bitcoin",
+                    //            "url": "https://en.bitcoin.it/wiki/Testnet",
+                    //            "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                    //            "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
+                    //            "wallet_name": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //            "unique_text": "tBTC Test Bitcoin from 1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
+                    //        }, "money_transactions": [0], "session": null
+                    //    }
+                    //};
+
+                    ping_wallet = function() {
+
+                    };
+
+                    console.log(pgm + 'todo: ping wallets (copy/paste)') ;
+                } ; // step_2_ping_wallets
+
+                unknown_wallets = [] ;
+                step_1_check_unknown_wallets = function(index) {
+                    var pgm = controller + '.approve_money_transactions.step_1_check_unknown_wallets: ' ;
+                    var money_transaction, msg, plural ;
+                    if (index >= m.message.message.money_transactions.length) {
+                        // done. check for any unknown wallets
+                        if (unknown_wallets.length) {
+                            plural = (unknown_wallets.length > 1 ? 's' : '') ;
+                            msg =
+                                'Cannot approve money transaction<br>' +
+                                'Unknown wallet' + plural + ' ' + unknown_wallets.join(', ') + '<br>' +
+                                'Please add missing wallet' + plural + ' to MoneyNetwork' ;
+                            ZeroFrame.cmd("wrapperNotification", ['error', msg, 5000]) ;
+                            return ;
+                        }
+                        return step_2_ping_wallets() ;
+                    } // done. next step
+                    money_transaction = m.message.message.money_transactions[index] ;
+                    moneyNetworkService.get_currencies(function (currencies, delayed) {
+                        var pgm = controller + '.approve_money_transactions.step_1_check_unknown_wallets get_currencies callback 1: ' ;
+                        var wallet_name, unknown_wallet, i, balance, sessionid, error ;
+                        if (!self.currencies) self.currencies = currencies ; // // initialize currencies array used in UI
+                        wallet_name = money_transaction.wallet_name ;
+                        unknown_wallet = function () {
+                            if (unknown_wallets.indexOf(wallet_name) == -1) unknown_wallets.push(wallet_name) ;
+                            step_1_check_unknown_wallets(index+1) ;
+                        } ;
+                        if (!currencies || !currencies.length) return unknown_wallet() ;
+                        // find sessionid. no sessionid = unknown wallet.
+                        for (i=0 ; i<currencies.length ; i++) {
+                            balance = currencies[i] ;
+                            if ((money_transaction.wallet_sha256 == balance.wallet_sha256) ||
+                                (money_transaction.wallet_url == balance.wallet_domain) ||
+                                (money_transaction.wallet_url == balance.wallet_address)) {
+                                sessionid = balance.sessionid ;
+                                break ;
+                            }
+                        } // for i
+                        if (!sessionid) return unknown_wallet() ;
+                        // wallet exists. check currency code ;
+                        balances[index] = null ;
+                        for (i = 0; i < currencies.length; i++) {
+                            balance = currencies[i];
+                            if (((money_transaction.wallet_sha256 == balance.wallet_sha256) ||
+                                (money_transaction.wallet_url == balance.wallet_domain) ||
+                                (money_transaction.wallet_url == balance.wallet_address)) &&
+                                (money_transaction.code == balance.code)) {
+                                balances[index] = balance;
+                                break;
+                            }
+                        } // for i
+                        if (!balances[index]) {
+                            // only possible if wallet.json has been changed since money transaction was submitted. abort
+                            plural = (m.message.message.money_transactions.length > 1 ? 's' : '') ;
+                            error = 'Currency code was not found in ' + wallet_name + '<br>Please reject or edit money transaction' + plural ;
+                            console.log(pgm + error) ;
+                            ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                            return ;
+                        }
+                        console.log(pgm + 'wallet ' + wallet_name + ', balance = ' + JSON.stringify(balance)) ;
+                        //balance = {
+                        //    "code": "tBTC",
+                        //    "amount": 0,
+                        //    "balance_at": 1507824156612,
+                        //    "sessionid": "jmy0rxlogb3dhapw5s0eq6jorcm51l9uw4vejmryeg1mlltts4x6bn7tfqzx",
+                        //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                        //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                        //    "wallet_title": "MoneyNetworkW2",
+                        //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                        //    "api_url": "https://www.blocktrail.com/api/docs",
+                        //    "unique_id": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7/tBTC",
+                        //    "name": "Test Bitcoin",
+                        //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                        //    "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                        //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
+                        //    "wallet_name": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                        //    "unique_text": "tBTC Test Bitcoin from 1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
+                        //};
+                        // wallet in check next money transaction
+                        step_1_check_unknown_wallets(index+1) ;
+                    }) ; // get_currencies callback 1
+
+                } ; // step_1_check_unknown_wallets
+                step_1_check_unknown_wallets(0) ;
+
+            }; // approve_money_transactions
+
+            self.reject_money_transactions = function (m) {
+                var pgm = controller + '.reject_money_transactions: ' ;
+                console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
+
+                // reject process:
+                // - send todo: reject money transactions chat message.
+                // - if known wallet(s): let the wallets reject money transaction(s)
+
+            }; // reject_money_transactions
+
+            self.edit_money_transactions = function (m) {
+                var pgm = controller + '.edit_money_transactions: ' ;
+                console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
+            }; // edit_money_transactions
 
             // public chat checkbox changed - add/remove public chat from UI
             self.public_chat_changed = function () {

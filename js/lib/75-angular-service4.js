@@ -874,9 +874,10 @@ angular.module('MoneyNetwork')
                 if (!session_info) continue;
                 //if (!session_info.currencies) continue;
                 if (!session_info.balance) continue;
-                // console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
+                console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
                 for (i=0 ; i<session_info.balance.length ; i++) {
                     balance = JSON.parse(JSON.stringify(session_info.balance[i])) ;
+                    balance.last_request_at = session_info.last_request_at ;
                     balance.balance_at = session_info.balance_at ;
                     balance.sessionid = sessionid ;
                     balance.wallet_sha256 = session_info.wallet_sha256 ;
@@ -890,28 +891,32 @@ angular.module('MoneyNetwork')
                 while (currencies.length) currencies.shift() ;
                 return cb(currencies, false) ;
             }
+            // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
+            // todo: why has session with last_request_at": 1507616030739, == 2017-10-10T06:13:50+00:00 not been removed from ls_sessions?
+            //temp_currencies = [{
+            //    "code": "tBTC",
+            //    "amount": 0,
+            //    "last_request_at": 1507616030739, == 2017-10-10T06:13:50+00:00
+            //    "balance_at":      1507568361090, == 2017-10-09T16:59:21+00:00
+            //    "sessionid": "aznw4bpyyk1g19hc0u3ndigro2ew1pqyzqsnwfo3l6wja9dyidbmjetjkeog",
+            //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7"
+            //}, {
+            //    "code": "tBTC",
+            //    "amount": 0,
+            //    "last_request_at": 1508511536094, == 2017-10-20T14:58:56+00:00
+            //    "balance_at":      1507824156612, == 2017-10-12T16:02:36+00:00
+            //    "sessionid": "jmy0rxlogb3dhapw5s0eq6jorcm51l9uw4vejmryeg1mlltts4x6bn7tfqzx",
+            //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7"
+            //}];
 
             // find full wallet info from sha256 values
             console.log(pgm + 'find full wallet info from wallet_sha256_values array = ' + JSON.stringify(wallet_sha256_values)) ;
             MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, refresh_angular_ui) {
                 var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row, unique_texts,
                     sessionid, changed_wallet_sha256_values, status, step_1_get_session, step_2_ping_other_session,
-                    step_3_other_user_path, step_n_done ;
+                    step_3_other_user_path, step_n_done, doublet_wallet_sha256, non_unique_text ;
                 // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
-                //wallet_info = {
-                //    "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74": {
-                //        "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                //        "wallet_title": "MoneyNetworkW2",
-                //        "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                //        "currencies": [{
-                //            "code": "tBTC",
-                //            "name": "Test Bitcoin",
-                //            "url": "https://en.bitcoin.it/wiki/Testnet",
-                //            "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
-                //        }],
-                //        "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
-                //    }
-                //};
+                doublet_wallet_sha256 = {} ;
                 if (!wallet_info || (typeof wallet_info != 'object') || wallet_info.error) {
                     console.log(pgm + 'could not find wallet_info for sha256 values ' + JSON.stringify(wallet_sha256_values) + '. wallet_info = ' + JSON.stringify(wallet_info)) ;
                 }
@@ -922,8 +927,26 @@ angular.module('MoneyNetwork')
                         for (key in wallet_info[wallet_sha256]) {
                             temp_currencies[i][key] = wallet_info[wallet_sha256][key] ;
                         } // for key
+                        if (doublet_wallet_sha256[wallet_sha256]) {
+                            // more that one session with this wallet_sha256. use session with last balance_at timestamp
+                            if (temp_currencies[i].last_request_at > doublet_wallet_sha256[wallet_sha256].last_request_at) doublet_wallet_sha256[wallet_sha256].last_request_at = temp_currencies[i].last_request_at ;
+                        }
+                        else doublet_wallet_sha256[wallet_sha256] = { last_request_at: temp_currencies[i].last_request_at, count: 0} ;
+                        doublet_wallet_sha256[wallet_sha256].count++ ;
                     } // for i
                 } // for wallet_sha256
+
+                // same wallet_sha256 info for more than one session. keep session with last_request_at timestamp
+                // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
+                // console.log(pgm + 'doublet_wallet_sha256 = ' + JSON.stringify(doublet_wallet_sha256)) ;
+                for (wallet_sha256 in doublet_wallet_sha256) {
+                    if (doublet_wallet_sha256.count == 1) continue ;
+                    for (i=temp_currencies.length-1 ; i>=0 ; i--) {
+                        if (temp_currencies[i].wallet_sha256 != wallet_sha256) continue ;
+                        if (temp_currencies[i].last_request_at < doublet_wallet_sha256[wallet_sha256].last_request_at) temp_currencies.splice(i,1) ;
+                    }
+                }
+                // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
 
                 // copy full wallet info into currencies array
                 changed_wallet_sha256_values = [] ;
@@ -944,7 +967,6 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'sessions (after get_currencies) = ' + JSON.stringify(ls_sessions)) ;
 
                 // move currency info (name, url and units) to currency rows for easy filter and sort
-                unique_texts = {} ;
                 for (i=temp_currencies.length-1 ; i>=0 ; i--) {
                     balance = temp_currencies[i] ;
                     if (!balance.currencies || !balance.currencies.length) {
@@ -963,41 +985,41 @@ angular.module('MoneyNetwork')
                         temp_currencies.splice(i,1) ;
                         continue ;
                     }
-                    // merge balance and currency information
                     balance.unique_id = balance.wallet_sha256 + '/' + balance.code ;
-                    //currencies = [{
-                    //    "code": "tBTC",
-                    //    "amount": 1.3,
-                    //    "balance_at": 1504265571720,
-                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
-                    //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74",
-                    //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //    "wallet_title": "MoneyNetworkW2",
-                    //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                    //    "name": "Test Bitcoin",
-                    //    "url": "https://en.bitcoin.it/wiki/Testnet",
-                    //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
-                    //}];
 
+                    // merge balance and currency information
                     currency = balance.currencies[j] ;
                     for (key in currency) {
                         if (!currency.hasOwnProperty(key)) continue ;
                         balance[key] = currency[key] ;
                     }
                     balance.wallet_name = balance.wallet_title ;
-                    balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_name;
-                    if (!unique_texts[balance.unique_text]) unique_texts[balance.unique_text] = 0 ;
-                    unique_texts[balance.unique_text]++ ;
                     delete balance.currencies ;
                 } // for i
 
-                console.log(pgm + 'force unique_text. wallet_title may not be unique') ;
-                for (i=0 ; i<temp_currencies.length ; i++) {
-                    balance = temp_currencies[i] ;
-                    if (unique_texts[balance.unique_text] == 1) continue ; // OK
-                    balance.wallet_name = balance.wallet_address ;
-                    balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_name;
-                } // for i
+                // wallet_name must be unique. starting with wallet_title and switching to wallet_address
+                // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
+                while (true) {
+                    unique_texts = {} ;
+                    non_unique_text = null ;
+                    for (i=0 ; i<temp_currencies.length ; i++) {
+                        balance = temp_currencies[i] ;
+                        balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_name;
+                        if (!unique_texts[balance.unique_text]) unique_texts[balance.unique_text] = 0 ;
+                        unique_texts[balance.unique_text]++ ;
+                        if (unique_texts[balance.unique_text]>1) non_unique_text =  balance.unique_text ;
+                    }
+                    if (!non_unique_text) break ; // OK. unique_text is unique
+                    console.log(pgm + 'non unique text ' + non_unique_text + '. count = ' + unique_texts[balance.unique_text]) ;
+                    // fix problem. used wallet_address instead of wallet_title.
+                    for (i=0 ; i<temp_currencies.length ; i++) {
+                        balance = temp_currencies[i] ;
+                        if (balance.unique_text == non_unique_text) {
+                            balance.wallet_name = balance.wallet_address ;
+                            balance.unique_text = balance.code + ' ' + balance.name + ' from ' + balance.wallet_name;
+                        }
+                    }
+                } // while true
 
                 // merge new currencies array into old currencies array (insert, update, delete). used in angularJS UI
                 unique_ids = {} ;
@@ -1196,10 +1218,7 @@ angular.module('MoneyNetwork')
                 // start callback chain
                 step_1_get_session(0) ;
 
-
-
             }) ; // get_wallet_info
-
 
         } // get_currencies
 
