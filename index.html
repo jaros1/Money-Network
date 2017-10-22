@@ -525,7 +525,7 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr ng-repeat="mt in m.message.message.money_transactions" style="vertical-align: top">
+                            <tr ng-repeat-start="mt in m.message.message.money_transactions" style="vertical-align: top">
                                 <td ng-bind="mt.action" style="text-align: left"></td>
                                 <td></td>
                                 <td ng-bind="mt.name" style="text-align: left"></td>
@@ -533,6 +533,16 @@
                                 <td style="text-align: left"><a href="" ng-click="c.open_wallet(mt,2)" ng-bind="mt.wallet_name"></a></td>
                                 <td></td>
                                 <td ng-bind="mt.amount"></td>
+                            </tr>
+                            <tr ng-repeat-end>
+                                <td colspan="7" style="vertical-align: top; text-align: left">
+                                    <span ng-show="mt.message.html" ng-bind-html="mt.message.html"></span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="7" style="text-align: left">
+                                    <span ng-bind-html="m.message.money_transactions_status.html"></span>
+                                </td>
                             </tr>
                             </tbody>
                             <tbody>

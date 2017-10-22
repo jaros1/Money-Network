@@ -415,9 +415,10 @@ var MoneyNetworkAPILib = (function () {
             session_info = sessions[other_session_filename];
             if (session_info.encrypt && session_info.encrypt.destroyed) continue;
             if (session_info.sessionid != sessionid) continue ;
-            if (debug) console.log(pgm + 'found session with sessionid ' + sessionid) ;
+            console.log(pgm + 'found session with sessionid ' + sessionid) ;
             return cb(session_info) ;
         }
+        console.log(pgm + 'could not find any session with sessionid ' + sessionid) ;
         cb() ;
     } // get_session
 

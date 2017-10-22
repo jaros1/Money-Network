@@ -1363,9 +1363,10 @@ angular.module('MoneyNetwork')
 
         function ls_save_contacts (update_zeronet) {
             var pgm = service + '.ls_save_contacts: ' ;
+            var i, contact, j, message_with_envelope, auth_address, local_msg_seq, key, sender_sha256, reactions_index,
+                save_reactions, local_storage_contacts_clone, k, message, money_transaction ;
 
             // any logical deleted inbox messages to be physical deleted?
-            var i, contact, j, message, auth_address, local_msg_seq, key, sender_sha256, reactions_index, save_reactions ;
             save_reactions = false ;
             for (i=0 ; i<ls_contacts.length ; i++)  {
                 contact = ls_contacts[i] ;
@@ -1373,60 +1374,60 @@ angular.module('MoneyNetwork')
                 auth_address = contact.auth_address ;
                 if (!contact.messages) continue ;
                 for (j=contact.messages.length-1 ; j>=0 ; j--) {
-                    message = contact.messages[j] ;
-                    if (!message.deleted_at) continue ;
-                    if (message.folder == 'inbox') {
-                        if (message.z_filename) {
+                    message_with_envelope = contact.messages[j] ;
+                    if (!message_with_envelope.deleted_at) continue ;
+                    if (message_with_envelope.folder == 'inbox') {
+                        if (message_with_envelope.z_filename) {
                             // mark public chat inbox message as deleted
                             console.log(pgm + 'marking public chat inbox message as deleted');
-                            reactions_index = message.sent_at + ',' + contact.auth_address.substr(0,4);
+                            reactions_index = message_with_envelope.sent_at + ',' + contact.auth_address.substr(0,4);
                             if (!ls_reactions[reactions_index]) ls_reactions[reactions_index] = {} ;
-                            ls_reactions[reactions_index].deleted_at = message.deleted_at ;
+                            ls_reactions[reactions_index].deleted_at = message_with_envelope.deleted_at ;
                             save_reactions = true ;
                         }
                         else {
                             // physical delete inbox message (private or group chat)
                             // 1) remember zeronet_msg_id from deleted message. do not recreate deleted inbox messages
-                            if (message.zeronet_msg_id) {
+                            if (message_with_envelope.zeronet_msg_id) {
                                 if (!contact.inbox_zeronet_msg_id) contact.inbox_zeronet_msg_id = [] ;
-                                contact.inbox_zeronet_msg_id.push(message.zeronet_msg_id) ;
+                                contact.inbox_zeronet_msg_id.push(message_with_envelope.zeronet_msg_id) ;
                                 if (!ignore_zeronet_msg_id[auth_address]) ignore_zeronet_msg_id[auth_address] = [] ;
-                                ignore_zeronet_msg_id[auth_address].push(message.zeronet_msg_id) ;
+                                ignore_zeronet_msg_id[auth_address].push(message_with_envelope.zeronet_msg_id) ;
                             }
                             // 2) remember local_msg_seq from deleted inbox messages. Contact may request feedback info for this local_msg_seq later
-                            local_msg_seq = message.message.local_msg_seq ;
+                            local_msg_seq = message.local_msg_seq ;
                             if (local_msg_seq) {
                                 if (!contact.deleted_inbox_messages) contact.deleted_inbox_messages = {};
-                                key = contact.type == 'group' ? message.participant + ',' + local_msg_seq : local_msg_seq ;
-                                contact.deleted_inbox_messages[key] = message.feedback;
+                                key = contact.type == 'group' ? message_with_envelope.participant + ',' + local_msg_seq : local_msg_seq ;
+                                contact.deleted_inbox_messages[key] = message_with_envelope.feedback;
                                 //debug('feedback_info', pgm + 'feedback_info: contact ' + contact.auth_address +
                                 //    ', deleted_inbox_messages = ' + JSON.stringify(contact.deleted_inbox_messages) +
                                 //    ', Object.keys(contact.deleted_inbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_inbox_messages)));
                             }
                         }
                     }
-                    else if (message.zeronet_msg_id) {
+                    else if (message_with_envelope.zeronet_msg_id) {
                         // outbox. wait. zeronet_msg_id reference must be removed in z_update_1_data_json before physical delete here
-                        debug('data_cleanup', pgm + 'data_cleanup: waiting with physical delete of outbox message. zeronet_msg_id has yet been removed. should be done in next z_update_1_data_json call. message = ' + JSON.stringify(message)) ;
+                        debug('data_cleanup', pgm + 'data_cleanup: waiting with physical delete of outbox message. zeronet_msg_id has yet been removed. should be done in next z_update_1_data_json call. message = ' + JSON.stringify(message_with_envelope)) ;
                         continue ;
                     }
                     else {
                         // outbox.
                         // remember sender_sha256 from deleted outbox messages. Could get an ingoing message later to this address
                         // console.log(pgm + 'contact before message delete: ' + JSON.stringify(contact));
-                        sender_sha256 = message.sender_sha256 ;
+                        sender_sha256 = message_with_envelope.sender_sha256 ;
                         if (sender_sha256) {
                             if (!contact.outbox_sender_sha256) contact.outbox_sender_sha256 = {} ;
                             if (!contact.outbox_sender_sha256.hasOwnProperty(sender_sha256)) {
-                                contact.outbox_sender_sha256[sender_sha256] = { send_at: message.sent_at}
+                                contact.outbox_sender_sha256[sender_sha256] = { send_at: message_with_envelope.sent_at}
                             }
                         }
                         // remember local_msg_seq from deleted outbox messages. Contact may send feedback info for this local_msg_seq later
-                        local_msg_seq = message.local_msg_seq ;
+                        local_msg_seq = message_with_envelope.local_msg_seq ;
                         // debug('feedback_info', pgm + 'local_msg_seq = ' + local_msg_seq);
                         if (local_msg_seq) {
                             if (!contact.deleted_outbox_messages) contact.deleted_outbox_messages = {} ;
-                            contact.deleted_outbox_messages[message.local_msg_seq] = message.feedback ;
+                            contact.deleted_outbox_messages[message_with_envelope.local_msg_seq] = message_with_envelope.feedback ;
                             debug('feedback_info', pgm + 'feedback_info: contact ' + contact.auth_address +
                                 ', deleted_outbox_messages = ' + JSON.stringify(contact.deleted_outbox_messages) +
                                 ', Object.keys(contact.deleted_outbox_messages) = ' + JSON.stringify(Object.keys(contact.deleted_outbox_messages))) ;
@@ -1438,7 +1439,7 @@ angular.module('MoneyNetwork')
             if (save_reactions) ls_save_reactions(false) ;
 
             // cleanup contacts before save. remove work variables and other data available on zeronet
-            var local_storage_contacts_clone = JSON.parse(JSON.stringify(ls_contacts));
+            local_storage_contacts_clone = JSON.parse(JSON.stringify(ls_contacts));
             for (i=local_storage_contacts_clone.length-1 ; i >= 0 ; i--) {
                 contact = local_storage_contacts_clone[i] ;
                 if (!contact.messages) contact.messages = [] ;
@@ -1448,7 +1449,7 @@ angular.module('MoneyNetwork')
                     local_storage_contacts_clone.splice(i,1) ;
                     continue ;
                 }
-                for (j=contact.messages.length-1 ; j >=0 ; j--) if (contact.messages[j].z_filename) contact.messages.splice(j,1) ;
+                for (j=contact.messages.length-1 ; j >=0 ; j--) if (message_with_envelope.z_filename) contact.messages.splice(j,1) ;
                 // remove empty contacts
                 if ((['new', 'guest'].indexOf(contact.type) != -1) && (contact.messages.length == 0)) {
                     local_storage_contacts_clone.splice(i,1) ;
@@ -1470,24 +1471,40 @@ angular.module('MoneyNetwork')
                     delete contact.search[j].unique_id ;
                 }
                 for (j=contact.messages.length-1 ; j >= 0 ; j--) {
-                    if (contact.messages[j].z_filename) {
+                    message_with_envelope = contact.messages[j] ;
+                    message = message_with_envelope.message ;
+                    if (message_with_envelope.z_filename) {
                         // public unencrypted chat is not stored in localStorage. Only in optional files on ZeroNet
                         contact.messages.splice(j,1) ;
                         continue ;
                     }
                     // remove image errors
-                    if (contact.messages[j].message.image &&
-                        ((contact.messages[j].message.image == true) ||
-                         (contact.messages[j].message.image == 'x'))) delete contact.messages[j].message.image ;
-                    delete contact.messages[j]['$$hashKey'] ;
-                    delete contact.messages[j].edit_chat_message ;
-                    delete contact.messages[j].message.original_image ;
-                    delete contact.messages[j].ls_msg_size ;
-                    delete contact.messages[j].seq ;
-                    // if (contact.messages[j].reactions && (!contact.messages[j].reactions.length)) delete contact.messages[j].reactions ;
-                    delete contact.messages[j].reactions ;
-                }
-            }
+                    message = message_with_envelope.message ;
+                    if (message.image && ((message.image == true) || (message.image == 'x'))) delete message.image ;
+                    delete message_with_envelope['$$hashKey'] ;
+                    delete message_with_envelope.edit_chat_message ;
+                    delete message.original_image ;
+                    delete message_with_envelope.ls_msg_size ;
+                    delete message_with_envelope.seq ;
+                    delete message_with_envelope.reactions ;
+                    // chat msg with money transactions?
+                    if (message && message.money_transactions) {
+                        for (k=0 ; k<message.money_transactions.length ; k++) {
+                            money_transaction = message.money_transactions[k] ;
+                            delete money_transaction['$$hashKey'] ;
+                            delete money_transaction.message ;
+                        } // for k (money_transactions)
+                        if (message.money_transactions_status) {
+                            if (message.money_transactions_status.done) {
+                                for (key in message.money_transactions_status) {
+                                    if (['key','html'].indexOf(key) == -1) delete message.money_transactions_status[key] ;
+                                }
+                            }
+                            else delete message.money_transactions_status ;
+                        }
+                    }
+                } // for j (messages)
+            } // for i (contacts)
 
             //console.log(pgm + 'local_storage_contacts_clone = ' + JSON.stringify(local_storage_contacts_clone)) ;
             MoneyNetworkHelper.setItem('contacts', JSON.stringify(local_storage_contacts_clone)) ;

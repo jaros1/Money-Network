@@ -1220,7 +1220,7 @@ angular.module('MoneyNetwork')
             self.confirmed_send_chat = null ;
             self.send_chat_msg = function () {
                 var pgm = controller + '.send_chat_msg: ';
-                var i, j, contact, my_unique_id, message, error, money_transactions, unique_texts_hash, set_ping_error,
+                var i, j, contact, my_unique_id, message, error, money_transactions, wallets_hash, set_ping_error,
                     step_1_confirm_send, step_2_ping_wallets, step_3_check_transactions, step_4_send_message,
                     step_5_send_send_mt ;
 
@@ -1308,15 +1308,15 @@ angular.module('MoneyNetwork')
                 }
 
                 // unique_texts hash. money transactions only. used in step_2_ping_wallets and step_3_check_transactions
-                unique_texts_hash = {} ;
+                wallets_hash = {} ; // new hash. wallet_name => hash with info
 
-                set_ping_error = function (unique_text, error, show_wallet) {
-                    var pgm = controller + '.send_chat_msg.step_2_ping_wallets.set_ping_error: ';
+                set_ping_error = function (wallet_name, error, show_wallet) {
+                    var pgm = controller + '.send_chat_msg.set_ping_error: ';
                     var i, money_transaction, j ;
-                    if (!unique_texts_hash[unique_text]) throw pgm + 'System error. Unknown unique_text ' + unique_text ;
-                    if (!unique_texts_hash[unique_text].money_transactions || !unique_texts_hash[unique_text].money_transactions.length) throw pgm + 'System error. No money transactions found for unique_text ' + unique_text ;
-                    for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
-                        j = unique_texts_hash[unique_text].money_transactions[i] ;
+                    if (!wallets_hash[wallet_name]) throw pgm + 'System error. Unknown wallet name ' + wallet_name ;
+                    if (!wallets_hash[wallet_name].money_transactions || !wallets_hash[wallet_name].money_transactions.length) throw pgm + 'System error. No money transactions found for wallet ' + wallet_name ;
+                    for (i=0 ; i<wallets_hash[wallet_name].money_transactions.length ; i++) {
+                        j = wallets_hash[wallet_name].money_transactions[i] ;
                         money_transaction = self.money_transactions[j] ;
                         if (!money_transaction.message) money_transaction.message = {} ;
                         money_transaction.message.ping = error ;
@@ -1325,26 +1325,28 @@ angular.module('MoneyNetwork')
                     }
                 } ; // set_ping_error
 
-                // callback function - optional step - tell wallet session about just send chat msg with money transaction(s)
+                // create callback chain step 1.. todo: n
+
+                // callback function - optional step - tell wallet session that money transaction(s) has been sent
                 step_5_send_send_mt = function() {
                     var pgm = controller + '.send_chat_msg.step_5_send_send_mt: ';
-                    var unique_texts_array, unique_text, send_mt ;
+                    var wallet_names, wallet_name, send_mt ;
 
                     // one send_mt message for wallet in
-                    unique_texts_array = [] ;
-                    for (unique_text in unique_texts_hash) unique_texts_array.push(unique_text) ;
-                    if (!unique_texts_array.length) return ; // not a money transaction chat msg
+                    wallet_names = [] ;
+                    for (wallet_name in wallets_hash) wallet_names.push(wallet_name) ;
+                    if (!wallet_names.length) return ; // not a money transaction chat msg
 
-                    // loop for each unique_text / wallet. send money transaction to wallet for validation
+                    // loop for each wallet. send money transaction to wallet for validation
                     send_mt = function () {
                         var pgm = controller + '.send_chat_msg.send_chat_msg.step_5_send_send_mt.send_mt: ';
-                        var unique_text, session, money_transactionid, request ;
-                        unique_text = unique_texts_array.shift() ;
-                        if (!unique_text) return ; // done
+                        var wallet_name, session, money_transactionid, request ;
+                        wallet_name = wallet_names.shift() ;
+                        if (!wallet_name) return ; // done
 
                         // build request
-                        session = unique_texts_hash[unique_text].session ;
-                        money_transactionid = unique_texts_hash[unique_text].money_transactionid ;
+                        session = wallets_hash[wallet_name].session ;
+                        money_transactionid = wallets_hash[wallet_name].money_transactionid ;
                         request = {
                             msgtype: "send_mt",
                             money_transactionid: money_transactionid
@@ -1387,9 +1389,9 @@ angular.module('MoneyNetwork')
                             money_transaction = self.money_transactions[i] ;
                             console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
                             unique_text = money_transaction.currency ;
-                            balance = unique_texts_hash[unique_text].balance ;
-                            money_transactionid = unique_texts_hash[unique_text].money_transactionid ;
+                            balance = moneyNetworkService.get_currency_by_unique_text(unique_text) ;
                             console.log(pgm + 'balance = ' + JSON.stringify(balance)) ;
+                            money_transactionid = wallets_hash[balance.wallet_name].money_transactionid ;
 
                             message.money_transactions.push({
                                 wallet_url: balance.wallet_domain || balance.wallet_address, // url for open wallet session
@@ -1476,22 +1478,23 @@ angular.module('MoneyNetwork')
                 // callback function - optional step - money transactions - check money transactions
                 step_3_check_transactions = function() {
                     var pgm = controller + '.send_chat_msg.step_3_check_transactions: ';
-                    var unique_text, unique_texts_array, check_transaction ;
+                    var wallet_name, wallet_names, check_transaction ;
                     if (!self.show_money) return step_4_send_message() ; // no money - continue with next step
 
                     self.new_chat_msg_disabled = 'Validating money transaction' + (self.money_transactions.length > 1 ? 's' : '') + ' ...';
                     $rootScope.$apply() ;
 
                     // check money transactions for each unique_text (wallet)
-                    unique_texts_array = [] ;
-                    for (unique_text in unique_texts_hash) unique_texts_array.push(unique_text) ;
+                    wallet_names = [] ;
+                    for (wallet_name in wallets_hash) wallet_names.push(wallet_name) ;
 
                     // loop for each unique_text / wallet. send money transaction to wallet for validation
                     check_transaction = function () {
                         var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction: ';
-                        var unique_text, session, request, i, j, money_transaction, factor, units, errors, error, money_transactionid ;
-                        unique_text = unique_texts_array.shift() ;
-                        if (!unique_text) {
+                        var wallet_name, session, request, i, j, money_transaction, factor, units, errors, error,
+                            money_transactionid, unique_text, balance ;
+                        wallet_name = wallet_names.shift() ;
+                        if (!wallet_name) {
                             // todo: done checking money transactions. count errors. notification, stop or continue
                             // done pinging wallet sessions. count number of ping errors
                             errors = 0 ;
@@ -1512,7 +1515,6 @@ angular.module('MoneyNetwork')
                                 return ;
                             }
 
-                            // todo: not implemented. stop send chat message
                             self.new_chat_msg_disabled = false ;
                             $rootScope.$apply() ;
                             step_4_send_message() ;
@@ -1522,10 +1524,10 @@ angular.module('MoneyNetwork')
                         // generate transaction id. one transactionid for each wallet. used in the same way as sessionid in MoneyNetworkAPI (session filenames, symmetric encryption)
                         // each row in money transactions array has transactionid-<line number>
                         money_transactionid = MoneyNetworkHelper.generate_random_password(60, true) ;
-                        unique_texts_hash[unique_text].money_transactionid = money_transactionid ;
+                        wallets_hash[wallet_name].money_transactionid = money_transactionid ;
 
                         // get session
-                        session = unique_texts_hash[unique_text].session ;
+                        session = wallets_hash[wallet_name].session ;
                         // build validate money transactions request
                         // contact. receiver of chat message / money transaction. auth_address is unique user id. cert_user_id and alias are human text fields and are not unique / secure
 
@@ -1540,26 +1542,28 @@ angular.module('MoneyNetwork')
                             money_transactions: [],
                             money_transactionid: money_transactionid
                         } ;
-                        for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
-                            j = unique_texts_hash[unique_text].money_transactions[i] ;
+                        for (i=0 ; i<wallets_hash[wallet_name].money_transactions.length ; i++) {
+                            j = wallets_hash[wallet_name].money_transactions[i] ;
                             money_transaction = self.money_transactions[j] ;
+                            unique_text = money_transaction.currency ;
+                            balance = moneyNetworkService.get_currency_by_unique_text(unique_text) ;
 
                             // find conversion factor from units definition
                             delete money_transaction.factor ;
-                            units = unique_texts_hash[unique_text].balance.units ;
+                            units = balance.units ;
                             factor = null ;
                             for (j=0 ; j<units.length ; j++) if (units[j].unit == money_transaction.unit) {
                                 if ((factor != null) && (factor != units[j].factor)) {
                                     // doublet unit definition with different conversion factors!
                                     console.log(pgm + 'System error in units definition. units = ' + JSON.stringify(units)) ;
-                                    set_ping_error(unique_text, 'Could not find conversion factor for ' + money_transaction.unit, false) ;
+                                    set_ping_error(wallet_name, 'Could not find conversion factor for ' + money_transaction.unit, false) ;
                                     return check_transaction() ;
                                 }
                                 factor = units[j].factor ;
                             }
                             if (factor == null) {
                                 console.log(pgm + 'System error in units definition. units = ' + JSON.stringify(units)) ;
-                                set_ping_error(unique_text, 'Could not find conversion factor for ' + money_transaction.unit, false) ;
+                                set_ping_error(wallet_name, 'Could not find conversion factor for ' + money_transaction.unit, false) ;
                                 return check_transaction() ;
                             }
                             money_transaction.factor = factor ;
@@ -1567,7 +1571,7 @@ angular.module('MoneyNetwork')
                             // convert amount to base unit (factor 1) before sending request to wallet
                             request.money_transactions.push({
                                 action: money_transaction.action,
-                                code: unique_texts_hash[unique_text].balance.code,
+                                code: balance.code,
                                 amount: money_transaction.amount * factor
                             }) ;
                         } // for i
@@ -1580,10 +1584,10 @@ angular.module('MoneyNetwork')
                         //        "amount": "0.00001"
                         //    }]
                         //};
-                        if (request.money_transactions.length != unique_texts_hash[unique_text].money_transactions.length) {
-                            error = 'Error. Expected ' + unique_texts_hash[unique_text].money_transactions.length + ' money transactions in request. found ' + request.money_transactions.length;
+                        if (request.money_transactions.length != wallets_hash[wallet_name].money_transactions.length) {
+                            error = 'Error. Expected ' + wallets_hash[wallet_name].money_transactions.length + ' money transactions in request. found ' + request.money_transactions.length;
                             console.log(pgm + error) ;
-                            set_ping_error(unique_text, error, false) ;
+                            set_ping_error(wallet_name, error, false) ;
                             return check_transaction() ;
                         }
 
@@ -1608,18 +1612,18 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'wallet validation error. response = ' + JSON.stringify(response)) ;
                                     error = 'Wallet validating error' ;
                                 }
-                                set_ping_error(unique_text, error, true) ;
+                                set_ping_error(wallet_name, error, true) ;
                                 return check_transaction(); // check next wallet (if any)
                             }
                             if (request.money_transactions.length != response.jsons.length) {
                                 error = 'Wallet validating error. Invalid response. Expected ' + request.money_transactions.length + ' jsons. Found ' + response.jsons.length + ' jsons' ;
                                 console.log(pgm + error) ;
-                                set_ping_error(unique_text, error, true);
+                                set_ping_error(wallet_name, error, true);
                                 return check_transaction(); // check next wallet (if any)
                             }
                             // copy jsons to self.money_transactions
-                            for (i=0 ; i<unique_texts_hash[unique_text].money_transactions.length ; i++) {
-                                j = unique_texts_hash[unique_text].money_transactions[i] ;
+                            for (i=0 ; i<wallets_hash[wallet_name].money_transactions.length ; i++) {
+                                j = wallets_hash[wallet_name].money_transactions[i] ;
                                 money_transaction = self.money_transactions[j] ;
                                 money_transaction.json = response.jsons[i];
                             }
@@ -1664,7 +1668,7 @@ angular.module('MoneyNetwork')
                 // callback function - optional step - money transactions only - ping wallet sessions
                 step_2_ping_wallets = function () {
                     var pgm = controller + '.send_chat_msg.step_2_ping_wallets: ';
-                    var i, money_transaction, unique_text, sessions, j, balance, ping_wallet ;
+                    var i, money_transaction, unique_text, sessions, j, balance, wallet_name, ping_wallet ;
                     if (!self.show_money) return step_3_check_transactions() ; // no money - continue with next step
 
                     self.new_chat_msg_disabled = 'Pinging wallet(s) ...' ;
@@ -1672,46 +1676,39 @@ angular.module('MoneyNetwork')
 
                     // todo: unique_text is unique text for wallet and currency. not unique text for wallet only. only one ping for each wallet. Not one ping for each currency code in wallet. test with a wallet with two currencies
 
-                    // ping wallet(s). fast response. relevant wallet(s) must be open before sending chat with money transaction(s)
-                    // find unique_texts and sessionids before ping wallets
-                    // unique_texts_hash is also used in step_3_check_transactions
+                    // ping wallet(s). fast response. relevant wallet(s) must be open and ready before sending chat with money transaction(s)
+                    // find wallet names and sessionids before ping wallets
+                    // wallets_hash is also used in step_3_check_transactions
+                    sessions = [] ;
                     for (i=0 ; i<self.money_transactions.length ; i++) {
                         money_transaction = self.money_transactions[i] ;
+                        console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction));
                         if (!money_transaction.message) money_transaction.message = {} ;
                         delete money_transaction.message.ping ; // delete any old ping error message
                         delete money_transaction.message.open_wallet ; // delete any old show wallet link
-                        console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction));
                         if (self.money_transaction_is_empty(money_transaction)) continue ;
                         unique_text = money_transaction.currency ;
-                        if (!unique_texts_hash[unique_text]) unique_texts_hash[unique_text] = {
-                            balance: null, // object from self.currencies array (currency = unique_text
-                            money_transactions: [], // index to rows in self.money_transactions
-                            session: null // session object. from get_session request.
-                        } ;
-                        unique_texts_hash[unique_text].money_transactions.push(i) ;
+                        balance = moneyNetworkService.get_currency_by_unique_text(money_transaction.currency) ;
+                        if (balance) {
+                            wallet_name = balance.wallet_name ;
+                            if (!wallets_hash[wallet_name]) {
+                                wallets_hash[wallet_name] = {
+                                    sessionid: balance.sessionid,
+                                    session: null,
+                                    money_transactions: [],
+                                    money_transactionid: null
+                                };
+                            }
+                            wallets_hash[wallet_name].money_transactions.push(i) ;
+                            sessions.push({wallet_name: wallet_name, sessionid: balance.sessionid}) ;
+                        }
+                        else set_ping_error(unique_text, 'Cannot ping unknown wallet (unique_text)') ;
                     } // for i
-                    // console.log(pgm + 'unique_texts = ' + JSON.stringify(unique_texts_hash)) ;
-                    // unique_texts = ["tBTC Test Bitcoin from MoneyNetworkW2"]
+                    console.log(pgm + 'wallets_hash      = ' + JSON.stringify(wallets_hash)) ;
+                    console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
 
-                    sessions = [] ;
-                    for (unique_text in unique_texts_hash) {
-                        for (j=0 ; j<self.currencies.length ; j++) {
-                            balance = self.currencies[j] ;
-                            if (balance.unique_text != unique_text) continue ;
-                            sessions.push(balance) ;
-                            unique_texts_hash[unique_text].balance = balance ;
-                            break ;
-                        } // for j
-                    } // for i
-                    // console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
-                    // sessions = [{"code":"tBTC","amount":1.3,"balance_at":1504431366592,"sessionid":"wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1","wallet_sha256":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74","wallet_address":"1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1","wallet_title":"MoneyNetworkW2","wallet_description":"Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro","unique_id":"6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74/tBTC","name":"Test Bitcoin","url":"https://en.bitcoin.it/wiki/Testnet","units":[{"unit":"BitCoin","factor":1},{"unit":"Satoshi","factor":1e-8}],"unique_text":"tBTC Test Bitcoin from MoneyNetworkW2"}]
                     self.new_chat_msg_disabled = 'Pinging wallet' + (sessions.length > 1 ? 's' : '') + ' ...';
                     console.log(pgm + self.new_chat_msg_disabled) ;
-
-                    // any unknown unique_texts / sessions?
-                    for (unique_text in unique_texts_hash) {
-                        if (!unique_texts_hash[unique_text].balance) set_ping_error(unique_text, 'Cannot ping unknown wallet (unique_text)') ;
-                    }
 
                     // ping wallet sessions. one loop for each session in sessions array
                     // results:
@@ -1721,7 +1718,7 @@ angular.module('MoneyNetwork')
                     // todo: DRY: see also approve_money_transactions.step_2_ping_wallets. almost identical code
                     ping_wallet = function () {
                         var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet: ';
-                        var balance, i, money_transaction, errors, error ;
+                        var session_info, i, money_transaction, errors, error ;
                         if (!sessions.length) {
                             // done pinging wallet sessions. count number of ping errors
                             errors = 0 ;
@@ -1744,41 +1741,42 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'done pinging wallet sessions. send transactions to wallets for validation');
                             return step_3_check_transactions() ;
                         }
-                        balance = sessions.shift() ;
-                        console.log(pgm + 'getting session. using balance.sessionid = ' + balance.sessionid + '. maybe wrong sessionid. see issue #208');
-                        MoneyNetworkAPILib.get_session(balance.sessionid, function (session) {
+                        session_info = sessions.shift() ;
+                        console.log(pgm + 'getting session. using sessionid = ' + session_info.sessionid + '. maybe wrong sessionid. see issue #208');
+                        MoneyNetworkAPILib.get_session(session_info.sessionid, function (session) {
                             var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet get_session callback 1: ';
                             var request, error, url ;
                             if (!session) {
-                                error = 'error. could not ping ' + balance.unique_text + ' wallet. ' +
-                                    'could not find any old session with sessionid ' + balance.sessionid +
-                                    '. please check any previous error in log for sessionid ' + balance.sessionid ;
+                                error = 'error. could not ping ' + session_info.wallet_name + ' wallet. ' +
+                                    'could not find any old session with sessionid ' + session_info.sessionid +
+                                    '. please check any previous error in log for sessionid ' + session_info.sessionid ;
                                 console.log(pgm + error) ;
-                                set_ping_error(balance.unique_text, 'Cannot ping unknown wallet (sessionid)', false) ;
-                                return ping_wallet() ; // next session (if any)
+                                set_ping_error(session_info.wallet_name, 'Cannot ping unknown wallet (sessionid)', false) ;
+                                return ping_wallet() ; // next wallet session (if any)
                             }
                             // save session. also used in step_3_check_transactions
-                            unique_texts_hash[balance.unique_text].session = session ;
+                            wallets_hash[session_info.wallet_name].session = session ;
                             // send ping. timeout max 10 seconds. Expects Timeout or OK response
                             request = { msgtype: 'ping' };
                             session.encrypt.send_message(request, {response: 10000}, function (response) {
                                 var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet send_message callback 2: ';
                                 if (response && response.error && response.error.match(/^Timeout /)) {
                                     // OK. Timeout. Continue with next session
-                                    set_ping_error(balance.unique_text, 'Wallet ping timeout', true) ;
+                                    console.log(pgm + 'ping wallet timeout for sessionid ' + session_info.sessionid) ;
+                                    set_ping_error(session_info.wallet_name, 'Wallet ping timeout', true) ;
                                     return ping_wallet(); // next session (if any)
                                 }
                                 if (!response || response.error) {
                                     // Unexpected error.
-                                    error = 'error. ping sessionid ' + balance.sessionid + ' returned ' + JSON.stringify(response) ;
-                                    console.log(pgm + 'error. ping sessionid ' + balance.sessionid + ' returned ' + JSON.stringify(response)) ;
+                                    error = 'error. ping sessionid ' + session_info.sessionid + ' returned ' + JSON.stringify(response) ;
+                                    console.log(pgm + error) ;
                                     error = 'Wallet ping error' + (response.error ? ' ' + $sanitize(response.error) : '') ;
-                                    set_ping_error(balance.unique_text, error, true) ;
+                                    set_ping_error(session_info.wallet_name, error, true) ;
                                     return ping_wallet(); // next session (if any)
                                 }
                                 // ping OK. wallet session
-                                console.log(pgm + 'wallet session ping OK. balance = ' + JSON.stringify(balance)) ;
-                                set_ping_error(balance.unique_text, null) ;
+                                console.log(pgm + 'wallet session ping OK. session_info = ' + JSON.stringify(session_info)) ;
+                                set_ping_error(session_info.wallet_name, null) ;
                                 ping_wallet() ; // next session (if any)
 
                             }) ; // send_message callback 2
@@ -2287,6 +2285,7 @@ angular.module('MoneyNetwork')
                 return '<span style="color:red;">' + html + '</span>' ;
             }
 
+            // todo: should be used in send money transaction only. not working correct for incoing money transactions
             function format_money_transaction_message (money_transaction) {
                 var messages = [] ;
                 if (money_transaction.message.balance) messages.push(money_transaction.message.balance) ;
@@ -2297,6 +2296,7 @@ angular.module('MoneyNetwork')
             } // format_money_transaction_message
 
             // set money_transaction.message. return error message
+            // todo: balance should also be calculated for ingoing money transaction. directive?
             self.validate_money_transaction = function (money_transaction) {
                 var pgm = controller + '.validate_money_transaction: ' ;
                 var messages, amount, balances, balance, i, units, j, required ;
@@ -2359,14 +2359,15 @@ angular.module('MoneyNetwork')
 
             self.approve_money_transactions = function (m) {
                 var pgm = controller + '.approve_money_transactions: ' ;
-                var step_1_check_unknown_wallets, step_2_ping_wallets, unknown_wallets, balances, unique_texts_hash ;
+                var step_1_check_unknown_wallets, step_2_ping_wallets, unknown_wallets, balances, wallets_hash,
+                    format_money_transaction_message, set_ping_error ;
                 console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
                 //message = {
-                //    "local_msg_seq": 5925,
+                //    "local_msg_seq": 5947,
                 //    "folder": "inbox",
                 //    "message": {
                 //        "msgtype": "chat msg",
-                //        "message": "receive money trans test 1",
+                //        "message": "receive money trans test 2",
                 //        "money_transactions": [{
                 //            "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
                 //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
@@ -2375,21 +2376,28 @@ angular.module('MoneyNetwork')
                 //            "code": "tBTC",
                 //            "name": "Test Bitcoin",
                 //            "amount": 0.0001,
-                //            "money_transactionid": "HdJE73WG31rdYRNipjDnQCJcTVcNVAy56jUcIFLJp2hjZ7SFV87GXTSCzvdv",
-                //            "json": {"return_address": "2NEmsmUENZVmSxH4FqFTuTpKVKxiNrHEHDV"},
-                //            "$$hashKey": "object:1467"
+                //            "money_transactionid": "3R1R46sRFEal8zWx0wYvYyo6VDLJmpFzVNsyIOhglPV4bcUgXqUDLOWrOkZA",
+                //            "json": {"return_address": "2Mxufcnyzo8GvTGHqYfzS862ZqYaFYjxo5V"},
+                //            "$$hashKey": "object:927"
                 //        }],
                 //        "local_msg_seq": 13
                 //    },
-                //    "zeronet_msg_id": "c2c32077baf0a2cd28f49166dbc6830b4c037abc7ace8a72cb6ff30a4f915cb4",
-                //    "sender_sha256": "13db423419e1751d7642c4fce94dba69dc4d67654ce8dab09de866d54ff01196",
-                //    "sent_at": 1508506998144,
-                //    "received_at": 1508507001863,
+                //    "zeronet_msg_id": "255e4057027b69f540323d9f7ea5af3e71e239af09cdf64fb00817e0c2645f15",
+                //    "sender_sha256": "46bc79914a723af23042d2e32530364ec9e5a5e47ca2a6e209899d9723e08fae",
+                //    "sent_at": 1508650742026,
+                //    "received_at": 1508650746070,
                 //    "encryption": 1,
-                //    "ls_msg_size": 796,
-                //    "seq": 221,
+                //    "feedback": false,
+                //    "ls_msg_size": 787,
+                //    "seq": 223,
                 //    "reactions": []
                 //};
+
+                // message.money_transactions_status object:
+                // - html: current html message UI. Generated from other object properties or set dynamically
+                // - done: timestamp: static html. keep html message as it is. No more processing is allowed
+                if (!m.message.money_transactions_status) m.message.money_transactions_status = {} ;
+                m.message.money_transactions_status.html = 'Checking ...' ;
 
                 // approve process:
                 // - add wallet(s) to MN if unknown wallet
@@ -2400,62 +2408,152 @@ angular.module('MoneyNetwork')
                 // - approved transaction(s) may fail with error message(s) in wallet(s) processing
 
                 // unique_texts hash. used in step_2_ping_wallets and todo:
-                balances = [] ; // from index in money_transactions to balance record in currencies
-                unique_texts_hash = {} ;
+                balances = [] ; // from index in money_transactions to balance/currency record in currencies
+                wallets_hash = {} ;
+
+                // todo: when to initialize message.balance for incoming money transactions?
+                format_money_transaction_message = function (money_transaction) {
+                    var messages = [] ;
+                    if (money_transaction.message.balance) messages.push(money_transaction.message.balance) ;
+                    if (money_transaction.message.ping) messages.push(red(money_transaction.message.ping)) ; // wallet ping error
+                    if (messages.length) money_transaction.message.html = $sce.trustAsHtml(messages.join('. ') + '.') ;
+                    else money_transaction.message.html = null ;
+                }; // format_money_transaction_message
+
+                set_ping_error = function (wallet_name, error) {
+                    var pgm = controller + '.approve_money_transaction.set_ping_error: ';
+                    var i, money_transaction, j ;
+                    if (!wallets_hash[wallet_name]) throw pgm + 'System error. Unknown wallet name ' + wallet_name ;
+                    if (!wallets_hash[wallet_name].money_transactions || !wallets_hash[wallet_name].money_transactions.length) throw pgm + 'System error. No money transactions found for wallet ' + wallet_name ;
+                    for (i=0 ; i<wallets_hash[wallet_name].money_transactions.length ; i++) {
+                        j = wallets_hash[wallet_name].money_transactions[i] ;
+                        money_transaction = m.message.message.money_transactions[j] ;
+                        if (!money_transaction.message) money_transaction.message = {} ;
+                        money_transaction.message.ping = error ;
+                        // todo: format_money_transaction_message is now only working for outgoing money transactions
+                        format_money_transaction_message(money_transaction) ;
+                    } // for i
+                } ; // set_ping_error
 
                 // create callback chain step 1.. todo: n
 
                 // todo: DRY: copy/paste from send_chat_msg.step_2_ping_wallets + small changes
                 step_2_ping_wallets = function () {
                     var pgm = controller + '.approve_money_transactions.step_2_ping_wallets: ' ;
-                    var i, money_transaction, balance, unique_text, ping_wallet ;
+                    var sessions, i, money_transaction, balance, wallet_name, ping_wallet, closed_wallets ;
 
                     // todo: only one ping for each wallet. Not one ping for each currency code in wallet. test with a wallet with two currencies
 
-                    // ping wallet(s). fast response. relevant wallet(s) must be open before sending chat with money transaction(s)
-                    // find unique_texts and sessionids before ping wallets
-                    // unique_texts_hash is also used in step_3_check_transactions
+                    // ping wallet(s). fast response. relevant wallet(s) must be open and ready before sending chat with money transaction(s)
+                    // find wallet names and sessionids before ping wallets
+                    // wallets_hash is also used in step_3_ todo:xxx
+                    sessions = [] ;
                     for (i=0 ; i< m.message.message.money_transactions.length ; i++) {
                         money_transaction = m.message.message.money_transactions[i] ;
                         balance = balances[i] ;
+                        // todo: is message hash used for anything in this context (receive money transaction)?
                         if (!money_transaction.message) money_transaction.message = {} ;
                         delete money_transaction.message.ping ; // delete any old ping error message
                         console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction));
-                        unique_text = balance.unique_text ;
-                        if (!unique_texts_hash[unique_text]) unique_texts_hash[unique_text] = {
-                            balance: balance, // object from self.currencies array (currency = unique_text
-                            money_transactions: [], // index to rows in self.money_transactions
-                            session: null // session object. from get_session request.
-                        } ;
-                        unique_texts_hash[unique_text].money_transactions.push(i) ;
+                        wallet_name = balance.wallet_name ;
+                        if (!wallets_hash[wallet_name]) {
+                            wallets_hash[wallet_name] = {
+                                sessionid: balance.sessionid,
+                                session: null,
+                                money_transactions: [],
+                                money_transactionid: money_transaction.money_transactionid
+                            } ;
+                        }
+                        wallets_hash[wallet_name].money_transactions.push(i) ;
+                        sessions.push({wallet_name: wallet_name, sessionid: balance.sessionid}) ;
                     } // for i
-                    console.log(pgm + 'unique_texts_hash = ' + JSON.stringify(unique_texts_hash)) ;
-                    //unique_texts_hash = {
-                    //    "tBTC Test Bitcoin from 1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1": {
-                    //        "balance": {
-                    //            "code": "tBTC",
-                    //            "amount": 0,
-                    //            "balance_at": 1507824156612,
-                    //            "sessionid": "jmy0rxlogb3dhapw5s0eq6jorcm51l9uw4vejmryeg1mlltts4x6bn7tfqzx",
-                    //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
-                    //            "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //            "wallet_title": "MoneyNetworkW2",
-                    //            "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                    //            "api_url": "https://www.blocktrail.com/api/docs",
-                    //            "unique_id": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7/tBTC",
-                    //            "name": "Test Bitcoin",
-                    //            "url": "https://en.bitcoin.it/wiki/Testnet",
-                    //            "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
-                    //            "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
-                    //            "wallet_name": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //            "unique_text": "tBTC Test Bitcoin from 1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
-                    //        }, "money_transactions": [0], "session": null
-                    //    }
-                    //};
+                    console.log(pgm + 'wallets_hash = ' + JSON.stringify(wallets_hash)) ;
+                    console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
+                    if (Object.keys(wallets_hash).length == 1) {
+                        m.message.money_transactions_status.html = 'Pinging wallet ...' ;
+                    }
+                    closed_wallets = [] ;
 
+                    // ping wallet sessions. one loop for each session in sessions array
+                    // results:
+                    // a) ping OK. wallet is ready. ready to receive money transaction(s) in wallet session for validation
+                    // b) ping timeout. wallet not ready. user should open or reload wallet in an other browser tab
+                    // c) ping error. system error. cannot receive transaction. stop processing
                     ping_wallet = function() {
+                        var pgm = controller + '.approve_money_transactions.step_2_ping_wallets.ping_wallet: ' ;
+                        var plural ;
 
-                    };
+                        var session_info, i, money_transaction, errors, error ;
+                        if (!sessions.length) {
+                            // done pinging wallet sessions. count number of ping errors
+                            errors = 0 ;
+                            for (i=0 ; i<m.message.message.money_transactions.length ; i++) {
+                                money_transaction = m.message.message.money_transactions[i] ;
+                                if (money_transaction.message.ping) errors++ ;
+                            }
+                            if (errors) {
+                                // one or more wallet ping errors. stop end chat message
+                                self.new_chat_msg_disabled = false ;
+                                $rootScope.$apply() ;
+                                plural = errors > 1 ? 's' : '' ;
+                                error =
+                                    'Sorry. Wallet ping error' + plural + '.' +
+                                    '<br>Cannot validate money transaction.' +
+                                    '<br>Please open and/or check wallet' + plural + ' in other browser tab.' ;
+                                ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                                m.message.money_transactions_status.html = 'Wallet ping failed. See red error message' + plural ;
+                                $rootScope.$apply() ;
+                                return ;
+                            }
+                            // no wallet ping errors. continue
+                            console.log(pgm + 'done pinging wallet sessions. send transactions to wallets for validation');
+                            return step_3_check_transactions() ;
+                        }
+                        session_info = sessions.shift() ;
+                        console.log(pgm + 'getting session. using sessionid = ' + session_info.sessionid);
+                        MoneyNetworkAPILib.get_session(session_info.sessionid, function (session) {
+                            var pgm = controller + '.approve_money_transaction.step_2_ping_wallets.ping_wallet get_session callback 1: ';
+                            var request, error, url ;
+                            if (!session) {
+                                error = 'error. could not ping ' + session_info.wallet_name + ' wallet. ' +
+                                    'could not find any old session with sessionid ' + session_info.sessionid +
+                                    '. please check any previous error in log for sessionid ' + session_info.sessionid ;
+                                console.log(pgm + error) ;
+                                set_ping_error(session_info.wallet_name, 'Cannot ping unknown wallet (sessionid)') ;
+                                return ping_wallet() ; // next wallet session (if any)
+                            }
+                            // save session. also used in step_3_ todo: xxx
+                            wallets_hash[session_info.wallet_name].session = session ;
+                            // send ping. timeout max 10 seconds. Expects Timeout or OK response
+                            request = { msgtype: 'ping' };
+                            session.encrypt.send_message(request, {response: 10000}, function (response) {
+                                var pgm = controller + '.approve_money_transaction.step_2_ping_wallets.ping_wallet send_message callback 2: ';
+                                if (response && response.error && response.error.match(/^Timeout /)) {
+                                    // OK. Timeout. Continue with next session
+                                    console.log(pgm + 'ping wallet timeout for sessionid ' + session_info.sessionid) ;
+                                    set_ping_error(session_info.wallet_name, 'Wallet ping timeout') ;
+                                    return ping_wallet(); // next session (if any)
+                                }
+                                if (!response || response.error) {
+                                    // Unexpected error.
+                                    error = 'error. ping sessionid ' + session_info.sessionid + ' returned ' + JSON.stringify(response) ;
+                                    console.log(pgm + error) ;
+                                    error = 'Wallet ping error' + (response.error ? ' ' + $sanitize(response.error) : '') ;
+                                    set_ping_error(session_info.wallet_name, error) ;
+                                    return ping_wallet(); // next session (if any)
+                                }
+                                // ping OK. wallet session
+                                console.log(pgm + 'wallet session ping OK. session_info = ' + JSON.stringify(session_info)) ;
+                                set_ping_error(session_info.wallet_name) ;
+                                ping_wallet() ; // next session (if any)
+
+                            }) ; // send_message callback 2
+
+                        }) ; // get_session callback 1
+
+                    }; // ping_wallet
+                    // start ping wallet sessions loop
+                    ping_wallet() ;
 
                     console.log(pgm + 'todo: ping wallets (copy/paste)') ;
                 } ; // step_2_ping_wallets
@@ -2473,8 +2571,10 @@ angular.module('MoneyNetwork')
                                 'Unknown wallet' + plural + ' ' + unknown_wallets.join(', ') + '<br>' +
                                 'Please add missing wallet' + plural + ' to MoneyNetwork' ;
                             ZeroFrame.cmd("wrapperNotification", ['error', msg, 5000]) ;
+                            m.message.money_transactions_status.html = null;
                             return ;
                         }
+                        m.message.money_transactions_status.html = 'Pinging wallets ...';
                         return step_2_ping_wallets() ;
                     } // done. next step
                     money_transaction = m.message.message.money_transactions[index] ;
@@ -2499,7 +2599,7 @@ angular.module('MoneyNetwork')
                             }
                         } // for i
                         if (!sessionid) return unknown_wallet() ;
-                        // wallet exists. check currency code ;
+                        // wallet exists. check currency code. should normally never by an issue
                         balances[index] = null ;
                         for (i = 0; i < currencies.length; i++) {
                             balance = currencies[i];

@@ -204,6 +204,10 @@ angular.module('MoneyNetwork')
                             var pgm = controller + '.test1.run.test_old_session get_session callback 1: ' ;
                             var request ;
                             console.log(pgm + 'sessionid = ', sessionid, ', session = ', session) ;
+                            if (!session) {
+                                console.log(pgm + 'Could not find session for old sessionid ' + sessionid) ;
+                                return test_old_session() ;
+                            }
 
                             // send ping. timeout max 5 seconds. Expects Timeout ... or OK response
                             request = { msgtype: 'ping' };

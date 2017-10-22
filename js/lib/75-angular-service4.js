@@ -1222,6 +1222,14 @@ angular.module('MoneyNetwork')
 
         } // get_currencies
 
+        function get_currency_by_unique_text (unique_text) {
+            var i ;
+            for (i=0 ; i<currencies.length ; i++) {
+                if (currencies[i].unique_text == unique_text) return currencies[i] ;
+            }
+            return null ;
+        } // get_currency_by_unique_text
+
         // export MoneyNetworkWService API
         return {
             get_session_info_key: get_session_info_key,
@@ -1230,7 +1238,8 @@ angular.module('MoneyNetwork')
             w_login: w_login,
             w_logout: w_logout,
             open_window: open_window,
-            get_currencies: get_currencies
+            get_currencies: get_currencies,
+            get_currency_by_unique_text: get_currency_by_unique_text
         };
 
         // end MoneyNetworkWService
