@@ -1184,7 +1184,10 @@
                                                         </td>
                                                     </tr>
                                                     <tr>
-                                                        <td colspan="5" ng-bind="c.validate_money_transactions(true)"></td>
+                                                        <td colspan="5">
+                                                            <span ng-bind="c.validate_money_transactions(true)"></span>
+                                                            <span ng-show="c.new_chat_msg_disabled"><img src="public/images/spinner-16.gif"></span>
+                                                        </td>
                                                     </tr>
                                                     </tbody>
                                                 </table>

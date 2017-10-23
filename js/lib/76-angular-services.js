@@ -6964,6 +6964,7 @@ angular.module('MoneyNetwork')
             generate_random_password: moneyNetworkZService.generate_random_password,
             open_window: moneyNetworkWService.open_window,
             get_currencies: moneyNetworkWService.get_currencies,
+            get_currency_by_unique_text: moneyNetworkWService.get_currency_by_unique_text,
             z_file_get: z_file_get
         };
 

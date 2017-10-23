@@ -30,8 +30,8 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "dc95294f3aff06eddd3cd5c327facbe64d4a26c29457944fae68c53cc1b53822",
-   "size": 137585
+   "sha512": "8e0a976e3cb7dc48bd14a9a76ab962806e07255446f84e1203a4f3cbc47c520c",
+   "size": 137745
   },
   "js-api/MoneyNetworkAPI.js": {
    "sha512": "c1657814c679f446b82419468258a7fe5490ea9fe3b4d7feb885e785ad3ac950",
@@ -178,12 +178,12 @@
    "size": 53602
   },
   "js/all.js": {
-   "sha512": "aa853c25856d200dd7595933da8781fa4752eaa023d55c1fcfdf02cb38ad2950",
-   "size": 1486344
+   "sha512": "23e27bf1cc8b57365b3820e8fa6bdef6f987c3efa1dfe85314de966280b79fdf",
+   "size": 1491741
   },
   "js/all.js.zip": {
-   "sha512": "c31d9da6e700d7f2d6bdbaff4c23c81ebf8c00a2ac574594d979a33cfc83ca5c",
-   "size": 244850
+   "sha512": "8c45f693127da89e2ecc06796918bceed37694a2f4869cc0618bb47bc35d05eb",
+   "size": 245903
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -260,6 +260,10 @@
   "public/images/react.png": {
    "sha512": "d3515ac234ebbea8c91ef8ca672537e86065065c1e77319dcbd3a962c8c5d09d",
    "size": 3167
+  },
+  "public/images/spinner-16.gif": {
+   "sha512": "6db88a1dd93582811ed239dba89c46321627b68057f85c73edf58e5ef5493791",
+   "size": 2263
   }
  },
  "ignore": "((js|css)/(?!all.(js|css))|.idea|.git|data/.*db|data/users/.*/.*|emoji/.*/.*.png|merged-.*|screendumps/.*)",
@@ -306,7 +310,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1508690950,
+ "modified": 1508749657,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -318,7 +322,7 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HCkD9NyN3uDUnRCY3FgtnrVTGm2vN6ffhmCyYPjyPr2oWPTsPoGO9qZ7CyNyP06fKo0DRhJvIRfsAa4WP2hZrcM="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HM4T1z/MKccwk46Hqc5ADi9LC39i/QjTS0oJ66hJxExCCdRwgFZZJm+jvsrKreDxymvrBJ7KjxbqtjoSvPrmcmI="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",
