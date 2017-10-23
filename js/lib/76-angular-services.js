@@ -1041,6 +1041,11 @@ angular.module('MoneyNetwork')
                     }
                     // no msgtype in envelope
                     delete new_contact.messages[j].msgtype ;
+                    // no money_transactions_status in envelope
+                    if (new_contact.messages[j].money_transactions_status) {
+                        delete new_contact.messages[j].money_transactions_status ;
+                        contacts_updated = true ;
+                    }
                     // delete old reactions
                     if ((new_contact.messages[j].message.msgtype == 'reaction') && (!new_contact.messages[j].deleted_at)) {
                         if (new_contact.messages[j].folder == 'inbox') new_contact.messages[j].deleted_at = new Date().getTime() ;
@@ -1503,6 +1508,34 @@ angular.module('MoneyNetwork')
                             else delete message.money_transactions_status ;
                         }
                     }
+                    if (message_with_envelope.local_msg_seq == 5947) console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                    //message_with_envelope = {
+                    //    "local_msg_seq": 5947,
+                    //    "folder": "inbox",
+                    //    "message": {
+                    //        "msgtype": "chat msg",
+                    //        "message": "receive money trans test 2",
+                    //        "money_transactions": [{
+                    //            "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                    //            "wallet_name": "MoneyNetworkW2",
+                    //            "action": "Send",
+                    //            "code": "tBTC",
+                    //            "name": "Test Bitcoin",
+                    //            "amount": 0.0001,
+                    //            "money_transactionid": "3R1R46sRFEal8zWx0wYvYyo6VDLJmpFzVNsyIOhglPV4bcUgXqUDLOWrOkZA",
+                    //            "json": {"return_address": "2Mxufcnyzo8GvTGHqYfzS862ZqYaFYjxo5V"}
+                    //        }],
+                    //        "local_msg_seq": 13
+                    //    },
+                    //    "zeronet_msg_id": "255e4057027b69f540323d9f7ea5af3e71e239af09cdf64fb00817e0c2645f15",
+                    //    "sender_sha256": "46bc79914a723af23042d2e32530364ec9e5a5e47ca2a6e209899d9723e08fae",
+                    //    "sent_at": 1508650742026,
+                    //    "received_at": 1508650746070,
+                    //    "encryption": 1,
+                    //    "feedback": false,
+                    //    "money_transactions_status": {"html": "Pinging wallet ..."}
+                    //};
                 } // for j (messages)
             } // for i (contacts)
 

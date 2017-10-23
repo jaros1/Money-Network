@@ -1,8 +1,8 @@
 angular.module('MoneyNetwork')
     
-    .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location',
+    .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location', 'safeApply',
         'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', '$window', 'dateFilter', '$sce', '$sanitize',
-        function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location,
+        function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location, safeApply,
                   chatEditTextAreaId, chatEditImgId, formatChatMessage, $window, date, $sce, $sanitize)
         {
             
@@ -2359,8 +2359,8 @@ angular.module('MoneyNetwork')
 
             self.approve_money_transactions = function (m) {
                 var pgm = controller + '.approve_money_transactions: ' ;
-                var step_1_check_unknown_wallets, step_2_ping_wallets, unknown_wallets, balances, wallets_hash,
-                    format_money_transaction_message, set_ping_error ;
+                var step_1_check_unknown_wallets, step_2_ping_wallets, step_3_check_transactions, unknown_wallets,
+                    balances, wallets_hash, format_money_transaction_message, set_ping_error, i ;
                 console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
                 //message = {
                 //    "local_msg_seq": 5947,
@@ -2378,9 +2378,14 @@ angular.module('MoneyNetwork')
                 //            "amount": 0.0001,
                 //            "money_transactionid": "3R1R46sRFEal8zWx0wYvYyo6VDLJmpFzVNsyIOhglPV4bcUgXqUDLOWrOkZA",
                 //            "json": {"return_address": "2Mxufcnyzo8GvTGHqYfzS862ZqYaFYjxo5V"},
-                //            "$$hashKey": "object:927"
+                //            "$$hashKey": "object:1276",
+                //            "message": {"html": {}, "ping": "Wallet ping timeout"}
                 //        }],
-                //        "local_msg_seq": 13
+                //        "local_msg_seq": 13,
+                //        "money_transactions_status": {
+                //            "html": "Wallet ping failed. See red error message",
+                //            "spinner": false
+                //        }
                 //    },
                 //    "zeronet_msg_id": "255e4057027b69f540323d9f7ea5af3e71e239af09cdf64fb00817e0c2645f15",
                 //    "sender_sha256": "46bc79914a723af23042d2e32530364ec9e5a5e47ca2a6e209899d9723e08fae",
@@ -2393,11 +2398,17 @@ angular.module('MoneyNetwork')
                 //    "reactions": []
                 //};
 
+                // clear any old transaction error messages (ping error etc)
+                for (i=0 ; i< m.message.message.money_transactions.length ; i++) {
+                    delete m.message.message.money_transactions[i].message ;
+                }
+
                 // message.money_transactions_status object:
                 // - html: current html message UI. Generated from other object properties or set dynamically
                 // - done: timestamp: static html. keep html message as it is. No more processing is allowed
-                if (!m.message.money_transactions_status) m.message.money_transactions_status = {} ;
-                m.message.money_transactions_status.html = 'Checking ...' ;
+                if (!m.message.message.money_transactions_status) m.message.message.money_transactions_status = {} ;
+                m.message.message.money_transactions_status.html = 'Checking ...' ;
+                m.message.message.money_transactions_status.spinner = true ;
 
                 // approve process:
                 // - add wallet(s) to MN if unknown wallet
@@ -2437,6 +2448,16 @@ angular.module('MoneyNetwork')
 
                 // create callback chain step 1.. todo: n
 
+                step_3_check_transactions = function() {
+                    var pgm = controller + '.approve_money_transactions.step_3_check_transactions: ' ;
+                    m.message.message.money_transactions_status.html = 'todo: check transactions ...' ;
+                    console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
+                    m.message.message.money_transactions_status.spinner = false ;
+                    safeApply($scope) ;
+                    // try {$rootScope.$apply()}
+                    // catch (e) {}
+                } ; // step_3_check_transactions
+
                 // todo: DRY: copy/paste from send_chat_msg.step_2_ping_wallets + small changes
                 step_2_ping_wallets = function () {
                     var pgm = controller + '.approve_money_transactions.step_2_ping_wallets: ' ;
@@ -2470,7 +2491,11 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'wallets_hash = ' + JSON.stringify(wallets_hash)) ;
                     console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
                     if (Object.keys(wallets_hash).length == 1) {
-                        m.message.money_transactions_status.html = 'Pinging wallet ...' ;
+                        m.message.message.money_transactions_status.html = 'Pinging wallet ...' ;
+                        console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
+                        safeApply($scope) ;
+                        //try {$rootScope.$apply()}
+                        //catch (e) {}
                     }
                     closed_wallets = [] ;
 
@@ -2492,17 +2517,19 @@ angular.module('MoneyNetwork')
                                 if (money_transaction.message.ping) errors++ ;
                             }
                             if (errors) {
-                                // one or more wallet ping errors. stop end chat message
-                                self.new_chat_msg_disabled = false ;
-                                $rootScope.$apply() ;
+                                // one or more wallet ping errors. stop approve money transactions
                                 plural = errors > 1 ? 's' : '' ;
                                 error =
                                     'Sorry. Wallet ping error' + plural + '.' +
                                     '<br>Cannot validate money transaction.' +
                                     '<br>Please open and/or check wallet' + plural + ' in other browser tab.' ;
                                 ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
-                                m.message.money_transactions_status.html = 'Wallet ping failed. See red error message' + plural ;
-                                $rootScope.$apply() ;
+                                m.message.message.money_transactions_status.html = 'Wallet ping failed. See red error message' + plural ;
+                                console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
+                                m.message.message.money_transactions_status.spinner = false ;
+                                safeApply($scope) ;
+                                //try {$rootScope.$apply()}
+                                //catch (e) {}
                                 return ;
                             }
                             // no wallet ping errors. continue
@@ -2571,10 +2598,19 @@ angular.module('MoneyNetwork')
                                 'Unknown wallet' + plural + ' ' + unknown_wallets.join(', ') + '<br>' +
                                 'Please add missing wallet' + plural + ' to MoneyNetwork' ;
                             ZeroFrame.cmd("wrapperNotification", ['error', msg, 5000]) ;
-                            m.message.money_transactions_status.html = null;
+                            m.message.message.money_transactions_status.html = 'Unknown wallet' + plural;
+                            console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
+                            m.message.message.money_transactions_status.spinner = false ;
+                            safeApply($scope) ;
+                            //try {$rootScope.$apply()}
+                            //catch (e) {}
                             return ;
                         }
-                        m.message.money_transactions_status.html = 'Pinging wallets ...';
+                        m.message.message.money_transactions_status.html = 'Pinging wallets ...';
+                        console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
+                        safeApply($scope) ;
+                        //try {$rootScope.$apply()}
+                        //catch (e) {}
                         return step_2_ping_wallets() ;
                     } // done. next step
                     money_transaction = m.message.message.money_transactions[index] ;

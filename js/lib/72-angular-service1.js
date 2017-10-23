@@ -1,10 +1,29 @@
 angular.module('MoneyNetwork')
 
+    // https://coderwall.com/p/ngisma/safe-apply-in-angular-js
+    // fixing problems in chatCtrl.approve_money_transactions
+    // no error in first approve call. errors in second approve call
+    .factory('safeApply', [function($rootScope) {
+        return function($scope, fn) {
+            var phase = $scope.$root.$$phase;
+            if(phase == '$apply' || phase == '$digest') {
+                if (fn) {
+                    $scope.$eval(fn);
+                }
+            } else {
+                if (fn) {
+                    $scope.$apply(fn);
+                } else {
+                    $scope.$apply();
+                }
+            }
+        }
+    }])
+
     // MoneyNetworkHubService
     // - get/write wrappers for data.json, status.json and like.json
     // - get user data hub
     // - merge user data hubs operation
-
     .factory('MoneyNetworkHubService', ['$timeout', function($timeout) {
         var service = 'MoneyNetworkHubService' ;
         console.log(service + ' loaded') ;
@@ -2983,6 +3002,7 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.add_message: ' ;
                 var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id, auth_address,
                     like_index_p, k, parent, js_parent_messages_row ;
+                if (message.local_msg_seq == 5947) console.log(pgm + 'message = ' + JSON.stringify(message)) ;
                 if (!contact && !z_cache.user_info.block_public) contact = get_public_contact(true) ;
                 if (!contact.messages) contact.messages = [] ;
                 if (!load_contacts) contact.messages.push(message) ;
