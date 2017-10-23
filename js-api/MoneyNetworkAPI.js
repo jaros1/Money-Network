@@ -979,7 +979,7 @@ var MoneyNetworkAPILib = (function () {
             "additionalProperties": false
         }, // wallet
 
-        // send money transaction step 1: validate and optional return some json to be included in chat msg with money transactions
+        // send money transactions step 1: validate and optional return some json to be included in chat msg with money transactions. return prepare_mt_response or error response
         "prepare_mt_request": {
             "type": 'object',
             "title": 'Validate money transactions before send chat message with money transactions',
@@ -1047,12 +1047,13 @@ var MoneyNetworkAPILib = (function () {
             "additionalProperties": false
         }, // send_mt
 
-        "execute_mt_request": {
+        // send money transactions step 3: validate received money transactions. return OK response or error response
+        "check_mt": {
             "type": 'object',
-            "title": 'execute money transactions received from contact in chat message',
+            "title": 'check money transactions received from contact in chat message',
             "description": 'See prepare_mt_request and prepare_mt_response for details.',
             "properties": {
-                "msgtype": { "type": 'string', "pattern": '^execute_mt_request$'},
+                "msgtype": { "type": 'string', "pattern": '^check_mt$'},
                 "contact": {
                     "description": 'Info about sender of chat message / money transactions request. auth_address is the actual contact id and should be unique. alias and cert_user_id are human text info only and are not unique / secure contact info',
                     "type": 'object',
@@ -1080,11 +1081,12 @@ var MoneyNetworkAPILib = (function () {
                         "additionalProperties": false
                     },
                     "minItems": 1
-                }
+                },
+                "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60}
             },
-            "required": ['msgtype', 'contact', 'money_transactions'],
+            "required": ['msgtype', 'contact', 'money_transactions', 'money_transactionid'],
             "additionalProperties": false
-        }, // execute_mt_request
+        }, // check_mt
 
         "execute_mt_response": {
 
