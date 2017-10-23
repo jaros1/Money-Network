@@ -3653,7 +3653,8 @@ angular.module('MoneyNetwork')
             var contacts_query =
                 "select" +
                 "  users.user_seq, users.pubkey, users.avatar as users_avatar," +
-                "  data_json.directory,  substr(data_json.directory, 7) as auth_address, data_json.json_id as data_json_id," +
+                "  data_json.directory, substr(data_json.directory," +
+                "  instr(data_json.directory,'/data/users/')+12) as auth_address, data_json.json_id as data_json_id," +
                 "  content_json.json_id as content_json_id," +
                 "  keyvalue.value as cert_user_id," +
                 "  (select substr(files.filename,8)" +
@@ -3669,7 +3670,7 @@ angular.module('MoneyNetwork')
                 "   and status.user_seq = users.user_seq) as timestamp " +
                 "from users, json as data_json, json as content_json, keyvalue as keyvalue " +
                 "where data_json.json_id = users.json_id " +
-                "and substr(data_json.directory, 7) in " ;
+                "and substr(data_json.directory, instr(data_json.directory,'/data/users/')+12) in " ;
             for (i=0 ; i<expected_auth_addresses.length ; i++) {
                 if (i==0) contacts_query = contacts_query + '(' ;
                 else contacts_query = contacts_query + ', ' ;
@@ -3830,7 +3831,9 @@ angular.module('MoneyNetwork')
 
             // ready for emoji lookup in like table
             query =
-                "select substr(like_json.directory, 7) as auth_address, users.pubkey, like.emoji, like.count " +
+                "select"+
+                "   substr(data_json.directory, instr(data_json.directory,'/data/users/')+12) as auth_address," +
+                "   users.pubkey, like.emoji, like.count " +
                 "from like, json as like_json, json as data_json, users " +
                 "where like.timestamp = " + timestamp + " " +
                 "and like.auth = '" + auth + "' " +
