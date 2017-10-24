@@ -2359,8 +2359,9 @@ angular.module('MoneyNetwork')
 
             self.approve_money_transactions = function (m) {
                 var pgm = controller + '.approve_money_transactions: ' ;
-                var step_1_check_unknown_wallets, step_2_ping_wallets, step_3_check_transactions, unknown_wallets,
-                    balances, wallets_hash, format_money_transaction_message, set_ping_error, set_check_error, i ;
+                var step_1_check_unknown_wallets, step_2_ping_wallets, step_3_check_transactions,
+                    step_4_start_transactions, unknown_wallets, balances, wallets_hash, format_money_transaction_message,
+                    set_ping_error, set_check_error, i ;
                 console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
                 //message = {
                 //    "local_msg_seq": 5947,
@@ -2463,6 +2464,79 @@ angular.module('MoneyNetwork')
 
                 // create callback chain step 1.. todo: n
 
+                // wallet(s) responded OK to check_mt request(s). ready to start money transaction(s).
+                step_4_start_transactions = function() {
+                    var pgm = controller + '.approve_money_transactions.step_4_start_transactions: ' ;
+                    var plural, wallet_names, wallet_name, start_trans ;
+
+                    plural = (m.message.message.money_transactions.length > 1 ? 's' : '') ;
+                    m.message.message.money_transactions_status.html = 'Staring money transaction' + plural + ' ...' ;
+                    console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
+                    safeApply($scope) ;
+
+                    // start money transactions for each wallet
+                    wallet_names = [] ;
+                    for (wallet_name in wallets_hash) wallet_names.push(wallet_name) ;
+
+                    // loop for each wallet. send start_mt requests
+                    start_trans = function() {
+                        var pgm = controller + '.approve_money_transactions.step_4_start_transactions.start_trans: ' ;
+                        var wallet_name, money_transactionid, session, request ;
+                        wallet_name = wallet_names.shift() ;
+                        if (!wallet_name) {
+                            // done.
+                            // 1) done notification
+                            // 2) prevent more actions (except cancel)
+                            // 3) ?
+                            m.message.message.money_transactions_status.html = 'Done. Started wallet to wallet communication' ;
+                            console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
+                            m.message.message.money_transactions_status.spinner = false ;
+                            safeApply($scope) ;
+                            return ;
+                        }
+
+                        // ready to start money transaction(s) for wallet
+                        money_transactionid = wallets_hash[wallet_name].money_transactionid ;
+                        session = wallets_hash[wallet_name].session ;
+                        request = {
+                            msgtype: 'start_mt',
+                            money_transactionid: money_transactionid
+                        };
+                        console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                        // send start_mt request to wallet. expects a fast response. all info has been checked and is ready in wallet
+                        session.encrypt.send_message(request, {response: 10000}, function (response) {
+                            var pgm = controller + '.approve_money_transactions.step_4_start_transactions.start_trans send_message callback: ' ;
+                            var error ;
+                            console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+
+                            if (response && response.error && response.error.match(/^Timeout /)) {
+                                // OK. Timeout. Continue with next session
+                                set_check_error(wallet_name, 'Start money transaction timeout. Money transaction may or may not have been started') ;
+                                return start_trans(); // start trans in next wallet (if any)
+                            }
+                            if (!response || response.error) {
+                                // empty or error.
+                                if (response.error) error = $sanitize(response.error) ;
+                                else {
+                                    console.log(pgm + 'start money transaction error. response = ' + JSON.stringify(response)) ;
+                                    error = 'Start money tranaction error' ;
+                                }
+                                set_check_error(wallet_name, error, true) ;
+                                return start_trans(); // start trans in next wallet (if any)
+                            }
+                            // done. OK response
+
+                            // start trans in next wallet (if any)
+                            start_trans() ;
+
+                        }) ; // send_message callback
+
+                    } ; // start_trans
+                    // start start_trans loop
+                    start_trans() ;
+
+                } ; // step_4_start_transactions
+
                 // send incoming money transaction(s) to wallet(s) for validation
                 step_3_check_transactions = function() {
                     var pgm = controller + '.approve_money_transactions.step_3_check_transactions: ' ;
@@ -2480,7 +2554,7 @@ angular.module('MoneyNetwork')
                     // loop for each wallet. send received money transaction(s) to wallet for check before final go
                     check_transaction = function() {
                         var pgm = controller + '.approve_money_transactions.step_3_check_transactions.check_transaction: ' ;
-                        var wallet_name, errors, i, money_transaction, plural, error, money_transactionid, request, j ;
+                        var wallet_name, errors, i, money_transaction, plural, error, money_transactionid, session, request, j ;
                         wallet_name = wallet_names.shift() ;
                         if (!wallet_name) {
                             // done checking money transactions. count number of check errors
@@ -2503,11 +2577,7 @@ angular.module('MoneyNetwork')
                                 return ;
                             }
                             // done. ready for start_mt request
-                            m.message.message.money_transactions_status.html = 'todo: everthing OK. send start_mt request' ;
-                            console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
-                            m.message.message.money_transactions_status.spinner = false ;
-                            safeApply($scope) ;
-                            return ;
+                            return step_4_start_transactions() ;
                         }
 
                         // ready to check incoming money transaction(s) for wallet

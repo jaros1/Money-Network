@@ -916,7 +916,7 @@ var MoneyNetworkAPILib = (function () {
             "additionalProperties": false
         }, // wallet
 
-        // send money transactions step 1: validate and optional return some json to be included in chat msg with money transactions. return prepare_mt_response or error response
+        // money transactions step 1: validate and optional return some json to be included in chat msg with money transactions. return prepare_mt_response or error response
         "prepare_mt_request": {
             "type": 'object',
             "title": 'Validate money transactions before send chat message with money transactions',
@@ -971,7 +971,7 @@ var MoneyNetworkAPILib = (function () {
             "additionalProperties": false
         }, // prepare_mt_response
 
-        // send money transaction step 2: tell wallet session that chat msg with money transactions has been sent to receiver
+        // money transaction step 2: tell wallet session that chat msg with money transactions has been sent to receiver
         "send_mt": {
             "type": 'object',
             "title": 'Send money transaction(s) to receiver',
@@ -984,7 +984,7 @@ var MoneyNetworkAPILib = (function () {
             "additionalProperties": false
         }, // send_mt
 
-        // send money transactions step 3: validate received money transactions. return OK response or error response
+        // money transactions step 3: validate received money transactions. return OK response or error response
         "check_mt": {
             "type": 'object',
             "title": 'check money transactions received from contact in chat message',
@@ -1019,15 +1019,24 @@ var MoneyNetworkAPILib = (function () {
                     },
                     "minItems": 1
                 },
-                "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60}
+                "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60, "description": 'Same money_transactionid as in prepare_mt_request and send_mt'}
             },
             "required": ['msgtype', 'contact', 'money_transactions', 'money_transactionid'],
             "additionalProperties": false
         }, // check_mt
 
-        "execute_mt_response": {
-
-        }, // execute_mt_response
+        // money transactions step 4: all validation OK. start actual money transaction(s) (wallet to wallet)
+        "start_mt": {
+            "type": 'object',
+            "title": 'Start money transaction(s)',
+            "description": 'MN: tell wallet session(s) to execute money transactions received in check_mt request',
+            "properties": {
+                "msgtype": {"type": 'string', "pattern": '^start_mt$'},
+                "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60, "description": 'Same money_transactionid as in check_mt_request'}
+            },
+            "required": ['msgtype', 'money_transactionid'],
+            "additionalProperties": false
+        }, // start_mt
 
         "notification" : {
             "type": 'object',
