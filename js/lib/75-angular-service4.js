@@ -202,9 +202,6 @@ angular.module('MoneyNetwork')
             prvkey = MoneyNetworkHelper.getItem('prvkey') ;
             userid2 = MoneyNetworkHelper.getUserId() ;
 
-            // console.log(pgm + 'setting this_session_userid2 = ' + userid2) ;
-            MoneyNetworkAPILib.config({this_session_prvkey: prvkey, this_session_userid2: userid2}) ;
-
             console.log(pgm + 'todo: pubkey+pubkey2 combinations (other session) should be unique. only one sessionid is being used by the other session. last used sessionid is the correct session');
             //session_info = {
             //    "password":"U2FsdGVkX1+6+X4pSDQOf8/Bb+3xG+nFQDyhr3/7syi+wYXKEZ6UL49dB2ftq1gmC5/LKfI2XfJS2fEsEy5CYscRBDuoUxJEqKNwiiiiXBA=",
@@ -223,7 +220,9 @@ angular.module('MoneyNetwork')
                 try {
                     encrypt = new MoneyNetworkAPI({
                         sessionid: sessionid,
+                        prvkey: prvkey,
                         pubkey: session_info.pubkey,
+                        userid2: userid2,
                         pubkey2: session_info.pubkey2,
                         debug: z_cache.user_setup.debug && z_cache.user_setup.debug.money_network_api
                     }) ;
