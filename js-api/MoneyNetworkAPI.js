@@ -541,10 +541,15 @@ var MoneyNetworkAPILib = (function () {
                     if (!offline[session_filename]) {
                         offline[session_filename] = true ; // loading/global
                         loading_offline_transactions[session_filename] = true ; // loading/local
-                        start_load_offline_transactions = function() {
-                            load_offline_transactions(directory, filename) ;
-                        } ;
-                        setTimeout(start_load_offline_transactions, 0) ;
+                        (function(){
+                            var directory2, filename2, start_load_offline_transactions ;
+                            directory2 = '' + directory ;
+                            filename2 = '' + filename ;
+                            start_load_offline_transactions = function() {
+                                load_offline_transactions(directory2, filename2) ;
+                            } ;
+                            setTimeout(start_load_offline_transactions, 0) ;
+                        })() ;
                         continue ;
                     }
                 }
@@ -617,7 +622,7 @@ var MoneyNetworkAPILib = (function () {
     // that is messages with timestamp < session_at (session added/started) that must be read at startup
     function load_offline_transactions(directory, filename1) {
         var pgm = module + '.load_offline_transactions: ' ;
-        var error, session_filename, encrypt, other_user_path, inner_path, debug_seq ;
+        var error, session_filename, encrypt, other_user_path, inner_path, debug_seq0, debug_seq1 ;
         session_filename = filename1.substr(0,10) ;
         error = function (text) {
             console.log(pgm + text) ;
@@ -630,50 +635,85 @@ var MoneyNetworkAPILib = (function () {
         inner_path = other_user_path + filename1;
         if (!encrypt.other_user_path) encrypt.setup_encryption({other_user_path: other_user_path}) ;
         if (other_user_path != encrypt.other_user_path) return error('Rejected incoming message ' + inner_path + '. Expected incoming messages for this session to come from ' + encrypt.other_user_path) ;
-        // 1: get file
-        debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet') ;
-        ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (json_str) {
+
+        // 1: optionalFileInfo. any peer serving file? (filename1)
+        debug_seq0 = debug_z_api_operation_start(pgm, inner_path, 'optionalFileInfo') ;
+        ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
             var pgm = module + '.load_offline_transactions fileGet callback 1: ';
-            var encrypted_json ;
-            debug_z_api_operation_end(debug_seq, json_str ? 'OK' : 'Failed') ;
-            if (!json_str) return error('filename ' + inner_path + ' was not found') ;
-            encrypted_json = JSON.parse(json_str) ;
-            // 2: decrypt
-            encrypt.decrypt_json(encrypted_json, function (array) {
-                var pgm = module + '.load_offline_transactions decrypt_json callback 2: ';
-                var query, debug_seq ;
-                if (!array) return error(inner_path + ' decrypt failed') ;
-                if (!Array.isArray(array)) return error(inner_path + '. expected an array. found ' + JSON.stringify(array)) ;
-                // 3: dbQuery. find old incoming messages not in offline transactions array. must be marked as done
-                query =
-                    "select json.directory, files_optional.filename " +
-                    "from files_optional, json " +
-                    "where files_optional.filename like '" + session_filename + ".%'" +
-                    "and json.json_id = files_optional.json_id " +
-                    "order by substr(files_optional.filename, 12)";
-                // if (debug) console.log(pgm + 'query = ' + query) ;
-                debug_seq = debug_z_api_operation_start(pgm, query, 'dbQuery');
-                ZeroFrame.cmd("dbQuery", [query], function (res) {
-                    var pgm = module + '.load_offline_transactions dbQuery callback 3: ';
-                    var i, filename2, file_timestamp ;
-                    debug_z_api_operation_end(debug_seq, !res || res.error ? 'Failed' : 'Ok') ;
-                    if (res.error) return error('query failed. error = ' + res.error + ', query = ' + query);
-                    for (i=0 ; i<res.length ; i++) {
-                        filename2 = res[i].filename;
-                        file_timestamp = filename2.substr(11);
-                        if (!file_timestamp.match(timestamp_re)) continue; // invalid filename. will be filtered in demon loop
-                        file_timestamp = parseInt(file_timestamp);
-                        if ((file_timestamp < sessions[session_filename].session_at - 60000) && (array.indexOf(file_timestamp) == -1)) {
-                            // old file and not a offline transaction. mark as done
-                            done[filename2] = true;
+            var debug_seq1, now, elapsed ;
+            debug_z_api_operation_end(debug_seq0, file_info ? 'OK' : 'Failed') ;
+            if (debug) console.log(pgm + 'file_info = ' + JSON.stringify(file_info));
+            if (!file_info.is_downloaded && !file_info.peer) {
+                // no peers
+                if (debug) {
+                    console.log(pgm + 'abort optional file ' + inner_path + ' download. No peers. file_info = ' + JSON.stringify(file_info)) ;
+                    //file_info = {
+                    //    "inner_path": "data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/ce96214ffc.1508951493141",
+                    //    "uploaded": 0,
+                    //    "is_pinned": 1,
+                    //    "time_accessed": 0,
+                    //    "site_id": 38,
+                    //    "is_downloaded": 0,
+                    //    "file_id": 20370,
+                    //    "peer": 0,
+                    //    "time_added": 1508951557,
+                    //    "hash_id": 21822,
+                    //    "time_downloaded": 0,
+                    //    "size": 548
+                    //};
+                    // check timestamps. maybe there goes a few seconds before numbers of peer if updated
+                    now = new Date().getTime();
+                    elapsed = Math.floor(now/1000) - file_info.time_added ;
+                    console.log(pgm + 'now = ' + now + ', time_added = ' + file_info.time_added + ', elapsed = ' + elapsed) ;
+                }
+                return error('filename ' + inner_path + ' was not found') ;
+            }
+            // 2: get file. todo: add timeout wrapper like in z_file_get?
+            debug_seq1 = debug_z_api_operation_start(pgm, inner_path, 'fileGet') ;
+            ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (json_str) {
+                var pgm = module + '.load_offline_transactions fileGet callback 2: ';
+                var encrypted_json ;
+                debug_z_api_operation_end(debug_seq1, json_str ? 'OK' : 'Failed') ;
+                if (!json_str) return error('filename ' + inner_path + ' was not found') ;
+                encrypted_json = JSON.parse(json_str) ;
+                // 3: decrypt
+                encrypt.decrypt_json(encrypted_json, function (array) {
+                    var pgm = module + '.load_offline_transactions decrypt_json callback 3: ';
+                    var query, debug_seq3 ;
+                    if (!array) return error(inner_path + ' decrypt failed') ;
+                    if (!Array.isArray(array)) return error(inner_path + '. expected an array. found ' + JSON.stringify(array)) ;
+                    // 3: dbQuery. find old incoming messages not in offline transactions array. must be marked as done
+                    query =
+                        "select json.directory, files_optional.filename " +
+                        "from files_optional, json " +
+                        "where files_optional.filename like '" + session_filename + ".%'" +
+                        "and json.json_id = files_optional.json_id " +
+                        "order by substr(files_optional.filename, 12)";
+                    // if (debug) console.log(pgm + 'query = ' + query) ;
+                    // 4: dbQuery
+                    debug_seq3 = debug_z_api_operation_start(pgm, query, 'dbQuery');
+                    ZeroFrame.cmd("dbQuery", [query], function (res) {
+                        var pgm = module + '.load_offline_transactions dbQuery callback 4: ';
+                        var i, filename2, file_timestamp ;
+                        debug_z_api_operation_end(debug_seq3, !res || res.error ? 'Failed' : 'Ok') ;
+                        if (res.error) return error('query failed. error = ' + res.error + ', query = ' + query);
+                        for (i=0 ; i<res.length ; i++) {
+                            filename2 = res[i].filename;
+                            file_timestamp = filename2.substr(11);
+                            if (!file_timestamp.match(timestamp_re)) continue; // invalid filename. will be filtered in demon loop
+                            file_timestamp = parseInt(file_timestamp);
+                            if ((file_timestamp < sessions[session_filename].session_at - 60000) && (array.indexOf(file_timestamp) == -1)) {
+                                // old file and not a offline transaction. mark as done
+                                done[filename2] = true;
+                            }
                         }
-                    }
-                    // ready for next demon call
-                    offline[session_filename] = array ;
-                    done[filename1] = true;
-                }) ; // dbQuery callback 3
-            }) ; // decrypt_json callback 2
-        }) ; // fileGet callback 1
+                        // ready for next demon call
+                        offline[session_filename] = array ;
+                        done[filename1] = true;
+                    }) ; // dbQuery callback 4
+                }) ; // decrypt_json callback 3
+            }) ; // fileGet callback 2
+        }) ; // optionalFileInfo callback 1
 
     } // load_offline_transactions
 
@@ -1889,6 +1929,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
         if (!content) return cb({error: 'fileGet content.json failed'});
         if (content.optional == self.this_optional) return cb({}); // optional files support already OK
         // add optional files support
+        self.log(pgm, 'adding optional to content.json. old optional = ' + JSON.stringify(content.optional) + ', new optional = ' + JSON.stringify(self.this_optional)) ;
         content.optional = self.this_optional;
         // 2: write content.json
         inner_path = self.this_user_path + 'content.json';
@@ -2081,180 +2122,205 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                         } ; // save_offline_transaction
                         save_offline_transaction(function() {
                             var pgm = self.module + '.send_message.save_offline_transaction callback 6: ';
-                            var inner_path5, debug_seq6 ;
-                            var get_and_decrypt, response_filename, error, query, wait_for_response;
+                            var inner_path6, debug_seq6 ;
                             // 7: siteSign. publish not needed for within client communication
-                            inner_path5 = self.this_user_path + 'content.json';
+                            inner_path6 = self.this_user_path + 'content.json';
                             self.log(pgm, 'sign content.json with new optional file ' + inner_path4);
-                            debug_seq6 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path5, 'siteSign');
-                            self.ZeroFrame.cmd("siteSign", {inner_path: inner_path5}, function (res) {
+                            debug_seq6 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path6, 'siteSign');
+                            self.ZeroFrame.cmd("siteSign", {inner_path: inner_path6}, function (res) {
                                 var pgm = self.module + '.send_message siteSign callback 7: ';
-                                var delete_request, cleanup_job_id, inner_path6;
+                                var debug_seq7;
                                 MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq6, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                                 self.log(pgm, 'res = ' + JSON.stringify(res));
 
-                                if (request.request) {
-                                    self.log(pgm, 'sending a response to a previous request. start cleanup job to response. must delete response file after request timeout');
-                                    cleanup_in = request_timeout_at - request_at;
-                                    self.log(pgm, 'request_at          = ' + request_at);
-                                    self.log(pgm, 'request_timeout_at  = ' + request_timeout_at);
-                                    self.log(pgm, 'cleanup_in          = ' + cleanup_in);
-                                }
-                                if (offline_transaction || (!response && !request.request)) return cb({}); // exit. offline transaction or not response and no request cleanup job
+                                // 8: check file_info for outgoing optional file. must be different from incoming optional files ...
+                                debug_seq7 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'optionalFileInfo');
+                                ZeroFrame.cmd("optionalFileInfo", [inner_path4], function (file_info) {
+                                    var pgm = self.module + '.send_message.optionalFileInfo callback 7: ';
+                                    var delete_request, cleanup_job_id, get_and_decrypt, response_filename, error, query, wait_for_response ;
+                                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq7, file_info ? 'OK' : 'Failed');
+                                    // self.log(pgm, 'file_info (outgoing) = ' + JSON.stringify(file_info)) ;
+                                    //info_info = {
+                                    //    "inner_path": "data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/b6670bccc3.1508999548065",
+                                    //    "uploaded": 0,
+                                    //    "is_pinned": 1,
+                                    //    "time_accessed": 0,
+                                    //    "site_id": 38,
+                                    //    "is_downloaded": 1,
+                                    //    "file_id": 20386,
+                                    //    "peer": 1,
+                                    //    "time_added": 1508999548,
+                                    //    "hash_id": 303,
+                                    //    "time_downloaded": 1508999548,
+                                    //    "size": 548
+                                    //};
+                                    // outgoing optional file:
+                                    // - is_pinned=1, is_downloaded=1 and time_added=time_downloaded
 
-                                // delete request file. submit cleanup job
-                                delete_request = function () {
-                                    var pgm = self.module + '.send_message.delete_request callback 0: ';
-                                    var debug_seq1;
-                                    if (!cleanup_job_id) return; // already run
-                                    cleanup_job_id = null;
-                                    // problem with fileDelete: Delete error: [Errno 2] No such file or directory. checking file before fileDelete operation
-                                    // step 1: check file before fileDelete
-                                    debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileGet');
-                                    self.ZeroFrame.cmd("fileGet", {inner_path: inner_path4, required: false, timeout: 1}, function (res1) {
-                                        var pgm = self.module + '.send_message.delete_request fileGet callback 1: ';
-                                        var debug_seq2;
-                                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, res1 ? 'OK' : 'Not found');
-                                        if (!res1) {
-                                            console.log(pgm + 'warning. optional file ' + inner_path4 + ' was not found');
-                                            return;
-                                        }
-                                        // step 2: fileDelete
-                                        debug_seq2 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileDelete');
-                                        ZeroFrame.cmd("fileDelete", inner_path4, function (res2) {
-                                            var pgm = self.module + '.send_message.delete_request fileDelete callback 2: ';
-                                            var debug_seq3;
-                                            if ((res2 == 'ok') || (!res2.error.match(/No such file or directory/))) {
-                                                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res2 == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res2));
+                                    if (request.request) {
+                                        self.log(pgm, 'sending a response to a previous request. start cleanup job to response. must delete response file after request timeout');
+                                        cleanup_in = request_timeout_at - request_at;
+                                        self.log(pgm, 'request_at          = ' + request_at);
+                                        self.log(pgm, 'request_timeout_at  = ' + request_timeout_at);
+                                        self.log(pgm, 'cleanup_in          = ' + cleanup_in);
+                                    }
+                                    if (offline_transaction || (!response && !request.request)) return cb({}); // exit. offline transaction or not response and no request cleanup job
+
+                                    // delete request file. submit cleanup job
+                                    delete_request = function () {
+                                        var pgm = self.module + '.send_message.delete_request callback 0: ';
+                                        var debug_seq1;
+                                        if (!cleanup_job_id) return; // already run
+                                        cleanup_job_id = null;
+                                        // problem with fileDelete: Delete error: [Errno 2] No such file or directory. checking file before fileDelete operation
+                                        // step 1: check file before fileDelete
+                                        debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileGet');
+                                        self.ZeroFrame.cmd("fileGet", {inner_path: inner_path4, required: false, timeout: 1}, function (res1) {
+                                            var pgm = self.module + '.send_message.delete_request fileGet callback 1: ';
+                                            var debug_seq2;
+                                            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, res1 ? 'OK' : 'Not found');
+                                            if (!res1) {
+                                                console.log(pgm + 'warning. optional file ' + inner_path4 + ' was not found');
                                                 return;
                                             }
-                                            // step 3: check file after fileDelete
-                                            // fileDelete returned No such file or directory. Recheck that file has been deleted
-                                            self.log(pgm, 'issue 1140. https://github.com/HelloZeroNet/ZeroNet/issues/1140. step 2 FileDelete returned No such file or directory');
-                                            debug_seq3 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileGet');
-                                            self.ZeroFrame.cmd("fileGet", {inner_path: inner_path4, required: false, timeout: 1}, function (res3) {
-                                                var pgm = self.module + '.send_message.delete_request fileGet callback 3: ';
-                                                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq3, res3 ? 'OK' : 'Not found');
-                                                if (!res3) {
-                                                    // everything is fine. request file was deleted correct in step 2
-                                                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, 'OK');
-                                                }
-                                                else {
-                                                    self.log(pgm, 'issue 1140. something is very wrong. first fileGet returned OK, fileDelete returned No such file or directory and last fileGet returned OK');
+                                            // step 2: fileDelete
+                                            debug_seq2 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileDelete');
+                                            ZeroFrame.cmd("fileDelete", inner_path4, function (res2) {
+                                                var pgm = self.module + '.send_message.delete_request fileDelete callback 2: ';
+                                                var debug_seq3;
+                                                if ((res2 == 'ok') || (!res2.error.match(/No such file or directory/))) {
                                                     MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res2 == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res2));
+                                                    return;
                                                 }
-                                            });
-                                        }); // fileDelete callback
+                                                // step 3: check file after fileDelete
+                                                // fileDelete returned No such file or directory. Recheck that file has been deleted
+                                                self.log(pgm, 'issue 1140. https://github.com/HelloZeroNet/ZeroNet/issues/1140. step 2 FileDelete returned No such file or directory');
+                                                debug_seq3 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileGet');
+                                                self.ZeroFrame.cmd("fileGet", {inner_path: inner_path4, required: false, timeout: 1}, function (res3) {
+                                                    var pgm = self.module + '.send_message.delete_request fileGet callback 3: ';
+                                                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq3, res3 ? 'OK' : 'Not found');
+                                                    if (!res3) {
+                                                        // everything is fine. request file was deleted correct in step 2
+                                                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, 'OK');
+                                                    }
+                                                    else {
+                                                        self.log(pgm, 'issue 1140. something is very wrong. first fileGet returned OK, fileDelete returned No such file or directory and last fileGet returned OK');
+                                                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res2 == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res2));
+                                                    }
+                                                });
+                                            }); // fileDelete callback
 
-                                    }); // z_file_get callback
+                                        }); // z_file_get callback
 
-                                }; // delete_request
-                                self.log(pgm, 'Submit delete_request job for ' + inner_path4 + '. starts delete_request job in ' + (cleanup_in || default_timeout) + ' milliseconds');
-                                cleanup_job_id = setTimeout(delete_request, (cleanup_in || default_timeout));
-                                if (!response) return cb({}); // exit. response was not requested. request cleanup job started
+                                    }; // delete_request
+                                    self.log(pgm, 'Submit delete_request job for ' + inner_path4 + '. starts delete_request job in ' + (cleanup_in || default_timeout) + ' milliseconds');
+                                    cleanup_job_id = setTimeout(delete_request, (cleanup_in || default_timeout));
+                                    if (!response) return cb({}); // exit. response was not requested. request cleanup job started
 
-                                // fileGet and json_decrypt
-                                get_and_decrypt = function (inner_path) {
-                                    var pgm = self.module + '.send_message.get_and_decrypt: ';
-                                    var debug_seq0, now;
-                                    if (typeof inner_path == 'object') {
-                                        self.log(pgm, 'inner_path is an object. must be a timeout error returned from MoneyNetworkAPILib.wait_for_file function. inner_path = ' + JSON.stringify(inner_path));
-                                        return cb(inner_path);
-                                    }
-                                    if (timeout_at) {
-                                        now = new Date().getTime();
-                                        self.log(pgm, 'todo: fileGet: add timeout to fileGet call. required must also be false. now = ' + now + ', timeout_at = ' + new Date().getTime() + ', timeout = ' + (timeout_at - now));
-                                    }
-                                    debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet');
-                                    self.ZeroFrame.cmd("fileGet", {
-                                        inner_path: inner_path,
-                                        required: true
-                                    }, function (response_str) {
-                                        var pgm = self.module + '.send_message.get_and_decrypt fileGet callback 8.1: ';
-                                        var encrypted_response, error, request_timestamp;
-                                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, response_str ? 'OK' : 'Not found');
-                                        if (!response_str) return cb({error: 'fileGet for receipt failed. Request was ' + JSON.stringify(request) + '. inner_path was ' + inner_path});
-                                        encrypted_response = JSON.parse(response_str);
-                                        self.log(pgm, 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid);
-                                        // read response. run cleanup job now
-                                        if (cleanup_job_id) {
-                                            clearTimeout(cleanup_job_id);
-                                            setTimeout(delete_request, 0);
+                                    // fileGet and json_decrypt
+                                    get_and_decrypt = function (inner_path) {
+                                        var pgm = self.module + '.send_message.get_and_decrypt: ';
+                                        var debug_seq0, now;
+                                        if (typeof inner_path == 'object') {
+                                            self.log(pgm, 'inner_path is an object. must be a timeout error returned from MoneyNetworkAPILib.wait_for_file function. inner_path = ' + JSON.stringify(inner_path));
+                                            return cb(inner_path);
                                         }
-                                        // decrypt response
-                                        self.decrypt_json(encrypted_response, function (response) {
-                                            var pgm = self.module + '.send_message.get_and_decrypt decrypt_json callback 8.2: ';
-                                            // remove request timestamp before validation
-                                            request_timestamp = response.request;
-                                            delete response.request;
-                                            // validate response
-                                            error = MoneyNetworkAPILib.validate_json(pgm, response, request.msgtype);
-                                            if (!error && (request_timestamp != request_file_timestamp)) {
-                                                // difference between timestamp in request filename and request timestamp in response!
-                                                error = 'Expected request = ' + request_file_timestamp + ', found request = ' + request_timestamp;
+                                        if (timeout_at) {
+                                            now = new Date().getTime();
+                                            self.log(pgm, 'todo: fileGet: add timeout to fileGet call. required must also be false. now = ' + now + ', timeout_at = ' + new Date().getTime() + ', timeout = ' + (timeout_at - now));
+                                        }
+                                        debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet');
+                                        self.ZeroFrame.cmd("fileGet", {
+                                            inner_path: inner_path,
+                                            required: true
+                                        }, function (response_str) {
+                                            var pgm = self.module + '.send_message.get_and_decrypt fileGet callback 8.1: ';
+                                            var encrypted_response, error, request_timestamp;
+                                            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, response_str ? 'OK' : 'Not found');
+                                            if (!response_str) return cb({error: 'fileGet for receipt failed. Request was ' + JSON.stringify(request) + '. inner_path was ' + inner_path});
+                                            encrypted_response = JSON.parse(response_str);
+                                            self.log(pgm, 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid);
+                                            // read response. run cleanup job now
+                                            if (cleanup_job_id) {
+                                                clearTimeout(cleanup_job_id);
+                                                setTimeout(delete_request, 0);
                                             }
-                                            if (error) response.request = request_timestamp;
-                                            if (error) {
-                                                error = request.msgtype + ' response is not valid. ' + error;
-                                                self.log(pgm, error);
-                                                self.log(pgm, 'request = ' + JSON.stringify(request));
-                                                self.log(pgm, 'response = ' + JSON.stringify(response));
-                                                return cb({error: error});
-                                            }
+                                            // decrypt response
+                                            self.decrypt_json(encrypted_response, function (response) {
+                                                var pgm = self.module + '.send_message.get_and_decrypt decrypt_json callback 8.2: ';
+                                                // remove request timestamp before validation
+                                                request_timestamp = response.request;
+                                                delete response.request;
+                                                // validate response
+                                                error = MoneyNetworkAPILib.validate_json(pgm, response, request.msgtype);
+                                                if (!error && (request_timestamp != request_file_timestamp)) {
+                                                    // difference between timestamp in request filename and request timestamp in response!
+                                                    error = 'Expected request = ' + request_file_timestamp + ', found request = ' + request_timestamp;
+                                                }
+                                                if (error) response.request = request_timestamp;
+                                                if (error) {
+                                                    error = request.msgtype + ' response is not valid. ' + error;
+                                                    self.log(pgm, error);
+                                                    self.log(pgm, 'request = ' + JSON.stringify(request));
+                                                    self.log(pgm, 'response = ' + JSON.stringify(response));
+                                                    return cb({error: error});
+                                                }
 
-                                            // return decrypted response
-                                            self.log(pgm, 'response = ' + JSON.stringify(response) +
-                                                ', request_timestamp = ' + request_timestamp +
-                                                ', request_file_timestamp = ' + request_file_timestamp);
-                                            cb(response);
-                                        }); // decrypt_json callback 8.2
-                                    }); // fileGet callback 8.1
-                                }; // get_and_decrypt
+                                                // return decrypted response
+                                                self.log(pgm, 'response = ' + JSON.stringify(response) +
+                                                    ', request_timestamp = ' + request_timestamp +
+                                                    ', request_file_timestamp = ' + request_file_timestamp);
+                                                cb(response);
+                                            }); // decrypt_json callback 8.2
+                                        }); // fileGet callback 8.1
+                                    }; // get_and_decrypt
 
-                                response_filename = other_session_filename + '.' + response;
+                                    response_filename = other_session_filename + '.' + response;
 
-                                // 8: is MoneyNetworkAPIDemon monitoring incoming messages for this sessionid?
-                                if (MoneyNetworkAPILib.is_session(self.sessionid)) {
-                                    // demon is running and is monitoring incoming messages for this sessionid
-                                    self.log(pgm, 'demon is running. wait for response file ' + response_filename + '. cb = get_and_decrypt');
-                                    error = MoneyNetworkAPILib.wait_for_file(request, response_filename, timeout_at, get_and_decrypt);
-                                    if (error) return cb({error: error});
-                                }
-                                else {
-                                    // demon is not running or demon is not monitoring this sessionid
+                                    // 8: is MoneyNetworkAPIDemon monitoring incoming messages for this sessionid?
+                                    if (MoneyNetworkAPILib.is_session(self.sessionid)) {
+                                        // demon is running and is monitoring incoming messages for this sessionid
+                                        self.log(pgm, 'demon is running. wait for response file ' + response_filename + '. cb = get_and_decrypt');
+                                        error = MoneyNetworkAPILib.wait_for_file(request, response_filename, timeout_at, get_and_decrypt);
+                                        if (error) return cb({error: error});
+                                    }
+                                    else {
+                                        // demon is not running or demon is not monitoring this sessionid
 
-                                    // 7: wait for response. loop. wait until timeout_at
-                                    query =
-                                        "select 'merged-MoneyNetwork' || '/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
-                                        "from files_optional, json " +
-                                        "where files_optional.filename = '" + response_filename + "' " +
-                                        "and json.json_id = files_optional.json_id";
+                                        // 7: wait for response. loop. wait until timeout_at
+                                        query =
+                                            "select 'merged-MoneyNetwork' || '/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
+                                            "from files_optional, json " +
+                                            "where files_optional.filename = '" + response_filename + "' " +
+                                            "and json.json_id = files_optional.json_id";
 
-                                    // loop
-                                    wait_for_response = function () {
-                                        var pgm = self.module + '.send_message.wait_for_response 8: ';
-                                        var now, debug_seq8;
-                                        now = new Date().getTime();
-                                        if (now > timeout_at) return cb({error: 'Timeout while waiting for response. Request was ' + JSON.stringify(request) + '. Expected response filename was ' + response_filename});
-                                        // 9: dbQuery
-                                        debug_seq8 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, query, 'dbQuery');
-                                        self.ZeroFrame.cmd("dbQuery", [query], function (res) {
-                                            var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 9: ';
-                                            var inner_path9;
-                                            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq8, (!res || res.error) ? 'Failed' : 'OK');
-                                            if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error});
-                                            if (!res.length) {
-                                                setTimeout(wait_for_response, 500);
-                                                return;
-                                            }
-                                            inner_path9 = res[0].inner_path;
-                                            // 10: get_and_decryt
-                                            get_and_decrypt(inner_path9);
+                                        // loop
+                                        wait_for_response = function () {
+                                            var pgm = self.module + '.send_message.wait_for_response 8: ';
+                                            var now, debug_seq8;
+                                            now = new Date().getTime();
+                                            if (now > timeout_at) return cb({error: 'Timeout while waiting for response. Request was ' + JSON.stringify(request) + '. Expected response filename was ' + response_filename});
+                                            // 9: dbQuery
+                                            debug_seq8 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, query, 'dbQuery');
+                                            self.ZeroFrame.cmd("dbQuery", [query], function (res) {
+                                                var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 9: ';
+                                                var inner_path9;
+                                                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq8, (!res || res.error) ? 'Failed' : 'OK');
+                                                if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error});
+                                                if (!res.length) {
+                                                    setTimeout(wait_for_response, 500);
+                                                    return;
+                                                }
+                                                inner_path9 = res[0].inner_path;
+                                                // 10: get_and_decryt
+                                                get_and_decrypt(inner_path9);
 
-                                        }); // dbQuery callback 9
-                                    }; // wait_for_response 8
-                                    setTimeout(wait_for_response, 250);
-                                }
+                                            }); // dbQuery callback 9
+                                        }; // wait_for_response callback 8
+                                        setTimeout(wait_for_response, 250);
+                                    }
+
+                                }) ; // optionalFileInfo callback 8
 
                             }); // siteSign callback 7 (content.json)
 

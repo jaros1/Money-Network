@@ -220,13 +220,11 @@ angular.module('MoneyNetwork')
                 "select substr(directory, 1, instr(directory,'/')-1) as hub, count(*) as rows " +
                 "from json " +
                 "group by substr(directory, 1, instr(directory,'/')-1);" ;
-            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ?') ;
             debug_seq = debug_z_api_operation_start(pgm, 'query ?', 'dbQuery', show_debug('z_db_query')) ;
             ZeroFrame.cmd("dbQuery", [query], function (res) {
                 var pgm = service + '.monitor_first_hub_event dbQuery callback: ';
                 var hub, i, cbs, cb;
                 // if (detected_client_log_out(pgm)) return ;
-                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                 debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
                 if (res.error) {
                     console.log(pgm + "first hub lookup failed: " + res.error);
@@ -559,7 +557,7 @@ angular.module('MoneyNetwork')
                     debug_seq2 = debug_z_api_operation_start(pgm, query2, 'dbQuery', show_debug('z_db_query')) ;
                     ZeroFrame.cmd("dbQuery", [query2], function (res2) {
                         var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 2: ';
-                        var i, index, missing_rows, dictionaries, modified, sign ;
+                        var i, index, hub, missing_rows, dictionaries, modified, sign ;
                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2);
                         debug_z_api_operation_end(debug_seq2, (!res2 || res2.error) ? 'Failed. error = ' + JSON.stringify(res2) : 'OK');
                         if (res2.error) {
@@ -581,6 +579,8 @@ angular.module('MoneyNetwork')
                         for (index in res) {
                             if (res[index].in_json && res[index].in_files) continue ;
                             if (['avatar.jpg','avatar.png'].indexOf(res[index.file_name]) != -1) continue ; // minor dif
+                            hub = index.substr(0,index.indexOf('/')) ;
+                            if (user_data_hubs.indexOf(hub) == -1) continue ; // ignore - not a MN user data hub - maybe a wallet data hub
                             missing_rows.push(res[index]) ;
                         }
                         if (!missing_rows.length) return step_3_find_user_hubs() ; // everything is OK. next step
