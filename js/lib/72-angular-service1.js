@@ -273,55 +273,56 @@ angular.module('MoneyNetwork')
                 }
             }
 
-            // optional fileGet operation?
-            // https://github.com/jaros1/Money-Network/issues/227
-            // problem with fileGet operation for delete optional files. timeout after > 60 seconds.
-            // check of optional files exists before fileGet operation starts
-            // files_allowed": "((data|status|like).json|avatar.(jpg|png))"
+            // optional fileGet operation? Some issues with optional fileGet calls
+            // problem with fileGet operation for delete optional files. timeout after > 60 seconds. should be solved now. null file_info is returned for deleted optional files
+            // also a problem with fileGet operation for optional files without any peer (peer information is not always 100% correct)
             pos = inner_path.lastIndexOf('/') ;
             filename = inner_path.substr(pos+1, inner_path.length-pos) ;
             optional_file = (['content.json', 'data.json', 'status.json', 'like.json', 'avatar.jpg', 'avatar.png'].indexOf(filename) == -1);
             debug('z_file_get', pgm + 'filename = ' + JSON.stringify(filename) + ', optional_file = ' + optional_file) ;
 
             // optional step. get info about optional file before fileGet operation
+            // "!file_info.is_downloaded && !file_info.peer" should be not downloaded optional files without any peers
+            // but the information is not already correct. peer can be 0 and other client is ready to serve optional file.
+            // try a fileGet with required and a "short" timeout
             get_optional_file_info = function (cb) {
-                if (!optional_file) return cb(true) ;
+                if (!optional_file) return cb(null) ;
                 ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
                     debug('z_file_get', pgm + 'file_info = ' + JSON.stringify(file_info)) ;
-                    //file_info = {
-                    //    "inner_path": "data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/1508311915217-1508311915217-1-chat.json",
-                    //    "uploaded": 0,
-                    //    "is_pinned": 1,
-                    //    "time_accessed": 0,
-                    //    "site_id": 6,
-                    //    "is_downloaded": 0,
-                    //    "file_id": 19984,
-                    //    "peer": 0,
-                    //    "time_added": 1508311916,
-                    //    "hash_id": 514,
-                    //    "time_downloaded": 0,
-                    //    "size": 293
-                    //};
-                    if (file_info) {
-                        if (!file_info.is_downloaded && !file_info.peer) {
-                            debug('z_file_get', pgm + 'abort optional file download. No peers') ;
-                            return cb(false)
-                        }
-                    }
-                    else debug('z_file_get', pgm + 'error. no file_info for optional file ' + inner_path) ;
-
-                    cb(true) ;
+                    cb(file_info) ;
                 }) ; // optionalFileInfo
             } ; // get_optional_file_info
-            get_optional_file_info(function(ok) {
-                var cb2_done, cb2, timeout, process_id, debug_seq ;
-                if (!ok) {
-                    debug('z_file_get', pgm + 'abort fileGet operation for ' + inner_path + '. optional file without any peers') ;
-                    return cb() ;
+            get_optional_file_info(function(file_info) {
+                var cb2_done, cb2, timeout, process_id, debug_seq, warnings, old_options ;
+                if (optional_file && !file_info) {
+                    debug('z_file_get', pgm + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
+                    return cb(null) ;
+                }
+                if (optional_file) {
+                    // some additional checks and warnings.
+                    if (!file_info) {
+                        debug('z_file_get', pgm + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
+                        return cb(null) ;
+                    }
+                    if (!file_info.is_downloaded && !file_info.peer) {
+                        // not downloaded optional files and (maybe) no peers! peer information is not always correct
+                        debug('z_file_get', pgm + 'warning. starting fileGet operation for optional file without any peers. file_info = ' + JSON.stringify(file_info)) ;
+                        warnings = [] ;
+                        old_options = JSON.stringify(options) ;
+                        if (!options.required) {
+                            options.required = true ;
+                            warnings.push('added required=true to fileGet operation') ;
+                        }
+                        if (!options.timeout) {
+                            options.timeout = 60 ;
+                            warnings.push('added timeout=60 to fileGet operation') ;
+                        }
+                        if (warnings.length) debug('z_file_get', pgm + 'Warning: ' + warnings.join('. ') + '. old options = ' + old_options + ', new_options = ' + JSON.stringify(options)) ;
+                    }
                 }
 
-                // extend cb. add debug and timeout processing.
-                // run as fileGet callback or run by $timeout (problem with optional fileGet operation running forever
+                // extend cb. add ZeroNet API debug messages + timeout processing.
+                // cb2 is run as fileGet callback or is run by $timeout (sometimes problem with optional fileGet operation running forever)
                 cb2_done = false ;
                 cb2 = function (data) {
                     if (process_id) {
@@ -336,13 +337,13 @@ angular.module('MoneyNetwork')
                     cb(data) ;
                 } ; // fileGet callback
 
-                timeout = options.timeout || 300 ; // timeout in seconds
+                timeout = options.timeout || 60 ; // timeout in seconds
                 process_id = $timeout(cb2, timeout*1000) ;
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
                 debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', show_debug('z_file_get')) ;
                 ZeroFrame.cmd("fileGet", options, cb2) ;
 
-            }) ;
+            }) ; // get_optional_file_info callback
 
         } // z_file_get
 
@@ -1977,10 +1978,14 @@ angular.module('MoneyNetwork')
                                             logical_deleted_files.sort() ;
                                             while (logical_deleted_files.length > max_logical_deleted_files) {
                                                 filename = logical_deleted_files.shift() ;
-                                                debug_seq = debug_z_api_operation_start(pgm, user_path + '/' + filename, 'fileDelete', show_debug('z_file_delete')) ;
-                                                ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function (res) {
-                                                    debug_z_api_operation_end(debug_seq, format_res(res)) ;
-                                                }) ;
+                                                // closure. debug_seq in a loop. May change
+                                                (function(){
+                                                    var debug_seq ;
+                                                    debug_seq = debug_z_api_operation_start(pgm, user_path + '/' + filename, 'fileDelete', show_debug('z_file_delete')) ;
+                                                    ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function (res) {
+                                                        debug_z_api_operation_end(debug_seq, format_res(res)) ;
+                                                    }) ;
+                                                })() ;
                                                 content_updated = true ;
                                             }
                                         }

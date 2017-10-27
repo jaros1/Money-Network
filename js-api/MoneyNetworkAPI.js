@@ -541,6 +541,7 @@ var MoneyNetworkAPILib = (function () {
                     if (!offline[session_filename]) {
                         offline[session_filename] = true ; // loading/global
                         loading_offline_transactions[session_filename] = true ; // loading/local
+                        // closure. secure parameters for load_offline_transactions task
                         (function(){
                             var directory2, filename2, start_load_offline_transactions ;
                             directory2 = '' + directory ;
@@ -618,11 +619,17 @@ var MoneyNetworkAPILib = (function () {
 
     } // demon
 
-    // load file <session_filename>.0000000000000 with offline transactions for this session.
+    // load file <session_filename>.0000000000000 with offline transactions for <session_filename> session.
     // that is messages with timestamp < session_at (session added/started) that must be read at startup
-    function load_offline_transactions(directory, filename1) {
+    // timeout_count: fileGet callback is not executed after timeout. Try 3 times with 60 seconds timeout
+    function load_offline_transactions(directory, filename1, timeout_count) {
         var pgm = module + '.load_offline_transactions: ' ;
-        var error, session_filename, encrypt, other_user_path, inner_path, debug_seq0, debug_seq1 ;
+        var error, session_filename, encrypt, other_user_path, inner_path, debug_seq0 ;
+        if (!timeout_count) timeout_count = 0 ;
+        if (timeout_count > 3) {
+            console.log(pgm + 'fileGet timeout 3 times. aborting fileGet operation for ' + filename1) ;
+            return ;
+        }
         session_filename = filename1.substr(0,10) ;
         error = function (text) {
             console.log(pgm + text) ;
@@ -636,44 +643,59 @@ var MoneyNetworkAPILib = (function () {
         if (!encrypt.other_user_path) encrypt.setup_encryption({other_user_path: other_user_path}) ;
         if (other_user_path != encrypt.other_user_path) return error('Rejected incoming message ' + inner_path + '. Expected incoming messages for this session to come from ' + encrypt.other_user_path) ;
 
-        // 1: optionalFileInfo. any peer serving file? (filename1)
+        // 1: check optionalFileInfo before optional fileGet operation.
+        // - check for deleted optional files (file_info = null)
+        // - check for optional files without any peer (write warning + add required and timeout)
+        // todo: optional file info check before fileGet is not working correct. cannot use peer=0 information. must use fileGet with required and a timeout
         debug_seq0 = debug_z_api_operation_start(pgm, inner_path, 'optionalFileInfo') ;
         ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
             var pgm = module + '.load_offline_transactions fileGet callback 1: ';
-            var debug_seq1, now, elapsed ;
+            var debug_seq1, options, warnings, old_options, file_get_timeout, check_file_get, process_id ;
             debug_z_api_operation_end(debug_seq0, file_info ? 'OK' : 'Failed') ;
             if (debug) console.log(pgm + 'file_info = ' + JSON.stringify(file_info));
+            if (!file_info) return error('No file_info. optional file must have been deleted') ;
+
+            options = {inner_path: inner_path, required: true} ;
             if (!file_info.is_downloaded && !file_info.peer) {
                 // no peers
-                if (debug) {
-                    console.log(pgm + 'abort optional file ' + inner_path + ' download. No peers. file_info = ' + JSON.stringify(file_info)) ;
-                    //file_info = {
-                    //    "inner_path": "data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/ce96214ffc.1508951493141",
-                    //    "uploaded": 0,
-                    //    "is_pinned": 1,
-                    //    "time_accessed": 0,
-                    //    "site_id": 38,
-                    //    "is_downloaded": 0,
-                    //    "file_id": 20370,
-                    //    "peer": 0,
-                    //    "time_added": 1508951557,
-                    //    "hash_id": 21822,
-                    //    "time_downloaded": 0,
-                    //    "size": 548
-                    //};
-                    // check timestamps. maybe there goes a few seconds before numbers of peer if updated
-                    now = new Date().getTime();
-                    elapsed = Math.floor(now/1000) - file_info.time_added ;
-                    console.log(pgm + 'now = ' + now + ', time_added = ' + file_info.time_added + ', elapsed = ' + elapsed) ;
+                if (debug) console.log(pgm + 'warning. starting fileGet operation for optional file without any peers. file_info = ' + JSON.stringify(file_info)) ;
+                warnings = [] ;
+                old_options = JSON.stringify(options) ;
+                if (!options.required) {
+                    options.required = true ;
+                    warnings.push('added required=true to fileGet operation') ;
                 }
-                return error('filename ' + inner_path + ' was not found') ;
+                if (!options.timeout) {
+                    options.timeout = 60 ;
+                    warnings.push('added timeout=60 to fileGet operation') ;
+                }
+                if (warnings.length && debug) console.log(pgm + 'Warning: ' + warnings.join('. ') + '. old options = ' + old_options + ', new_options = ' + JSON.stringify(options)) ;
             }
+
+            // check for fileGet timeout. ZeroNet may not run fileGet callback
+            file_get_timeout = null ; // null: running, false: OK fileGet. true: timeout (this)
+            check_file_get = function () {
+                process_id = null ;
+                if (file_get_timeout != null) return ;
+                file_get_timeout = true ;
+                timeout_count++ ;
+                console.log(pgm + 'fileGet timeout ' + timeout_count) ;
+                load_offline_transactions(directory, filename1, timeout_count+1) ;
+            };
+            process_id = setTimeout(check_file_get, (options.timeout || 300)*1000) ;
+
             // 2: get file. todo: add timeout wrapper like in z_file_get?
             debug_seq1 = debug_z_api_operation_start(pgm, inner_path, 'fileGet') ;
-            ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: true}, function (json_str) {
+            ZeroFrame.cmd("fileGet", options, function (json_str) {
                 var pgm = module + '.load_offline_transactions fileGet callback 2: ';
                 var encrypted_json ;
+                file_get_timeout = false ;
                 debug_z_api_operation_end(debug_seq1, json_str ? 'OK' : 'Failed') ;
+                if (process_id) {
+                    try {clearInterval(process_id) }
+                    catch (e) {}
+                    process_id = null ;
+                }
                 if (!json_str) return error('filename ' + inner_path + ' was not found') ;
                 encrypted_json = JSON.parse(json_str) ;
                 // 3: decrypt
