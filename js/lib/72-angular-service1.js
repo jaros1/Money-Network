@@ -256,7 +256,7 @@ angular.module('MoneyNetwork')
 
         // ZeroFrame fileGet wrapper. first fileGet request must wait for mergerSiteAdd operation to finish
         var inner_path_re1 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
-        var inner_path_re2 = /^merged-MoneyNetwork\/(.*?)\/data\/users\// ; // extract hub
+        var inner_path_re2 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/(.*?)$/ ; // extract hub and auth_address
         function z_file_get (pgm, options, cb) {
             var inner_path, match2, hub, pos, filename, optional_file, get_optional_file_info ;
             inner_path = options.inner_path ;
@@ -272,6 +272,7 @@ angular.module('MoneyNetwork')
                     return ;
                 }
             }
+            else throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
 
             // optional fileGet operation? Some issues with optional fileGet calls
             // problem with fileGet operation for delete optional files. timeout after > 60 seconds. should be solved now. null file_info is returned for deleted optional files
@@ -346,6 +347,10 @@ angular.module('MoneyNetwork')
             }) ; // get_optional_file_info callback
 
         } // z_file_get
+
+        function z_file_write (inner_path, content, cb) {
+            MoneyNetworkAPILib.z_file_write(inner_path, content, cb)
+        }
 
         function get_default_user_hub () {
             var pgm = service + '.get_default_user_hub: ' ;
@@ -663,7 +668,8 @@ angular.module('MoneyNetwork')
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(content)));
                                 // debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite');
                                 debug_seq1 = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write'));
-                                ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+                                z_file_write(inner_path, btoa(json_raw), function (res) {
+                                // ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
                                     var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign fileWrite callback 2: ';
                                     var debug_seq2 ;
                                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
@@ -844,7 +850,8 @@ angular.module('MoneyNetwork')
                                     json_raw = unescape(encodeURIComponent(old_hub_content_str));
                                     // debug_seq3 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
                                     debug_seq3 = debug_z_api_operation_start(pgm, inner_path0, 'fileWrite', show_debug('z_file_write'));
-                                    ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
+                                    z_file_write(inner_path0, btoa(json_raw), function (res) {
+                                    //ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
                                         var pgm = service + '.merge_user_hub.step_1_update_content_json fileWrite callback 4: ';
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq3);
                                         debug_z_api_operation_end(debug_seq3, format_res(res));
@@ -1215,7 +1222,8 @@ angular.module('MoneyNetwork')
                             inner_path0 = my_user_path + my_filename;
                             // debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
                             debug_seq0 = debug_z_api_operation_start(pgm, inner_path0, 'fileWrite', show_debug('z_file_write'));
-                            ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
+                            z_file_write(inner_path0, btoa(json_raw), function (res) {
+                            // ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
                                 var inner_path1, debug_seq1;
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                                 debug_z_api_operation_end(debug_seq0, format_res(res));
@@ -1273,7 +1281,8 @@ angular.module('MoneyNetwork')
                         inner_path0 = my_user_path + filename;
                         // debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
                         debug_seq0 = debug_z_api_operation_start(pgm, inner_path0, 'fileWrite', show_debug('z_file_write'));
-                        ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
+                        z_file_write(inner_path0, btoa(json_raw), function (res) {
+                        //ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
                             var inner_path1, debug_seq1;
                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
                             debug_z_api_operation_end(debug_seq0, format_res(res));
@@ -1337,7 +1346,8 @@ angular.module('MoneyNetwork')
                         inner_path = hub_user_path + 'content.json' ;
                         // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                         debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write')) ;
-                        ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
+                        z_file_write(inner_path , btoa(json_raw), function (res) {
+                        // ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
                             var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                             debug_z_api_operation_end(debug_seq, format_res(res));
@@ -1374,7 +1384,8 @@ angular.module('MoneyNetwork')
                             inner_path = my_user_path + 'data.json' ;
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write')) ;
-                            ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
+                            z_file_write(inner_path , btoa(json_raw), function (res) {
+                            // ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                                 debug_z_api_operation_end(debug_seq, format_res(res));
@@ -1395,7 +1406,8 @@ angular.module('MoneyNetwork')
                             inner_path = my_user_path + 'status.json' ;
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write')) ;
-                            ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
+                            z_file_write(inner_path , btoa(json_raw), function (res) {
+                            // ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                                 debug_z_api_operation_end(debug_seq, format_res(res));
@@ -1416,7 +1428,8 @@ angular.module('MoneyNetwork')
                             inner_path = my_user_path + 'like.json' ;
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write')) ;
-                            ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
+                            z_file_write(inner_path , btoa(json_raw), function (res) {
+                            // ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                                 debug_z_api_operation_end(debug_seq, format_res(res));
@@ -1565,7 +1578,8 @@ angular.module('MoneyNetwork')
                 json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/data.json fileWrite') ;
                 debug_seq = debug_z_api_operation_start(pgm, user_path + '/data.json', 'fileWrite', show_debug('z_file_write')) ;
-                ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
+                z_file_write(user_path + '/data.json', btoa(json_raw), function (res) {
+                // ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, format_res(res)) ;
                     if (detected_client_log_out(pgm)) return ;
@@ -1625,7 +1639,8 @@ angular.module('MoneyNetwork')
                     json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/status.json fileWrite') ;
                     debug_seq = debug_z_api_operation_start(pgm, user_path + '/status.json', 'fileWrite', show_debug('z_file_write')) ;
-                    ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
+                    z_file_write(user_path + '/status.json', btoa(json_raw), function (res) {
+                    // ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
                         var pgm = service + '.write_status_json fileWrite callback 2: ';
                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                         debug_z_api_operation_end(debug_seq, format_res(res)) ;
@@ -1735,7 +1750,8 @@ angular.module('MoneyNetwork')
                 json_raw = unescape(encodeURIComponent(JSON.stringify(like, null, "\t")));
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/like.json fileWrite') ;
                 debug_seq = debug_z_api_operation_start(pgm, user_path + '/like.json', 'fileWrite', show_debug('z_file_write')) ;
-                ZeroFrame.cmd("fileWrite", [user_path + '/like.json', btoa(json_raw)], function (res) {
+                z_file_write(user_path + '/like.json', btoa(json_raw), function (res) {
+                // ZeroFrame.cmd("fileWrite", [user_path + '/like.json', btoa(json_raw)], function (res) {
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, format_res(res)) ;
                     if (detected_client_log_out(pgm)) return ;
@@ -2012,7 +2028,8 @@ angular.module('MoneyNetwork')
                                         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
                                         // debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/content.json fileWrite') ;
                                         debug_seq2 = debug_z_api_operation_start(pgm, user_path + '/content.json', 'fileWrite', show_debug('z_file_write')) ;
-                                        ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
+                                        z_file_write(user_path + '/content.json', btoa(json_raw), function (res) {
+                                        // ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
                                             var pgm = service + '.zeronet_site_publish fileWrite callback 7: ';
                                             var error ;
                                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
@@ -2138,13 +2155,13 @@ angular.module('MoneyNetwork')
                     write_data_json(function (res) {
                         var pgm = service + '.check_sha256_addresses write_data_json callback: ' ;
                         // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                        if (res === "ok") {
+                        if (res == "ok") {
                             if (update_local_storage) ls_save_contacts(false) ;
                             zeronet_site_publish() ;
                         }
                         else {
-                            ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
-                            console.log(pgm + 'Error. Failed to post: ' + res.error) ;
+                            ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
+                            console.log(pgm + 'Error. Failed to post: ' + JSON.stringify(res)) ;
                         }
                     }); // write_data_json
 
@@ -2257,7 +2274,8 @@ angular.module('MoneyNetwork')
             empty_json = {} ;
             json_raw = unescape(encodeURIComponent(JSON.stringify(empty_json, null, "\t")));
             debug_seq = debug_z_api_operation_start(pgm, file_path, 'fileWrite', show_debug('z_file_write')) ;
-            ZeroFrame.cmd("fileWrite", [file_path, btoa(json_raw)], function (res) {
+            z_file_write(file_path, btoa(json_raw), function (res) {
+            // ZeroFrame.cmd("fileWrite", [file_path, btoa(json_raw)], function (res) {
                 var pgm = service + '.write_empty_chat_file fileWrite callback: ' ;
                 var error ;
                 debug_z_api_operation_end(debug_seq, format_res(res)) ;
@@ -2810,14 +2828,14 @@ angular.module('MoneyNetwork')
                             var pgm = service + '.i_am_online write_status_json callback 4: ' ;
                             // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                             if (detected_client_log_out(pgm)) return ;
-                            if (res === "ok") {
+                            if (res == "ok") {
                                 // update timestamp in status.json and publish
                                 // console.log(pgm + 'calling zeronet_site_publish to update timestamp. user_seq = ' + user_seq) ;
                                 zeronet_site_publish(check_pubkey2_cb) ;
                             }
                             else {
-                                ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
-                                console.log(pgm + 'Error. Failed to post: ' + res.error) ;
+                                ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
+                                console.log(pgm + 'Error. Failed to post: ' + JSON.stringify(res)) ;
                             }
 
                         }); // write_status_json callback 4

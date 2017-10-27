@@ -65,6 +65,9 @@ angular.module('MoneyNetwork')
         function z_file_get (pgm, options, cb) {
             moneyNetworkHubService.z_file_get(pgm, options, cb) ;
         }
+        function z_file_write (inner_path, content, cb) {
+            MoneyNetworkAPILib.z_file_write(inner_path, content, cb) ;
+        }
         function get_data_json (cb) {
             moneyNetworkHubService.get_data_json(cb) ;
         }
@@ -1355,9 +1358,11 @@ angular.module('MoneyNetwork')
                             message = message_with_envelope.message ;
                             // check public key
                             if (contact.type != 'group') {
-                                if (!contact.pubkey || ((contact.encryption == '2') && !contact.pubkey2)) {
+                                if (!contact.pubkey || (('' + contact.encryption == '2') && !contact.pubkey2)) {
                                     console.log(pgm + 'Cannot send message ' + JSON.stringify(message_with_envelope) + '. contact does not have a public key');
-                                    console.log(pgm + 'contact = ' + JSON.stringify(contact));
+                                    console.log(pgm + 'contact.pubkey = ' + contact.pubkey) ;
+                                    console.log(pgm + 'contact.pubkey2 = ' + contact.pubkey2) ;
+                                    console.log(pgm + 'contact.encryption = ' + contact.encryption) ;
                                     console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
                                     console.log(pgm + 'deleting message') ;
                                     // delete invalid message
@@ -1482,7 +1487,7 @@ angular.module('MoneyNetwork')
                                 password = contact.password ;
                                 receiver_sha256 = CryptoJS.SHA256(password).toString();
                             }
-                            else if (contact.encryption != '2') {
+                            else if ('' + contact.encryption != '2') {
                                 debug('lost_message', pgm + 'using JSEncrypt. contact.encryption = ' + JSON.stringify(contact.encryption));
                                 // JSEncrypt
                                 message_with_envelope.encryption = 1 ;
@@ -1584,7 +1589,8 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + image_path + ' fileWrite') ;
                                 debug_seq = debug_z_api_operation_start(pgm, image_path, 'fileWrite', show_debug('z_file_write')) ;
-                                ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
+                                z_file_write(image_path, btoa(json_raw), function (res) {
+                                //ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
                                     var pgm = service + '.z_update_2a_data_json_encrypt fileWrite callback: ';
                                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                     debug_z_api_operation_end(debug_seq, format_res(res)) ;
@@ -1775,7 +1781,8 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + image_path + ' fileWrite') ;
                                     debug_seq = debug_z_api_operation_start(pgm, image_path, 'fileWrite', show_debug('z_file_write')) ;
-                                    ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
+                                    z_file_write(image_path, btoa(json_raw), function (res) {
+                                    // ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
                                         var pgm = service + '.z_update_2b_data_json_encrypt fileWrite callback 5: ';
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                         debug_z_api_operation_end(debug_seq, format_res(res)) ;
@@ -2132,14 +2139,14 @@ angular.module('MoneyNetwork')
                 // delete zeronet_file_locked[data_json_path] ;
                 var pgm = service + '.z_update_data_write_publish write_data_json callback: ' ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                if (res === "ok") {
+                if (res == "ok") {
                     // data.json ok. check public chat and publish
                     // debug('public_chat', pgm + 'data.json updated. continue with public chat messages and publish') ;
                     z_update_5_public_chat(true) ;
                 }
                 else {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
-                    console.log(pgm + 'Error. Failed to post: ' + res.error) ;
+                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
+                    console.log(pgm + 'Error. Failed to post: ' + JSON.stringify(res)) ;
                 }
             }); // fileWrite
         } // z_update_4_data_json_write
@@ -2417,7 +2424,8 @@ angular.module('MoneyNetwork')
                                         debug('public_chat', 'issue #84 - json_raw.length = ' + json_raw.length + ', JSON.stringify(chat).length = ' + JSON.stringify(chat).length) ;
                                         // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + new_file_path + ' fileWrite') ;
                                         debug_seq = debug_z_api_operation_start(pgm, new_file_path, 'fileWrite', show_debug('z_file_write')) ;
-                                        ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
+                                        z_file_write(new_file_path, btoa(json_raw), function (res) {
+                                        // ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
                                             var pgm = service + '.z_update_5_public_chat fileWrite callback 3a: ';
                                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                             debug_z_api_operation_end(debug_seq, format_res(res)) ;
@@ -2597,7 +2605,8 @@ angular.module('MoneyNetwork')
                                     debug('public_chat', 'issue #84: json_raw.length = ' + json_raw.length + ', JSON.stringify(chat).length = ' + JSON.stringify(chat).length) ;
                                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + new_file_path + ' fileWrite') ;
                                     debug_seq = debug_z_api_operation_start(pgm, new_file_path, 'fileWrite', show_debug('z_file_write')) ;
-                                    ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
+                                    z_file_write(new_file_path, btoa(json_raw), function (res) {
+                                    // ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
                                         var pgm = service + '.z_update_5_public_chat fileWrite callback 3b: ';
                                         var error, js_message_row ;
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -2929,14 +2938,14 @@ angular.module('MoneyNetwork')
                 write_like_json(function(res) {
                     var pgm = service + '.z_update_6_like_json write_like_json callback 2: ' ;
 
-                    if (res === "ok") {
+                    if (res == "ok") {
                         // data.json ok. check public chat and publish
                         // debug('public_chat', pgm + 'data.json updated. continue with public chat messages and publish') ;
                         done(true, refresh_reactions_job)  ;
                     }
                     else {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + res.error, 5000]);
-                        console.log(pgm + 'Error. Failed to post: ' + res.error) ;
+                        ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
+                        console.log(pgm + 'Error. Failed to post: ' + JSON.stringify(res)) ;
                     }
 
                 }) ; // write_like_json callback 2

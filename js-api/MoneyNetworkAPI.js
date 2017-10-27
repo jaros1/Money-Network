@@ -1370,9 +1370,54 @@ var MoneyNetworkAPILib = (function () {
 
         }) ; // dbQuery callback 1
 
-
-
     } // get_wallet_info
+
+    // ZeroFrame fileWrite wrapper.
+    // inner_path must be a merger site path
+    // auth_address must be auth_address for current user
+    // max one fileWrite process. Other fileWrite processes must wait (This file still in sync, if you write is now, then the previous content may be lost)
+    var inner_path_re1 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
+    var inner_path_re2 = /^merged-MoneyNetwork\/.*?\/data\/users\/(.*?)\// ; // extract auth_address
+    var z_file_write_cbs = [] ; // cbs waiting for other fileWrite to finish
+    var z_file_write_running = false ;
+    function z_file_write (inner_path, content, cb) {
+        var pgm = module + '.z_file_write: ';
+        var match2, auth_address, this_file_write_cb ;
+        if (!ZeroFrame) throw pgm + 'fileWrite aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
+        if (inner_path.match(inner_path_re1)) throw pgm + 'fileWrite Invalid fileWrite path. Not a merger-site path. inner_path = ' + inner_path ;
+        match2 = inner_path.match(inner_path_re2) ;
+        if (match2) {
+            auth_address = match2[1] ;
+            if (!ZeroFrame.site_info) throw pgm + 'fileWrite aborted. ZeroFrame is not yet ready' ;
+            if (!ZeroFrame.site_info.cert_user_id) throw pgm + 'fileWrite aborted. No ZeroNet certificate selected' ;
+            if (auth_address != ZeroFrame.site_info.auth_address) {
+                console.log(pgm + 'inner_path = ' + inner_path + ', auth_address = ' + auth_address + ', ZeroFrame.site_info.auth_address = ' + ZeroFrame.site_info.auth_address);
+                throw pgm + 'fileWrite aborted. Writing to an invalid user directory.' ;
+            }
+        }
+        else throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
+
+        if (z_file_write_running) {
+            // wait for previous fileWrite process to finish
+            z_file_write_cbs.push({inner_path: inner_path, content: content, cb: cb}) ;
+            return ;
+        }
+        z_file_write_running = true ;
+
+        // extend cb.
+        this_file_write_cb = function(res) {
+            var next_file_write_cb, run_cb ;
+            z_file_write_running = false ;
+            run_cb = function () { cb(res)} ;
+            setTimeout(run_cb, 0) ;
+            if (!z_file_write_cbs.length) return ;
+            next_file_write_cb = z_file_write_cbs.shift() ;
+            z_file_write(next_file_write_cb.inner_path, next_file_write_cb.content, next_file_write_cb.cb) ;
+        }; // cb2
+        ZeroFrame.cmd("fileWrite", [inner_path, content], this_file_write_cb) ;
+
+    } ; // z_file_write
+
 
     // export MoneyNetworkAPILib
     return {
@@ -1397,7 +1442,8 @@ var MoneyNetworkAPILib = (function () {
         calc_wallet_sha256: calc_wallet_sha256,
         get_wallet_info: get_wallet_info,
         debug_z_api_operation_start:debug_z_api_operation_start,
-        debug_z_api_operation_end: debug_z_api_operation_end
+        debug_z_api_operation_end: debug_z_api_operation_end,
+        z_file_write: z_file_write
     };
 
 })(); // MoneyNetworkAPILib
@@ -1902,7 +1948,8 @@ MoneyNetworkAPI.prototype.get_content_json = function (cb) {
         // new content.json file and optional files support requested. write + sign + get
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
         debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileWrite');
-        self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+        MoneyNetworkAPILib.z_file_write(inner_path, btoa(json_raw), function (res) {
+        //self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
             var pgm = self.module + '.get_content_json fileWrite callback 2: ';
             var debug_seq2 ;
             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
@@ -1957,7 +2004,8 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
         inner_path = self.this_user_path + 'content.json';
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
         debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileWrite');
-        self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
+        MoneyNetworkAPILib.z_file_write(inner_path, btoa(json_raw), function(res) {
+        //self.ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
             var pgm = self.module + '.add_optional_files_support fileWrite callback 2: ';
             var debug_seq2 ;
             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
@@ -2112,7 +2160,8 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                     inner_path4 = self.this_user_path + this_session_filename + '.' + request_file_timestamp;
                     json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
                     debug_seq4 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileWrite') ;
-                    self.ZeroFrame.cmd("fileWrite", [inner_path4, btoa(json_raw)], function (res) {
+                    MoneyNetworkAPILib.z_file_write(inner_path4, btoa(json_raw), function (res) {
+                    //self.ZeroFrame.cmd("fileWrite", [inner_path4, btoa(json_raw)], function (res) {
                         var pgm = self.module + '.send_message fileWrite callback 5: ';
                         var save_offline_transaction;
                         MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq4, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
@@ -2132,7 +2181,8 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                 inner_path1 = self.this_user_path + this_session_filename + '.0000000000000' ;
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_offline_transaction, null, "\t")));
                                 debug_seq6 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path1, 'fileWrite');
-                                self.ZeroFrame.cmd("fileWrite", [inner_path1, btoa(json_raw)], function (res) {
+                                MoneyNetworkAPILib.z_file_write(inner_path1, btoa(json_raw), function (res) {
+                                //self.ZeroFrame.cmd("fileWrite", [inner_path1, btoa(json_raw)], function (res) {
                                     var pgm = self.module + '.send_message.save_offline_transaction fileWrite callback 6.2: ';
                                     MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq6, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                                     // continue with sign
