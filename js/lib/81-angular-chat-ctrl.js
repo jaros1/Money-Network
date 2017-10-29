@@ -434,7 +434,7 @@ angular.module('MoneyNetwork')
                 var hint_pubkey, contact ;
                 if (!self.chat_hint_chatting()) return false ;
                 // missing public key for contact?
-                hint_pubkey = (self.contact && (self.contact.type != 'group') && !self.contact.pubkey) ;
+                hint_pubkey = (self.contact && (self.contact.type != 'group') && ((!self.contact.pubkey || ('' + self.contact.encryption == '2') && !self.contact.pubkey2))) ;
                 if (hint_pubkey) {
                     contact = JSON.parse(JSON.stringify(self.contact)) ;
                     delete contact.messages ;

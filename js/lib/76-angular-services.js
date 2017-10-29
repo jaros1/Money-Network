@@ -1206,6 +1206,11 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'last updated: ' + found_last_updated + ', ' + res_hash[auth_address][j].last_updated) ;
                             }
                         }
+                        if (auth_address == '18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ') {
+                            // debug this
+                            j++ ;
+                            j-- ;
+                        }
                         if ((contact.unique_id == unique_id) &&
                             (!found_hub || (found_hub && (res_hash[auth_address][j].last_updated > found_last_updated)))) {
                             found_hub = res_hash[auth_address][j].hub;

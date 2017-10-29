@@ -1359,10 +1359,19 @@ angular.module('MoneyNetwork')
                             // check public key
                             if (contact.type != 'group') {
                                 if (!contact.pubkey || (('' + contact.encryption == '2') && !contact.pubkey2)) {
-                                    console.log(pgm + 'Cannot send message ' + JSON.stringify(message_with_envelope) + '. contact does not have a public key');
+                                    if (('' + contact.encryption == '2') && !contact.pubkey2) {
+                                        console.log(pgm + 'Cannot send message. contact does not have a public key (cryptMessage)');
+                                        ZeroFrame.cmd("wrapperNotification", ['error', 'Cannot send message<br>contact does not have a public key<br>(cryptMessage encryption)'])
+                                    }
+                                    else {
+                                        console.log(pgm + 'Cannot send message. contact does not have a public key (JSEncrypt)');
+                                        ZeroFrame.cmd("wrapperNotification", ['error', 'Cannot send message<br>contact does not have a public key<br>(JSEncrypt encryption)'])
+                                    }
                                     console.log(pgm + 'contact.pubkey = ' + contact.pubkey) ;
                                     console.log(pgm + 'contact.pubkey2 = ' + contact.pubkey2) ;
                                     console.log(pgm + 'contact.encryption = ' + contact.encryption) ;
+                                    // contact.pubkey2 = undefined
+                                    // contact.encryption = 2
                                     console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
                                     console.log(pgm + 'deleting message') ;
                                     // delete invalid message

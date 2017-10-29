@@ -480,6 +480,9 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'wallet session was found. pubkey2 = ' + res.pubkey2 + ', waited ' + Math.round(elapsed / 1000) + ' seconds') ;
                             info.status = 'Test OK' ;
                             info.disabled = true ;
+                            // https://github.com/jaros1/Money-Network/issues/250
+                            // check encrypt2.other_user_path. used in test 7
+                            console.log(pgm + 'encrypt2.other_user_path = ' + encrypt2.other_user_path) ;
                             test7_check_wallet.run() ;
                         }
                         console.log(pgm + 'check_session. res = ' + JSON.stringify(res)) ;
@@ -568,7 +571,10 @@ angular.module('MoneyNetwork')
                 else {
                     // start test 7. read wallet.json
                     info.status = 'Running' ;
-
+                    if (!encrypt2.other_user_path) {
+                        console.log(pgm + 'error. no encrypt2.other_user_path. should have been initialized in test 6') ;
+                        return test_done('Test failed') ;
+                    }
                     inner_path = encrypt2.other_user_path + 'wallet.json' ;
                     moneyNetworkHubService.z_file_get(pgm, {inner_path: inner_path, required: false}, function (wallet_str) {
                         var pgm = controller + '.test7.run z_file_get callback 1: ' ;

@@ -205,147 +205,154 @@ angular.module('MoneyNetwork')
             json.version = dbschema_version ;
         } // z_migrate_status
 
-
+        // Moved to MoneyNetworkAPILib
         // fix "Merger site (MoneyNetwork) does not have permission for merged site: xxx" errors
         // wait for mergerSiteAdd event to finish. see event_file_done and get_my_user_hub.step_4_get_and_add_default_user_hub
-        var new_user_data_hub_cbs = {} ; // hub => array with (fileGet) callbacks waiting for hub to be ready
-
-        // demon. dbQuery. check for any json for new user data hub before running any fileGet operations
-        function monitor_first_hub_event () {
-            var pgm = service + '.monitor_first_hub_event: ' ;
-            var query, debug_seq ;
-            if (!Object.keys(new_user_data_hub_cbs).length) return ; // no more new data hubs to monitor
-
-            query =
-                "select substr(directory, 1, instr(directory,'/')-1) as hub, count(*) as rows " +
-                "from json " +
-                "group by substr(directory, 1, instr(directory,'/')-1);" ;
-            debug_seq = debug_z_api_operation_start(pgm, 'query ?', 'dbQuery', show_debug('z_db_query')) ;
-            ZeroFrame.cmd("dbQuery", [query], function (res) {
-                var pgm = service + '.monitor_first_hub_event dbQuery callback: ';
-                var hub, i, cbs, cb;
-                // if (detected_client_log_out(pgm)) return ;
-                debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
-                if (res.error) {
-                    console.log(pgm + "first hub lookup failed: " + res.error);
-                    console.log(pgm + 'query = ' + query);
-                    for (hub in new_user_data_hub_cbs) console.log(pgm + 'error: ' + new_user_data_hub_cbs[hub].length + ' callbacks are waiting forever for hub ' + hub) ;
-                    return ;
-                }
-                for (i=0 ; i<res.length ; i++) {
-                    hub = res[i].hub ;
-                    if (!new_user_data_hub_cbs[hub]) continue ;
-                    console.log(pgm + 'new user data hub ' + hub + ' is ready. ' + new_user_data_hub_cbs[hub].length + ' fileGet operations are waiting in callback queue. running callbacks now') ;
-                    // move to temporary cbs array
-                    cbs = [] ;
-                    while (new_user_data_hub_cbs[hub].length) {
-                        cb = new_user_data_hub_cbs[hub].shift() ;
-                        cbs.push(cb) ;
-                    }
-                    delete new_user_data_hub_cbs[hub] ;
-                    // run cbs
-                    while (cbs.length) {
-                        cb = cbs.shift() ;
-                        cb() ;
-                    }
-                }
-                $timeout(monitor_first_hub_event, 250) ;
-            }) ; // dbQuery callback
-
-        } // monitor_first_hub_event
+        // var new_user_data_hub_cbs = {} ; // hub => array with (fileGet) callbacks waiting for hub to be ready
+        //
+        //// demon. dbQuery. check for any json for new user data hub before running any fileGet operations
+        //function monitor_first_hub_event () {
+        //    var pgm = service + '.monitor_first_hub_event: ' ;
+        //    var query, debug_seq ;
+        //    if (!Object.keys(new_user_data_hub_cbs).length) return ; // no more new data hubs to monitor
+        //
+        //    query =
+        //        "select substr(directory, 1, instr(directory,'/')-1) as hub, count(*) as rows " +
+        //        "from json " +
+        //        "group by substr(directory, 1, instr(directory,'/')-1);" ;
+        //    debug_seq = debug_z_api_operation_start(pgm, 'query ?', 'dbQuery', show_debug('z_db_query')) ;
+        //    ZeroFrame.cmd("dbQuery", [query], function (res) {
+        //        var pgm = service + '.monitor_first_hub_event dbQuery callback: ';
+        //        var hub, i, cbs, cb;
+        //        // if (detected_client_log_out(pgm)) return ;
+        //        debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
+        //        if (res.error) {
+        //            console.log(pgm + "first hub lookup failed: " + res.error);
+        //            console.log(pgm + 'query = ' + query);
+        //            for (hub in new_user_data_hub_cbs) console.log(pgm + 'error: ' + new_user_data_hub_cbs[hub].length + ' callbacks are waiting forever for hub ' + hub) ;
+        //            return ;
+        //        }
+        //        for (i=0 ; i<res.length ; i++) {
+        //            hub = res[i].hub ;
+        //            if (!new_user_data_hub_cbs[hub]) continue ;
+        //            console.log(pgm + 'new user data hub ' + hub + ' is ready. ' + new_user_data_hub_cbs[hub].length + ' fileGet operations are waiting in callback queue. running callbacks now') ;
+        //            // move to temporary cbs array
+        //            cbs = [] ;
+        //            while (new_user_data_hub_cbs[hub].length) {
+        //                cb = new_user_data_hub_cbs[hub].shift() ;
+        //                cbs.push(cb) ;
+        //            }
+        //            delete new_user_data_hub_cbs[hub] ;
+        //            // run cbs
+        //            while (cbs.length) {
+        //                cb = cbs.shift() ;
+        //                cb() ;
+        //            }
+        //        }
+        //        $timeout(monitor_first_hub_event, 250) ;
+        //    }) ; // dbQuery callback
+        //
+        //} // monitor_first_hub_event
 
         // ZeroFrame fileGet wrapper. first fileGet request must wait for mergerSiteAdd operation to finish
-        var inner_path_re1 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
-        var inner_path_re2 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/(.*?)$/ ; // extract hub and auth_address
+        //var inner_path_re1 = /data\/users\// ; // user directory?
+        //var inner_path_re2 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
+        //var inner_path_re3 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/(.*?)$/ ; // extract hub and auth_address
         function z_file_get (pgm, options, cb) {
-            var inner_path, match2, hub, pos, filename, optional_file, get_optional_file_info ;
-            inner_path = options.inner_path ;
-
-            // check inner_path.
-            if (inner_path.match(inner_path_re1)) throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
-            match2 = inner_path.match(inner_path_re2) ;
-            if (match2) {
-                hub = match2[1] ;
-                if (new_user_data_hub_cbs[hub]) {
-                    console.log(pgm + 'new data hub ' + hub + '. waiting with fileGet request for ' + inner_path) ;
-                    new_user_data_hub_cbs[hub].push(function() { z_file_get (pgm, options, cb) }) ;
-                    return ;
-                }
-            }
-            else throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
-
-            // optional fileGet operation? Some issues with optional fileGet calls
-            // problem with fileGet operation for delete optional files. timeout after > 60 seconds. should be solved now. null file_info is returned for deleted optional files
-            // also a problem with fileGet operation for optional files without any peer (peer information is not always 100% correct)
-            pos = inner_path.lastIndexOf('/') ;
-            filename = inner_path.substr(pos+1, inner_path.length-pos) ;
-            optional_file = (['content.json', 'data.json', 'status.json', 'like.json', 'avatar.jpg', 'avatar.png'].indexOf(filename) == -1);
-            debug('z_file_get', pgm + 'filename = ' + JSON.stringify(filename) + ', optional_file = ' + optional_file) ;
-
-            // optional step. get info about optional file before fileGet operation
-            // "!file_info.is_downloaded && !file_info.peer" should be not downloaded optional files without any peers
-            // but the information is not already correct. peer can be 0 and other client is ready to serve optional file.
-            // try a fileGet with required and a "short" timeout
-            get_optional_file_info = function (cb) {
-                if (!optional_file) return cb(null) ;
-                ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
-                    debug('z_file_get', pgm + 'file_info = ' + JSON.stringify(file_info)) ;
-                    cb(file_info) ;
-                }) ; // optionalFileInfo
-            } ; // get_optional_file_info
-            get_optional_file_info(function(file_info) {
-                var cb2_done, cb2, timeout, process_id, debug_seq, warnings, old_options ;
-                if (optional_file && !file_info) {
-                    debug('z_file_get', pgm + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
-                    return cb(null) ;
-                }
-                if (optional_file) {
-                    // some additional checks and warnings.
-                    if (!file_info) {
-                        debug('z_file_get', pgm + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
-                        return cb(null) ;
-                    }
-                    if (!file_info.is_downloaded && !file_info.peer) {
-                        // not downloaded optional files and (maybe) no peers! peer information is not always correct
-                        debug('z_file_get', pgm + 'warning. starting fileGet operation for optional file without any peers. file_info = ' + JSON.stringify(file_info)) ;
-                        warnings = [] ;
-                        old_options = JSON.stringify(options) ;
-                        if (!options.required) {
-                            options.required = true ;
-                            warnings.push('added required=true to fileGet operation') ;
-                        }
-                        if (!options.timeout) {
-                            options.timeout = 60 ;
-                            warnings.push('added timeout=60 to fileGet operation') ;
-                        }
-                        if (warnings.length) debug('z_file_get', pgm + 'Warning: ' + warnings.join('. ') + '. old options = ' + old_options + ', new_options = ' + JSON.stringify(options)) ;
-                    }
-                }
-
-                // extend cb. add ZeroNet API debug messages + timeout processing.
-                // cb2 is run as fileGet callback or is run by $timeout (sometimes problem with optional fileGet operation running forever)
-                cb2_done = false ;
-                cb2 = function (data) {
-                    if (process_id) {
-                        try {$timeout.cancel(process_id)}
-                        catch (e) {}
-                        process_id = null ;
-                    }
-                    if (cb2_done) return ; // cb2 has already run
-                    cb2_done = true ;
-                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
-                    debug_z_api_operation_end(debug_seq, data ? 'OK' : 'Not found');
-                    cb(data) ;
-                } ; // fileGet callback
-
-                timeout = options.timeout || 60 ; // timeout in seconds
-                process_id = $timeout(cb2, timeout*1000) ;
-                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', show_debug('z_file_get')) ;
-                ZeroFrame.cmd("fileGet", options, cb2) ;
-
-            }) ; // get_optional_file_info callback
-
+            MoneyNetworkAPILib.z_file_get(pgm, options, cb) ;
+            //
+            //var inner_path, match2, hub, pos, filename, optional_file, get_optional_file_info ;
+            //inner_path = options.inner_path ;
+            //
+            //// check inner_path.
+            //if (inner_path.match(inner_path_re1)) {
+            //    // path to user directory.
+            //    if (inner_path.match(inner_path_re2)) throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
+            //    match2 = inner_path.match(inner_path_re3) ;
+            //    if (match2) {
+            //        hub = match2[1] ;
+            //        if (new_user_data_hub_cbs[hub]) {
+            //            console.log(pgm + 'new data hub ' + hub + '. waiting with fileGet request for ' + inner_path) ;
+            //            new_user_data_hub_cbs[hub].push(function() { z_file_get (pgm, options, cb) }) ;
+            //            return ;
+            //        }
+            //    }
+            //    else throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
+            //
+            //    // optional fileGet operation? Some issues with optional fileGet calls
+            //    // problem with fileGet operation for delete optional files. timeout after > 60 seconds. should be solved now. null file_info is returned for deleted optional files
+            //    // also a problem with fileGet operation for optional files without any peer (peer information is not always 100% correct)
+            //    pos = inner_path.lastIndexOf('/') ;
+            //    filename = inner_path.substr(pos+1, inner_path.length-pos) ;
+            //    optional_file = (['content.json', 'data.json', 'status.json', 'like.json', 'avatar.jpg', 'avatar.png', 'wallet.json'].indexOf(filename) == -1);
+            //}
+            //else optional_file = false ; // workaround for optional file fileGet is not relevant outside user directories
+            //debug('z_file_get', pgm + 'filename = ' + JSON.stringify(filename) + ', optional_file = ' + optional_file) ;
+            //
+            //// optional step. get info about optional file before fileGet operation
+            //// "!file_info.is_downloaded && !file_info.peer" should be not downloaded optional files without any peers
+            //// but the information is not already correct. peer can be 0 and other client is ready to serve optional file.
+            //// try a fileGet with required and a "short" timeout
+            //get_optional_file_info = function (cb) {
+            //    if (!optional_file) return cb(null) ;
+            //    ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
+            //        debug('z_file_get', pgm + 'file_info = ' + JSON.stringify(file_info)) ;
+            //        cb(file_info) ;
+            //    }) ; // optionalFileInfo
+            //} ; // get_optional_file_info
+            //get_optional_file_info(function(file_info) {
+            //    var cb2_done, cb2, timeout, process_id, debug_seq, warnings, old_options ;
+            //    if (optional_file && !file_info) {
+            //        debug('z_file_get', pgm + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
+            //        return cb(null) ;
+            //    }
+            //    if (optional_file) {
+            //        // some additional checks and warnings.
+            //        if (!file_info) {
+            //            debug('z_file_get', pgm + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
+            //            return cb(null) ;
+            //        }
+            //        if (!file_info.is_downloaded && !file_info.peer) {
+            //            // not downloaded optional files and (maybe) no peers! peer information is not always correct
+            //            debug('z_file_get', pgm + 'warning. starting fileGet operation for optional file without any peers. file_info = ' + JSON.stringify(file_info)) ;
+            //            warnings = [] ;
+            //            old_options = JSON.stringify(options) ;
+            //            if (!options.required) {
+            //                options.required = true ;
+            //                warnings.push('added required=true to fileGet operation') ;
+            //            }
+            //            if (!options.timeout) {
+            //                options.timeout = 60 ;
+            //                warnings.push('added timeout=60 to fileGet operation') ;
+            //            }
+            //            if (warnings.length) debug('z_file_get', pgm + 'Warning: ' + warnings.join('. ') + '. old options = ' + old_options + ', new_options = ' + JSON.stringify(options)) ;
+            //        }
+            //    }
+            //
+            //    // extend cb. add ZeroNet API debug messages + timeout processing.
+            //    // cb2 is run as fileGet callback or is run by $timeout (sometimes problem with optional fileGet operation running forever)
+            //    cb2_done = false ;
+            //    cb2 = function (data) {
+            //        if (process_id) {
+            //            try {$timeout.cancel(process_id)}
+            //            catch (e) {}
+            //            process_id = null ;
+            //        }
+            //        if (cb2_done) return ; // cb2 has already run
+            //        cb2_done = true ;
+            //        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
+            //        debug_z_api_operation_end(debug_seq, data ? 'OK' : 'Not found');
+            //        cb(data) ;
+            //    } ; // fileGet callback
+            //
+            //    timeout = options.timeout || 60 ; // timeout in seconds
+            //    process_id = $timeout(cb2, timeout*1000) ;
+            //    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
+            //    debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', show_debug('z_file_get')) ;
+            //    ZeroFrame.cmd("fileGet", options, cb2) ;
+            //
+            //}) ; // get_optional_file_info callback
+            //
         } // z_file_get
 
         function z_file_write (inner_path, content, cb) {
@@ -414,22 +421,18 @@ angular.module('MoneyNetwork')
                 // no user_data_hubs (no merger site hubs were found)
                 my_user_hub = get_default_user_hub() ;
                 console.log(pgm + 'calling mergerSiteAdd with my_user_hub = ' + my_user_hub) ;
-                ZeroFrame.cmd("mergerSiteAdd", [my_user_hub], function (res) {
-                    var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub mergerSiteAdd callback: ' ;
+                MoneyNetworkAPILib.z_merger_site_add(my_user_hub, function (res) {
+                    var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub z_merger_site_add callback: ' ;
                     console.log(pgm + 'res = '+ JSON.stringify(res));
-
                     if (res == 'ok') {
-                        console.log(pgm + 'new user data hub ' + my_user_hub + ' was added. hub must be ready. wait for jsons (dbQuery) before first fileGet request to new user data hub') ;
-                        if (!new_user_data_hub_cbs[my_user_hub]) new_user_data_hub_cbs[my_user_hub] = [] ; // callbacks waiting for mergerSiteAdd operation to finish
-                        // start demon process. waiting for new user data hub to be ready
-                        $timeout(monitor_first_hub_event, 250) ;
                         z_cache.my_user_hub = my_user_hub ;
                         step_5_user_hub_selected() ;
                         return ;
                     }
-
                     console.log(pgm + 'mergerSiteAdd failed. hub = ' + my_user_hub + '. error = ' + res) ;
-                }) ; // mergerSiteAdd callback 3
+
+                }) ; // z_merger_site_add callback
+
             }; // step_4_get_and_add_default_user_hub
 
             step_3_find_user_hubs = function () {
