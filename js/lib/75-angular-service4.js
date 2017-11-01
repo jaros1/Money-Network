@@ -650,6 +650,7 @@ angular.module('MoneyNetwork')
                                 }
                             }
                             ls_save_sessions() ;
+                            console.log(pgm + 'sessionid = ' + encrypt2.sessionid) ;
                             console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                             console.log(pgm + 'timestamps: file_timestamp = ' + file_timestamp + ', response_timestamp = ' + response_timestamp + ', request_timestamp = ' + request_timestamp + ', now = ' + now) ;
                             console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
@@ -783,6 +784,9 @@ angular.module('MoneyNetwork')
                         }
                         else if (request.msgtype == 'ping') {
                             // simple session ping. always OK response
+
+
+
                         }
                         else if (request.msgtype == 'balance') {
                             // received balance message from wallet. save + OK response
@@ -913,9 +917,10 @@ angular.module('MoneyNetwork')
             MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, refresh_angular_ui) {
                 var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row, unique_texts,
                     sessionid, changed_wallet_sha256_values, status, step_1_get_session, step_2_ping_other_session,
-                    step_3_other_user_path, step_n_done, doublet_wallet_sha256, non_unique_text ;
+                    step_3_other_user_path, step_n_done, doublet_wallet_sha256, non_unique_text, doublet_wallets ;
                 // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
                 doublet_wallet_sha256 = {} ;
+                doublet_wallets = false ;
                 if (!wallet_info || (typeof wallet_info != 'object') || wallet_info.error) {
                     console.log(pgm + 'could not find wallet_info for sha256 values ' + JSON.stringify(wallet_sha256_values) + '. wallet_info = ' + JSON.stringify(wallet_info)) ;
                 }
@@ -927,7 +932,8 @@ angular.module('MoneyNetwork')
                             temp_currencies[i][key] = wallet_info[wallet_sha256][key] ;
                         } // for key
                         if (doublet_wallet_sha256[wallet_sha256]) {
-                            // more that one session with this wallet_sha256. use session with last balance_at timestamp
+                            // more that one session with this wallet_sha256. use session with last request_at timestamp
+                            doublet_wallets = true ;
                             if (temp_currencies[i].last_request_at > doublet_wallet_sha256[wallet_sha256].last_request_at) doublet_wallet_sha256[wallet_sha256].last_request_at = temp_currencies[i].last_request_at ;
                         }
                         else doublet_wallet_sha256[wallet_sha256] = { last_request_at: temp_currencies[i].last_request_at, count: 0} ;
@@ -937,7 +943,11 @@ angular.module('MoneyNetwork')
 
                 // same wallet_sha256 info for more than one session. keep session with last_request_at timestamp
                 // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
-                // console.log(pgm + 'doublet_wallet_sha256 = ' + JSON.stringify(doublet_wallet_sha256)) ;
+                if (doublet_wallets) {
+                    // maybe using wrong sessionid in currencies array?
+                    console.log(pgm + 'issue #253: doublet_wallet_sha256 = ' + JSON.stringify(doublet_wallet_sha256)) ;
+                    console.log(pgm + 'issue #253: temp_currencies (before) = ' + JSON.stringify(temp_currencies)) ;
+                }
                 for (wallet_sha256 in doublet_wallet_sha256) {
                     if (doublet_wallet_sha256.count == 1) continue ;
                     for (i=temp_currencies.length-1 ; i>=0 ; i--) {
@@ -946,6 +956,7 @@ angular.module('MoneyNetwork')
                     }
                 }
                 // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
+                if (doublet_wallets) console.log(pgm + 'issue #253: temp_currencies (after) = ' + JSON.stringify(temp_currencies)) ;
 
                 // copy full wallet info into currencies array
                 changed_wallet_sha256_values = [] ;

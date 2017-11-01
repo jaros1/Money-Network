@@ -4506,6 +4506,7 @@ angular.module('MoneyNetwork')
         var avatar = moneyNetworkZService.get_avatar() ;
         function load_avatar () { moneyNetworkZService.load_avatar() }
 
+        var user_data_hubs = moneyNetworkHubService.get_user_data_hubs() ;
 
         // wait for setSiteInfo events (new files)
         function event_file_done (hub, event, filename) {
@@ -4513,7 +4514,13 @@ angular.module('MoneyNetwork')
             var debug_seq, merged_filename ;
             if (event != 'file_done') return ;
             if (hub == '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk') {
+                // before merger site. cannot delete data/users array without any bad files
                 // console.log(pgm + 'ignoring file_done event for ' + hub) ;
+                return ;
+            }
+            if (user_data_hubs.indexOf(hub) == -1) {
+                // not a MoneyNetwork user data hub
+                console.log(pgm + 'ignoring ' + filename + ' from ' + hub + '. maybe status.json from w2?') ;
                 return ;
             }
             // console.log(pgm + 'hub = ' + JSON.stringify(hub) + ', event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));

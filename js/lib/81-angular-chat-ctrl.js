@@ -1691,6 +1691,7 @@ angular.module('MoneyNetwork')
                         balance = moneyNetworkService.get_currency_by_unique_text(money_transaction.currency) ;
                         if (balance) {
                             wallet_name = balance.wallet_name ;
+                            // todo. issue #208 and issue #253. sessionid from balance (get_currencies) cannot be used in ping. not always correct
                             if (!wallets_hash[wallet_name]) {
                                 wallets_hash[wallet_name] = {
                                     sessionid: balance.sessionid,

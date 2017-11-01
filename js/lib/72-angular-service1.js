@@ -373,10 +373,11 @@ angular.module('MoneyNetwork')
             return hubs[i] ;
         } // get_default_user_hub
 
+        var user_data_hubs = [] ;
         var get_my_user_hub_cbs = [] ; // callbacks waiting for query 17 to finish
         function get_my_user_hub (cb) {
             var pgm = service + '.get_my_hub: ' ;
-            var user_data_hubs, step_1_merger_site_list, step_2_compare_tables, step_3_find_user_hubs, step_4_get_and_add_default_user_hub, step_5_user_hub_selected, step_6_run_callbacks ;
+            var step_1_merger_site_list, step_2_compare_tables, step_3_find_user_hubs, step_4_get_and_add_default_user_hub, step_5_user_hub_selected, step_6_run_callbacks ;
             if (z_cache.my_user_hub == true) {
                 // get_my_user_hub request is already running. please wait
                 get_my_user_hub_cbs.push(cb) ;
@@ -384,9 +385,9 @@ angular.module('MoneyNetwork')
             }
             if (z_cache.my_user_hub) return cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
             z_cache.my_user_hub = true ;
+            user_data_hubs.splice(0,user_data_hubs.length) ;
 
             // setup callback chain step 1-6
-            user_data_hubs = [] ;
 
             step_6_run_callbacks = function () {
                 // run callbacks. this and any pending callbacks
@@ -426,6 +427,7 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'res = '+ JSON.stringify(res));
                     if (res == 'ok') {
                         z_cache.my_user_hub = my_user_hub ;
+                        user_data_hubs.push(my_user_hub) ;
                         step_5_user_hub_selected() ;
                         return ;
                     }
@@ -747,6 +749,10 @@ angular.module('MoneyNetwork')
             step_1_merger_site_list() ;
 
         } // get_my_user_hub
+
+        function get_user_data_hubs () {
+            return user_data_hubs ;
+        }
 
         // merge old user hub data into current user hub and delete old user hub data
         var merge_user_hubs_status = { running: false } ;
@@ -3356,7 +3362,8 @@ angular.module('MoneyNetwork')
             recursive_delete_message: recursive_delete_message,
             get_merger_error: get_merger_error,
             inject_functions: inject_functions,
-            z_file_get: z_file_get
+            z_file_get: z_file_get,
+            get_user_data_hubs: get_user_data_hubs
         };
 
         // end MoneyNetworkHubService

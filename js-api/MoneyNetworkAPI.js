@@ -719,6 +719,7 @@ var MoneyNetworkAPILib = (function () {
                     var query, debug_seq3 ;
                     if (!array) return error(inner_path + ' decrypt failed') ;
                     if (!Array.isArray(array)) return error(inner_path + '. expected an array. found ' + JSON.stringify(array)) ;
+                    if (debug) console.log(pgm + 'array = ' + JSON.stringify(array)) ;
                     // 3: dbQuery. find old incoming messages not in offline transactions array. must be marked as done
                     query =
                         "select json.directory, files_optional.filename " +
@@ -766,7 +767,7 @@ var MoneyNetworkAPILib = (function () {
         return output_wa.toString(CryptoJS.enc.Utf8);
     } // aes_decrypt
 
-    // Json schemas for json validation of ingoing and outgoing messages
+    // Json schemas for json validation of ingoing and outgoing MoneyNetworkAPI messages
     var json_schemas = {
 
         "pubkeys": {
@@ -1131,6 +1132,15 @@ var MoneyNetworkAPILib = (function () {
 
     }; // json_schemas
 
+    // inject extra json schemas. For example schemaes used internally in MN or internally in wallets
+    function add_json_schemas (extra_json_schemas) {
+        var key ;
+        for (key in extra_json_schemas) {
+            if (json_schemas[key]) continue ;
+            json_schemas[key] = JSON.parse(JSON.stringify(extra_json_schemas[key])) ;
+        }
+    }
+
     // minimum validate json before encrypt & send and after receive & decrypt using https://github.com/geraintluff/tv4
     // json messages between MoneyNetwork and MoneyNetwork wallet must be valid
     // params:
@@ -1392,6 +1402,7 @@ var MoneyNetworkAPILib = (function () {
     // - mergerSiteAdd
     // - fileGet
     // - fileWrite
+    // - sitePublish
     var new_hub_file_get_cbs = {} ; // any fileGet callback waiting for hub to be ready?
     function z_merger_site_add (hub, cb) {
         var pgm = module + '.z_merger_site_add: ' ;
@@ -1462,7 +1473,7 @@ var MoneyNetworkAPILib = (function () {
     var inner_path_re1 = /data\/users\// ; // user directory?
     var inner_path_re2 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
     var inner_path_re3 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/content\.json$/ ; // extract hub
-    var inner_path_re4 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/(.*?)\// ; // extract hub and auth_address
+    var inner_path_re4 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/(.*?)\/(.*?)$/ ; // extract hub, auth_address and filename
 
     function z_file_get (pgm, options, cb) {
         var inner_path, match2, hub, pos, filename, extra, optional_file, get_optional_file_info ;
@@ -1583,9 +1594,9 @@ var MoneyNetworkAPILib = (function () {
     var z_file_write_running = false ;
     function z_file_write (inner_path, content, cb) {
         var pgm = module + '.z_file_write: ';
-        var match2, auth_address, this_file_write_cb ;
+        var match2, auth_address, this_file_write_cb, debug_seq ;
         if (!ZeroFrame) throw pgm + 'fileWrite aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
-        if (inner_path.match(inner_path_re2)) throw pgm + 'fileWrite Invalid fileWrite path. Not a merger-site path. inner_path = ' + inner_path ;
+        if (!inner_path || inner_path.match(inner_path_re2)) throw pgm + 'Invalid fileWrite path. Not a merger-site path. inner_path = ' + inner_path ;
         match2 = inner_path.match(inner_path_re4) ;
         if (match2) {
             auth_address = match2[2] ;
@@ -1609,15 +1620,124 @@ var MoneyNetworkAPILib = (function () {
         this_file_write_cb = function(res) {
             var next_file_write_cb, run_cb ;
             z_file_write_running = false ;
+            debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
             run_cb = function () { cb(res)} ;
             setTimeout(run_cb, 0) ;
             if (!z_file_write_cbs.length) return ;
             next_file_write_cb = z_file_write_cbs.shift() ;
             z_file_write(next_file_write_cb.inner_path, next_file_write_cb.content, next_file_write_cb.cb) ;
         }; // cb2
+
+        debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite') ;
         ZeroFrame.cmd("fileWrite", [inner_path, content], this_file_write_cb) ;
 
     } // z_file_write
+
+    // sitePublish. long running operation.
+    // sitePublish must wait for previous publish to finish
+    // sitePublish must wait for long running update transactions (write and delete) to finish before starting publish
+    // long running update transactions must wait until publish has finished
+    // use start_transaction and end_transaction
+    var transactions = {} ; // timestamp => object with transaction info
+
+    function start_transaction (pgm, cb) {
+        var transaction_timestamp, no_running, key ;
+        if (typeof cb != 'function') throw module + 'start_transaction: invalid call. second parameter cb must be a callback function' ;
+        transaction_timestamp = new Date().getTime() ;
+        while (transactions[transaction_timestamp]) transaction_timestamp++ ;
+        transactions[transaction_timestamp] = {
+            pgm: pgm,
+            created_at: transaction_timestamp,
+            cb: cb,
+            running: false
+        } ;
+        // any running transactions
+        for (key in transactions) {
+            if (transactions[key].running) {
+                // wait
+                if (debug) console.log(module + 'transactions: paused ' + pgm + '. ' + (Object.keys(transactions).length-1) + ' transactions in queue (1 running)') ;
+                return ;
+            }
+        }
+        // start now
+        transactions[transaction_timestamp].running = true ;
+        transactions[transaction_timestamp].started_at = transaction_timestamp ;
+        transactions[transaction_timestamp].cb(transaction_timestamp) ;
+    } // start_transaction
+
+    function end_transaction (transaction_timestamp) {
+        var pgm = module + '.end_update_transaction: ' ;
+        var now, waittime, elapsedtime, key ;
+        if (!transactions[transaction_timestamp]) throw 'could not find any transaction with transaction_timestamp = ' + transaction_timestamp;
+        now = new Date().getTime() ;
+        transactions[transaction_timestamp].running = false ;
+        transactions[transaction_timestamp].finished_at = now ;
+        waittime = transactions[transaction_timestamp].started_at - transactions[transaction_timestamp].created_at ;
+        elapsedtime = transactions[transaction_timestamp].finished_at - transactions[transaction_timestamp].started_at ;
+        if (debug) console.log(module + '.transactions: finished running ' + transactions[transaction_timestamp].pgm + ', waittime = ' + waittime + ' ms. elapsed time = ' + elapsedtime + ' ms');
+        delete transactions[transaction_timestamp] ;
+        if (!Object.keys(transactions).length) return ;
+        for (key in transactions) {
+            // start next long running transaction or publish
+            transactions[key].running = true ;
+            transactions[key].started_at = now ;
+            waittime = transactions[key].started_at - transactions[key].created_at ;
+            if (debug) console.log(module + '.transactions: starting ' + transactions[key].pgm + '. waittime ' + waittime + ' ms') ;
+            transactions[key].cb(key) ;
+            break ;
+        }
+    } // end_transaction
+
+    // var inner_path_re1 = /data\/users\// ; // user directory?
+    // var inner_path_re2 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
+    // var inner_path_re3 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/content\.json$/ ; // extract hub
+    // var inner_path_re4 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/(.*?)\/(.*?)$/ ; // extract hub, auth_address and filename
+    // options.
+    // - privatekey is not supported
+    // - inner_path must be an user directory /^merged-MoneyNetwork\/(.*?)\/data\/users\/content\.json$/ path
+    function z_site_publish (options, cb) {
+        var pgm = module + '.z_site_publish: ' ;
+        var inner_path, match4, auth_address, filename, hub ;
+        if (!ZeroFrame) throw pgm + 'sitePublish aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
+        // check privatekey
+        if (options.privatekey) {
+            console.log(pgm + 'warning. siteSign with privatekey is not supported. Ignoring privatekey') ;
+            delete options.privatekey ;
+        }
+        // check inner_path
+        inner_path = options.inner_path ;
+        if (!inner_path || inner_path.match(inner_path_re2)) throw 'sitePublish aborted. Not a merger-site path. inner_path = ' + inner_path ; // old before moving to merger sites
+        if (!(match4=inner_path.match(inner_path_re4))) throw 'sitePublish aborted. Not a merger-site path. inner_path = ' + inner_path ;
+        auth_address = match4[2] ;
+        if (!ZeroFrame.site_info) throw 'sitePublish aborted. ZeroFrame is not yet ready' ;
+        if (!ZeroFrame.site_info.cert_user_id) throw 'sitePublish aborted. No ZeroNet certificate selected' ;
+        if (auth_address != ZeroFrame.site_info.auth_address) {
+            console.log(pgm + 'inner_path = ' + inner_path + ', auth_address = ' + auth_address + ', ZeroFrame.site_info.auth_address = ' + ZeroFrame.site_info.auth_address);
+            throw pgm + 'sitePublish aborted. Publishing an other user directory.' ;
+        }
+        filename = match4[3] ;
+        if (filename != 'content.json') {
+            console.log(pgm + 'warning. sitePublish should be called with path to user content.json file. inner_path = ' + JSON.stringify(inner_path)) ;
+            hub = match4[1] ;
+            inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + auth_address + '/content.json' ;
+            options.inner_path = inner_path ;
+        }
+
+        // start publish transaction. publish must wait for long running update transactions to wait
+        start_transaction(pgm, function(transaction_timestamp){
+            var debug_seq ;
+            debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish') ;
+            ZeroFrame.cmd("sitePublish", options, function (res) {
+                var run_cb ;
+                debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+                // run sitePublish cb callback (content published)
+                run_cb = function () { cb(res)} ;
+                setTimeout(run_cb, 0) ;
+                // end transaction. start any transaction waiting for publish to finish
+                end_transaction(transaction_timestamp) ;
+            }) ; // sitePublish callback 2
+        }) ; // start_transaction callback 1
+    } // z_site_publish
 
 
     // export MoneyNetworkAPILib
@@ -1639,14 +1759,18 @@ var MoneyNetworkAPILib = (function () {
         clear_all_data: clear_all_data,
         aes_encrypt: aes_encrypt,
         aes_decrypt: aes_decrypt,
+        add_json_schemas: add_json_schemas,
         validate_json: validate_json,
         calc_wallet_sha256: calc_wallet_sha256,
         get_wallet_info: get_wallet_info,
         debug_z_api_operation_start:debug_z_api_operation_start,
         debug_z_api_operation_end: debug_z_api_operation_end,
+        start_transaction: start_transaction,
+        end_transaction: end_transaction,
         z_merger_site_add: z_merger_site_add,
         z_file_get: z_file_get,
-        z_file_write: z_file_write
+        z_file_write: z_file_write,
+        z_site_publish: z_site_publish
     };
 
 })(); // MoneyNetworkAPILib
@@ -2345,9 +2469,11 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         // 2: get filenames
         self.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
             var pgm = self.module + '.send_message get_session_filenames callback 2: ';
+            var encryptions_clone ;
             // if (offline_transaction) self.log(pgm, 'offline_transaction = ' + JSON.stringify(offline_transaction)) ;
 
             // 3: encrypt json
+            encryptions_clone = JSON.parse(JSON.stringify(encryptions)) ;
             self.encrypt_json(request, encryptions, function (encrypted_json) {
                 var pgm = self.module + '.send_message encrypt_json callback 3: ';
                 self.log(pgm, 'encrypted_json = ' + JSON.stringify(encrypted_json));
@@ -2364,7 +2490,6 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                     json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
                     debug_seq4 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileWrite') ;
                     MoneyNetworkAPILib.z_file_write(inner_path4, btoa(json_raw), function (res) {
-                    //self.ZeroFrame.cmd("fileWrite", [inner_path4, btoa(json_raw)], function (res) {
                         var pgm = self.module + '.send_message fileWrite callback 5: ';
                         var save_offline_transaction;
                         MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq4, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
@@ -2378,7 +2503,8 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             if (offline_transaction.indexOf(request_file_timestamp) == -1) offline_transaction.push(request_file_timestamp) ;
                             // if (offline_transaction) self.log(pgm, 'offline_transaction = ' + JSON.stringify(offline_transaction)) ;
                             // add to file <this_session_filename>.0000000000000
-                            self.encrypt_json(offline_transaction, encryptions, function (encrypted_offline_transaction) {
+                            self.log(pgm, 'encrypting file wit offline timestamps. encryptions = ' + JSON.stringify(encryptions)) ;
+                            self.encrypt_json(offline_transaction, encryptions_clone, function (encrypted_offline_transaction) {
                                 var pgm = self.module + '.send_message.save_offline_transaction encrypt_json callback 6.1: ';
                                 var inner_path1, json_raw, debug_seq6 ;
                                 inner_path1 = self.this_user_path + this_session_filename + '.0000000000000' ;
