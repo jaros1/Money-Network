@@ -662,16 +662,16 @@ angular.module('MoneyNetwork')
                             else return ; // exit. no response was requested
 
                             // send response to other session
-                            encrypt2.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, timeout_at: request_timeout_at, encryptions: encryptions}, function (res)  {
+                            encrypt2.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, subsystem: 'api', timeout_at: request_timeout_at, encryptions: encryptions}, function (res)  {
                                 var pgm = service + '.process_incoming_message send_message callback 3: ';
                                 console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                             }) ; // send_message callback 3
 
                         } ; // done_and_send
 
-                        // validate and process incoming json message and process
+                        // validate and process incoming json message from wallet session and process message
                         response = { msgtype: 'response' } ;
-                        error = MoneyNetworkAPILib.validate_json(pgm, request) ;
+                        error = MoneyNetworkAPILib.validate_json(pgm, request, null, 'api') ;
                         if (error) response.error = 'message is invalid. ' + error ;
                         else if (request.msgtype == 'pubkeys') {
                             // first message from wallet. received public keys from wallet session

@@ -586,7 +586,7 @@ angular.module('MoneyNetwork')
                         wallet = JSON.parse(wallet_str) ;
                         console.log(pgm + 'wallet = ' + JSON.stringify(wallet)) ;
                         // validate wallet.json after read
-                        error = MoneyNetworkAPILib.validate_json(pgm, wallet) ;
+                        error = MoneyNetworkAPILib.validate_json(pgm, wallet, null, 'api') ;
                         if (error) {
                             console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', wallet = ' + JSON.stringify(wallet));
                             return test_done('Test failed') ;
