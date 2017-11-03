@@ -355,8 +355,8 @@ angular.module('MoneyNetwork')
             //
         } // z_file_get
 
-        function z_file_write (inner_path, content, cb) {
-            MoneyNetworkAPILib.z_file_write(inner_path, content, cb)
+        function z_file_write (pgm, inner_path, content, cb) {
+            MoneyNetworkAPILib.z_file_write(pgm, inner_path, content, cb)
         }
 
         function get_default_user_hub () {
@@ -439,7 +439,7 @@ angular.module('MoneyNetwork')
 
             step_3_find_user_hubs = function () {
                 var pgm = service + '.get_my_user_hub.step_3_find_user_hubs: ' ;
-                var query, i, debug_seq ;
+                var mn_query_17, i, debug_seq ;
 
                 if (!user_data_hubs.length) {
                     console.log(pgm + 'No user data hubs were found. user_data_hubs.length = 1. Must be first contact.') ;
@@ -450,15 +450,15 @@ angular.module('MoneyNetwork')
                 // - must have a data.json file
                 // - use latest updated content.json as user data hub
                 // new query 17 without files table:
-                query =
+                mn_query_17 =
                     "select " +
                     "  substr(content.directory, 1, instr(content.directory,'/')-1) as hub " +
                     "  from keyvalue as modified, json as content, json as data " +
                     "  where content.directory in " ;
                 for (i=0 ; i<user_data_hubs.length ; i++) {
-                    query += (i == 0 ? "('" : ",'") + user_data_hubs[i] + '/data/users/' + ZeroFrame.site_info.auth_address + "'" ;
+                    mn_query_17 += (i == 0 ? "('" : ",'") + user_data_hubs[i] + '/data/users/' + ZeroFrame.site_info.auth_address + "'" ;
                 }
-                query += ") " +
+                mn_query_17 += ") " +
                     "and content.file_name = 'content.json' " +
                     "and modified.json_id = content.json_id " +
                     "and modified.key = 'modified' " +
@@ -466,10 +466,10 @@ angular.module('MoneyNetwork')
                     "and data.file_name = 'data.json' " +
                     "order by modified.value desc";
 
-                debug('select', pgm + 'query 17 (MS OK) = ' + query);
+                debug('select', pgm + 'mn query 17 = ' + mn_query_17);
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
-                debug_seq = debug_z_api_operation_start(pgm, 'query 17', 'dbQuery', show_debug('z_db_query')) ;
-                ZeroFrame.cmd("dbQuery", [query], function (res) {
+                debug_seq = debug_z_api_operation_start(pgm, 'mn query 17', 'dbQuery', show_debug('z_db_query')) ;
+                ZeroFrame.cmd("dbQuery", [mn_query_17], function (res) {
                     var pgm = service + '.get_my_user_hub.step_3_find_user_hubs dbQuery callback: ' ;
                     var i, merge_job ;
                     // if (detected_client_log_out(pgm)) return ;
@@ -477,7 +477,7 @@ angular.module('MoneyNetwork')
                     debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
                     if (res.error) {
                         console.log(pgm + "user data hub lookup failed: " + res.error);
-                        console.log(pgm + 'query = ' + query);
+                        console.log(pgm + 'query = ' + mn_query_17);
                         return step_4_get_and_add_default_user_hub() ;
                     }
                     if (res.length) {
@@ -517,28 +517,26 @@ angular.module('MoneyNetwork')
             // todo: compare json and files rows before running query 17. Should be identical. files table should not be used in query 17
             step_2_compare_tables = function () {
                 var pgm = service + '.get_my_user_hub.step_2_compare_tables: ' ;
-                var query1, debug_seq1 ;
+                var mn_query_6, debug_seq1 ;
 
                 // with operator not supported. one query for each table (json and files)
                 // 1: get json rows
-                query1 =
+                mn_query_6 =
                     "select directory, file_name," +
                     "   (select value from keyvalue " +
                     "    where keyvalue.json_id = json.json_id " +
                     "    and keyvalue.key = 'modified') as modified " +
                     "from json " +
                     "where json.directory like '%/" + ZeroFrame.site_info.auth_address + "' " ;
-                debug('select', pgm + 'query ? = ' + query1) ;
-                // debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ?') ;
-                debug_seq1 = debug_z_api_operation_start(pgm, 'query ?', 'dbQuery', show_debug('z_db_query')) ;
-                ZeroFrame.cmd("dbQuery", [query1], function (res1) {
+                debug('select', pgm + 'mn query 6 = ' + mn_query_6) ;
+                debug_seq1 = debug_z_api_operation_start(pgm, 'mn query 6', 'dbQuery', show_debug('z_db_query')) ;
+                ZeroFrame.cmd("dbQuery", [mn_query_6], function (res1) {
                     var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 1: ';
-                    var query2, debug_seq2, res, i, index, indexed_by_modified ;
-                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
+                    var mn_query_19, debug_seq2, res, i, index, indexed_by_modified ;
                     debug_z_api_operation_end(debug_seq1, (!res1 || res1.error) ? 'Failed. error = ' + JSON.stringify(res1) : 'OK');
                     if (res1.error) {
                         console.log(pgm + "json and files compare failed: " + res1.error);
-                        console.log(pgm + 'query = ' + query1);
+                        console.log(pgm + 'mn query 8 = ' + mn_query_6);
                         return step_3_find_user_hubs() ;
                     }
                     res = {} ;
@@ -559,21 +557,19 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'indexed_by_modified = ' + JSON.stringify(indexed_by_modified));
 
                     // 2: get files rows
-                    query2 =
+                    mn_query_19 =
                         "select json.directory, files.filename as file_name from files, json " +
                         "where json.directory like '%/" + ZeroFrame.site_info.auth_address + "' " +
                         "and json.json_id = files.json_id" ;
-                    debug('select', pgm + 'query ? = ' + query2) ;
-                    // debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query ?') ;
-                    debug_seq2 = debug_z_api_operation_start(pgm, query2, 'dbQuery', show_debug('z_db_query')) ;
-                    ZeroFrame.cmd("dbQuery", [query2], function (res2) {
+                    debug('select', pgm + 'mn query 19 = ' + mn_query_19) ;
+                    debug_seq2 = debug_z_api_operation_start(pgm, 'mn query 19', 'dbQuery', show_debug('z_db_query')) ;
+                    ZeroFrame.cmd("dbQuery", [mn_query_19], function (res2) {
                         var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 2: ';
                         var i, index, hub, missing_rows, dictionaries, modified, sign ;
-                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2);
                         debug_z_api_operation_end(debug_seq2, (!res2 || res2.error) ? 'Failed. error = ' + JSON.stringify(res2) : 'OK');
                         if (res2.error) {
                             console.log(pgm + "json and files compare failed: " + res2.error);
-                            console.log(pgm + 'query = ' + query2);
+                            console.log(pgm + 'mn query 19 = ' + mn_query_19);
                             return step_3_find_user_hubs();
                         }
                         for (i=0 ; i<res2.length ; i++) {
@@ -673,7 +669,7 @@ angular.module('MoneyNetwork')
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(content)));
                                 // debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite');
                                 debug_seq1 = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write'));
-                                z_file_write(inner_path, btoa(json_raw), function (res) {
+                                z_file_write(pgm, inner_path, btoa(json_raw), function (res) {
                                 // ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
                                     var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign fileWrite callback 2: ';
                                     var debug_seq2 ;
@@ -859,7 +855,7 @@ angular.module('MoneyNetwork')
                                     json_raw = unescape(encodeURIComponent(old_hub_content_str));
                                     // debug_seq3 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
                                     debug_seq3 = debug_z_api_operation_start(pgm, inner_path0, 'fileWrite', show_debug('z_file_write'));
-                                    z_file_write(inner_path0, btoa(json_raw), function (res) {
+                                    z_file_write(pgm, inner_path0, btoa(json_raw), function (res) {
                                     //ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
                                         var pgm = service + '.merge_user_hub.step_1_update_content_json fileWrite callback 4: ';
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq3);
@@ -1231,7 +1227,7 @@ angular.module('MoneyNetwork')
                             inner_path0 = my_user_path + my_filename;
                             // debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
                             debug_seq0 = debug_z_api_operation_start(pgm, inner_path0, 'fileWrite', show_debug('z_file_write'));
-                            z_file_write(inner_path0, btoa(json_raw), function (res) {
+                            z_file_write(pgm, inner_path0, btoa(json_raw), function (res) {
                             // ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
                                 var inner_path1, debug_seq1;
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
@@ -1290,7 +1286,7 @@ angular.module('MoneyNetwork')
                         inner_path0 = my_user_path + filename;
                         // debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path0 + ' fileWrite');
                         debug_seq0 = debug_z_api_operation_start(pgm, inner_path0, 'fileWrite', show_debug('z_file_write'));
-                        z_file_write(inner_path0, btoa(json_raw), function (res) {
+                        z_file_write(pgm, inner_path0, btoa(json_raw), function (res) {
                         //ZeroFrame.cmd("fileWrite", [inner_path0, btoa(json_raw)], function (res) {
                             var inner_path1, debug_seq1;
                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
@@ -1355,7 +1351,7 @@ angular.module('MoneyNetwork')
                         inner_path = hub_user_path + 'content.json' ;
                         // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                         debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write')) ;
-                        z_file_write(inner_path , btoa(json_raw), function (res) {
+                        z_file_write(pgm, inner_path , btoa(json_raw), function (res) {
                         // ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
                             var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
@@ -1393,7 +1389,7 @@ angular.module('MoneyNetwork')
                             inner_path = my_user_path + 'data.json' ;
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write')) ;
-                            z_file_write(inner_path , btoa(json_raw), function (res) {
+                            z_file_write(pgm, inner_path , btoa(json_raw), function (res) {
                             // ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
@@ -1415,7 +1411,7 @@ angular.module('MoneyNetwork')
                             inner_path = my_user_path + 'status.json' ;
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write')) ;
-                            z_file_write(inner_path , btoa(json_raw), function (res) {
+                            z_file_write(pgm, inner_path , btoa(json_raw), function (res) {
                             // ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
@@ -1437,7 +1433,7 @@ angular.module('MoneyNetwork')
                             inner_path = my_user_path + 'like.json' ;
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite') ;
                             debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write')) ;
-                            z_file_write(inner_path , btoa(json_raw), function (res) {
+                            z_file_write(pgm, inner_path , btoa(json_raw), function (res) {
                             // ZeroFrame.cmd("fileWrite", [inner_path , btoa(json_raw)], function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub fileWrite callback 1: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
@@ -1587,7 +1583,7 @@ angular.module('MoneyNetwork')
                 json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/data.json fileWrite') ;
                 debug_seq = debug_z_api_operation_start(pgm, user_path + '/data.json', 'fileWrite', show_debug('z_file_write')) ;
-                z_file_write(user_path + '/data.json', btoa(json_raw), function (res) {
+                z_file_write(pgm, user_path + '/data.json', btoa(json_raw), function (res) {
                 // ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, format_res(res)) ;
@@ -1648,7 +1644,7 @@ angular.module('MoneyNetwork')
                     json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/status.json fileWrite') ;
                     debug_seq = debug_z_api_operation_start(pgm, user_path + '/status.json', 'fileWrite', show_debug('z_file_write')) ;
-                    z_file_write(user_path + '/status.json', btoa(json_raw), function (res) {
+                    z_file_write(pgm, user_path + '/status.json', btoa(json_raw), function (res) {
                     // ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
                         var pgm = service + '.write_status_json fileWrite callback 2: ';
                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -1759,7 +1755,7 @@ angular.module('MoneyNetwork')
                 json_raw = unescape(encodeURIComponent(JSON.stringify(like, null, "\t")));
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/like.json fileWrite') ;
                 debug_seq = debug_z_api_operation_start(pgm, user_path + '/like.json', 'fileWrite', show_debug('z_file_write')) ;
-                z_file_write(user_path + '/like.json', btoa(json_raw), function (res) {
+                z_file_write(pgm, user_path + '/like.json', btoa(json_raw), function (res) {
                 // ZeroFrame.cmd("fileWrite", [user_path + '/like.json', btoa(json_raw)], function (res) {
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, format_res(res)) ;
@@ -2037,7 +2033,7 @@ angular.module('MoneyNetwork')
                                         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
                                         // debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/content.json fileWrite') ;
                                         debug_seq2 = debug_z_api_operation_start(pgm, user_path + '/content.json', 'fileWrite', show_debug('z_file_write')) ;
-                                        z_file_write(user_path + '/content.json', btoa(json_raw), function (res) {
+                                        z_file_write(pgm, user_path + '/content.json', btoa(json_raw), function (res) {
                                         // ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
                                             var pgm = service + '.zeronet_site_publish fileWrite callback 7: ';
                                             var error ;
@@ -2283,7 +2279,7 @@ angular.module('MoneyNetwork')
             empty_json = {} ;
             json_raw = unescape(encodeURIComponent(JSON.stringify(empty_json, null, "\t")));
             debug_seq = debug_z_api_operation_start(pgm, file_path, 'fileWrite', show_debug('z_file_write')) ;
-            z_file_write(file_path, btoa(json_raw), function (res) {
+            z_file_write(pgm, file_path, btoa(json_raw), function (res) {
             // ZeroFrame.cmd("fileWrite", [file_path, btoa(json_raw)], function (res) {
                 var pgm = service + '.write_empty_chat_file fileWrite callback: ' ;
                 var error ;
@@ -2510,7 +2506,7 @@ angular.module('MoneyNetwork')
 
         function cleanup_inactive_users() {
             var pgm = service + '.cleanup_inactive_users: ';
-            var info, query, debug_seq ;
+            var info, mn_query_16, debug_seq ;
             info = '. Skipping cleanup_inactive_users check';
             // check Zeronet status
             if (!z_cache.user_id) {
@@ -2531,7 +2527,7 @@ angular.module('MoneyNetwork')
             }
 
             // find files for inactive user accounts
-            query =
+            mn_query_16 =
                 "select" +
                 "  keyvalue.value as timestamp," +
                 "  json.json_id," +
@@ -2547,15 +2543,15 @@ angular.module('MoneyNetwork')
                 "and json.json_id = keyvalue.json_id " +
                 "and files.json_id = keyvalue.json_id " +
                 "order by keyvalue.value, keyvalue.json_id";
-            debug('select', pgm + 'query 16 (MS OK) = ' + query);
+            debug('select', pgm + 'query 16 (MS OK) = ' + mn_query_16);
 
             console.log(pgm + 'todo: old user account cleanup is no longer working after adding merger site feature. users are now on different sites with different admin private keys');
-            console.log(pgm + 'query 16 = ' + query) ;
+            console.log(pgm + 'query 16 = ' + mn_query_16) ;
             return ;
 
             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 16') ;
-            debug_seq = debug_z_api_operation_start(pgm, 'query 16', 'dbQuery', show_debug('z_db_query')) ;
-            ZeroFrame.cmd("dbQuery", [query], function (res) {
+            debug_seq = debug_z_api_operation_start(pgm, 'mn query 16', 'dbQuery', show_debug('z_db_query')) ;
+            ZeroFrame.cmd("dbQuery", [mn_query_16], function (res) {
                 var pgm = service + '.cleanup_inactive_users dbQuery callback: ';
                 var i ;
                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -2563,13 +2559,13 @@ angular.module('MoneyNetwork')
                 if (res.error) {
                     ZeroFrame.cmd("wrapperNotification", ["error", "Search for inactive users: " + res.error, 5000]);
                     console.log(pgm + "Search for inactive users failed: " + res.error);
-                    console.log(pgm + 'query = ' + query);
+                    console.log(pgm + 'query = ' + mn_query_16);
                     return;
                 }
                 if (res.length == 0) return; // no more inactive users to cleanup
 
                 console.log(pgm + 'todo: old user account cleanup is no longer working after adding merger site feature. users are on different sites with different admin private keys');
-                console.log(pgm + 'query 16 = ' + query) ;
+                console.log(pgm + 'query 16 = ' + mn_query_16) ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 return ;
 

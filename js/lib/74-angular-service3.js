@@ -612,7 +612,7 @@ angular.module('MoneyNetwork')
         //             for example after update to optional files
         function z_update_1_data_json (lock_pgm, publish) {
             var pgm = service + '.z_update_1_data_json: ' ;
-            var query ;
+            var mn_query_1 ;
             // console.log(pgm + 'start') ;
 
             // check login status - client and ZeroNet
@@ -648,16 +648,16 @@ angular.module('MoneyNetwork')
                     if (detected_client_log_out(pgm)) return ;
 
                     // check current user disk usage. must keep total file usage <= user_contents_max_size
-                    query =
+                    mn_query_1 =
                         "select files.filename, files.size " +
                         "from json, files " +
                         "where json.directory = '" + hub + "/" + ZeroFrame.site_info.auth_address + "' " +
                         "and json.file_name = 'content.json' " +
                         "and files.json_id = json.json_id" ;
-                    debug('select', pgm + 'query 1 (MS OK) = ' + query);
+                    debug('select', pgm + 'mn query 1 = ' + mn_query_1);
                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 1') ;
-                    debug_seq = debug_z_api_operation_start(pgm, 'query 1', 'dbQuery', show_debug('z_db_query')) ;
-                    ZeroFrame.cmd("dbQuery", [query], function (res) {
+                    debug_seq = debug_z_api_operation_start(pgm, 'mn query 1', 'dbQuery', show_debug('z_db_query')) ;
+                    ZeroFrame.cmd("dbQuery", [mn_query_1], function (res) {
                         var pgm = service + '.z_update_1_data_json dbQuery callback 3: ';
                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                         debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
@@ -2173,26 +2173,24 @@ angular.module('MoneyNetwork')
 
             get_my_user_hub (function (hub) {
 
-                var image_path, query, debug_seq ;
+                var image_path, mn_query_2, debug_seq ;
                 // overwrite with empty json as a delete marked optional file.
                 image_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + '/' + sent_at + '-image.json' ;
-                query =
+                mn_query_2 =
                     "select json.directory, files_optional.filename, files_optional.size " +
                     "from files_optional, json " +
                     "where json.json_id = files_optional.json_id " +
                     "and json.directory like '%/users/" + ZeroFrame.site_info.auth_address + "' " +
                     "and ( files_optional.filename = '" + sent_at + '-image.json' + "'" +  // old format without <user_seq> in filename
                     "   or files_optional.filename = '" + sent_at + '-' + z_cache.user_seq + '-image.json' + "' )" ; // new format with <user_seq> in filename
-                debug('select', pgm + 'query 2 = ' + query) ;
-                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 2') ;
-                debug_seq = debug_z_api_operation_start(pgm, 'query 2', 'dbQuery', show_debug('z_db_query')) ;
-                ZeroFrame.cmd("dbQuery", [query], function (res) {
+                debug('select', pgm + 'mn query 2 = ' + mn_query_2) ;
+                debug_seq = debug_z_api_operation_start(pgm, 'mn query 2', 'dbQuery', show_debug('z_db_query')) ;
+                ZeroFrame.cmd("dbQuery", [mn_query_2], function (res) {
                     var pgm = service + '.cleanup_my_image_json dbQuery callback 2: ';
-                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
                     if (res.error) {
                         console.log(pgm + "image check failed: " + res.error);
-                        console.log(pgm + 'query = ' + query);
+                        console.log(pgm + 'query = ' + mn_query_2);
                         if (cb) cb(false) ;
                         return;
                     }

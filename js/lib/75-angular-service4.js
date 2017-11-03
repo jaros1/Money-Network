@@ -271,25 +271,25 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.create_sessions.step_3_find_old_outgoing_files: ';
                     get_my_user_hub(function (hub) {
                         var pgm = service + '.create_sessions.step_3_find_old_outgoing_files get_my_user_hub callback 1: ';
-                        var query1;
+                        var mn_query_20, debug_seq;
 
                         // query 1. simple get all optional files for current user directory
                         // todo: optional files and actual files on file system can be out of sync. Should delete files_optional + sign to be sure that optional files and file system matches
-                        query1 =
+                        mn_query_20 =
                             "select files_optional.filename from json, files_optional " +
                             "where directory like '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' " +
                             "and file_name = 'content.json' " +
                             "and files_optional.json_id = json.json_id";
-                        console.log(pgm + 'query1 = ' + query1);
-                        console.log(pgm + 'todo: add debug_seq to this query');
-
-                        ZeroFrame.cmd("dbQuery", [query1], function (res) {
+                        console.log(pgm + 'mn query 20 = ' + mn_query_20);
+                        debug_seq = debug_z_api_operation_start(pgm, 'mn query 20', 'dbQuery', show_debug('z_db_query')) ;
+                        ZeroFrame.cmd("dbQuery", [mn_query_20], function (res) {
                             var pgm = service + '.create_sessions.step_3_find_old_outgoing_files dbQuery callback 2: ';
                             var files, i, re, filename, this_session_filename, timestamp, session_info, sessionid,
                                 session_at, delete_files, content_lock_pgm ;
+                            debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
                             if (res.error) {
                                 console.log(pgm + 'query failed. error = ' + res.error);
-                                console.log(pgm + 'query = ' + query1);
+                                console.log(pgm + 'query = ' + mn_query_20);
                                 return;
                             }
                             // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
@@ -309,63 +309,42 @@ angular.module('MoneyNetwork')
 
                             console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
                             //session_info = {
-                            //    "ddbb4f18a7": {
-                            //        "password": "U2FsdGVkX1+6+X4pSDQOf8/Bb+3xG+nFQDyhr3/7syi+wYXKEZ6UL49dB2ftq1gmC5/LKfI2XfJS2fEsEy5CYscRBDuoUxJEqKNwiiiiXBA=",
-                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCsOMfAvHPTp0K9qZfoItdJ9898\nU3S2gAZZSLuLZ1qMXr1dEnO8AwxS58UvKGwHObT1XQG8WT3Q1/6OGlJms4mYY1rF\nQXzYEV5w0RlcSrMpLz3+nJ7cVb9lYKOO8hHZFWudFRywkYb/aeNh6mAXqrulv92z\noX0S7YMeNd2YrhqefQIDAQAB\n-----END PUBLIC KEY-----",
-                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                            //        "last_request_at": 1503137602267,
-                            //        "done": {},
-                            //        "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
-                            //    },
-                            //    "825c05a018": {
-                            //        "password": "U2FsdGVkX18YSwwUOLQS9lMqivpF7ynNzNXBuOOFvy91i/JApuPUiFRH4ViMQvezXD6tS+4AXZYZJd7f98EeW4V74+RvcfjHg2VFmUQvS4U=",
-                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHzoMPSwwM8z1P7eZzjNFe7Md6Ds\nkMhR0DlUvTlJOtxfZ/KENMsBIl45pize7sGJxpAmIJQG1JQzOp9R0qFW22geoK5q\nbn8WGHNHRyRObjpqDpRkwiovCz5DtP0AFvliawhFj60WEV56gL5sFoJ0/154MbZZ\nt2nA0/i76YJLfZHxAgMBAAE=\n-----END PUBLIC KEY-----",
-                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                            //        "last_request_at": 1501605913768,
-                            //        "done": {}
-                            //    },
-                            //    "3af9a70f1f": {
-                            //        "password": "U2FsdGVkX1/5ItpxUyRH1ZiZuoyN1tCvLUKpSogDnVDvBNLcODVLijUC52N8WBSYf3hBxXzQZYjkRqKdk79oS5Rp/nJ3rq9bSgoodVJPxyU=",
-                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHsgCP4qEflm0HEXYUO5dP+UOENN\n7C5K8H7aFVmhwc32PwySbLcdQDbWpFhX6cKODQOC5gJNSnzoEHqxrNeCO97yXe/P\nyzVVjHlq56a16IC2lB/SSnUh5ipjfC4grFK9ZlMUpHUDN/j5oxzUnK/QLd5L1wLO\nsITFawX1WuxB9FERAgMBAAE=\n-----END PUBLIC KEY-----",
-                            //        "pubkey2": "AjNp+TH4ho3DEmyfa73v447KWgv/W8t3R94/mY+ib/2+",
-                            //        "last_request_at": 1501597939326,
-                            //        "done": {}
-                            //    },
-                            //    "02db2101c5": {
-                            //        "password": "U2FsdGVkX18+bh2RYZzvbeLoCqsGvj12eTfL7T/3frFfO9VQbgLpGAEsO+5QZjH3JrRr9wmGjIe+O6SojshHm8XdgZvYV19msuyWh+HX0XE=",
-                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDjZGACcz2Swp07gN7+use66NvA\nIAxvMpykW7qcG3MP2DTDH3mKg1JlY40U4SwP5CE1LGmOJN7Saymoh2W9i0oHzxvR\n+b+bNcoG09eYZuinH1M7FB9wx8RxcfbNH+lzoAtU4HVnGrtrLG5X2SM9Cx+FN9cw\ncdVCdwU1IqwILPyDCwIDAQAB\n-----END PUBLIC KEY-----",
-                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                            //        "last_request_at": 1503050724533,
-                            //        "done": {}
-                            //    },
-                            //    "3f6561327a": {
+                            //    "321d8862f5": {
                             //        "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                            //        "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
-                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+                            //        "password": "U2FsdGVkX19iL6wnPP84sSo6TlOyQHdPsUqUtCKH3QoNaClcnDJkcPFE+ItPJynN5kxbIfIK0FsYax71sepSv3KMeY2dmR5cbktqPWIbrwA=",
+                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCNumor5vV8pEHtE3FWhv9MmQME\naQep9KXbIiTmTiJGnWvmw1EC3kJva+1koqqlLYY/G21jz/Q3Gay8FBcnjeimBlJB\nledV/Bt691anangfwBvKgjalESUttW102IRLGtYtYeI81j21Un1jWoHQp6fBymXx\nmZ3B9rS3lp+M9DykEQIDAQAB\n-----END PUBLIC KEY-----",
                             //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
-                            //        "last_request_at": 1505751791641,
-                            //        "done": {
-                            //            "1503315223138": 1503315232562,
-                            //            "1503916247431": 1503916247859,
-                            //            "1504261657652": 1504261664116,
-                            //            "1504261977720": 1504261982693,
-                            //            "1505477436154": 1505477443260,
-                            //            "1505484214619": 1505484217007,
-                            //            "1505484840492": 1505484842795,
-                            //            "1505485442061": 1505485444720,
-                            //            "1505485933357": 1505485934580,
-                            //            "1505487060777": 1505487062463,
-                            //            "1505489780265": 1505489782366,
-                            //            "1505550671820": 1505550725534,
-                            //            "1505576551260": 1505576552166
-                            //        },
-                            //        "balance": [{"code": "tBTC", "amount": 1.3}],
-                            //        "balance_at": 1504431366592,
-                            //        "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                            //        "last_request_at": 1507616030739,
+                            //        "done": {},
+                            //        "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                            //        "balance": [{"code": "tBTC", "amount": 0}],
+                            //        "balance_at": 1507568361090
+                            //    },
+                            //    "d945ff7e85": {
+                            //        "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //        "password": "U2FsdGVkX1+IOSQPCF04ySBK8zhg60jVZzHnCjMbe//VNaPODlAgjkbvJxvalkrCnRtPO3X/f9oJL9idwczRaZnjTkJuW+Dzjch/tFqCBZ0=",
+                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgGIQnT7AZjmmKJswjbDYeSv4V3D6\n3oNGaMT24VFTwyksQAzV3L+ghC5jo/UjOshRM7QlNw+W9eTV5hNgzvQqxkj4BAiS\nEw81FfKxXy9+oPubTNXC8uaxaMr7W7EG5Edfj51PENyB58fMdIoy4D7QOB2sB7LV\nvYOTzldDfyAdC3PLAgMBAAE=\n-----END PUBLIC KEY-----",
+                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                            //        "last_request_at": 1509609731349,
+                            //        "done": {},
+                            //        "balance": [{"code": "tBTC", "amount": 3.70329233}],
+                            //        "balance_at": 1509293172666,
+                            //        "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7"
+                            //    },
+                            //    "1eec760f38": {
+                            //        "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //        "password": "U2FsdGVkX1+2EvM8Zz6AYIfySIXdzTH3UWCTGjfmLo5q79a5ASUaytMLV/WcSZ2Vo47MVxRo9Tb6vxDhSNEwb2aXc9za4ZLrxcCVK+Nz5nk=",
+                            //        "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgGBVaZ72wO7d8ccK/u3LmafaKi4c\nVxYYcpqbsszzPOaeyv8lMLEWPGVadrLWi8EMo1FavyYqvoyz/26laHmtqiROU3m3\nLy6DoPWnJySp7YaUmRKZsPoLzGOWSypdJfDX67N+TB2QvBzvZsSIWGwBUZ33oGbw\nub5E7V947qif06yVAgMBAAE=\n-----END PUBLIC KEY-----",
+                            //        "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                            //        "last_request_at": 1509646582519,
+                            //        "done": {},
+                            //        "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                            //        "balance": [{"code": "tBTC", "amount": 3.70329233}],
+                            //        "balance_at": 1509611126583
                             //    }
                             //};
 
-                            re = new RegExp('^[0-9a-f]{10}.[0-9]{13}$'); // no user seq (MoneyNetworkAPI messages)
+                            re = new RegExp('^[0-9a-f]{10}(-i|-e|-o|-io)\.[0-9]{13}$');
                             files = [] ;
                             for (i=0 ; i<res.length ; i++) if (res[i].filename.match(re)) files.push(res[i].filename) ;
                             console.log(pgm + 'files = ' + JSON.stringify(files)) ;

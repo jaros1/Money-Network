@@ -212,6 +212,7 @@ angular.module('MoneyNetwork')
                             // send ping. timeout max 5 seconds. Expects Timeout ... or OK response
                             request = { msgtype: 'ping' };
                             console.log(pgm + 'sending ping to wallet session with sessionid ' + sessionid) ;
+                            session.encrypt.setup_encryption({debug: 'test'}) ;
                             session.encrypt.send_message(request, {response: 5000}, function (response) {
                                 var pgm = controller + '.test1.run.test_old_session send_message callback 2: ' ;
                                 if (response && response.error && response.error.match(/^Timeout /)) {
@@ -734,6 +735,7 @@ angular.module('MoneyNetwork')
 
         self.tests = [] ;
         function init_tests () {
+            // MoneyNetworkAPILib.config({debug: 'test'});
             self.tests.splice(0, self.tests.length) ;
             self.tests.push(test1_ping_session) ;
             self.tests.push(test2_open_url) ;

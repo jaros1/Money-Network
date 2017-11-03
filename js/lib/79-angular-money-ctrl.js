@@ -396,7 +396,7 @@ angular.module('MoneyNetwork')
 
         self.money_network_w2_11 = function () {
             var pgm = controller + '.money_network_w2_11: ' ;
-            var session_at, sessionid, url, query, sessionid_sha256, check_session ;
+            var session_at, sessionid, url, mn_query_18, sessionid_sha256, check_session ;
             session_at = new Date().getTime() ;
             sessionid = MoneyNetworkHelper.generate_random_password(60, true).toLowerCase();
             url = "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1?sessionid=" + sessionid ;
@@ -405,7 +405,7 @@ angular.module('MoneyNetwork')
 
             // wait for session to start. no event file done event. wait for db update. max 1 minute
             sessionid_sha256 = CryptoJS.SHA256(sessionid).toString();
-            query =
+            mn_query_18 =
                 "select keyvalue2.value as session_at, keyvalue3.value as pubkey2 " +
                 "from keyvalue as keyvalue1, keyvalue as keyvalue2, keyvalue as keyvalue3 " +
                 "where keyvalue1.key = 'sessionid_sha256' " +
@@ -415,20 +415,18 @@ angular.module('MoneyNetwork')
                 "and keyvalue3.json_id = keyvalue1.json_id " +
                 "and keyvalue3.key = 'pubkey2' " +
                 "and keyvalue2.value > '" + session_at + "'"  ;
-            MoneyNetworkHelper.debug('select', 'query 18 = ' + query) ;
+            MoneyNetworkHelper.debug('select', 'mn query 18 = ' + mn_query_18) ;
             var check_session = function(cb, count) {
                 var debug_seq ;
                 if (!count) count = 0;
                 if (count > 60) return cb({ error: "timeout" }) ;
-                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 18') ;
-                debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'query 18', 'dbQuery', MoneyNetworkHelper.show_debug('z_db_query')) ;
-                ZeroFrame.cmd("dbQuery", [query], function (res) {
+                debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'mn query 18', 'dbQuery', MoneyNetworkHelper.show_debug('z_db_query')) ;
+                ZeroFrame.cmd("dbQuery", [mn_query_18], function (res) {
                     var pgm = controller + '.money_network_w2_11.check_session: ' ;
-                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
                     if (res.error) {
                         console.log(pgm + 'Error when checking for new wallet session. error = ' + res.error) ;
-                        console.log(pgm + 'query = ' + query) ;
+                        console.log(pgm + 'mn query 18 = ' + mn_query_18) ;
                         return cb({ error: res.error }) ;
                     }
                     if (res.length == 0) {
