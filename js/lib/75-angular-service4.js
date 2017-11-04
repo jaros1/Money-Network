@@ -379,8 +379,9 @@ angular.module('MoneyNetwork')
                             if (!delete_files.length) return ;
 
                             // start content update. publish and content update cannot run at the same time
-                            content_lock_pgm = pgm ;
-                            moneyNetworkHubService.start_content_update(content_lock_pgm, function() {
+                            // start long running transaction. Do not publish while updatering content and verse versa
+                            MoneyNetworkAPILib.start_transaction(pgm, function(transaction_timestamp) {
+
                                 var delete_ok, delete_failed, delete_file ;
 
                                 // delete file loop
@@ -393,7 +394,7 @@ angular.module('MoneyNetwork')
                                         // finish deleting optional files
                                         if (!delete_ok.length) {
                                             // nothing to sign
-                                            moneyNetworkHubService.end_content_update(content_lock_pgm) ;
+                                            MoneyNetworkAPILib.end_transaction(transaction_timestamp) ;
                                             return ;
                                         }
                                         inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
@@ -405,7 +406,7 @@ angular.module('MoneyNetwork')
                                             debug_z_api_operation_end(debug_seq, format_res(res)) ;
                                             if (res != 'ok') console.log(pgm + inner_path + ' siteSign failed. error = ' + res) ;
                                             // done with or without errors. end content update.
-                                            moneyNetworkHubService.end_content_update(content_lock_pgm) ;
+                                            MoneyNetworkAPILib.end_transaction(transaction_timestamp) ;
                                         }) ;
                                         return ;
                                     }
@@ -429,7 +430,7 @@ angular.module('MoneyNetwork')
                                 // start delete file loop
                                 delete_file() ;
 
-                            }) ; // start_content_update callback
+                            }) ; // start_transaction callback 3
 
                         }); // dbQuery callback 2
 
@@ -763,9 +764,6 @@ angular.module('MoneyNetwork')
                         }
                         else if (request.msgtype == 'ping') {
                             // simple session ping. always OK response
-
-
-
                         }
                         else if (request.msgtype == 'balance') {
                             // received balance message from wallet. save + OK response
@@ -792,6 +790,12 @@ angular.module('MoneyNetwork')
                             }) ;
                             return ;
                         }
+                        else if (request.msgtype == 'published') {
+                            // wallet session has just published content OK.
+                            // minimum interval between publish is 16 seconds
+                            console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                            MoneyNetworkAPILib.set_last_published(request.timestamp) ;
+                        }
                         else response.error = 'Unknown msgtype ' + request.msgtype ;
 
                         // finish message processing. marked as done and send any response
@@ -810,7 +814,7 @@ angular.module('MoneyNetwork')
         } // process_incoming_message
 
         // add callback for incoming messages from wallet session(s)
-        MoneyNetworkAPILib.config({cb: process_incoming_message}) ;
+        MoneyNetworkAPILib.config({debug: true, cb: process_incoming_message}) ;
 
         // init wallet service after client log in
         function w_login () {

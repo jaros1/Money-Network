@@ -505,13 +505,13 @@ var MoneyNetworkAPILib = (function () {
             clearInterval(demon_id);
             return;
         }
-        if (debug) console.log(pgm + 'api query 1 = ' + api_query_1) ;
-        debug_seq = debug_z_api_operation_start(pgm, 'api query 1', 'dbQuery') ;
+        // if (debug) console.log(pgm + 'api query 1 = ' + api_query_1) ;
+        // debug_seq = debug_z_api_operation_start(pgm, 'api query 1', 'dbQuery') ;
         ZeroFrame.cmd("dbQuery", [api_query_1], function (res) {
             var pgm = module + '.demon dbQuery callback: ';
             var i, directory, filename, session_filename, file_timestamp, cb, other_user_path, inner_path, encrypt,
                 loading_offline_transactions, start_load_offline_transactions, old_timestamps, file_timestamps, pos, re;
-            debug_z_api_operation_end(debug_seq, !res || res.error ? 'failed' : 'OK') ;
+            // debug_z_api_operation_end(debug_seq, !res || res.error ? 'failed' : 'OK') ;
             if (res.error) {
                 console.log(pgm + 'query failed. error = ' + res.error);
                 console.log(pgm + 'query = ' + api_query_1);
@@ -530,7 +530,7 @@ var MoneyNetworkAPILib = (function () {
                 session_filename = filename.substr(0,10) ;
                 if (done[filename] == true) continue; // already done
                 if (loading_offline_transactions[session_filename]) continue ; // loading file with offline transactions. wait until next demon dbQuery
-                // check file timestamp. note special timestamp 0 for array with old offline transactions
+                // check file timestamp.
                 pos = filename.indexOf('.') ;
                 file_timestamp = pos == -1 ? '' : filename.substr(pos+1) ;
                 if (!file_timestamp.match(timestamp_re)) {
@@ -1122,6 +1122,42 @@ var MoneyNetworkAPILib = (function () {
                 "additionalProperties": false
             }, // start_mt
 
+            // publish sync. between MN and wallet sessions. minimum interval between publish is 16 seconds
+            "publish_started": {
+                "type": 'object',
+                "title": 'Send publish start timestamp to other session',
+                "description": 'Other session (MN or wallets) should wait for published message before continue. Max one publish every 16 seconds',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^publish_started$'},
+                    "publish_started_at": {"type": "number", "multipleOf": 1.0}
+                },
+                "required": ['msgtype', 'publish_started_at'],
+                "additionalProperties": false
+            }, // publish_started
+
+            "get_published": {
+                "type": 'object',
+                "title": 'Request timestamp for last OK publish from other session',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^get_published$'}
+                },
+                "required": ['msgtype'],
+                "additionalProperties": false
+            }, // get_published
+
+            "published": {
+                "type": 'object',
+                "title": 'Send timestamp for last OK publish to other session',
+                "description": 'get_publish_response. Also used after OK or failed publish',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^published$'},
+                    "last_published_at": {"type": "number", "multipleOf": 1.0}
+                },
+                "required": ['msgtype', 'published_at'],
+                "additionalProperties": false
+
+            }, // published
+
             "notification" : {
                 "type": 'object',
                 "title": 'MN/Wallet. Send notification, see wrapperNotification, to other session',
@@ -1197,6 +1233,7 @@ var MoneyNetworkAPILib = (function () {
             else if ((request_msgtype == 'get_password') && (json.msgtype == 'password')) null; // OK combination
             else if ((request_msgtype == 'get_balance') && (json.msgtype == 'balance')) null; // OK combination
             else if ((request_msgtype == 'prepare_mt_request') && (json.msgtype == 'prepare_mt_response')) null; // OK combination
+            else if ((request_msgtype == 'get_published') && (json.msgtype == 'published')) null; // OK combination
             else return 'Invalid ' + request_msgtype + ' request ' + json.msgtype + ' response combination';
         }
         if (typeof tv4 === 'undefined') {
@@ -1546,6 +1583,10 @@ var MoneyNetworkAPILib = (function () {
         // todo: optional pattern. maybe optional files pattern overrules files_allowed pattern?
         extra = {} ;
         extra.optional_file = (['content.json', 'data.json', 'status.json', 'like.json', 'avatar.jpg', 'avatar.png', 'wallet.json'].indexOf(filename) == -1);
+        if (options.timeout_count) {
+            extra.timeout_count = options.timeout_count ;
+            delete options.timeout_count ;
+        }
         if (debug) console.log(pgm + 'filename = ' + JSON.stringify(filename) + ', optional_file = ' + extra.optional_file) ;
 
         // optional step. get info about optional file before fileGet operation
@@ -1593,6 +1634,7 @@ var MoneyNetworkAPILib = (function () {
             // cb2 is run as fileGet callback or is run by setTimeout (sometimes problem with optional fileGet operation running forever)
             cb2_done = false ;
             cb2 = function (data, timeout) {
+                var options_clone ;
                 if (process_id) {
                     try {$timeout.cancel(process_id)}
                     catch (e) {}
@@ -1603,6 +1645,19 @@ var MoneyNetworkAPILib = (function () {
                 if (timeout) extra.timeout = timeout ;
                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                 debug_z_api_operation_end(debug_seq, data ? 'OK' : 'Not found');
+
+                if (!data && extra.optional_file && extra.hasOwnProperty('timeout_count') && (extra.timeout_count > 0)) {
+                    if (debug) console.log(pgm + inner_path + ' fileGet failed. timeout_count was ' + extra.timeout_count) ;
+                    if (extra.timeout_count > 0) {
+                        // optional fileGet failed. called with a timeout_count. Retry operation
+                        options_clone = JSON.parse(JSON.stringify(options)) ;
+                        options_clone.timeout_count = extra.timeout_count ;
+                        options_clone.timeout_count-- ;
+                        if (debug) console.log(pgm + 'retrying ' + inner_path + ' fileGet with timeout_count = ' + options_clone.timeout_count) ;
+                        z_file_get(pgm, options_clone, cb) ;
+                        return ;
+                    }
+                }
                 cb(data, extra) ;
             } ; // fileGet callback
 
@@ -1674,29 +1729,32 @@ var MoneyNetworkAPILib = (function () {
     // use start_transaction and end_transaction
     var transactions = {} ; // timestamp => object with transaction info
 
-    function start_transaction (pgm, cb) {
-        var transaction_timestamp, no_running, key ;
-        if (typeof cb != 'function') throw module + 'start_transaction: invalid call. second parameter cb must be a callback function' ;
-        transaction_timestamp = new Date().getTime() ;
-        while (transactions[transaction_timestamp]) transaction_timestamp++ ;
+    function start_transaction(pgm, cb) {
+        var transaction_timestamp, key;
+        if (typeof cb != 'function') throw module + 'start_transaction: invalid call. second parameter cb must be a callback function';
+
+        transaction_timestamp = new Date().getTime();
+        while (transactions[transaction_timestamp]) transaction_timestamp++;
         transactions[transaction_timestamp] = {
             pgm: pgm,
             created_at: transaction_timestamp,
             cb: cb,
             running: false
-        } ;
+        };
         // any running transactions
         for (key in transactions) {
             if (transactions[key].running) {
                 // wait
-                if (debug) console.log(module + 'transactions: paused ' + pgm + '. ' + (Object.keys(transactions).length-1) + ' transactions in queue (1 running)') ;
-                return ;
+                if (debug) console.log(module + 'transactions: paused ' + pgm + '. ' + (Object.keys(transactions).length - 1) + ' transactions in queue (1 running)');
+                return;
             }
         }
         // start now
-        transactions[transaction_timestamp].running = true ;
-        transactions[transaction_timestamp].started_at = transaction_timestamp ;
-        transactions[transaction_timestamp].cb(transaction_timestamp) ;
+        transactions[transaction_timestamp].running = true;
+        transactions[transaction_timestamp].started_at = transaction_timestamp;
+        transactions[transaction_timestamp].cb(transaction_timestamp);
+
+
     } // start_transaction
 
     function end_transaction (transaction_timestamp) {
@@ -1722,6 +1780,27 @@ var MoneyNetworkAPILib = (function () {
         }
     } // end_transaction
 
+    // minimum interval between publish is 16 seconds (MN and wallet sites)
+    var last_published = 0 ; // timestamp for last OK publish. minimum interval between publish is 16 seconds (MN and wallets)
+    function get_last_published () {
+        return last_published ;
+    }
+    function set_last_published (timestamp) {
+        var pgm = module + '.set_last_published: ' ;
+        var old_last_published, updated, elapsed ;
+        if (!timestamp) timestamp = new Date().getTime() ;
+        if (timestamp > 9999999999) timestamp = Math.floor(timestamp / 1000) ;
+        old_last_published = last_published ;
+        if (timestamp > last_published) {
+            last_published = timestamp ;
+            updated = true ;
+        }
+        else updated = false ;
+        elapsed = last_published - old_last_published ;
+        console.log(pgm + 'elapsed = ' + elapsed + ', old_last_published = ' + old_last_published + ', last_publish = ' + last_published) ;
+        return updated ;
+    }
+
     // var inner_path_re1 = /data\/users\// ; // user directory?
     // var inner_path_re2 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
     // var inner_path_re3 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/content\.json$/ ; // extract hub
@@ -1733,7 +1812,7 @@ var MoneyNetworkAPILib = (function () {
         var pgm = module + '.z_site_publish: ' ;
         var inner_path, match4, auth_address, filename, hub ;
         if (!ZeroFrame) throw pgm + 'sitePublish aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
-        // check privatekey
+        // check private key
         if (options.privatekey) {
             console.log(pgm + 'warning. siteSign with privatekey is not supported. Ignoring privatekey') ;
             delete options.privatekey ;
@@ -1759,11 +1838,13 @@ var MoneyNetworkAPILib = (function () {
 
         // start publish transaction. publish must wait for long running update transactions to wait
         start_transaction(pgm, function(transaction_timestamp){
+
             var debug_seq ;
             debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish') ;
             ZeroFrame.cmd("sitePublish", options, function (res) {
                 var run_cb ;
                 debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+                if (res == 'ok') set_last_published() ;
                 // run sitePublish cb callback (content published)
                 run_cb = function () { cb(res)} ;
                 setTimeout(run_cb, 0) ;
@@ -1805,7 +1886,9 @@ var MoneyNetworkAPILib = (function () {
         z_merger_site_add: z_merger_site_add,
         z_file_get: z_file_get,
         z_file_write: z_file_write,
-        z_site_publish: z_site_publish
+        z_site_publish: z_site_publish,
+        set_last_published: set_last_published,
+        get_last_published: get_last_published
     };
 
 })(); // MoneyNetworkAPILib
@@ -2355,6 +2438,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (cb) {
         var pgm = self.module + '.add_optional_files_support get_content_json callback 1: ';
         var inner_path, json_raw, optional_files;
         if (!content) return cb({error: 'fileGet content.json failed'});
+        self.log(pgm, 'content.modified = ' + content.modified) ;
         if (content.optional == self.this_optional) {
             // optional files support already OK.
             return cb({});
@@ -2423,7 +2507,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     request_file_timestamp = options.timestamp || request_at ; // timestamp - only if request json is a response to a previous request
     request_msgtype = options.msgtype; // only if request json is a response to a previous request
     request_timestamp = options.request ; // only if request json is a response to a previous request
-    if (options.offline) offline_transaction = true ;
+    if (options.offline) throw pgm + pgm + 'options.offline is no longer supported. Please use options.optional and/or options.subsystem instead' ;
     if (options.timeout_at && (typeof options.timeout_at == 'number')) {
         // sending a response to a previous request
         request_timeout_at = options.timeout_at ;
@@ -2539,7 +2623,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                         inner_path5 = self.this_user_path + 'content.json';
                         self.log(pgm, 'sign content.json with new optional file ' + inner_path4);
                         debug_seq5 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path5, 'siteSign');
-                        self.ZeroFrame.cmd("siteSign", {inner_path: inner_path5}, function (res) {
+                        self.ZeroFrame.cmd("siteSign", {inner_path: inner_path5, remove_missing_optional: true}, function (res) {
                             var pgm = self.module + '.send_message siteSign callback 6: ';
                             var debug_seq6;
                             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq5, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
