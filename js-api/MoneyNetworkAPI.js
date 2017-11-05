@@ -472,8 +472,10 @@ var MoneyNetworkAPILib = (function () {
         if (!sessions[session_filename]) return error('invalid call. invalid param 1 response_filename = ' + response_filename + '. unknown other session filename ' + session_filename);
         // parameter 2: options
         if (!options) options = {} ;
-        if (typeof options.request != 'object') return error('invalid call. expected options.request to be a object. null or request json message. request = ' + JSON.stringify(request));
-        if (options.request && !options.request.msgtype) return error('invalid call. expected options.request to have a msgtype. request = ' + JSON.stringify(request));
+        if (options.request) {
+            if (typeof options.request != 'object') return error('invalid call. expected options.request to be a object. null or request json message. options.request = ' + JSON.stringify(options.request));
+            if (!options.request.msgtype) return error('invalid call. expected options.request to have a msgtype. request = ' + JSON.stringify(request));
+        }
         if (options.timeout_at && (typeof options.timeout_at != 'number')) return error('invalid call. options.timeout_at is not a unix timestamp. timeout_at = ' + JSON.stringify(options.timeout_at));
         if (options.cb && (typeof options.cb != 'function')) return error('invalid call. expected options.cb be a function. cb = ' + JSON.stringify(options.cb));
         if (done[response_filename]) return error(response_filename + ' already done or callback object already defined');
@@ -581,7 +583,7 @@ var MoneyNetworkAPILib = (function () {
 
                 if (!done[filename] && encrypt && encrypt.session_at && (['-o', '-io'].indexOf(optional) == -1)) {
                     // not a response. not a offline transaction. compare file timestamp with session start
-                    if (encrypt.session_at - file_timestamp + 60000 > 0) {
+                    if (file_timestamp + 60000 - encrypt.session_at < 0) {
                         console.log(pgm + 'ignoring old incoming message ' + filename + '. session started at ' + encrypt.session_at) ;
                         done[filename] = true ;
                         continue ;
