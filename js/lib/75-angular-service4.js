@@ -552,269 +552,262 @@ angular.module('MoneyNetwork')
         // - save_data message. save (encrypted) data in MoneyNetwork localStorage
         // - get_data message. return (encrypted) data saved in MoneyNetwork localStorage
         // - delete_data message. delete data saved in MoneyNetwork localStorage
-        console.log(service + ': todo: add done callback. demon process should wait until processing next message');
 
-        function process_incoming_message (filename, encrypt2) {
-            var pgm = service + '.process_incoming_message: ' ;
-            var debug_seq, pos, other_user_path, sessionid, session_info, file_timestamp ;
-
+        function process_incoming_message(filename, encrypt, encrypted_json_str, request) {
+            var pgm = service + '.process_incoming_message: ';
+            var pos, sessionid, session_info, file_timestamp, response_timestamp, request_timestamp, request_timeout_at,
+                error, response, i, key, value, encryptions, done_and_send;
 
             try {
-                if (detected_client_log_out(pgm)) return ;
-                if (encrypt2.destroyed) {
+                if (detected_client_log_out(pgm)) return;
+                if (encrypt.destroyed) {
                     // MoneyNetworkAPI instance has been destroyed. Maybe deleted session. Maybe too many invalid get_password requests?
-                    console.log(pgm + 'ignoring incoming message ' + filename + '. session has been destroyed. reason = ' + encrypt2.destroyed) ;
-                    return ;
+                    console.log(pgm + 'ignoring incoming message ' + filename + '. session has been destroyed. reason = ' + encrypt.destroyed);
+                    return;
                 }
-                console.log(pgm + 'filename = ' + filename) ;
+                console.log(pgm + 'filename = ' + filename);
                 // filename = merged-MoneyNetwork/1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/0d4002d16c.1499860158848
 
-                // check other_user_path. all messages for this session must come from same user directory
-                pos = filename.lastIndexOf('/') ;
-                other_user_path = filename.substr(0,pos+1) ;
-                // console.log(pgm + 'other_user_path = ' + other_user_path) ;
-                encrypt2.setup_encryption({other_user_path: other_user_path}) ; // set and check
-
                 // get session info. ignore already read messages
-                sessionid = encrypt2.sessionid ;
-                session_info = ls_sessions[sessionid] ? ls_sessions[sessionid][SESSION_INFO_KEY] : null ;
-                pos = filename.lastIndexOf('.') ;
-                file_timestamp = parseInt(filename.substr(pos+1)) ;
-                console.log(pgm + 'file_timestamp = ' + file_timestamp) ;
+                sessionid = encrypt.sessionid;
+                session_info = ls_sessions[sessionid] ? ls_sessions[sessionid][SESSION_INFO_KEY] : null;
+                pos = filename.lastIndexOf('.');
+                file_timestamp = parseInt(filename.substr(pos + 1));
+                console.log(pgm + 'file_timestamp = ' + file_timestamp);
 
                 if (session_info) {
-                    if (!session_info.hasOwnProperty('done')) session_info.done = {} ;
+                    if (!session_info.hasOwnProperty('done')) session_info.done = {};
                     if (session_info.done[file_timestamp]) {
                         console.log(pgm + 'ignoring incoming message ' + filename + '. already received');
                         return;
                     }
                 }
 
-                z_file_get(pgm, {inner_path: filename, required: false}, function (json_str) {
-                    var pgm = service + '.process_incoming_message z_file_get callback 1: ';
-                    var encrypted_json;
-                    if (!json_str) {
-                        // OK. other session has deleted this message. normally deleted after a short time
-                        if (session_info) session_info.done[file_timestamp] = true ;
-                        ls_save_sessions() ;
-                        return ; //
+                if (!encrypted_json_str) {
+                    // OK. other session has deleted this message. normally deleted after a short time
+                    if (session_info) session_info.done[file_timestamp] = true;
+                    ls_save_sessions();
+                    return;
+                }
+
+                // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                encryptions = [1, 2, 3];
+
+                // remove any response timestamp before validation (used in response filename)
+                response_timestamp = request.response;
+                delete request.response; // request received. must use response_timestamp in response filename
+                request_timestamp = request.request;
+                delete request.request; // response received. todo: must be a response to previous send request with request timestamp in request filename
+                request_timeout_at = request.timeout_at;
+                delete request.timeout_at; // request received. when does request expire. how long does other session wait for response
+
+                // request timeout?
+                if (request_timeout_at < (new Date().getTime())) {
+                    console.log(pgm + 'warning. request timeout. ignoring request = ' + JSON.stringify(request) + ', filename = ' + filename);
+                    return;
+                }
+
+                done_and_send = function (response, encryptions) {
+                    // marked as done. do not process same message twice
+                    var now;
+                    now = new Date().getTime();
+                    if (session_info) {
+                        session_info.done[file_timestamp] = now;
+                        if (!response.error || ['pubkeys', 'get_password'].indexOf(request.msgtype) == -1) {
+                            // update last_request_at timestamp (exceptions are invalid pubkeys and get_password messages)
+                            if (!session_info.last_request_at || (file_timestamp > session_info.last_request_at)) session_info.last_request_at = file_timestamp;
+                        }
                     }
-                    // console.log(pgm + 'this_session_userid2 = ' + encrypt2.this_session_userid2) ;
-                    encrypted_json = JSON.parse(json_str) ;
-                    encrypt2.decrypt_json(encrypted_json, function (request) {
-                        var pgm = service + '.process_incoming_message decrypt_json callback 2: ';
-                        var response_timestamp, request_timestamp, request_timeout_at, error, response, i, key, value, encryptions, done_and_send ;
-                        // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
-                        encryptions = [1,2,3] ;
+                    ls_save_sessions();
+                    console.log(pgm + 'sessionid = ' + encrypt.sessionid);
+                    console.log(pgm + 'request = ' + JSON.stringify(request));
+                    console.log(pgm + 'timestamps: file_timestamp = ' + file_timestamp + ', response_timestamp = ' + response_timestamp + ', request_timestamp = ' + request_timestamp + ', now = ' + now);
+                    console.log(pgm + 'session_info = ' + JSON.stringify(session_info));
+                    if (response_timestamp) {
+                        // response was requested
+                        console.log(pgm + 'response = ' + JSON.stringify(response));
+                        console.log(pgm + 'encryptions = ' + JSON.stringify(encryptions));
+                    }
+                    else return; // exit. no response was requested
 
-                        // remove any response timestamp before validation (used in response filename)
-                        response_timestamp = request.response ; delete request.response ; // request received. must use response_timestamp in response filename
-                        request_timestamp = request.request ; delete request.request ; // response received. todo: must be a response to previous send request with request timestamp in request filename
-                        request_timeout_at = request.timeout_at ; delete request.timeout_at ; // request received. when does request expire. how long does other session wait for response
+                    // send response to other session
+                    encrypt.send_message(response, {
+                        timestamp: response_timestamp,
+                        msgtype: request.msgtype,
+                        request: file_timestamp,
+                        subsystem: 'api',
+                        timeout_at: request_timeout_at,
+                        encryptions: encryptions
+                    }, function (res) {
+                        var pgm = service + '.process_incoming_message send_message callback 3: ';
+                        console.log(pgm + 'res = ' + JSON.stringify(res));
+                    }); // send_message callback 3
 
-                        // request timeout?
-                        if (request_timeout_at < (new Date().getTime())) {
-                            console.log(pgm + 'warning. request timeout. ignoring request = ' + JSON.stringify(request) + ', filename = ' + filename) ;
-                            return ;
+                }; // done_and_send
+
+                // validate and process incoming json message from wallet session and process message
+                response = {msgtype: 'response'};
+                error = MoneyNetworkAPILib.validate_json(pgm, request, null, 'api');
+                if (error) response.error = 'message is invalid. ' + error;
+                else if (request.msgtype == 'pubkeys') {
+                    // first message from wallet. received public keys from wallet session
+                    if (!request.password) response.error = 'Password is required in pubkeys message from wallet';
+                    else if (session_info) response.error = 'Public keys have already been received. Keeping old session information';
+                    else if (!encrypt.extra && encrypt.extra.url) response.error = 'No site url was found for this session';
+                    else {
+                        encrypt.setup_encryption({pubkey: request.pubkey, pubkey2: request.pubkey2});
+                        console.log(pgm + 'saving session password. used for wallet session restore. See get_password and password messages');
+                        // console.log(pgm + 'setting last_request_at: encrypt2.session_at = ' + encrypt2.session_at + ', file_timestamp = ' + file_timestamp);
+                        session_info = {
+                            url: encrypt.extra.url,
+                            password: request.password, // encrypted session password pwd2
+                            pubkey: encrypt.other_session_pubkey,
+                            pubkey2: encrypt.other_session_pubkey2,
+                            last_request_at: file_timestamp,
+                            done: {}
+                        };
+                        if (!ls_sessions[sessionid]) ls_sessions[sessionid] = {};
+                        ls_sessions[sessionid][SESSION_INFO_KEY] = session_info;
+                    }
+                }
+                else if (request.msgtype == 'save_data') {
+                    // received data_data request from wallet session.
+                    console.log(pgm + 'save wallet data in MN localStorage');
+                    if (!ls_sessions[sessionid]) ls_sessions[sessionid] = {};
+                    for (i = 0; i < request.data.length; i++) {
+                        key = request.data[i].key;
+                        if (key == SESSION_INFO_KEY) continue;
+                        value = request.data[i].value;
+                        ls_sessions[sessionid][key] = value;
+                    }
+                }
+                else if (request.msgtype == 'delete_data') {
+                    // received delete_data request from wallet session.
+                    console.log(pgm + 'delete wallet data saved in MN localStorage');
+                    if (!ls_sessions[sessionid]) null; // OK - no data
+                    else if (!request.keys) {
+                        // OK - no keys array - delete all data
+                        for (key in ls_sessions[sessionid]) {
+                            if (key == SESSION_INFO_KEY) continue;
+                            delete ls_sessions[sessionid][key];
                         }
-
-                        done_and_send = function (response, encryptions) {
-                            // marked as done. do not process same message twice
-                            var now ;
-                            now = new Date().getTime() ;
-                            if (session_info) {
-                                session_info.done[file_timestamp] = now ;
-                                if (!response.error || ['pubkeys','get_password'].indexOf(request.msgtype) == -1) {
-                                    // update last_request_at timestamp (exceptions are invalid pubkeys and get_password messages)
-                                    if (!session_info.last_request_at || (file_timestamp > session_info.last_request_at)) session_info.last_request_at = file_timestamp ;
-                                }
+                    }
+                    else {
+                        // keys array. deleted requested keys
+                        for (i = 0; i < request.keys.length; i++) {
+                            key = request.keys[i].key;
+                            if (key == SESSION_INFO_KEY) continue;
+                            delete ls_sessions[sessionid][key];
+                        }
+                    }
+                }
+                else if (request.msgtype == 'get_data') {
+                    // received get_data request from wallet session. return data response
+                    response = {msgtype: 'data', data: []};
+                    if (ls_sessions[sessionid]) {
+                        for (i = 0; i < request.keys.length; i++) {
+                            key = request.keys[i];
+                            if (key == SESSION_INFO_KEY) continue; // special key used for session restore
+                            if (!ls_sessions[sessionid]) continue; // OK - no data - return empty data array
+                            if (!ls_sessions[sessionid].hasOwnProperty(key)) continue; // OK - no data with this key
+                            value = ls_sessions[sessionid][key];
+                            response.data.push({key: key, value: value});
+                        } // for i
+                    }
+                }
+                else if (request.msgtype == 'get_password') {
+                    // received get_password request from wallet session. return password if OK. Encrypt response with cryptMessage only
+                    // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                    // get unlock_pwd2
+                    encrypt.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
+                        var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_session_filenames callback: ';
+                        encryptions = [2]; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
+                        if (session_info.invalid_get_password &&
+                            (session_info.invalid_get_password > 6)) {
+                            session_info = null;
+                            delete ls_sessions[sessionid];
+                            encrypt.destroy('Too many invalid get_password errors');
+                        }
+                        if (!ls_sessions[sessionid]) response.error = 'Session has been deleted';
+                        else if (!session_info) response.error = 'Session info was not found';
+                        else if (session_info.invalid_get_password && (session_info.invalid_get_password > 3)) response.error = 'Too many get_password errors';
+                        else if (encrypt.other_session_pubkey != request.pubkey) response.error = 'Not found pubkey';
+                        else if (encrypt.other_session_pubkey2 != request.pubkey2) response.error = 'Not found pubkey2';
+                        else if (encrypt.unlock_pwd2 != request.unlock_pwd2) response.error = 'Not found unlock_pwd2';
+                        else {
+                            response = {
+                                msgtype: 'password',
+                                password: session_info.password
                             }
-                            ls_save_sessions() ;
-                            console.log(pgm + 'sessionid = ' + encrypt2.sessionid) ;
-                            console.log(pgm + 'request = ' + JSON.stringify(request)) ;
-                            console.log(pgm + 'timestamps: file_timestamp = ' + file_timestamp + ', response_timestamp = ' + response_timestamp + ', request_timestamp = ' + request_timestamp + ', now = ' + now) ;
-                            console.log(pgm + 'session_info = ' + JSON.stringify(session_info)) ;
-                            if (response_timestamp) {
-                                // response was requested
-                                console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-                                console.log(pgm + 'encryptions = ' + JSON.stringify(encryptions)) ;
+                        }
+                        // count no get_password errors. max 3
+                        if (session_info) {
+                            if (response.error) {
+                                if (!session_info.invalid_get_password) session_info.invalid_get_password = 0;
+                                session_info.invalid_get_password++;
                             }
-                            else return ; // exit. no response was requested
-
-                            // send response to other session
-                            encrypt2.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, subsystem: 'api', timeout_at: request_timeout_at, encryptions: encryptions}, function (res)  {
-                                var pgm = service + '.process_incoming_message send_message callback 3: ';
-                                console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                            }) ; // send_message callback 3
-
-                        } ; // done_and_send
-
-                        // validate and process incoming json message from wallet session and process message
-                        response = { msgtype: 'response' } ;
-                        error = MoneyNetworkAPILib.validate_json(pgm, request, null, 'api') ;
-                        if (error) response.error = 'message is invalid. ' + error ;
-                        else if (request.msgtype == 'pubkeys') {
-                            // first message from wallet. received public keys from wallet session
-                            if (!request.password) response.error = 'Password is required in pubkeys message from wallet' ;
-                            else if (session_info) response.error = 'Public keys have already been received. Keeping old session information' ;
-                            else if (!encrypt2.extra && encrypt2.extra.url) response.error = 'No site url was found for this session' ;
-                            else {
-                                encrypt2.setup_encryption({pubkey: request.pubkey, pubkey2: request.pubkey2}) ;
-                                console.log(pgm + 'saving session password. used for wallet session restore. See get_password and password messages');
-                                // console.log(pgm + 'setting last_request_at: encrypt2.session_at = ' + encrypt2.session_at + ', file_timestamp = ' + file_timestamp);
-                                session_info = {
-                                    url: encrypt2.extra.url,
-                                    password: request.password, // encrypted session password pwd2
-                                    pubkey: encrypt2.other_session_pubkey,
-                                    pubkey2: encrypt2.other_session_pubkey2,
-                                    last_request_at: file_timestamp,
-                                    done: {}
-                                } ;
-                                if (!ls_sessions[sessionid]) ls_sessions[sessionid] = {} ;
-                                ls_sessions[sessionid][SESSION_INFO_KEY] = session_info ;
+                            else if (session_info.invalid_get_password) {
+                                delete session_info.invalid_get_password;
                             }
                         }
-                        else if (request.msgtype == 'save_data') {
-                            // received data_data request from wallet session.
-                            console.log(pgm + 'save wallet data in MN localStorage') ;
-                            if (!ls_sessions[sessionid]) ls_sessions[sessionid] = {} ;
-                            for (i=0 ; i<request.data.length ; i++) {
-                                key = request.data[i].key ;
-                                if (key == SESSION_INFO_KEY) continue ;
-                                value = request.data[i].value ;
-                                ls_sessions[sessionid][key] = value ;
-                            }
-                        }
-                        else if (request.msgtype == 'delete_data') {
-                            // received delete_data request from wallet session.
-                            console.log(pgm + 'delete wallet data saved in MN localStorage') ;
-                            if (!ls_sessions[sessionid]) null ; // OK - no data
-                            else if (!request.keys) {
-                                // OK - no keys array - delete all data
-                                for (key in ls_sessions[sessionid]) {
-                                    if (key == SESSION_INFO_KEY) continue ;
-                                    delete ls_sessions[sessionid][key] ;
-                                }
-                            }
-                            else {
-                                // keys array. deleted requested keys
-                                for (i=0 ; i<request.keys.length ; i++) {
-                                    key = request.keys[i].key ;
-                                    if (key == SESSION_INFO_KEY) continue ;
-                                    delete ls_sessions[sessionid][key] ;
-                                }
-                            }
-                        }
-                        else if (request.msgtype == 'get_data') {
-                            // received get_data request from wallet session. return data response
-                            response = { msgtype: 'data', data: []} ;
-                            if (ls_sessions[sessionid]) {
-                                for (i=0 ; i<request.keys.length ; i++) {
-                                    key = request.keys[i] ;
-                                    if (key == SESSION_INFO_KEY) continue ; // special key used for session restore
-                                    if (!ls_sessions[sessionid]) continue ; // OK - no data - return empty data array
-                                    if (!ls_sessions[sessionid].hasOwnProperty(key)) continue ; // OK - no data with this key
-                                    value = ls_sessions[sessionid][key] ;
-                                    response.data.push({key: key, value: value}) ;
-                                } // for i
-                            }
-                        }
-                        else if (request.msgtype == 'get_password') {
-                            // received get_password request from wallet session. return password if OK. Encrypt response with cryptMessage only
-                            // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
-                            // get unlock_pwd2
-                            encrypt2.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
-                                var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_session_filenames callback: ';
-                                encryptions = [2] ; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
-                                if (session_info.invalid_get_password &&
-                                    (session_info.invalid_get_password > 6)) {
-                                    session_info = null ;
-                                    delete ls_sessions[sessionid] ;
-                                    encrypt2.destroy('Too many invalid get_password errors') ;
-                                }
-                                if (!ls_sessions[sessionid]) response.error = 'Session has been deleted' ;
-                                else if (!session_info) response.error = 'Session info was not found' ;
-                                else if (session_info.invalid_get_password && (session_info.invalid_get_password > 3)) response.error = 'Too many get_password errors' ;
-                                else if (encrypt2.other_session_pubkey != request.pubkey) response.error = 'Not found pubkey' ;
-                                else if (encrypt2.other_session_pubkey2 != request.pubkey2) response.error = 'Not found pubkey2' ;
-                                else if (encrypt2.unlock_pwd2 != request.unlock_pwd2) response.error = 'Not found unlock_pwd2' ;
-                                else {
-                                    response = {
-                                        msgtype: 'password',
-                                        password: session_info.password
-                                    }
-                                }
-                                // count no get_password errors. max 3
-                                if (session_info) {
-                                    if (response.error) {
-                                        if (!session_info.invalid_get_password) session_info.invalid_get_password = 0 ;
-                                        session_info.invalid_get_password++ ;
-                                    }
-                                    else if (session_info.invalid_get_password) {
-                                        delete session_info.invalid_get_password ;
-                                    }
-                                }
-                                // finish message processing. marked as done and send any response
-                                done_and_send(response, encryptions) ;
-
-                            }) ; // get_session_filenames callback
-                            // stop and wait
-                            return ;
-
-                        }
-                        else if (request.msgtype == 'ping') {
-                            // simple session ping. always OK response
-                        }
-                        else if (request.msgtype == 'balance') {
-                            // received balance message from wallet. save + OK response
-                            session_info.balance = request.balance ;
-                            session_info.balance_at = new Date().getTime() ;
-                            ls_save_sessions() ;
-                        }
-                        else if (request.msgtype == 'notification') {
-                            // received at notification from a wallet session. just display
-                            // adding wallet_title to notification') ;
-                            MoneyNetworkAPILib.get_wallet_info(session_info.wallet_sha256, function (wallet_info, delayed) {
-                                var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_wallet_info callback: ';
-                                var message ;
-                                if (!wallet_info || wallet_info.error || !wallet_info[session_info.wallet_sha256]) {
-                                    response.error = 'could not find wallet information for wallet_sha256 ' + session_info.wallet_sha256 + '. wallet_info = ' + JSON.stringify(wallet_info) ;
-                                    console.log(pgm + response.error) ;
-                                    console.log(pgm + 'ignoring notification = ' + JSON.stringify(request)) ;
-                                    // normally no wait for response for notification messages
-                                    return done_and_send(response, encryptions) ;
-                                }
-                                message = $sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + $sanitize(request.message) ;
-                                ZeroFrame.cmd("wrapperNotification", [request.type, message, request.timeout]) ;
-
-                            }) ;
-                            return ;
-                        }
-                        else if (request.msgtype == 'published') {
-                            // wallet session has just published content OK.
-                            // minimum interval between publish is 16 seconds
-                            console.log(pgm + 'request = ' + JSON.stringify(request)) ;
-                            MoneyNetworkAPILib.set_last_published(request.timestamp) ;
-                        }
-                        else response.error = 'Unknown msgtype ' + request.msgtype ;
-
                         // finish message processing. marked as done and send any response
-                        done_and_send(response, encryptions) ;
+                        done_and_send(response, encryptions);
 
-                    }) ; // decrypt_json callback 2
-                }) ; // z_file_get callback 1
+                    }); // get_session_filenames callback
+                    // stop and wait
+                    return;
+
+                }
+                else if (request.msgtype == 'ping') {
+                    // simple session ping. always OK response
+                }
+                else if (request.msgtype == 'balance') {
+                    // received balance message from wallet. save + OK response
+                    session_info.balance = request.balance;
+                    session_info.balance_at = new Date().getTime();
+                    ls_save_sessions();
+                }
+                else if (request.msgtype == 'notification') {
+                    // received at notification from a wallet session. just display
+                    // adding wallet_title to notification') ;
+                    MoneyNetworkAPILib.get_wallet_info(session_info.wallet_sha256, function (wallet_info, delayed) {
+                        var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_wallet_info callback: ';
+                        var message;
+                        if (!wallet_info || wallet_info.error || !wallet_info[session_info.wallet_sha256]) {
+                            response.error = 'could not find wallet information for wallet_sha256 ' + session_info.wallet_sha256 + '. wallet_info = ' + JSON.stringify(wallet_info);
+                            console.log(pgm + response.error);
+                            console.log(pgm + 'ignoring notification = ' + JSON.stringify(request));
+                            // normally no wait for response for notification messages
+                            return done_and_send(response, encryptions);
+                        }
+                        message = $sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + $sanitize(request.message);
+                        ZeroFrame.cmd("wrapperNotification", [request.type, message, request.timeout]);
+
+                    });
+                    return;
+                }
+                else if (request.msgtype == 'published') {
+                    // wallet session has just published content OK.
+                    // minimum interval between publish is 16 seconds
+                    console.log(pgm + 'request = ' + JSON.stringify(request));
+                    MoneyNetworkAPILib.set_last_published(request.timestamp);
+                }
+                else response.error = 'Unknown msgtype ' + request.msgtype;
+
+                // finish message processing. marked as done and send any response
+                done_and_send(response, encryptions);
 
             } // try
             catch (e) {
-                console.log(pgm + e.message) ;
+                console.log(pgm + e.message);
                 console.log(e.stack);
-                throw(e) ;
+                throw(e);
             } // catch
 
         } // process_incoming_message
 
         // add callback for incoming messages from wallet session(s)
-        MoneyNetworkAPILib.config({debug: true, cb: process_incoming_message}) ;
+        MoneyNetworkAPILib.config({debug: true, cb: process_incoming_message, cb_fileget: true, cb_decrypt: true}) ;
 
         // init wallet service after client log in
         function w_login () {

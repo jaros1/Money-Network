@@ -541,7 +541,7 @@ var MoneyNetworkAPILib = (function () {
         ZeroFrame.cmd("dbQuery", [api_query_1], function (res) {
             var pgm = module + '.demon dbQuery callback: ';
             var i, directory, filename, session_filename, file_timestamp, cb, other_user_path, inner_path, encrypt,
-                pos, re, match, optional, now, fileget, decrypt;
+                pos, re, match, optional, now, fileget, decrypt, step_1_fileget, step_2_decrypt, step_3_run_cb ;
             // debug_z_api_operation_end(debug_seq, !res || res.error ? 'failed' : 'OK') ;
             if (res.error) {
                 console.log(pgm + 'query failed. error = ' + res.error);
@@ -629,16 +629,44 @@ var MoneyNetworkAPILib = (function () {
                     decrypt = true ;
                 }
                 if (decrypt) fileget = true ;
-                // execute callback. inject MoneyNetworkAPI instance into callback method
-                //cb(inner_path, encrypt) ;
-                if (debug) console.log(pgm + 'calling cb with ' + inner_path + (encrypt.debug ? ' and ' + encrypt.debug : '')) ;
-                try {
-                    cb(inner_path, encrypt)
-                }
-                catch (e) {
-                    console.log(pgm + 'Error when processing incomming message ' + inner_path + '. error = ' + e.message)
-                }
-                // done.
+
+                // callback chain with optional fileGet and decrypt operations
+                step_3_run_cb = function (encrypted_json, json) {
+                    if (debug) console.log(pgm + 'calling cb with ' + inner_path + (encrypt.debug ? ' and ' + encrypt.debug : '')) ;
+                    try { cb(inner_path, encrypt, encrypted_json, json) }
+                    catch (e) { console.log(pgm + 'Error when processing incomming message ' + inner_path + '. error = ' + e.message)}
+                } ;
+                step_2_decrypt = function (encrypted_json) {
+                    if (!decrypt) return step_3_run_cb(encrypted_json, null) ; // cb must decrypt
+                    encrypt.decrypt_json(encrypted_json, function (json) {
+                        step_3_run_cb(encrypted_json, json) ;
+                    }) ;
+                } ;
+                step_1_fileget = function() {
+                    var options ;
+                    if (!fileget) return step_3_run_cb(null, null) ; // cb must fileGet and decrypt
+                    options = { inner_path: inner_path} ;
+                    // filetypes: -i, -e, -o, -io, -p
+                    if (['-e', '-o'].indexOf(optional) != -1) {
+                        // wallet to wallet communication. fileGet often fails for optional fileGet. 0 or 1 peer. wait for max 5 minutes
+                        options.required = true ;
+                        options.timeout = 60 ;
+                        options.timeout_count = 5 ;
+                    }
+                    z_file_get(pgm, options, function (json_str) {
+                        var encrypted_json ;
+                        if (!json_str) return step_3_run_cb(null, null) ; // timeout / file not found
+                        try {
+                            encrypted_json = JSON.parse(json_str) ;
+                        }
+                        catch (e) {
+                            console.log(pgm + inner_path + ' is invalid. json_str = ' + json_str + ', error = ' + e.message) ;
+                            return step_3_run_cb(json_str, null) ;
+                        }
+                        step_2_decrypt(encrypted_json) ;
+                    }) ;
+                }  ;
+                step_1_fileget() ;
                 done[filename] = true;
             } // for i
 
