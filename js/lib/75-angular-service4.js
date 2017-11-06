@@ -951,6 +951,27 @@ angular.module('MoneyNetwork')
                     ls_save_sessions() ;
                 }
                 console.log(pgm + 'sessions (after get_currencies) = ' + JSON.stringify(ls_sessions)) ;
+                // issue #253: correct sessionid in temp_currencies
+                // sessions (after get_currencies) = [{
+                //    "code": "tBTC",
+                //    "amount": 3.70329233,
+                //    "last_request_at": 1509981941620,
+                //    "balance_at": 1509982062526,
+                //    "sessionid": "yeabhx6wsfwquymilpd9o8yriim2jfcds2xbsytbaqozjk82ehpbswzprgyg",
+                //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //    "wallet_title": "MoneyNetworkW2",
+                //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                //    "currencies": [{
+                //        "code": "tBTC",
+                //        "name": "Test Bitcoin",
+                //        "url": "https://en.bitcoin.it/wiki/Testnet",
+                //        "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                //    }],
+                //    "api_url": "https://www.blocktrail.com/api/docs"
+                //}];
+
 
                 // move currency info (name, url and units) to currency rows for easy filter and sort
                 for (i=temp_currencies.length-1 ; i>=0 ; i--) {
@@ -1032,6 +1053,7 @@ angular.module('MoneyNetwork')
                             new_row = temp_currencies[i] ;
                             if (old_row.amount != new_row.amount) old_row.amount = new_row.amount ;
                             if (old_row.balance_at != new_row.balance_at) old_row.balance_at = new_row.balance_at ;
+                            if (old_row.sessionid != new_row.sessionid) old_row.sesionid = new_row.sessionid ;
                         }
                         else {
                             // in old and not in new. delete. already done
