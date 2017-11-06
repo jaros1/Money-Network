@@ -626,9 +626,11 @@ var MoneyNetworkAPILib = (function () {
                     continue;
                 }
                 if (optional == '-p') {
-                    // published messages. processed by demon
+                    // published messages. processed by demon. not by injected callbacks
                     fileget = true ;
                     decrypt = true ;
+                    // hijack cb.
+                    cb = process_publish_messages ;
                 }
                 if (decrypt) fileget = true ;
 
@@ -1041,38 +1043,41 @@ var MoneyNetworkAPILib = (function () {
                 "additionalProperties": false
             }, // start_mt
 
-            // publish sync. between MN and wallet sessions. minimum interval between publish is 16 seconds
-            "publish_started": {
+            // publish sync. between MN and wallet sessions. minimum interval between publish is 16 seconds. MN session manages publish queue.
+            "queue_publish": {
                 "type": 'object',
-                "title": 'Send publish start timestamp to other session',
-                "description": 'Other session (MN or wallets) should wait for published message before continue. Max one publish every 16 seconds',
+                "title": 'Wallet: Ask MoneyNetwork to add publish request in publish queue',
+                "description": 'Wallet session places cb in queue and sends unique cb_id to MoneyNetwork. Short timeout (5 seconds). Wallet session expects OK or timeout. Timeout: continue with publish. OK: wait for start_publish message',
                 "properties": {
-                    "msgtype": {"type": 'string', "pattern": '^publish_started$'},
-                    "publish_started_at": {"type": "number", "multipleOf": 1.0}
+                    "msgtype": {"type": 'string', "pattern": '^queue_publish$'},
+                    "cb_id": {"type": "number", "multipleOf": 1.0}
                 },
-                "required": ['msgtype', 'publish_started_at'],
+                "required": ['msgtype', 'cb_id'],
                 "additionalProperties": false
             }, // publish_started
 
-            "get_published": {
+            "start_publish": {
                 "type": 'object',
-                "title": 'Request timestamp for last OK publish from other session',
+                "title": 'MoneyNetwork: Tell wallet session to start publish',
                 "properties": {
-                    "msgtype": {"type": 'string', "pattern": '^get_published$'}
+                    "msgtype": {"type": 'string', "pattern": '^start_publish$'},
+                    "cb_id": {"type": "number", "multipleOf": 1.0}
                 },
-                "required": ['msgtype'],
+                "required": ['msgtype', 'cb_id'],
                 "additionalProperties": false
             }, // get_published
 
             "published": {
                 "type": 'object',
-                "title": 'Send timestamp for last OK publish to other session',
+                "title": 'Wallet: publish done. Send publish result and timestamp for last OK publish to MN',
                 "description": 'get_publish_response. Also used after OK or failed publish',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^published$'},
+                    "cb_id": {"type": "number", "multipleOf": 1.0},
+                    "res": {"type": 'string'},
                     "last_published_at": {"type": "number", "multipleOf": 1.0}
                 },
-                "required": ['msgtype', 'published_at'],
+                "required": ['msgtype', 'cb_id', 'res', 'published_at', 'last_published_at'],
                 "additionalProperties": false
 
             }, // published
@@ -1655,11 +1660,12 @@ var MoneyNetworkAPILib = (function () {
             cb: cb,
             running: false
         };
+        console.log(pgm + 'added transaction with timestamp ' + transaction_timestamp + ' to transactions. pgm = ' + pgm) ;
         // any running transactions
         for (key in transactions) {
             if (transactions[key].running) {
                 // wait
-                if (debug) console.log(module + 'transactions: paused ' + pgm + '. ' + (Object.keys(transactions).length - 1) + ' transactions in queue (1 running)');
+                console.log(module + 'transactions: paused ' + pgm + '. ' + (Object.keys(transactions).length - 1) + ' transactions in queue (1 running)');
                 return;
             }
         }
@@ -1680,7 +1686,7 @@ var MoneyNetworkAPILib = (function () {
         transactions[transaction_timestamp].finished_at = now ;
         waittime = transactions[transaction_timestamp].started_at - transactions[transaction_timestamp].created_at ;
         elapsedtime = transactions[transaction_timestamp].finished_at - transactions[transaction_timestamp].started_at ;
-        if (debug) console.log(module + '.transactions: finished running ' + transactions[transaction_timestamp].pgm + ', waittime = ' + waittime + ' ms. elapsed time = ' + elapsedtime + ' ms');
+        console.log(module + '.transactions: finished running ' + transactions[transaction_timestamp].pgm + ', waittime = ' + waittime + ' ms. elapsed time = ' + elapsedtime + ' ms');
         delete transactions[transaction_timestamp] ;
         if (!Object.keys(transactions).length) return ;
         for (key in transactions) {
@@ -1718,6 +1724,170 @@ var MoneyNetworkAPILib = (function () {
         return updated ;
     }
 
+    // queue with callbacks waiting for next publish. Managed by MN.
+    var publish_queue = [] ; // pending publish. first may be running
+    var next_cb_id = 0 ;
+    function queue_publish (options, cb) {
+        var pgm = module + '.queue_publish: ' ;
+        console.log(pgm + 'options=', options, ', cb=', cb) ;
+        if (typeof cb != 'function') throw pgm + 'invalid call. parameter 2 cb must be a callback function' ;
+        // wallet or MN. publish queue is managed by MN session.
+        is_client(function(client) {
+            var cb_id, request ;
+            if (client) {
+                // client (wallet session).
+                // wallet session wish to start a publish. using messages "queue_publish", "start_publish" and "published" (-p messages processed by MoneyNetworkAPILib)
+                if (!options.encrypt) throw pgm + 'invalid call. options.encrypt (MoneyNetworkAPI instance) is required' ;
+                if (!is_MoneyNetworkAPI(options.encrypt)) throw pgm + 'invalid call. options.encrypt must be a MoneyNetworkAPI instance' ;
+                // 1) get unique cb_id from sequence. used in messages between MN and wallet sessions
+                next_cb_id++ ;
+                cb_id = next_cb_id ;
+                // 2) send "queue_publish" message to MN. short timeout. Expects OK (added to queue) or timeout (MN session is not running)
+                request = {
+                    msgtype: 'queue_publish',
+                    cb_id: cb_id
+                } ;
+                console.log(pgm + 'sending queue_publish request to MN. request = ' + JSON.stringify(request)) ;
+                options.encrypt.send_message(request, {response: 5000}, function (response) {
+                    if (response && response.error && response.error.match(/^Timeout /)) {
+                        // Timeout. OK. MN is not running. Continue with normal publish without MN publish queue
+                        // return cb_id and encrypt to publish cb anyway. Maybe request was received OK in MN but registered as timeout in wallet session
+                        console.log(pgm + 'queue_publish timeout. continue with normal publish') ;
+                        cb(cb_id, options.encrypt) ;
+                        return ;
+                    }
+                    if (!response || response.error) {
+                        // Unexpected error returned from MN
+                        console.log(pgm + 'queue_publish request returned ' + JSON.stringify(response)) ;
+                        cb(null) ;
+                        return ;
+                    }
+                    // OK queue_publish. publish request was queue in MN session. wait for start_publish message from MN before starting publish
+                    publish_queue.push({
+                        client: true,
+                        cb: cb,
+                        cb_id: cb_id,
+                        options: options
+                    }) ;
+                    console.log(pgm + 'OK queue_publish. wait for start_publish message from MN') ;
+
+                    // 4) MN will add object with session info and cb_id to publish_queue_cbs
+                    // 5) W2 will wait for "start_publish" message from MN with cb_id. Return OK and run cb
+                    // 6) send "published" message to MN with published result and last_published timestamp
+                }) ;
+                // client (wallet session)
+            }
+            else {
+                // MN session. MN session wish to start a publish.
+                // add cb to queue and wait for publish demon to start callback
+                publish_queue.push({
+                    client: false,
+                    cb: cb
+                }) ;
+                console.log(pgm + 'is MN session. publish_queue = ' + JSON.stringify(publish_queue)) ;
+            }
+        }) ;
+    } // queue_publish
+
+    // callback for publish message processing (queue_publish, start_publish and published messages)
+    // called from demon process for incoming -p optional messages
+    function process_publish_messages (inner_path, encrypt, encrypted_json, json) {
+        var pgm = module + '.process_publish_messages: ' ;
+        console.log(pgm + 'inner_path = ' + inner_path + ', json = ' + JSON.stringify(json)) ;
+    } // process_publish_messages
+
+    // run one every second and check publish queue
+    function publish_demon () {
+        var pgm = module + '.publish_demon: ' ;
+        var now, elapsed_ms, elapsed_s, request, encrypt ;
+        if (!publish_queue.length) {
+            console.log(pgm + 'no rows in publish queue') ;
+            return ;
+        }
+        // check first row in publish queue.
+        now = new Date().getTime() ;
+        if (publish_queue[0].publishing) {
+            // is publishing
+            elapsed_ms = now - publish_queue[0].publishing ;
+            elapsed_s = Math.floor(elapsed_ms/1000) ;
+            if (publish_queue[0].client) {
+                // wallet session is publishing. waiting for published message from client
+                console.log(pgm + 'publishing content in wallet session. elapsed time ' + elapsed_ms + ' ms. sessionid = ' + publish_queue[0].options.encrypt.sessionid) ;
+                if (publish_queue[0].timeout_at) {
+                    // timeout when sending start_publish request to wallet session. wallet session may not be running.
+                    if (elapsed_s >= 15) {
+                        console.log(pgm + 'timeout when start_publish message was sent to wallet session. Stopping wait for publish message. elapsed time ' + elapsed_ms + ' ms. sessionid = ' + publish_queue[0].options.encrypt.sessionid) ;
+                        publish_queue.splice(0,1) ;
+                        return ;
+                    }
+                }
+            }
+            else {
+                // MN session is publishing.
+                console.log(pgm + 'publishing content in MN session. elapsed time ' + elapsed_ms + ' ms. sessionid = ' + publish_queue[0].options.encrypt.sessionid) ;
+            }
+            return ;
+        }
+        // is not publishing
+        elapsed_ms = now - last_published ;
+        elapsed_s = Math.floor(elapsed_ms/1000) ;
+        if (elapsed_s < 16) {
+            // less that 16 seconds since last publish
+            console.log(pgm  + ' wait. less than 16 seconds since last publish. elapsed ' + elapsed_s + ' seconds') ;
+            return ;
+        }
+        // OK for next publish. 16 seconds or more since last publish
+        publish_queue[0].publishing = now ;
+        if (publish_queue[0].client) {
+            // wallet session publish is next in publish queue
+            request = {
+                msgtype: 'start_publish',
+                cb_id: publish_queue[0].cb_id
+            } ;
+            console.log(pgm + 'sending start_publish message to wallet session. request = ' + JSON.stringify(request)) ;
+            encrypt = publish_queue[0].options.encrypt ;
+            encrypt.send_message(request, {response: 5000}, function (response) {
+                var pgm = module + '.publish_queue_demon send_message callback 1: ' ;
+                console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                if (response && response.error && response.error.match(/^Timeout /)) {
+                    // Timeout. Wallet session maybe not running
+                    // keep in publish queue for <n> seconds before continue with next row
+                    console.log(pgm + 'start_publish timeout. wallet session maybe not running. keeping wallet publish request in queue for the next 10 seconds');
+                    publish_queue[0].timeout_at = new Date().getTime() ;
+                    return ;
+                }
+                if (!response || response.error) {
+                    // Unexpected error returned from MN
+                    console.log(pgm + 'error. start_publish request returned ' + JSON.stringify(response)) ;
+                    publish_queue.splice(0,1) ;
+                    return ;
+                }
+                // OK queue_publish. publish request was queue in MN session. wait for start_publish message from MN before starting publish
+            }); // send_message callback 1
+
+
+        }
+        else {
+            // MN session publish is next in publish queue
+            publish_queue[0].cb() ;
+        }
+
+    } // publish_queue_demon
+
+    // start publish_queue_demon
+    function start_publish_queue_demon () {
+        var pgm = module + '.start_publish_queue_demon: ' ;
+        if (!ZeroFrame) return setTimeout(start_publish_queue_demon, 1000) ;
+        is_client(function(client){
+            var pgm = module + '.start_publish_queue_demon is_client callback: ' ;
+            // start publish queue. Only in MN session
+            console.log(pgm + 'client = ' + client) ;
+            if (!client) setInterval(publish_demon, 1000) ;
+        }) ;
+    }
+    setTimeout(start_publish_queue_demon, 1000) ;
+
+
     // sitePublish
     // - privatekey is not supported
     // - inner_path must be an user directory /^merged-MoneyNetwork\/(.*?)\/data\/users\/content\.json$/ path
@@ -1750,22 +1920,62 @@ var MoneyNetworkAPILib = (function () {
             options.inner_path = inner_path ;
         }
 
-        // start publish transaction. publish must wait for long running update transactions to wait
+        // start publish transaction. publish must wait for long running update transactions to finish and
+        console.log(pgm + 'calling start_transaction') ;
         start_transaction(pgm, function(transaction_timestamp){
+            var pgm = module + '.z_site_publish start_transaction callback 1: ' ;
+            console.log(pgm + 'start_transaction OK') ;
 
-            var debug_seq ;
-            debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish') ;
-            ZeroFrame.cmd("sitePublish", options, function (res) {
-                var run_cb ;
-                debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
-                if (res == 'ok') set_last_published() ;
-                // run sitePublish cb callback (content published)
-                run_cb = function () { cb(res)} ;
-                setTimeout(run_cb, 0) ;
-                // end transaction. start any transaction waiting for publish to finish
-                end_transaction(transaction_timestamp) ;
-            }) ; // sitePublish callback 2
+            // add publish callback to publish queue and wait for publish demon to start publish
+            // callback parameters cb_id and encrypt. only wallet session. wallet must send published message to MN when finish publishing
+            console.log(pgm + 'calling queue_publish') ;
+            queue_publish({}, function (cb_id, encrypt) {
+                var pgm = module + '.z_site_publish queue_publish callback 2: ' ;
+                var debug_seq ;
+                console.log(pgm + 'queue_publish OK') ;
+                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish') ;
+                ZeroFrame.cmd("sitePublish", options, function (res) {
+                    var pgm = module + '.z_site_publish sitePublish callback 3: ' ;
+                    var run_cb, request ;
+                    debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+                    if (res == 'ok') set_last_published() ;
+                    // run sitePublish cb callback (content published)
+                    run_cb = function () { cb(res)} ;
+                    setTimeout(run_cb, 0) ;
+                    // end transaction. start any transaction waiting for publish to finish
+                    end_transaction(transaction_timestamp) ;
+                    // remove from publish queue
+                    if (cb_id) {
+                        // wallet session
+                        console.log(pgm + 'wallet session is sending published message to MoneyNetwork') ;
+                        request = {
+                            msgtype: 'published',
+                            cb_id: cb_id,
+                            res: res,
+                            last_published_at: last_published
+                        } ;
+                        console.log(pgm + 'published request = ' + JSON.stringify(request)) ;
+                        encrypt.send_message(request, {response: 5000}, function (response) {
+                            var pgm = module + '.z_site_publish send_message callback 4: ' ;
+                            console.log(pgm + 'published response = ' + JSON.stringify(response)) ;
+                        }) ; // send_message callback 4
+                    }
+                    else {
+                        // MoneyNetwork session. This publish should be first row in publish queue
+                        if (!publish_queue.length) console.log(pgm + 'error. MN just published and no rows in publish queue') ;
+                        else if (publish_queue[0].client) console.log(pgm + 'error. MN just published and first row in publish queue is a wallet publish') ;
+                        else if (!publish_queue[0].publishing) console.log(pgm + 'error. MN just published and first row in publish queue is not publishing') ;
+                        else {
+                            console.log(pgm + 'MoneyNetwork publish removed from publish queue') ;
+                            publish_queue.splice(0, 1) ;
+                        }
+                    }
+                }) ; // sitePublish callback 3
+
+            }) ; // queue_publish callback 2
+
         }) ; // start_transaction callback 1
+
     } // z_site_publish
 
 
@@ -2453,7 +2663,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         if (options.optional == null) optional = '' ; // normal file
         else optional = '-' + options.optional ; // optional file
     }
-    else if ((subsystem == 'api') && (['publish_started','get_published','published'].indexOf(request.msgtype) != -1)) {
+    else if ((subsystem == 'api') && (['queue_publish', 'start_publish', 'published'].indexOf(request.msgtype) != -1)) {
         // optional file used in special published messages between MN sessions
         optional = 'p' ;
     }
