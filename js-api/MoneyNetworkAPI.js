@@ -139,7 +139,7 @@ var MoneyNetworkAPILib = (function () {
         return true ; // result not ready. assuming OK
     } // set_this_user_path
 
-    var debug = false, debug_seq = 0, debug_operations = {}, ZeroFrame, demon_cb, demon_cb_fileget, demon_cb_decrypt, interval, optional;
+    var debug = false, debug_seq = 0, debug_operations = {}, ZeroFrame, global_demon_cb, global_demon_cb_fileget, global_demon_cb_decrypt, interval, optional;
 
     function config(options) {
         var pgm = module + '.config: ';
@@ -153,10 +153,11 @@ var MoneyNetworkAPILib = (function () {
         if (options.cb) {
             // generic callback to handle all incoming messages. use wait_for_file to add callback for specific incoming messages and use add_session to add callback for a specific sessionid
             if (typeof options.cb != 'function') throw pgm + 'invalid call. options.cb is not a function' ;
-            demon_cb = options.cb;
-            if (options.cb_fileget) demon_cb_fileget = true ; // fileGet in demon process
-            if (options.cb_decrypt) demon_cb_decrypt = true ; // decrypt in demon process
-            if (demon_cb_decrypt) demon_cb_fileget = true ; // cannot decrypt without fileGet
+            global_demon_cb = options.cb;
+            if (options.cb_fileget) global_demon_cb_fileget = true ; // fileGet in demon process
+            if (options.cb_decrypt) global_demon_cb_decrypt = true ; // decrypt in demon process
+            if (global_demon_cb_decrypt) global_demon_cb_fileget = true ; // cannot decrypt without fileGet
+            console.log(pgm + 'added a global cb for incoming messages. demon_cb_fileget = ' + global_demon_cb_fileget + ', demon_cb_decrypt = ' + global_demon_cb_decrypt) ;
         }
         if (options.interval) {
             // milliseconds between each demon check (dbQuery call). default 500 milliseconds between each check
@@ -326,7 +327,7 @@ var MoneyNetworkAPILib = (function () {
             if (cb_decrypt) cb_fileget = true ;
             if (encrypt) sessions[other_session_filename].encrypt = encrypt ;
             if (start_demon) {
-                demon_id = setInterval(demon, (interval || 500));
+                demon_id = setInterval(message_demon, (interval || 500));
                 if (debug) console.log(pgm + 'Started demon. process id = ' + demon_id);
             }
             if (debug) {
@@ -436,7 +437,7 @@ var MoneyNetworkAPILib = (function () {
         delete_all_sessions() ;
         debug = null ;
         ZeroFrame = null ;
-        demon_cb = null ;
+        global_demon_cb = null ;
         interval = null ;
         optional = null ;
         this_user_path = null ;
@@ -484,8 +485,8 @@ var MoneyNetworkAPILib = (function () {
             done[response_filename] = true ;
             return null ;
         }
-        if (options.cb_fileget) cb_fileget = true ;
-        if (options.cb_decrypt) cb_decrypt = true ;
+        if (options.hasOwnProperty('cb_fileget')) cb_fileget = options.cb_fileget ? true : false ;
+        if (options.hasOwnProperty('cb_decrypt')) cb_decrypt = options.cb_decrypt ? true : false ;
         if (cb_decrypt) cb_fileget = true ;
         timeout_at = options.timeout_at || ((new Date().getTime()) + 30000);
         done[response_filename] = {
@@ -501,8 +502,8 @@ var MoneyNetworkAPILib = (function () {
 
 
     var timestamp_re = /^[0-9]{13}$/ ;
-    function demon() {
-        var pgm = module + '.demon: ';
+    function message_demon() {
+        var pgm = module + '.message_demon: ';
         var filename, api_query_1, session_filename, first, now, debug_seq;
         // check for expired callbacks. processes waiting for a response
         now = new Date().getTime();
@@ -541,7 +542,7 @@ var MoneyNetworkAPILib = (function () {
         // if (debug) console.log(pgm + 'api query 1 = ' + api_query_1) ;
         // debug_seq = debug_z_api_operation_start(pgm, 'api query 1', 'dbQuery') ;
         ZeroFrame.cmd("dbQuery", [api_query_1], function (res) {
-            var pgm = module + '.demon dbQuery callback: ';
+            var pgm = module + '.message_demon dbQuery callback: ';
             var i, directory, filename, session_filename, file_timestamp, cb, other_user_path, inner_path, encrypt,
                 pos, re, match, optional, now, fileget, decrypt, step_1_fileget, step_2_decrypt, step_3_run_cb ;
             // debug_z_api_operation_end(debug_seq, !res || res.error ? 'failed' : 'OK') ;
@@ -602,23 +603,27 @@ var MoneyNetworkAPILib = (function () {
                     done[filename] = true;
                     continue ;
                 }
+                // find cb and fileget and decrypt options. 
                 if (done[filename]) {
                     // message level callback. see wait_for_file
                     cb = done[filename].cb ;
-                    fileget = done[filename].cb_fileget ;
-                    decrypt = done[filename].cb_decrypt ;
+                    fileget = done[filename].hasOwnProperty('cb_fileget') ? done[filename].cb_fileget : (sessions[session_filename].hasOwnProperty('cb_fileget') ? sessions[session_filename].fileget : global_demon_cb_fileget);
+                    decrypt = done[filename].hasOwnProperty('cb_decrypt') ? done[filename].cb_decrypt : (sessions[session_filename].hasOwnProperty('cb_decrypt') ? sessions[session_filename].decrypt : global_demon_cb_decrypt);
+                    console.log(pgm + 'using message level callback. fileget = ' + fileget + ', decrypt = ' + decrypt) ;
                 }
                 else if (sessions[session_filename].cb) {
                     // MoneyNetworkAPI instance callback. see new MoneyNetworkAPI / MoneyNetworkAPI.setup_encryption
                     cb = sessions[session_filename].cb ;
-                    fileget = sessions[session_filename].cb_fileget ;
-                    decrypt = sessions[session_filename].cb_decrypt ;
+                    fileget = sessions[session_filename].hasOwnProperty('fileget') ? sessions[session_filename].cb_fileget : global_demon_cb_fileget;
+                    decrypt = sessions[session_filename].hasOwnProperty('decrypt') ? sessions[session_filename].cb_decrypt : global_demon_cb_decrypt;
+                    console.log(pgm + 'using MoneyNetworkAPI instance callback. fileget = ' + fileget + ', decrypt = ' + decrypt) ;
                 }
                 else {
                     // global callback. See MoneyNetworkAPILib.config
-                    cb = demon_cb;
-                    fileget = demon_cb_fileget ;
-                    decrypt = demon_cb_decrypt ;
+                    cb = global_demon_cb;
+                    fileget = global_demon_cb_fileget ;
+                    decrypt = global_demon_cb_decrypt ;
+                    console.log(pgm + 'using global callback. fileget = ' + fileget + ', decrypt = ' + decrypt) ;
                 }
                 if (!cb) {
                     console.log(pgm + 'Error when processing incomming message ' + inner_path + '. No process callback found');
@@ -635,20 +640,23 @@ var MoneyNetworkAPILib = (function () {
                 if (decrypt) fileget = true ;
 
                 // callback chain with optional fileGet and decrypt operations
-                step_3_run_cb = function (encrypted_json, json) {
+                step_3_run_cb = function (extra, encrypted_json, json) {
+                    if (!extra) extra = {} ;
+                    extra.fileget = fileget ;
+                    extra.decrypt = decrypt ;
                     if (debug) console.log(pgm + 'calling cb with ' + inner_path + (encrypt.debug ? ' and ' + encrypt.debug : '')) ;
-                    try { cb(inner_path, encrypt, encrypted_json, json) }
+                    try { cb(inner_path, encrypt, encrypted_json, json, extra) }
                     catch (e) { console.log(pgm + 'Error when processing incomming message ' + inner_path + '. error = ' + e.message)}
                 } ;
-                step_2_decrypt = function (encrypted_json) {
-                    if (!decrypt) return step_3_run_cb(encrypted_json, null) ; // cb must decrypt
+                step_2_decrypt = function (extra, encrypted_json) {
+                    if (!decrypt) return step_3_run_cb(extra, encrypted_json, null) ; // cb must decrypt
                     encrypt.decrypt_json(encrypted_json, function (json) {
-                        step_3_run_cb(encrypted_json, json) ;
+                        step_3_run_cb(extra, encrypted_json, json) ;
                     }) ;
                 } ;
                 step_1_fileget = function() {
                     var options ;
-                    if (!fileget) return step_3_run_cb(null, null) ; // cb must fileGet and decrypt
+                    if (!fileget) return step_3_run_cb(null, null, null) ; // cb must fileGet and decrypt
                     options = { inner_path: inner_path} ;
                     // filetypes: -i, -e, -o, -io, -p
                     if (['-e', '-o'].indexOf(optional) != -1) {
@@ -657,17 +665,22 @@ var MoneyNetworkAPILib = (function () {
                         options.timeout = 60 ;
                         options.timeout_count = 5 ;
                     }
-                    z_file_get(pgm, options, function (json_str) {
+                    z_file_get(pgm, options, function (json_str, extra) {
                         var encrypted_json ;
-                        if (!json_str) return step_3_run_cb(null, null) ; // timeout / file not found
+                        if (!extra) extra = {} ;
+                        if (!json_str) {
+                            // timeout / file not found
+                            console.log(pgm + 'timeout or file not found. extra = ' + JSON.stringify(extra)) ;
+                            return step_3_run_cb(extra, null, null) ;
+                        }
                         try {
                             encrypted_json = JSON.parse(json_str) ;
                         }
                         catch (e) {
                             console.log(pgm + inner_path + ' is invalid. json_str = ' + json_str + ', error = ' + e.message) ;
-                            return step_3_run_cb(json_str, null) ;
+                            return step_3_run_cb(extra, json_str, null) ;
                         }
-                        step_2_decrypt(encrypted_json) ;
+                        step_2_decrypt(extra, encrypted_json) ;
                     }) ;
                 }  ;
                 step_1_fileget() ;
@@ -1065,7 +1078,19 @@ var MoneyNetworkAPILib = (function () {
                 },
                 "required": ['msgtype', 'cb_id'],
                 "additionalProperties": false
-            }, // get_published
+            }, // start_published
+
+            "check_publish": {
+                "type": 'object',
+                "title": 'MoneyNetwork. Asking wallet if publish started with start_publish is still running',
+                "description": 'For example after 30 seconds wait. Maybe a lost message or a JS error has prevented wallet session from reporting back to MoneyNetwork',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^check_publish$'},
+                    "cb_id": {"type": "number", "multipleOf": 1.0}
+                },
+                "required": ['msgtype', 'cb_id'],
+                "additionalProperties": false
+            }, // check_publish
 
             "published": {
                 "type": 'object',
@@ -1649,8 +1674,9 @@ var MoneyNetworkAPILib = (function () {
     var transactions = {} ; // timestamp => object with transaction info
 
     function start_transaction(pgm, cb) {
+        var pgm = module + '.start_transaction: ' ;
         var transaction_timestamp, key;
-        if (typeof cb != 'function') throw module + 'start_transaction: invalid call. second parameter cb must be a callback function';
+        if (typeof cb != 'function') throw pgm + 'start_transaction: invalid call. second parameter cb must be a callback function';
 
         transaction_timestamp = new Date().getTime();
         while (transactions[transaction_timestamp]) transaction_timestamp++;
@@ -1665,7 +1691,7 @@ var MoneyNetworkAPILib = (function () {
         for (key in transactions) {
             if (transactions[key].running) {
                 // wait
-                console.log(module + 'transactions: paused ' + pgm + '. ' + (Object.keys(transactions).length - 1) + ' transactions in queue (1 running)');
+                console.log(pgm + 'paused ' + pgm + '. ' + (Object.keys(transactions).length - 1) + ' transactions in queue (1 running)');
                 return;
             }
         }
@@ -1694,7 +1720,7 @@ var MoneyNetworkAPILib = (function () {
             transactions[key].running = true ;
             transactions[key].started_at = now ;
             waittime = transactions[key].started_at - transactions[key].created_at ;
-            if (debug) console.log(module + '.transactions: starting ' + transactions[key].pgm + '. waittime ' + waittime + ' ms') ;
+            if (debug) console.log(pgm + 'resumed ' + transactions[key].pgm + '. waittime ' + waittime + ' ms') ;
             transactions[key].cb(key) ;
             break ;
         }
@@ -1725,81 +1751,103 @@ var MoneyNetworkAPILib = (function () {
     }
 
     // queue with callbacks waiting for next publish. Managed by MN.
-    var publish_queue = [] ; // pending publish. first may be running
+    var publish_queue = [] ; // pending publish. first may be running x
     var next_cb_id = 0 ;
     function queue_publish (options, cb) {
         var pgm = module + '.queue_publish: ' ;
+        var cb2, cb_done ;
         // console.log(pgm + 'options=', options, ', cb=', cb) ;
         if (typeof cb != 'function') throw pgm + 'invalid call. parameter 2 cb must be a callback function' ;
-        // wallet or MN. publish queue is managed by MN session.
-        is_client(function(client) {
-            var pgm = module + '.queue_publish is_client callback 1: ' ;
-            var cb_id, request ;
-            if (client) {
-                // client (wallet session). send message to MN publish queue
-                // wallet session wish to start a publish. using messages "queue_publish", "start_publish" and "published" (-p messages processed by MoneyNetworkAPILib)
-                if (!options.encrypt) throw pgm + 'invalid call. options.encrypt (MoneyNetworkAPI instance) is required' ;
-                if (!is_MoneyNetworkAPI(options.encrypt)) throw pgm + 'invalid call. options.encrypt must be a MoneyNetworkAPI instance' ;
-                // 1) get unique cb_id from sequence. used in messages between MN and wallet sessions
-                next_cb_id++ ;
-                cb_id = next_cb_id ;
-                // 2) send "queue_publish" message to MN. short timeout. Expects OK (added to queue) or timeout (MN session is not running)
-                request = {
-                    msgtype: 'queue_publish',
-                    cb_id: cb_id
-                } ;
-                console.log(pgm + 'sending queue_publish request to MN. request = ' + JSON.stringify(request)) ;
-                options.encrypt.send_message(request, {response: 5000}, function (response) {
-                    var pgm = module + '.queue_publish send_message callback 2: ' ;
-                    console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-                    if (response && response.error && response.error.match(/^Timeout /)) {
-                        // Timeout. OK. MN is not running. Continue with normal publish without MN publish queue
-                        // return cb_id and encrypt to publish cb anyway. Maybe request was received OK in MN but registered as timeout in wallet session
-                        console.log(pgm + 'queue_publish timeout. continue with normal publish.') ;
-                        console.log(pgm + 'cb_id = ', cb_id, ', cb=', cb) ;
-                        cb(cb_id, options.encrypt) ;
-                        return ;
-                    }
-                    if (!response || response.error) {
-                        // Unexpected error returned from MN
-                        console.log(pgm + 'queue_publish request returned ' + JSON.stringify(response)) ;
-                        cb(null) ;
-                        return ;
-                    }
-                    // OK queue_publish. publish request was queue in MN session. wait for start_publish message from MN before starting publish
-                    publish_queue.push({
-                        client: true,
-                        cb: cb,
-                        cb_id: cb_id,
-                        options: options
-                    }) ;
-                    console.log(pgm + 'OK queue_publish. wait for start_publish message from MN') ;
+        // extend cb. has cb run or not. cb must already run and must only run once.
+        // using try catch block in JS code to ensure that exceptions does not stop publishing
+        cb_done = false ;
+        cb2 = function(pgm, e) {
+            if (cb_done) return ;
+            if (e) console.log(pgm + 'queue_publish failed with ' + e.message + '. running cb anyway') ;
+            cb() ;
+        };
+        // is_client. wallet or MN. publish queue is managed by MN session.
+        try {
+            is_client(function(client) {
+                var pgm = module + '.queue_publish is_client callback 1: ' ;
+                var cb_id, request ;
 
-                    // 4) MN will add object with session info and cb_id to publish_queue_cbs
-                    // 5) W2 will wait for "start_publish" message from MN with cb_id. Return OK and run cb
-                    // 6) send "published" message to MN with published result and last_published timestamp
-                }) ; // send_message callback 2
-                // client (wallet session)
-            }
-            else if (options.client) {
-                // MN session received queue_publish request from wallet site. see process_publish_messages request.msgtype == 'queue_publish'
-                publish_queue.push({
-                    client: true,
-                    cb: cb,
-                    cb_id: options.cb_id,
-                    options: { encrypt: options.encrypt}
-                }) ;
-            }
-            else {
-                // MN session. MN session wish to start a publish.
-                // add cb to queue and wait for publish demon to start callback
-                publish_queue.push({
-                    client: false,
-                    cb: cb
-                }) ;
-                console.log(pgm + 'is MN session. publish_queue = ' + JSON.stringify(publish_queue)) ;
-            }
-        }) ; // is_client callback 1
+                try {
+                    if (client) {
+                        // client (wallet session). send message to MN publish queue
+                        // wallet session wish to start a publish. using messages "queue_publish", "start_publish" and "published" (-p messages processed by MoneyNetworkAPILib)
+                        if (!options.encrypt) throw pgm + 'invalid call. options.encrypt (MoneyNetworkAPI instance) is required' ;
+                        if (!is_MoneyNetworkAPI(options.encrypt)) throw pgm + 'invalid call. options.encrypt must be a MoneyNetworkAPI instance' ;
+                        // 1) get unique cb_id from sequence. used in messages between MN and wallet sessions
+                        next_cb_id++ ;
+                        cb_id = next_cb_id ;
+                        // 2) send "queue_publish" message to MN. short timeout. Expects OK (added to queue) or timeout (MN session is not running)
+                        request = {
+                            msgtype: 'queue_publish',
+                            cb_id: cb_id
+                        } ;
+                        console.log(pgm + 'sending queue_publish request to MN. request = ' + JSON.stringify(request)) ;
+                        options.encrypt.send_message(request, {response: 5000}, function (response) {
+                            var pgm = module + '.queue_publish send_message callback 2: ' ;
+
+                            try {
+                                console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                                if (response && response.error && response.error.match(/^Timeout /)) {
+                                    // Timeout. OK. MN is not running. Continue with normal publish without MN publish queue
+                                    // return cb_id and encrypt to publish cb anyway. Maybe request was received OK in MN but registered as timeout in wallet session
+                                    console.log(pgm + 'queue_publish timeout. continue with normal publish.') ;
+                                    console.log(pgm + 'cb_id = ', cb_id, ', cb=', cb) ;
+                                    cb(cb_id, options.encrypt) ;
+                                    return ;
+                                }
+                                if (!response || response.error) {
+                                    // Unexpected error returned from MN
+                                    console.log(pgm + 'queue_publish request returned ' + JSON.stringify(response)) ;
+                                    cb(null) ;
+                                    return ;
+                                }
+                                // OK queue_publish. publish request was queue in MN session. wait for start_publish message from MN before starting publish
+                                publish_queue.push({
+                                    client: true,
+                                    cb: cb,
+                                    cb_id: cb_id,
+                                    options: options
+                                }) ;
+                                console.log(pgm + 'OK queue_publish. wait for start_publish message from MN') ;
+
+                                // 4) MN will add object with session info and cb_id to publish_queue_cbs
+                                // 5) W2 will wait for "start_publish" message from MN with cb_id. Return OK and run cb
+                                // 6) send "published" message to MN with published result and last_published timestamp
+
+                            }
+                            catch (e) {cb2(pgm, e)}
+
+                        }) ; // send_message callback 2
+                    }
+                    else if (options.client) {
+                        // MN session received queue_publish request from wallet site. see process_publish_messages request.msgtype == 'queue_publish'
+                        publish_queue.push({
+                            client: true,
+                            cb: cb,
+                            cb_id: options.cb_id,
+                            options: { encrypt: options.encrypt}
+                        }) ;
+                    }
+                    else {
+                        // MN session. MN session wish to start a publish.
+                        // add cb to queue and wait for publish demon to start callback
+                        publish_queue.push({
+                            client: false,
+                            cb: cb
+                        }) ;
+                    }
+
+                }
+                catch (e) { cb2(pgm, e)}
+
+            }) ; // is_client callback 1
+        }
+        catch (e) {cb2(pgm, e) }
     } // queue_publish
 
     // callback for publish message processing (queue_publish, start_publish and published messages)
@@ -1814,6 +1862,7 @@ var MoneyNetworkAPILib = (function () {
                 console.log(pgm + 'ignoring incoming message ' + inner_path + '. session has been destroyed. reason = ' + encrypt.destroyed);
                 return;
             }
+            if (!encrypt.debug) encrypt.setup_encryption({debug: true}) ;
             console.log(pgm + 'processing inner_path = ' + inner_path + (encrypt.debug ? ' with ' + encrypt.debug : ''));
 
             // get file timestamp. used in response. double link between request and response
@@ -1844,8 +1893,7 @@ var MoneyNetworkAPILib = (function () {
                 var pgm = module + '.process_publish_messages.send_response: ' ;
                 if (!response_timestamp) return; // no response was requested
                 if (error) response.error = error;
-                if (!cb) cb = function () {
-                };
+                if (!cb) cb = function () {};
 
                 // send response to other session
                 encrypt.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, timeout_at: request_timeout_at}, function (res) {
@@ -1929,6 +1977,20 @@ var MoneyNetworkAPILib = (function () {
                 })() ;
                 // end start_publish
             }
+            else if (request.msgtype == 'check_publish') {
+                // long running wallet publish. MN session is checking if wallet publish still is running
+                // problem can be network problems, lost messages (timeout) or JS errors in wallet
+                // MN will check with wallet once every 20 seconds and finish waiting for wallet publish to finish after 60 seconds
+                (function() {
+                    var pgm = module + '.process_publish_messages.' + request.msgtype + ': ';
+                    var i ;
+                    for (i=0 ; i<publish_queue.length ; i++) {
+                        if (publish_queue[i].cb_id == request.cb_id) return send_response() ;
+                    } // for i
+                    response.error = 'No publishing process was found with cb_id = ' + request.cb_id ;
+                })() ;
+                // end check_publish
+            }
             else if (request.msgtype == 'published') {
                 // request = {"msgtype":"published","cb_id":1,"res":"ok","last_published_at":1510050414}
                 // wallet has finished publishing content and is reporting publish result and timestamp for last ok publish to MN
@@ -1967,7 +2029,7 @@ var MoneyNetworkAPILib = (function () {
     // run one every second and check publish queue
     function publish_demon () {
         var pgm = module + '.publish_demon: ' ;
-        var now, elapsed_ms, elapsed_s, request, encrypt ;
+        var now, elapsed_ms, elapsed_s, request, encrypt, last_check_publish, request, encrypt ;
         if (!publish_queue.length) {
             // console.log(pgm + 'no rows in publish queue') ;
             return ;
@@ -1981,13 +2043,43 @@ var MoneyNetworkAPILib = (function () {
             if (publish_queue[0].client) {
                 // wallet session is publishing. waiting for published message from client
                 console.log(pgm + 'publishing content in wallet session. elapsed time ' + elapsed_ms + ' ms. sessionid = ' + publish_queue[0].options.encrypt.sessionid) ;
-                if (publish_queue[0].timeout_at) {
-                    // timeout when sending start_publish request to wallet session. wallet session may not be running.
-                    if (elapsed_s >= 15) {
-                        console.log(pgm + 'timeout when start_publish message was sent to wallet session. Stopping wait for publish message. elapsed time ' + elapsed_ms + ' ms. sessionid = ' + publish_queue[0].options.encrypt.sessionid) ;
-                        publish_queue.splice(0,1) ;
-                        return ;
-                    }
+                if (elapsed_s >= 60) {
+                    console.log(pgm + 'aborting wait for wallet publish. waited ' + elapsed_s + ' seconds') ;
+                    publish_queue.splice(0,1) ;
+                    return ;
+                }
+                last_check_publish = publish_queue[0].check_publish || publish_queue[0].publishing ;
+                elapsed_ms = now - last_check_publish ;
+                elapsed_s = Math.floor(elapsed_ms/1000) ;
+                if (elapsed_s >= 20) {
+                    console.log(pgm + 'long running wallet publish. sending check_publish request to wallet') ;
+                    publish_queue[0].check_publish = now ;
+                    request = {
+                        msgtype: 'check_publish',
+                        cb_id: publish_queue[0].cb_id
+                    } ;
+                    console.log
+                    encrypt = publish_queue[0].options.encrypt ;
+                    encrypt.setup_encryption({debug: true}) ;
+                    encrypt.send_message(request, {response: 5000}, function (response) {
+                        var pgm = module + '.publish_queue_demon send_message callback 1a: ';
+                        console.log(pgm + 'response = ' + JSON.stringify(response));
+                        if (response && response.error && response.error.match(/^Timeout /)) {
+                            // Timeout. Wallet session maybe not running
+                            // keep in publish queue for <n> seconds before continue with next row
+                            console.log(pgm + 'check_publish timeout. remove wallet publish from publish queue');
+                            if (publish_queue[0].check_publish == now) publish_queue.splice(0,1) ;
+                            return ;
+                        }
+                        if (!response || response.error) {
+                            // Unexpected error returned from MN
+                            console.log(pgm + 'error. check_publish ' + JSON.stringify(response)) ;
+                            publish_queue.splice(0,1) ;
+                            return ;
+                        }
+                        console.log(pgm + 'OK check_publish response from wallet. Continue waiting for wallet publish to finish') ;
+                    }) ;
+                    return ;
                 }
             }
             else {
@@ -1998,12 +2090,12 @@ var MoneyNetworkAPILib = (function () {
         }
         // is not publishing
         elapsed_s = Math.floor(now/1000) - last_published ;
-        if (elapsed_s < 16) {
-            // less that 16 seconds since last publish
-            console.log(pgm  + ' wait. less than 16 seconds since last publish. elapsed ' + elapsed_s + ' seconds') ;
+        if (elapsed_s < 30) {
+            // less that 30 seconds since last publish
+            console.log(pgm  + ' wait. less than 30 seconds since last publish. elapsed ' + elapsed_s + ' seconds') ;
             return ;
         }
-        // OK for next publish. 16 seconds or more since last publish
+        // OK for next publish. 30 seconds or more since last publish
         publish_queue[0].publishing = now ;
         if (publish_queue[0].client) {
             // wallet session publish is next in publish queue
@@ -2015,7 +2107,7 @@ var MoneyNetworkAPILib = (function () {
             encrypt = publish_queue[0].options.encrypt ;
             encrypt.setup_encryption({debug: true}) ;
             encrypt.send_message(request, {response: 5000}, function (response) {
-                var pgm = module + '.publish_queue_demon send_message callback 1: ' ;
+                var pgm = module + '.publish_queue_demon send_message callback 1b: ' ;
                 console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                 if (response && response.error && response.error.match(/^Timeout /)) {
                     // Timeout. Wallet session maybe not running
@@ -2261,9 +2353,9 @@ var MoneyNetworkAPI = function (options) {
     if (options.cb) {
         if (typeof options.cb != 'function') throw pgm + 'invalid call. options.cb is not a function' ;
         this.cb = options.cb ;
-        if (options.cb_fileget) this.cb_fileget = true ; // fileGet in demon process
-        if (options.cb_decrypt) this.cb_decrypt = true ; // decrypt in demon process
-        if (this.cb_decrypt) this.cb_fileget = true ; // cannot decrypt without fileGet
+        if (options.hasOwnProperty('cb_fileget')) this.cb_fileget = options.cb_fileget ? true : false ; // fileGet in message_demon process
+        if (options.hasOwnProperty('cb_decrypt')) this.cb_decrypt = options.cb_decrypt ? true : false ; // decrypt in message_demon process
+        if (this.cb_decrypt) this.cb_fileget = true ; // cannot decrypt i message_demon without fileGet
     }
     // extra info not used by MoneyNetworkAPI
     this.extra = options.extra ;
@@ -2405,9 +2497,9 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
     if (options.cb) {
         if (typeof options.cb != 'function') throw pgm + 'invalid call. options.cb is not a function' ;
         this.cb = options.cb ;
-        if (options.cb_fileget) this.cb_fileget = true ; // fileGet in demon process
-        if (options.cb_decrypt) this.cb_decrypt = true ; // decrypt in demon process
-        if (this.cb_decrypt) this.cb_fileget = true ; // cannot decrypt without fileGet
+        if (options.hasOwnProperty('cb_fileget')) this.cb_fileget = options.cb_fileget ? true : false ; // fileGet in message_demon process
+        if (options.hasOwnProperty('cb_decrypt')) this.cb_decrypt = options.cb_decrypt ? true : false ; // decrypt in message_demon process
+        if (this.cb_decrypt) this.cb_fileget = true ; // cannot decrypt without fileGet in message_demon process
     }
     if (options.extra) this.extra = options.extra ;
     if (this.sessionid) {
@@ -2856,7 +2948,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         if (options.optional == null) optional = '' ; // normal file
         else optional = '-' + options.optional ; // optional file
     }
-    else if ((subsystem == 'api') && (['queue_publish', 'start_publish', 'published'].indexOf(request.msgtype) != -1)) {
+    else if ((subsystem == 'api') && (['queue_publish', 'start_publish', 'check_publish', 'published'].indexOf(request.msgtype) != -1)) {
         // optional file used in special published messages between MN sessions
         optional = '-p' ;
     }
