@@ -523,8 +523,8 @@ var MoneyNetworkAPILib = (function () {
         // find any new messages
         first = true;
         api_query_1 =
-            "select json.directory, files_optional.filename " +
-            "from files_optional, json " +
+            "select json.directory, files_optional.filename, keyvalue.value as modified " +
+            "from files_optional, json, keyvalue " +
             "where ";
         for (session_filename in sessions) {
             api_query_1 += first ? "(" : " or ";
@@ -533,7 +533,8 @@ var MoneyNetworkAPILib = (function () {
         }
         api_query_1 +=
             ") and json.json_id = files_optional.json_id " +
-            "order by substr(files_optional.filename, instr(files_optional.filename,'.'))";
+            "and keyvalue.json_id = json.json_id and keyvalue.key = 'modified' " +
+            "order by substr(files_optional.filename, instr(files_optional.filename,'.')+1)";
         if (first) {
             console.log(pgm + 'error. no sessions were found');
             clearInterval(demon_id);
@@ -560,6 +561,7 @@ var MoneyNetworkAPILib = (function () {
             for (i = 0; i < res.length; i++) {
                 directory = res[i].directory;
                 filename = res[i].filename;
+                modified = res[i].modified ;
                 match = filename.match(re) ;
                 if (!match) {
                     console.log(pgm + 'ignoring incoming message with invalid filename ' + filename) ;
@@ -642,8 +644,9 @@ var MoneyNetworkAPILib = (function () {
                 // callback chain with optional fileGet and decrypt operations
                 step_3_run_cb = function (extra, encrypted_json, json) {
                     if (!extra) extra = {} ;
-                    extra.fileget = fileget ;
-                    extra.decrypt = decrypt ;
+                    extra.modified = modified ; // content.json modified timestamp.
+                    extra.fileget = fileget ; // true: fileGet in message_demon
+                    extra.decrypt = decrypt ; // true: decrypt in message_demon
                     if (debug) console.log(pgm + 'calling cb with ' + inner_path + (encrypt.debug ? ' and ' + encrypt.debug : '')) ;
                     try { cb(inner_path, encrypt, encrypted_json, json, extra) }
                     catch (e) { console.log(pgm + 'Error when processing incomming message ' + inner_path + '. error = ' + e.message)}
@@ -689,7 +692,7 @@ var MoneyNetworkAPILib = (function () {
 
         }); // dbQuery callback
 
-    } // demon
+    } // message_demon
 
 
     // symmetric encrypt/decrypt helpers
@@ -2599,7 +2602,7 @@ MoneyNetworkAPI.prototype.encrypt_1 = function (clear_text_1, cb) {
     cb(JSON.stringify(encrypted_array));
 }; // encrypt_1
 MoneyNetworkAPI.prototype.decrypt_1 = function (encrypted_text_1, cb) {
-    var pgm = this.module + 'decrypt_1: ';
+    var pgm = this.module + '.decrypt_1: ';
     var encrypted_array, key, encrypted_text, encrypt, password, output_wa, clear_text;
     this.check_destroyed(pgm) ;
     if (!this.this_session_prvkey) throw pgm + 'decrypt_1 failed. prvkey is missing in encryption setup';
@@ -2609,7 +2612,13 @@ MoneyNetworkAPI.prototype.decrypt_1 = function (encrypted_text_1, cb) {
     encrypt = new JSEncrypt();
     encrypt.setPrivateKey(this.this_session_prvkey);
     password = encrypt.decrypt(key);
-    if (!password) this.log(pgm, 'error. password is null. key = ' + key + ', this_session_prvkey = ' + this.this_session_prvkey) ;
+    if (!password) {
+        this.log(pgm, 'error. password is null. decrypt_1 failed') ;
+        this.log(pgm, 'encrypted_text_1 = ' + encrypted_text_1) ;
+        this.log(pgm, 'key              = ' + key) ;
+        this.log(pgm, 'encrypted_text   = ' + encrypted_text) ;
+        cb(null) ;
+    }
     output_wa = CryptoJS.AES.decrypt(encrypted_text, password, {format: CryptoJS.format.OpenSSL}); // , { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.AnsiX923, format: CryptoJS.format.OpenSSL });
     clear_text = output_wa.toString(CryptoJS.enc.Utf8);
     cb(clear_text)
@@ -3053,9 +3062,17 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                         debug_seq5 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path5, 'siteSign');
                         self.ZeroFrame.cmd("siteSign", {inner_path: inner_path5, remove_missing_optional: true}, function (res) {
                             var pgm = self.module + '.send_message siteSign callback 6: ';
-                            var debug_seq6;
+                            var debug_seq6, sign_at, elapsed_time_ms, elapsed_time_s, elapsed_text ;
                             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq5, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                             self.log(pgm, 'res = ' + JSON.stringify(res));
+                            sign_at = new Date().getTime();
+                            elapsed_time_ms = sign_at - request_at ;
+                            elapsed_time_s = Math.round(elapsed_time_ms/1000) ;
+                            elapsed_text = 'elapsed time: ' + elapsed_time_ms + ' ms / ' + elapsed_time_s + ' seconds. ' ;
+                            if (timeout_at) {
+                                if (timeout_at < sign_at) self.log(pgm, elapsed_text + 'send_message timeout. received will reject incoming message') ;
+                                else self.log(pgm, elapsed_text + 'timeout in ' + (timeout_at-sign_at) + ' ms') ;
+                            }
 
                             // 7: check file_info for outgoing optional file. must be different from incoming optional files ...
                             // todo: do not check optional file info for normal files (optional = '')
@@ -3090,6 +3107,13 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     self.log(pgm, 'cleanup_in          = ' + cleanup_in);
                                 }
                                 if ((['-o','-io'].indexOf(optional) != -1) || (!response && !request.request)) return cb({}); // exit. offline transaction or not response and no request cleanup job
+
+                                // problem with timeout on slow running devices. timeout should be time from siteSign and not from start of send_message processing. encryption and file io can take some time on a slow running device
+                                self.log(pgm, 'adding elapsed time ' + elapsed_time_ms + ' ms to cleanup_id and timeout_at') ;
+                                self.log(pgm, 'old values: cleanup_in = ' + cleanup_in + ', timeout_at = ' + timeout_at) ;
+                                if (cleanup_in) cleanup_in = cleanup_in + elapsed_time_ms ;
+                                if (timeout_at) timeout_at = timeout_at + elapsed_time_ms ;
+                                self.log(pgm, 'new values: cleanup_in = ' + cleanup_in + ', timeout_at = ' + timeout_at) ;
 
                                 // delete request file. submit cleanup job
                                 delete_request = function () {
@@ -3155,10 +3179,10 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                         self.log(pgm, 'inner_path is an object. must be a timeout error returned from MoneyNetworkAPILib.wait_for_file function. inner_path = ' + JSON.stringify(inner_path));
                                         return cb(inner_path);
                                     }
-                                    if (timeout_at) {
-                                        now = new Date().getTime();
-                                        self.log(pgm, 'todo: fileGet: add timeout to fileGet call. required must also be false. now = ' + now + ', timeout_at = ' + new Date().getTime() + ', timeout = ' + (timeout_at - now));
-                                    }
+                                    //if (timeout_at) {
+                                    //    now = new Date().getTime();
+                                    //    self.log(pgm, 'todo: fileGet: add timeout to fileGet call. required must also be false. now = ' + now + ', timeout_at = ' + new Date().getTime() + ', timeout = ' + (timeout_at - now));
+                                    //}
                                     debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet');
                                     MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path, required: true}, function (response_str) {
                                         var pgm = self.module + '.send_message.get_and_decrypt fileGet callback 8.1: ';

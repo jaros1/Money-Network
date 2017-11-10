@@ -6335,21 +6335,25 @@ angular.module('MoneyNetwork')
         } // cleanup_non_merger_site_data
 
         function client_login(password, create_new_account, guest, keysize) {
+            var pgm = service + '.client_login: ' ;
             var login, passwords, password_sha256, i ;
+            console.log(pgm + 'create_new_account = ' + create_new_account) ;
             // login/register with a empty password?
-            // See "Use password to symmetric encrypt your private data?" checkbox in Auth page
+            // See "encrypted in your browser (localStorage)" checkbox in Auth page
+            // login: true: use password, false: use blank password
             login = JSON.parse(MoneyNetworkHelper.getItem('login')) ;
             if (!login && (password == '')) {
                 passwords = MoneyNetworkHelper.getItem('passwords') ;
-                if (!passwords) register = true ;
+                if (!passwords) create_new_account = true ;
                 else {
                     passwords = JSON.parse(passwords) ;
                     password_sha256 = MoneyNetworkHelper.sha256(password) ;
                     create_new_account = true ;
                     for (i=0 ; i<passwords.length ; i++) if (passwords[i] == password_sha256) create_new_account = false ;
                 }
+                console.log(pgm + 'create_new_account = ' + create_new_account + ' (after checking existing user acconts)') ;
                 guest = false ;
-                keysize = 256 ;
+                if (create_new_account) keysize = 256 ;
                 console.log(service + ': Log in disabled. ' + (create_new_account ? 'Register' : 'Login') + ' with empty password') ;
             }
 
@@ -6850,6 +6854,7 @@ angular.module('MoneyNetwork')
             if (login) return ;
 
             // auth log in
+            console.log(pgm + 'login in with blank password') ;
             client_login('') ;
             ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
             console.log(pgm + 'check deeplink and redirect') ;

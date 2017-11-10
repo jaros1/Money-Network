@@ -1324,11 +1324,11 @@
 
         <div class="bodyfull">
 
-            <p ng-show="u.show_welcome_msg()">
+            <p ng-show="u.show_welcome_msg">
                 Welcome to Money Network. You are new here and you must have a network.
                 Tags in this page (Account) are used when searching for contacts (Network) and for personal information
                 (real or fake values).
-            <ul ng-show="u.show_welcome_msg()" style="list-style-type: disc;">
+            <ul ng-show="u.show_welcome_msg" style="list-style-type: disc;">
                 <li>Tags. Tag and value pairs: Examples: Name: Donald Duck, Location: US, Phone: 1234567890.</li>
                 <li>Wildcards can be used in Tag and Value. "%" = many characters. "_" = one character.</li>
                 <li>Privacy: Hidden. 100% private. Total private search. No one can see your search.</li>
@@ -1339,7 +1339,7 @@
             </ul>
             <p>
 
-            <p ng-hide="u.show_welcome_msg()">
+            <p ng-hide="u.show_welcome_msg">
                 It is not required but you should add some info to identify you as user in the Money Network.
                 It could be name, email, phone number, photo, company name, url, GPS location or whatever. Real or fake values.
                 Wildcards can be used in Tag and Value. "%" = many characters. "_" = one character.
@@ -1977,14 +1977,18 @@
             </p>
 
             <p>
-                Private data <input type="checkbox" ng-model="a.use_private_data" ng-change="a.use_private_data_changed()"> are
-                <span ng-hide="a.use_private_data">not</span>
-                saved
-                <span ng-show="a.use_private_data">
-                    <input type="checkbox" ng-model="a.use_login" ng-change="a.use_login_changed()">
-                    <span ng-hide="a.use_login">un</span>encrypted
+                <span title="Uncheck 'Private data' if you don't want any data saved in your browser. Everything except any ZeroNet posts are lost when you leave this site">
+                    Private data <input type="checkbox" ng-model="a.use_private_data" ng-change="a.use_private_data_changed()"> are
+                    <span ng-hide="a.use_private_data">not</span>
+                    saved
                 </span>
-                in your browser (localStorage).
+                <span title="Uncheck 'encrypted' if you don't want password protection for this site. Not recommended but OK if you are the only one with access to this computer/browser">
+                    <span ng-show="a.use_private_data">
+                        <input type="checkbox" ng-model="a.use_login" ng-change="a.use_login_changed()">
+                        <span ng-hide="a.use_login">un</span>encrypted
+                    </span>
+                    in your browser (localStorage).
+                </span>
                 <span ng-hide="a.use_private_data && a.use_login">Recommend that you save private data encrypted in your browser.</span>
             </p>
 
@@ -2237,9 +2241,9 @@
   all.js ~= 1.3 Mb and distribution is slow on zeronet
   js/all.js.zip is small and distributed fast (~= 200 Kb)
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->

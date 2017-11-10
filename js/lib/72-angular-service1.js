@@ -2234,7 +2234,7 @@ angular.module('MoneyNetwork')
                 z_cache.files_optional = files_optional || {} ;
                 if (!files_optional) return ;
                 optional_regexp1 = new RegExp(MN_CONTENT_OPTIONAL) ;
-                optional_regexp2 = new RegExp('^[0-9a-f]{10}.[0-9]{13}$'); // no user seq (MoneyNetworkAPI messages)
+                optional_regexp2 = new RegExp('^[0-9a-f]{10}(-i|-e|-o|-io|-p)?.[0-9]{13}$'); // no user seq (MoneyNetworkAPI messages)
                 now = new Date().getTime() ;
                 for (key in files_optional) {
                     key_a = key.split('-') ;
