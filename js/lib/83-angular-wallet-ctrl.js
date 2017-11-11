@@ -279,7 +279,6 @@ angular.module('MoneyNetwork')
                     url = get_relative_url(self.new_wallet_url) ;
                     new_sessionid(url) ;
                     url = updateURLParameter(url, 'sessionid', test_sessionid) ;
-                    moneyNetworkWService.open_window(pgm, url);
                     // send unencrypted pubkeys message to wallet session. Do not wait for any response.
                     // encrypted pubkeys response will be processed by process_incoming_message callback function
                     request = {
@@ -288,9 +287,18 @@ angular.module('MoneyNetwork')
                         pubkey2: MoneyNetworkHelper.getItem('pubkey2') // for cryptMessage
                     } ;
                     test_session_at = new Date().getTime() ;
+                    // no encryption and do not wait for any response.
                     encrypt2.send_message(request, {encryptions:[]}, function (response) {
                         var pgm = controller + '.test2.run send_message callback 2: ' ;
                         console.log(pgm + 'response = ' + JSON.stringify(response)) ;
+                        if (!response || response.error) {
+                            console.log(pgm + 'send pubkeys message to wallet session failed. response = ' + JSON.stringify(response)) ;
+                            info.status = 'Test failed' ;
+                            info.disabled = true ;
+                            return ;
+                        }
+                        // pubkeys message saved and signed. open wallet session
+                        moneyNetworkWService.open_window(pgm, url);
                     }) ;
 
                 } // if else

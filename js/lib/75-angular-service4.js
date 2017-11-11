@@ -556,9 +556,13 @@ angular.module('MoneyNetwork')
         function process_incoming_message(filename, encrypt, encrypted_json_str, request) {
             var pgm = service + '.process_incoming_message: ';
             var pos, sessionid, session_info, file_timestamp, response_timestamp, request_timestamp, request_timeout_at,
-                error, response, i, key, value, encryptions, done_and_send;
+                error, response, i, key, value, encryptions, done_and_send, group_debug_seq;
 
             try {
+                // get a group debug seq. track all connected log messages. there can be many running processes
+                group_debug_seq = MoneyNetworkAPILib.debug_get_next_seq();
+                var pgm = service + '.process_incoming_message/' + group_debug_seq + ': ';
+
                 if (detected_client_log_out(pgm)) return;
                 if (encrypt.destroyed) {
                     // MoneyNetworkAPI instance has been destroyed. Maybe deleted session. Maybe too many invalid get_password requests?
@@ -631,15 +635,8 @@ angular.module('MoneyNetwork')
                     else return; // exit. no response was requested
 
                     // send response to other session
-                    encrypt.send_message(response, {
-                        timestamp: response_timestamp,
-                        msgtype: request.msgtype,
-                        request: file_timestamp,
-                        subsystem: 'api',
-                        timeout_at: request_timeout_at,
-                        encryptions: encryptions
-                    }, function (res) {
-                        var pgm = service + '.process_incoming_message send_message callback 3: ';
+                    encrypt.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, subsystem: 'api', timeout_at: request_timeout_at, encryptions: encryptions}, function (res) {
+                        var pgm = service + '.process_incoming_message send_message callback 3/' + group_debug_seq + ': ';
                         console.log(pgm + 'res = ' + JSON.stringify(res));
                     }); // send_message callback 3
 
@@ -719,36 +716,35 @@ angular.module('MoneyNetwork')
                     // received get_password request from wallet session. return password if OK. Encrypt response with cryptMessage only
                     // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                     // get unlock_pwd2
-                    encrypt.get_session_filenames(function (this_session_filename, other_session_filename, unlock_pwd2) {
-                        var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_session_filenames callback: ';
+                    encrypt.get_session_filenames({group_debug_seq: group_debug_seq}, function (this_session_filename, other_session_filename, unlock_pwd2) {
+                        var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_session_filenames callback/' + group_debug_seq + ': ';
                         encryptions = [2]; // only cryptMessage. Wallet session JSEncrypt prvkey is not yet restored from localStorage
-                        if (session_info.invalid_get_password &&
-                            (session_info.invalid_get_password > 6)) {
+                        if (!ls_sessions[sessionid]) response.error = 'Session has been deleted';
+                        else if (!session_info) response.error = 'Session info was not found';
+                        else if (session_info.invalid_get_password && (session_info.invalid_get_password > 6)) {
                             session_info = null;
                             delete ls_sessions[sessionid];
                             encrypt.destroy('Too many invalid get_password errors');
+                            response.error = 'Too many get_password errors';
                         }
-                        if (!ls_sessions[sessionid]) response.error = 'Session has been deleted';
-                        else if (!session_info) response.error = 'Session info was not found';
                         else if (session_info.invalid_get_password && (session_info.invalid_get_password > 3)) response.error = 'Too many get_password errors';
                         else if (encrypt.other_session_pubkey != request.pubkey) response.error = 'Not found pubkey';
                         else if (encrypt.other_session_pubkey2 != request.pubkey2) response.error = 'Not found pubkey2';
                         else if (encrypt.unlock_pwd2 != request.unlock_pwd2) response.error = 'Not found unlock_pwd2';
                         else {
+                            // OK get_password request. Correct pubkeys and unlock_pwd2 password
                             response = {
                                 msgtype: 'password',
                                 password: session_info.password
                             }
                         }
-                        // count no get_password errors. max 3
+                        // count no get_password errors. max 3/6
                         if (session_info) {
                             if (response.error) {
                                 if (!session_info.invalid_get_password) session_info.invalid_get_password = 0;
                                 session_info.invalid_get_password++;
                             }
-                            else if (session_info.invalid_get_password) {
-                                delete session_info.invalid_get_password;
-                            }
+                            else delete session_info.invalid_get_password;
                         }
                         // finish message processing. marked as done and send any response
                         done_and_send(response, encryptions);
@@ -771,7 +767,7 @@ angular.module('MoneyNetwork')
                     // received at notification from a wallet session. just display
                     // adding wallet_title to notification') ;
                     MoneyNetworkAPILib.get_wallet_info(session_info.wallet_sha256, function (wallet_info, delayed) {
-                        var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_wallet_info callback: ';
+                        var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_wallet_info callback/' + group_debug_seq + ': ';
                         var message;
                         if (!wallet_info || wallet_info.error || !wallet_info[session_info.wallet_sha256]) {
                             response.error = 'could not find wallet information for wallet_sha256 ' + session_info.wallet_sha256 + '. wallet_info = ' + JSON.stringify(wallet_info);

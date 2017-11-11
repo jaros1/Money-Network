@@ -38,10 +38,10 @@ var MoneyNetworkHelper = (function () {
     // localStorage javascript copy is loaded from ZeroFrame API. Initialized asyn. Takes a moment before JS local_storage copy is ready
     var ls_use_private_data = true ;
     var local_storage = { loading: true } ;
-    var local_storage_functions = [] ; // functions waiting for localStorage to be ready. see authCtrl.set_register_yn
-    function ls_bind(f) {
-        if (local_storage.loading) local_storage_functions.push(f);
-        else f() ;
+    var local_storage_cbs = [] ; // functions waiting for localStorage to be ready. see authCtrl.set_register_yn
+    function ls_bind(cb) {
+        if (local_storage.loading) local_storage_cbs.push(cb);
+        else cb() ;
     } // ls_bind
 
     function ls_load() {
@@ -53,6 +53,7 @@ var MoneyNetworkHelper = (function () {
         // console.log(pgm + 'ZeroFrame=', ZeroFrame) ;
         ZeroFrame.cmd("wrapperGetLocalStorage", [], function (res) {
             var pgm = module + '.wrapperGetLocalStorage callback (1): ';
+            var key, wait_for_site_info ;
             // console.log(pgm + 'typeof res =' + typeof res) ;
             // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
             if (!res) res = [{}] ;
@@ -60,18 +61,22 @@ var MoneyNetworkHelper = (function () {
             // moving values received from ZeroFrame API to JS copy of local storage
             // console.log(pgm + 'old local_storage = ' + JSON.stringify(local_storage)) ;
             // console.log(pgm + 'moving values received from ZeroFrame API to JS local_storage copy');
-            var key ;
             for (key in local_storage) if (!res.hasOwnProperty(key)) delete local_storage[key] ;
             for (key in res) local_storage[key] = res[key] ;
             // console.log(pgm + 'local_storage = ' + JSON.stringify(local_storage));
-            // execute any function waiting for localStorage to be ready
-            if (!local_storage_functions.length) return ;
-            for (var i=0 ; i<local_storage_functions.length ; i++) {
-                var f = local_storage_functions[i] ;
-                f();
-            }
-            local_storage_functions.length = 0 ;
-        }) ;
+            if (!local_storage_cbs.length) return ;
+            // check if ZeroFrame.site_info is ready. some functions uses site_info
+            wait_for_site_info = function () {
+                var cb ;
+                if (!ZeroFrame.site_info) return setTimeout(wait_for_site_info, 200) ;
+                // execute any callbacks waiting for localStorage to be ready
+                while (local_storage_cbs.length) {
+                    cb = local_storage_cbs.shift() ;
+                    cb();
+                }
+            }; // wait_fo_site_info
+            wait_for_site_info() ;
+        }) ; // wrapperGetLocalStorage callback
 
     }
     ls_load() ;
