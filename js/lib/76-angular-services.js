@@ -6336,7 +6336,7 @@ angular.module('MoneyNetwork')
 
         function client_login(password, create_new_account, guest, keysize) {
             var pgm = service + '.client_login: ' ;
-            var login, passwords, password_sha256, i ;
+            var login, passwords, password_sha256, i, salt ;
             console.log(pgm + 'create_new_account = ' + create_new_account) ;
             // login/register with a empty password?
             // See "encrypted in your browser (localStorage)" checkbox in Auth page
@@ -6347,11 +6347,12 @@ angular.module('MoneyNetwork')
                 if (!passwords) create_new_account = true ;
                 else {
                     passwords = JSON.parse(passwords) ;
-                    password_sha256 = MoneyNetworkHelper.sha256(password) ;
+                    salt = MoneyNetworkHelper.getItem('salt') || '' ; // null for old users
+                    password_sha256 = MoneyNetworkHelper.sha256(salt + password) ;
                     create_new_account = true ;
                     for (i=0 ; i<passwords.length ; i++) if (passwords[i] == password_sha256) create_new_account = false ;
                 }
-                console.log(pgm + 'create_new_account = ' + create_new_account + ' (after checking existing user acconts)') ;
+                console.log(pgm + 'create_new_account = ' + create_new_account + ' (after checking existing user accounts)') ;
                 guest = false ;
                 if (create_new_account) keysize = 256 ;
                 console.log(service + ': Log in disabled. ' + (create_new_account ? 'Register' : 'Login') + ' with empty password') ;
