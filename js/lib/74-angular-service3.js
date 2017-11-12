@@ -66,7 +66,7 @@ angular.module('MoneyNetwork')
             moneyNetworkHubService.z_file_get(pgm, options, cb) ;
         }
         function z_file_write (inner_path, content, cb) {
-            MoneyNetworkAPILib.z_file_write(inner_path, content, cb) ;
+            MoneyNetworkAPILib.z_file_write(inner_path, content, {}, cb) ;
         }
         function get_data_json (cb) {
             moneyNetworkHubService.get_data_json(cb) ;

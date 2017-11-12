@@ -562,6 +562,7 @@ angular.module('MoneyNetwork')
                 // get a group debug seq. track all connected log messages. there can be many running processes
                 group_debug_seq = MoneyNetworkAPILib.debug_get_next_seq();
                 var pgm = service + '.process_incoming_message/' + group_debug_seq + ': ';
+                console.log(pgm + 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request && request.msgtype ? 'receive ' + request.msgtype + ' message' : 'process_incoming_message') + ' operation');
 
                 if (detected_client_log_out(pgm)) return;
                 if (encrypt.destroyed) {

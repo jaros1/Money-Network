@@ -33,7 +33,7 @@ angular.module('MoneyNetwork')
             moneyNetworkService.z_file_get(pgm, options, cb) ;
         }
         function z_file_write (pgm, inner_path, content, cb) {
-            MoneyNetworkAPILib.z_file_write(pgm, inner_path, content, cb) ;
+            MoneyNetworkAPILib.z_file_write(pgm, inner_path, content, {}, cb) ;
         }
 
         self.user_info = moneyNetworkService.get_user_info() ; // array with tags and values from localStorage

@@ -356,7 +356,7 @@ angular.module('MoneyNetwork')
         } // z_file_get
 
         function z_file_write (pgm, inner_path, content, cb) {
-            MoneyNetworkAPILib.z_file_write(pgm, inner_path, content, cb)
+            MoneyNetworkAPILib.z_file_write(pgm, inner_path, content, {}, cb)
         }
 
         function get_default_user_hub () {
