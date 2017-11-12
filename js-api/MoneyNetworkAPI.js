@@ -572,7 +572,8 @@ var MoneyNetworkAPILib = (function () {
         ZeroFrame.cmd("dbQuery", [api_query_1], function (res) {
             var pgm = module + '.message_demon dbQuery callback: ';
             var i, directory, filename, session_filename, file_timestamp, cb, other_user_path, inner_path, encrypt,
-                pos, re, match, optional, now, fileget, decrypt, step_1_fileget, step_2_decrypt, step_3_run_cb ;
+                pos, re, match, optional, now, fileget, decrypt, step_1_fileget, step_2_decrypt, step_3_run_cb, modified,
+                pgm2;
             // debug_z_api_operation_end(debug_seq, !res || res.error ? 'failed' : 'OK') ;
             if (res.error) {
                 console.log(pgm + 'query failed. error = ' + res.error);
@@ -674,19 +675,27 @@ var MoneyNetworkAPILib = (function () {
                     extra.modified = modified ; // content.json modified timestamp.
                     extra.fileget = fileget ; // true: fileGet in message_demon
                     extra.decrypt = decrypt ; // true: decrypt in message_demon
-                    if (debug) console.log(pgm + 'calling cb with ' + inner_path + (encrypt.debug ? ' and ' + encrypt.debug : '')) ;
+                    // calculate overhead. sending and receiving. sender and receiver must add overhead to timeout
+                    extra.send_overhead = (extra.modified - Math.floor(file_timestamp/1000)) * 1000  ;
+                    if (extra.decrypt_at) extra.receive_overhead = extra.decrypt_at - extra.db_query_at ;
+                    else extra.receive_overhead = 0 ;
+                    extra.total_overhead = extra.send_overhead + extra.receive_overhead ;
+                    // call cb
+                    if (debug) console.log(pgm2 + 'calling cb with ' + inner_path + (encrypt.debug ? ' and ' + encrypt.debug : '')) ;
                     try { cb(inner_path, encrypt, encrypted_json, json, extra) }
-                    catch (e) { console.log(pgm + 'Error when processing incomming message ' + inner_path + '. error = ' + e.message)}
+                    catch (e) { console.log(pgm2 + 'Error when processing incomming message ' + inner_path + '. error = ' + e.message)}
                 } ;
                 step_2_decrypt = function (extra, encrypted_json) {
                     if (!decrypt) return step_3_run_cb(extra, encrypted_json, null) ; // cb must decrypt
-                    encrypt.decrypt_json(encrypted_json, {}, function (json) {
+                    encrypt.decrypt_json(encrypted_json, {group_debug_seq: extra.group_debug_seq}, function (json) {
+                        extra.decrypt_at = new Date().getTime() ;
                         step_3_run_cb(extra, encrypted_json, json) ;
                     }) ;
                 } ;
                 step_1_fileget = function() {
-                    var options ;
-                    if (!fileget) return step_3_run_cb(null, null, null) ; // cb must fileGet and decrypt
+                    var options, group_debug_seq ;
+                    pgm2 = pgm ;
+                    if (!fileget) return step_3_run_cb({db_query_at: now}, null, null) ; // cb must fileGet and decrypt
                     options = { inner_path: inner_path} ;
                     // filetypes: -i, -e, -o, -io, -p
                     if (['-e', '-o'].indexOf(optional) != -1) {
@@ -695,19 +704,26 @@ var MoneyNetworkAPILib = (function () {
                         options.timeout = 60 ;
                         options.timeout_count = 5 ;
                     }
+                    group_debug_seq = debug_get_next_seq() ;
+                    pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
+                    if (debug) console.log(pgm2 + 'Using group_debug_seq ' + group_debug_seq + ' for this incoming message') ;
+                    options.group_debug_seq = group_debug_seq ;
                     z_file_get(pgm, options, function (json_str, extra) {
                         var encrypted_json ;
                         if (!extra) extra = {} ;
+                        extra.db_query_at = now ;
+                        extra.group_debug_seq = group_debug_seq ;
                         if (!json_str) {
                             // timeout / file not found
-                            console.log(pgm + 'timeout or file not found. extra = ' + JSON.stringify(extra)) ;
+                            console.log(pgm2 + 'timeout or file not found. extra = ' + JSON.stringify(extra)) ;
                             return step_3_run_cb(extra, null, null) ;
                         }
+                        extra.fileget_at = new Date().getTime();
                         try {
                             encrypted_json = JSON.parse(json_str) ;
                         }
                         catch (e) {
-                            console.log(pgm + inner_path + ' is invalid. json_str = ' + json_str + ', error = ' + e.message) ;
+                            console.log(pgm2 + inner_path + ' is invalid. json_str = ' + json_str + ', error = ' + e.message) ;
                             return step_3_run_cb(extra, json_str, null) ;
                         }
                         step_2_decrypt(extra, encrypted_json) ;
