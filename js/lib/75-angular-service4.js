@@ -548,21 +548,25 @@ angular.module('MoneyNetwork')
 
         } // create_sessions
 
-        // generic callback function to handle incoming messages from wallet session(s):
-        // - save_data message. save (encrypted) data in MoneyNetwork localStorage
-        // - get_data message. return (encrypted) data saved in MoneyNetwork localStorage
-        // - delete_data message. delete data saved in MoneyNetwork localStorage
-
-        function process_incoming_message(filename, encrypt, encrypted_json_str, request) {
+        // generic callback function to handle incoming messages from wallet session:
+        // params:
+        // - filename: full merger site inner path for received message
+        // - encrypt: MoneyNetworkAPI instance for wallet session
+        // - encrypted_json_str: string with encrypted json object (fileget = true in MoneyNetworkAPI setup)
+        // - request: unencrypted json message (decrypt = true in MoneyNetworkAPI setup)
+        // - extra: extra info about received file and operation. See MoneyNetworkAPI.message_demon
+        function process_incoming_message(filename, encrypt, encrypted_json_str, request, extra) {
             var pgm = service + '.process_incoming_message: ';
             var pos, sessionid, session_info, file_timestamp, response_timestamp, request_timestamp, request_timeout_at,
-                error, response, i, key, value, encryptions, done_and_send, group_debug_seq;
+                error, response, i, key, value, encryptions, done_and_send, group_debug_seq, now;
 
             try {
                 // get a group debug seq. track all connected log messages. there can be many running processes
-                group_debug_seq = MoneyNetworkAPILib.debug_get_next_seq();
-                var pgm = service + '.process_incoming_message/' + group_debug_seq + ': ';
+                if (extra && extra.group_debug_seq) group_debug_seq = extra.group_debug_seq ;
+                else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start();
+                pgm = service + '.process_incoming_message/' + group_debug_seq + ': ';
                 console.log(pgm + 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request && request.msgtype ? 'receive ' + request.msgtype + ' message' : 'process_incoming_message') + ' operation');
+                if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype});
 
                 if (detected_client_log_out(pgm)) return;
                 if (encrypt.destroyed) {
@@ -596,6 +600,8 @@ angular.module('MoneyNetwork')
                 }
 
                 // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+
+                // default is 3 layers encryption
                 encryptions = [1, 2, 3];
 
                 // remove any response timestamp before validation (used in response filename)
@@ -606,10 +612,20 @@ angular.module('MoneyNetwork')
                 request_timeout_at = request.timeout_at;
                 delete request.timeout_at; // request received. when does request expire. how long does other session wait for response
 
-                // request timeout?
-                if (request_timeout_at < (new Date().getTime())) {
-                    console.log(pgm + 'warning. request timeout. ignoring request = ' + JSON.stringify(request) + ', filename = ' + filename);
-                    return;
+                // request timeout? check with and without "total_overhead"
+                now = new Date().getTime() ;
+                if (request_timeout_at < now) {
+                    console.log(pgm + 'timeout. file_timestamp = ' + file_timestamp + ', request_timeout_at = ' + request_timeout_at + ', now = ' + now + ', total_overhead = ' + extra.total_overhead) ;
+                    console.log(pgm + 'extra = ' + JSON.stringify(extra)) ;
+                    if (request_timeout_at + extra.total_overhead < now) {
+                        console.log(pgm + 'error. request timeout. ignoring request = ' + JSON.stringify(request) + ', inner_path = ' + inner_path);
+                        return;
+                    }
+                    else {
+                        console.log(pgm + 'warning. request timeout. adding total_overhead ' + extra.total_overhead + ' ms to request_timeout_at. other session may reject response after timeout');
+                        request_timeout_at = request_timeout_at + extra.total_overhead ;
+                        console.log(pgm + 'new request_timeout_at = ' + request_timeout_at) ;
+                    }
                 }
 
                 done_and_send = function (response, encryptions) {
@@ -636,7 +652,7 @@ angular.module('MoneyNetwork')
                     else return; // exit. no response was requested
 
                     // send response to other session
-                    encrypt.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, subsystem: 'api', timeout_at: request_timeout_at, encryptions: encryptions}, function (res) {
+                    encrypt.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, subsystem: 'api', timeout_at: request_timeout_at, group_debug_seq: group_debug_seq, encryptions: encryptions}, function (res) {
                         var pgm = service + '.process_incoming_message send_message callback 3/' + group_debug_seq + ': ';
                         console.log(pgm + 'res = ' + JSON.stringify(res));
                     }); // send_message callback 3

@@ -139,7 +139,8 @@ var MoneyNetworkAPILib = (function () {
         return true ; // result not ready. assuming OK
     } // set_this_user_path
 
-    var debug = false, debug_seq = 0, debug_operations = {}, ZeroFrame, global_demon_cb, global_demon_cb_fileget, global_demon_cb_decrypt, interval, optional;
+    var debug = false, debug_seq = 0, z_debug_operations = {}, ZeroFrame, global_demon_cb, global_demon_cb_fileget,
+        global_demon_cb_decrypt, interval, optional, group_debug_operations = {} ;
 
     function config(options) {
         var pgm = module + '.config: ';
@@ -191,27 +192,26 @@ var MoneyNetworkAPILib = (function () {
     }
 
     // debug ZeroFrame API calls.
+
+    // debug_seq. used when monitoring ZeroFrame API operations and when tracking long running operations like send_message and process_incoming_message callback
+    function debug_get_next_seq () {
+        debug_seq++ ;
+        return debug_seq ;
+    } // debug_get_next_seq
+
     // call debug_z_api_operation_start before API call and debug_z_api_operation_end after API call
     // todo: add check for long running ZeroFrame API operations. Publish can take some time. optional fileGet can take some time. Other operations should be fast
     function debug_z_api_operation_pending () {
         var debug_seq, group_debug_seq, keys ;
         keys = [] ;
-        for (debug_seq in debug_operations) {
-            group_debug_seq = debug_operations[debug_seq].group_debug_seq ;
+        for (debug_seq in z_debug_operations) {
+            group_debug_seq = z_debug_operations[debug_seq].group_debug_seq ;
             keys.push(debug_seq + (group_debug_seq ? '/' + group_debug_seq : '')) ;
         }
         if (keys.length == 0) return 'No pending ZeroNet API operations' ;
         if (keys.length == 1) return '1 pending ZeroNet API operation (' + keys[0] + ')' ;
         return keys.length + ' pending ZeroNet API operations (' + keys.join(',') + ')' ;
-    }
-
-    // return debug_seq
-    // used when monitoring ZeroFrame API operations and when tracking long running operations like send_message and process_incoming_message callback
-    function debug_get_next_seq () {
-        var next ;
-        debug_seq++ ;
-        return debug_seq ;
-    } // debug_get_next_seq
+    } // debug_z_api_operation_pending
 
     // params:
     // - pgm: calling pgm
@@ -222,7 +222,7 @@ var MoneyNetworkAPILib = (function () {
     function debug_z_api_operation_start (pgm, inner_path, cmd, debug_this, group_debug_seq) {
         var debug_seq ;
         debug_seq = debug_get_next_seq() ;
-        debug_operations[debug_seq] = {
+        z_debug_operations[debug_seq] = {
             pgm: pgm,
             inner_path: inner_path,
             cmd: cmd,
@@ -239,14 +239,14 @@ var MoneyNetworkAPILib = (function () {
 
     function debug_z_api_operation_end (debug_seq, res) {
         var pgm, inner_path, cmd, debug_this, started_at, finished_at, elapsed_time, group_debug_seq ;
-        if (!debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
-        pgm = debug_operations[debug_seq].pgm ;
-        inner_path = debug_operations[debug_seq].inner_path ;
-        cmd = debug_operations[debug_seq].cmd ;
-        debug_this = debug_operations[debug_seq].debug_this ;
-        group_debug_seq = debug_operations[debug_seq].group_debug_seq ;
-        started_at = debug_operations[debug_seq].started_at ;
-        delete debug_operations['' + debug_seq] ;
+        if (!z_debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
+        pgm = z_debug_operations[debug_seq].pgm ;
+        inner_path = z_debug_operations[debug_seq].inner_path ;
+        cmd = z_debug_operations[debug_seq].cmd ;
+        debug_this = z_debug_operations[debug_seq].debug_this ;
+        group_debug_seq = z_debug_operations[debug_seq].group_debug_seq ;
+        started_at = z_debug_operations[debug_seq].started_at ;
+        delete z_debug_operations['' + debug_seq] ;
         finished_at = new Date().getTime() ;
         elapsed_time = finished_at - started_at ;
         if (debug || debug_this) console.log(
@@ -254,6 +254,59 @@ var MoneyNetworkAPILib = (function () {
             '. elapsed time ' + elapsed_time + ' ms (' + debug_seq + (group_debug_seq ? '/' + group_debug_seq : '') + '). ' +
             debug_z_api_operation_pending()) ;
     } // debug_z_api_operation_end
+
+    // monitor "long" running operations (request-response cycles) from start to end
+    // normally starts in message_demon and ends when signing response to other process
+    // add /<group_debug_seq> to console.log messages for each search in logs
+    // keep stat about message processing from start to end. used in timeout notifications
+    function debug_group_operation_start () {
+        var pgm = module + '.debug_group_operation_start: ' ;
+        var group_debug_seq ;
+        group_debug_seq = debug_get_next_seq() ;
+        group_debug_operations[group_debug_seq] = { start_at: new Date().getTime()} ;
+        return group_debug_seq ;
+    } // debug_group_operation_start
+
+    // add extra information about group debug operation. most important is msgtype as different msgtype may have different elapsed time
+    function debug_group_operation_update (group_debug_seq, options) {
+        var pgm = module + '.debug_group_operation_update: ' ;
+        var pgm2, key ;
+        if (!group_debug_operations[group_debug_seq])  {
+            console.log(pgm + 'Error. Could not found any group operation with group_debug_seq ' + group_debug_seq);
+            return ;
+        }
+        pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
+        if (group_debug_operations[group_debug_seq].finish_at) {
+            console.log(pgm2 + 'Error. Update is not alloowed. Has already set finish_at timestamp for group_debug_seq ' + group_debug_seq) ;
+            return ;
+        }
+        if (!options) options = {} ;
+        for (key in options) {
+            if (group_debug_operations[group_debug_seq][key]) continue ;
+            if (['start_at', 'finish_at', 'elapsed_time', 'error'].indexOf(key) != -1) continue ;
+            group_debug_operations[group_debug_seq][key] = options[key] ;
+        } // for key
+    } // debug_group_operation_update
+
+    // end group debug operation. normally after signing response or when group operation is aborted for some reason
+    function debug_group_operation_end (group_debug_seq, error) {
+        var pgm = module + '.debug_group_operation_end: ' ;
+        var pgm2 ;
+        if (!group_debug_operations[group_debug_seq])  {
+            console.log(pgm + 'Error. Could not found any group operation with group_debug_seq ' + group_debug_seq);
+            return ;
+        }
+        pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
+        if (group_debug_operations[group_debug_seq].finish_at) {
+            console.log(pgm2 + 'Error. Has already set finish_at timestamp for group_debug_seq ' + group_debug_seq) ;
+            return ;
+        }
+        if (error) group_debug_operations[group_debug_seq].error = error ;
+        group_debug_operations[group_debug_seq].finish_at = new Date().getTime() ;
+        group_debug_operations[group_debug_seq].elapsed_time = group_debug_operations[group_debug_seq].finish_at - group_debug_operations[group_debug_seq].start_at ;
+        console.log(pgm2 + 'total elapsed time for group_debug_seq ' + group_debug_seq + ' was ' + group_debug_operations[group_debug_seq].elapsed_time + ' ms') ;
+        console.log(pgm2 + 'group_debug_operations = ' + JSON.stringify(group_debug_operations[group_debug_seq])) ;
+    } // debug_group_operation_end
 
     // global variables client and master. used in MN <=> wallet communication:
     // - client false/master true; MoneyNetwork, site_address !=  1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk. server = true
@@ -704,7 +757,7 @@ var MoneyNetworkAPILib = (function () {
                         options.timeout = 60 ;
                         options.timeout_count = 5 ;
                     }
-                    group_debug_seq = debug_get_next_seq() ;
+                    group_debug_seq = debug_group_operation_start() ;
                     pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                     if (debug) console.log(pgm2 + 'Using group_debug_seq ' + group_debug_seq + ' for this incoming message') ;
                     options.group_debug_seq = group_debug_seq ;
@@ -1925,9 +1978,10 @@ var MoneyNetworkAPILib = (function () {
 
     // callback for publish message processing (queue_publish, start_publish and published messages)
     // called from demon process for incoming -p optional messages
-    function process_publish_messages (inner_path, encrypt, encrypted_request, request) {
+    function process_publish_messages (inner_path, encrypt, encrypted_request, request, extra) {
         var pgm = module + '.process_publish_messages: ' ;
-        var pos, file_timestamp, response_timestamp, request_timestamp, request_timeout_at, response, error, send_response, group_debug_seq ;
+        var pos, file_timestamp, response_timestamp, request_timestamp, request_timeout_at, response, error,
+            send_response, group_debug_seq, now ;
 
         try {
             if (encrypt.destroyed) {
@@ -1938,9 +1992,11 @@ var MoneyNetworkAPILib = (function () {
             if (!encrypt.debug) encrypt.setup_encryption({debug: true}) ;
 
             // get a group debug seq. track all connected log messages. there can be many running processes
-            group_debug_seq = MoneyNetworkAPILib.debug_get_next_seq();
+            if (extra && extra.group_debug_seq) group_debug_seq = extra.group_debug_seq ;
+            else group_debug_seq = debug_group_operation_start();
             pgm = module + '.process_publish_messages/' + group_debug_seq + ': ';
             console.log(pgm + 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request && request.msgtype ? 'receive ' + request.msgtype + ' message' : 'process_publish_messages') + ' operation', group_debug_seq);
+            if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype}) ;
 
             console.log(pgm + 'processing inner_path = ' + inner_path + (encrypt.debug ? ' with ' + encrypt.debug : ''));
 
@@ -1948,7 +2004,6 @@ var MoneyNetworkAPILib = (function () {
             pos = inner_path.lastIndexOf('.');
             file_timestamp = parseInt(inner_path.substr(pos + 1));
             console.log(pgm + 'file_timestamp = ' + file_timestamp);
-
 
             // remove any response timestamp before validation (used in response filename)
             response_timestamp = request.response;
@@ -1958,10 +2013,21 @@ var MoneyNetworkAPILib = (function () {
             request_timeout_at = request.timeout_at;
             delete request.timeout_at; // request received. when does request expire. how long does other session wait for response
 
-            // request timeout?
-            if (request_timeout_at < (new Date().getTime())) {
-                console.log(pgm + 'warning. request timeout. ignoring request = ' + JSON.stringify(request) + ', inner_path = ' + inner_path);
-                return;
+            // request timeout? check with and without "total_overhead"
+            now = new Date().getTime() ;
+            if (request_timeout_at < now) {
+                console.log(pgm + 'timeout. file_timestamp = ' + file_timestamp + ', request_timeout_at = ' + request_timeout_at + ', now = ' + now + ', total_overhead = ' + extra.total_overhead) ;
+                console.log(pgm + 'extra = ' + JSON.stringify(extra)) ;
+                if (request_timeout_at + extra.total_overhead < now) {
+                    console.log(pgm + 'error. request timeout. ignoring request = ' + JSON.stringify(request) + ', inner_path = ' + inner_path);
+                    MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'timeout') ;
+                    return;
+                }
+                else {
+                    console.log(pgm + 'warning. request timeout. adding total_overhead ' + extra.total_overhead + ' ms to request_timeout_at. other session may reject response after timeout');
+                    request_timeout_at = request_timeout_at + extra.total_overhead ;
+                    console.log(pgm + 'new request_timeout_at = ' + request_timeout_at) ;
+                }
             }
 
             console.log(pgm + 'request = ' + JSON.stringify(request));
@@ -1970,7 +2036,10 @@ var MoneyNetworkAPILib = (function () {
             // cb: post response callback. used in send_mt after sending OK response to MN
             send_response = function (error, cb) {
                 var pgm = module + '.process_publish_messages.send_response/' + group_debug_seq + ': ' ;
-                if (!response_timestamp) return; // no response was requested
+                if (!response_timestamp) {
+                    MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'no response requested') ;
+                    return;
+                } // no response was requested
                 if (error) response.error = error;
                 if (!cb) cb = function () {};
 
@@ -2369,6 +2438,9 @@ var MoneyNetworkAPILib = (function () {
         debug_get_next_seq: debug_get_next_seq,
         debug_z_api_operation_start:debug_z_api_operation_start,
         debug_z_api_operation_end: debug_z_api_operation_end,
+        debug_group_operation_start: debug_group_operation_start,
+        debug_group_operation_update: debug_group_operation_update,
+        debug_group_operation_end: debug_group_operation_end,
         start_transaction: start_transaction,
         end_transaction: end_transaction,
         z_merger_site_add: z_merger_site_add,
@@ -3018,14 +3090,15 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
     var self, response, request_msgtype, request_timestamp, encryptions, error, request_at, request_file_timestamp,
         default_timeout, timeout_at, month, year, cleanup_in, offline_transaction, request_timeout_at, debug_seq0,
-        subsystem, optional, group_debug_seq ;
+        subsystem, optional, group_debug_seq, set_error ;
     self = this;
     this.check_destroyed(pgm) ;
 
     // track all console.log for this send_message call.
     if (options.group_debug_seq) group_debug_seq = options.group_debug_seq ;
-    else group_debug_seq = MoneyNetworkAPILib.debug_get_next_seq()  ;
+    else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start() ;
     self.log(pgm, 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request.msgtype ? 'send ' + request.msgtype + ' message': 'send_message') + ' operation', group_debug_seq);
+    if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype});
 
     if (!cb) cb = function (response) {
         self.log(pgm, 'response = ' + JSON.stringify(response), group_debug_seq);
@@ -3034,6 +3107,12 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 
     this.log(pgm, 'request = ' + JSON.stringify(request), group_debug_seq) ;
     request_at = new Date().getTime();
+
+    // error wrapper. end group debug operation and return error
+    set_error =  function (error) {
+        MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, error) ;
+        return cb({error: error})
+    } ; // set_error
 
     // get params
     if (!options) options = {};
@@ -3045,17 +3124,17 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     if (options.timeout_at && (typeof options.timeout_at == 'number')) {
         // sending a response to a previous request
         request_timeout_at = options.timeout_at ;
-        if (request_at > request_timeout_at) return cb({error: 'Cannot send message. Request timeout at ' + request_timeout_at}) ;
+        if (request_at > request_timeout_at) return set_error('Cannot send message. Request timeout at ' + request_timeout_at) ;
     }
     encryptions = options.hasOwnProperty('encryptions') ? options.encryptions : [1, 2, 3];
     if (typeof encryptions == 'number') encryptions = [encryptions];
     subsystem = options.subsystem ;
-    if (subsystem && (typeof subsystem != 'string')) return cb({error: 'Cannot send message. options.subsystem must be a string'}) ;
+    if (subsystem && (typeof subsystem != 'string')) return set_error('Cannot send message. options.subsystem must be a string') ;
     if (!subsystem) subsystem = MoneyNetworkAPILib.get_subsystem(request_msgtype) ;
     // use normal file or optional file (internal, external, offline etc). any file with - in filename is an optional file
     if (options.hasOwnProperty('optional')) {
         // set by calling client
-        if ([null, 'i', 'e', 'o', 'io', 'p'].indexOf(options.optional) == -1) return cb({error: 'Cannot send message. optional file extension must be null, i, e, o, io or p'}) ;
+        if ([null, 'i', 'e', 'o', 'io', 'p'].indexOf(options.optional) == -1) return set_error('Cannot send message. optional file extension must be null, i, e, o, io or p') ;
         if (options.optional == null) optional = '' ; // normal file
         else optional = '-' + options.optional ; // optional file
     }
@@ -3068,19 +3147,19 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 
     // check setup
     // ZeroNet state
-    if (!this.ZeroFrame) return cb({error: 'Cannot send message. ZeroFrame is missing in setup'});
-    if (!this.ZeroFrame.site_info) return cb({error: 'Cannot send message. ZeroFrame is not finished loading'});
-    if (!this.ZeroFrame.site_info.cert_user_id) return cb({error: 'Cannot send message. No cert_user_id. ZeroNet certificate is not selected'});
+    if (!this.ZeroFrame) return set_error('Cannot send message. ZeroFrame is missing in setup');
+    if (!this.ZeroFrame.site_info) return set_error('Cannot send message. ZeroFrame is not finished loading');
+    if (!this.ZeroFrame.site_info.cert_user_id) return set_error('Cannot send message. No cert_user_id. ZeroNet certificate is not selected');
     // Outgoing encryption
-    if (!this.other_session_pubkey && (encryptions.indexOf(1) != -1)) return cb({error: 'Cannot JSEncrypt encrypt outgoing message. pubkey is missing in encryption setup'}); // encrypt_1
-    if (!this.other_session_pubkey2 && (encryptions.indexOf(2) != -1)) return cb({error: 'Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'}); // encrypt_2
-    if (!this.sessionid && (encryptions.indexOf(3) != -1)) return cb({error: 'Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'}); // encrypt_3
+    if (!this.other_session_pubkey && (encryptions.indexOf(1) != -1)) return set_error('Cannot JSEncrypt encrypt outgoing message. pubkey is missing in encryption setup'); // encrypt_1
+    if (!this.other_session_pubkey2 && (encryptions.indexOf(2) != -1)) return set_error('Cannot cryptMessage encrypt outgoing message. Pubkey2 is missing in encryption setup'); // encrypt_2
+    if (!this.sessionid && (encryptions.indexOf(3) != -1)) return set_error('Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'); // encrypt_3
     if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
-    if (!this.this_user_path) return cb({error: 'Cannot send message. this_user_path is missing in setup'});
-    if (!MoneyNetworkAPILib.is_user_path(this.this_user_path)) cb({error: 'Cannot send message. "' + this.this_user_path + '" is not a valid user path. Please use "merged-MoneyNetwork/<hub>/data/users/<auth_address>/" as user_path'});
+    if (!this.this_user_path) return set_error('Cannot send message. this_user_path is missing in setup');
+    if (!MoneyNetworkAPILib.is_user_path(this.this_user_path)) return set_error('Cannot send message. "' + this.this_user_path + '" is not a valid user path. Please use "merged-MoneyNetwork/<hub>/data/users/<auth_address>/" as user_path');
     if (response) {
         // Ingoing encryption
-        if (!this.this_session_prvkey && (encryptions.indexOf(1) != -1) && (request.msgtype != 'get_password')) return cb({error: 'Cannot JSEncrypt decrypt expected ingoing receipt. prvkey is missing in encryption setup'}); // decrypt_1
+        if (!this.this_session_prvkey && (encryptions.indexOf(1) != -1) && (request.msgtype != 'get_password')) return set_error('Cannot JSEncrypt decrypt expected ingoing receipt. prvkey is missing in encryption setup'); // decrypt_1
         // decrypt_2 OK. cert_user_id already checked
         // decrypt_3 OK. sessionid already checked
     }
@@ -3092,7 +3171,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         error = 'Cannot send message. ' + error;
         this.log(pgm, error);
         this.log(pgm, 'request = ' + JSON.stringify(request));
-        return cb({error: error});
+        return set_error(error);
     }
     if (request_msgtype && (typeof request_timestamp == 'number')) {
         // sending a response to a previous request.
@@ -3128,12 +3207,12 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, site_info ? 'OK' : 'Failed');
         if (!site_info.cert_user_id) {
             self.destroy('User log out') ;
-            return cb({error: 'invalid call. this_user_path must be null for a not logged in user'}) ;
+            return set_error('invalid call. this_user_path must be null for a not logged in user') ;
         }
         regexp = new RegExp('\/' + site_info.auth_address + '\/$') ;
         if (!self.this_user_path.match(regexp)) {
             self.destroy('Changed certificate') ;
-            return cb({error: 'invalid call. auth_address in this_user_path is not correct. this_user_path = ' + self.this_user_path + '. site_info.auth_address = ' + site_info.auth_address}) ;
+            return set_error('invalid call. auth_address in this_user_path is not correct. this_user_path = ' + self.this_user_path + '. site_info.auth_address = ' + site_info.auth_address) ;
         }
         // 2: get filenames
         self.get_session_filenames({group_debug_seq: group_debug_seq}, function (this_session_filename, other_session_filename, unlock_pwd2) {
@@ -3150,7 +3229,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                 self.add_optional_files_support({group_debug_seq: group_debug_seq}, function (res) {
                     var pgm = self.module + '.send_message add_optional_files_support callback 4: ';
                     var inner_path4, json_raw;
-                    if (!res || res.error) return cb({error: 'Cannot send message. Add optional files support failed. ' + JSON.stringify(res)});
+                    if (!res || res.error) return set_error('Cannot send message. Add optional files support failed. ' + JSON.stringify(res));
 
                     // 5: write file
                     inner_path4 = self.this_user_path + this_session_filename + optional + '.' + request_file_timestamp;
@@ -3158,6 +3237,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                     MoneyNetworkAPILib.z_file_write(pgm, inner_path4, btoa(json_raw), {group_debug_seq: group_debug_seq}, function (res) {
                         var pgm = self.module + '.send_message fileWrite callback 5: ';
                         var inner_path5, debug_seq5;
+                        // todo: check for failed fileWrite
                         // 6: siteSign. publish not needed for within client communication
                         inner_path5 = self.this_user_path + 'content.json';
                         self.log(pgm, 'sign content.json with new optional file ' + inner_path4, group_debug_seq);
@@ -3167,6 +3247,11 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             var debug_seq6, sign_at, elapsed_time_ms, elapsed_time_s, elapsed_text ;
                             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq5, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                             self.log(pgm, 'res = ' + JSON.stringify(res), group_debug_seq);
+                            if (!response) {
+                                // no response requested for this outgoing message. end group debug operation after sign
+                                MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, (res == 'ok' ? null : res)) ;
+                            }
+                            // todo: check for failed sign
                             sign_at = new Date().getTime();
                             elapsed_time_ms = sign_at - request_at ;
                             elapsed_time_s = Math.round(elapsed_time_ms/1000) ;
@@ -3287,7 +3372,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path, required: true, group_debug_seq: group_debug_seq}, function (response_str) {
                                         var pgm = self.module + '.send_message.get_and_decrypt fileGet callback 8.1: ';
                                         var encrypted_response, error, request_timestamp;
-                                        if (!response_str) return cb({error: 'fileGet for receipt failed. Request was ' + JSON.stringify(request) + '. inner_path was ' + inner_path});
+                                        if (!response_str) return set_error('fileGet for receipt failed. Request was ' + JSON.stringify(request) + '. inner_path was ' + inner_path);
                                         encrypted_response = JSON.parse(response_str);
                                         self.log(pgm, 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid, group_debug_seq);
                                         // read response. run cleanup job now
@@ -3313,13 +3398,16 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                                 self.log(pgm, error, group_debug_seq);
                                                 self.log(pgm, 'request = ' + JSON.stringify(request), group_debug_seq);
                                                 self.log(pgm, 'response = ' + JSON.stringify(response), group_debug_seq);
-                                                return cb({error: error});
+                                                return set_error(error);
                                             }
 
                                             // return decrypted response
                                             self.log(pgm, 'response = ' + JSON.stringify(response) +
                                                 ', request_timestamp = ' + request_timestamp +
                                                 ', request_file_timestamp = ' + request_file_timestamp, group_debug_seq);
+
+                                            // end group debug operation. cb will do something with response. Maybe a new request-response cycle?
+                                            MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq) ;
                                             cb(response);
                                         }); // decrypt_json callback 8.2
                                     }); // fileGet callback 8.1
@@ -3334,7 +3422,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     // demon is running and is monitoring incoming messages for this sessionid
                                     self.log(pgm, 'demon is running. wait for response file ' + response_filename + '. cb = get_and_decrypt', group_debug_seq);
                                     error = MoneyNetworkAPILib.wait_for_file(response_filename, {request: request, timeout_at: timeout_at, cb: get_and_decrypt});
-                                    if (error) return cb({error: error});
+                                    if (error) return set_error(error);
                                 }
                                 else {
                                     // demon is not running or demon is not monitoring this sessionid
@@ -3357,7 +3445,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                             self.log(pgm, 'request was ' + JSON.stringify(request), group_debug_seq) ;
                                             self.log(pgm, 'request filename was ' + inner_path4, group_debug_seq) ;
                                             self.log(pgm, 'expected response filename was ' + response_filename, group_debug_seq) ;
-                                            return cb({error: 'Timeout while waiting for response. Request was ' + JSON.stringify(request) + '. Expected response filename was ' + response_filename});
+                                            return set_error('Timeout while waiting for response. Request was ' + JSON.stringify(request) + '. Expected response filename was ' + response_filename);
                                         }
                                         // 9: dbQuery
                                         debug_seq8 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'api query 5', 'dbQuery', null, group_debug_seq);
@@ -3365,7 +3453,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                             var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 9: ';
                                             var inner_path9;
                                             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq8, (!res || res.error) ? 'Failed' : 'OK');
-                                            if (res.error) return cb({error: 'Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error});
+                                            if (res.error) return set_error('Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error);
                                             if (!res.length) {
                                                 setTimeout(wait_for_response, 500);
                                                 return;
