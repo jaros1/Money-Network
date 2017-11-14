@@ -563,7 +563,7 @@ angular.module('MoneyNetwork')
             try {
                 // get a group debug seq. track all connected log messages. there can be many running processes
                 if (extra && extra.group_debug_seq) group_debug_seq = extra.group_debug_seq ;
-                else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start();
+                else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start(encrypt);
                 pgm = service + '.process_incoming_message/' + group_debug_seq + ': ';
                 console.log(pgm + 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request && request.msgtype ? 'receive ' + request.msgtype + ' message' : 'process_incoming_message') + ' operation');
                 if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype});
@@ -619,6 +619,9 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'extra = ' + JSON.stringify(extra)) ;
                     if (request_timeout_at + extra.total_overhead < now) {
                         console.log(pgm + 'error. request timeout. ignoring request = ' + JSON.stringify(request) + ', inner_path = ' + inner_path);
+                        MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'Timeout. Request is too old') ;
+                        // sending timeout notification to other process
+                        encrypt.send_timeout_message(filename, request.msgtype, 'MoneyNetwork: please resend ' + request.msgtype + ' request') ;
                         return;
                     }
                     else {
@@ -805,7 +808,16 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'request = ' + JSON.stringify(request));
                     MoneyNetworkAPILib.set_last_published(request.timestamp);
                 }
-                else response.error = 'Unknown msgtype ' + request.msgtype;
+                else if (request.msgtype == 'timeout') {
+                    // timeout message from wallet. wallet sent response after timeout. There may be a timeout failure in MN session
+                    // merge MN process information and wallet process information.
+                    MoneyNetworkAPILib.debug_group_operation_receive_stat(encrypt, request.stat) ;
+
+                }
+                else {
+                    response.error = 'Unknown msgtype ' + request.msgtype;
+                    console.log(pgm + 'request = ' + JSON.stringify(request));
+                }
 
                 // finish message processing. marked as done and send any response
                 done_and_send(response, encryptions);
