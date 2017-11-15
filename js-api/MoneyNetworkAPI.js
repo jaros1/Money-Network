@@ -421,7 +421,13 @@ var MoneyNetworkAPILib = (function () {
         //        "other_session_elapsed_time": 23033
         //    }
         //};
+
     } // debug_group_operation_receive_stat
+
+
+    function debug_group_operation_get_response(msgtype, encrypt) {
+
+    } // debug_group_operation_get_response
 
 
     // global variables client and master. used in MN <=> wallet communication:
@@ -2618,6 +2624,7 @@ var MoneyNetworkAPILib = (function () {
         debug_group_operation_end: debug_group_operation_end,
         debug_group_operation_get_stat: debug_group_operation_get_stat,
         debug_group_operation_receive_stat: debug_group_operation_receive_stat,
+        debug_group_operation_get_response: debug_group_operation_get_response,
         start_transaction: start_transaction,
         end_transaction: end_transaction,
         z_merger_site_add: z_merger_site_add,
@@ -3367,6 +3374,9 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
             if (response < 100) response = 100 ; // timeout minimum 0.1 second
         }
         else response = default_timeout; // true = default timeout = 10 seconds
+        // check for any timeout problems for this request.msgtype
+
+
         cleanup_in = response ;
         timeout_at = request_at + response;
         year = 1000 * 60 * 60 * 24 * 365.2425;
@@ -3400,8 +3410,19 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         // 2: get filenames
         self.get_session_filenames({group_debug_seq: group_debug_seq}, function (this_session_filename, other_session_filename, unlock_pwd2) {
             var pgm = self.module + '.send_message get_session_filenames callback 2: ';
-            var encryptions_clone ;
+            var encryptions_clone, new_response ;
             MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq,{this_session_filename: self.this_session_filename}) ;
+            // this session filename is initialized. check for any previous problems with response timeout. see timeout message
+            if (request.response) {
+                new_response = MoneyNetworkAPILib.debug_group_operation_get_response(request.msgtype, self) ;
+                if (new_response) {
+                    self.log(pgm, 'previous problems with timeout for ' + request.msgtype + ', old response = ' + request.response + ', new response = ' + new_response, group_debug_seq) ;
+                    if (new_response > request.response) request.response = new_response ;
+                    timeout_at = request_at + request.response;
+                    self.log(pgm, 'new timeout_at = ' + timeout_at, group_debug_seq) ;
+                }
+            }
+
             // 3: encrypt json
             encryptions_clone = JSON.parse(JSON.stringify(encryptions)) ; // copy: encrypt_json updates encryptions array
             self.encrypt_json(request, {encryptions: encryptions, group_debug_seq: group_debug_seq}, function (encrypted_json) {
