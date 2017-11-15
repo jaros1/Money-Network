@@ -261,12 +261,11 @@ var MoneyNetworkAPILib = (function () {
     // add /<group_debug_seq> to console.log messages for each search in logs
     // keep stat about message processing from start to end. used in timeout notifications
     // todo: must add some session info to group_debug_operations. timeout message should only return info about current session
-    function debug_group_operation_start (encrypt) {
+    function debug_group_operation_start () {
         var pgm = module + '.debug_group_operation_start: ' ;
         var group_debug_seq ;
-        if (!is_MoneyNetworkAPI(encrypt)) throw pgm + 'invalid call. required parameter encrypt must be a MoneyNetworkAPI instance' ;
         group_debug_seq = debug_get_next_seq() ;
-        group_debug_operations[group_debug_seq] = { start_at: new Date().getTime() } ;
+        group_debug_operations[group_debug_seq] = { this_session_start_at: new Date().getTime() } ;
         return group_debug_seq ;
     } // debug_group_operation_start
 
@@ -286,7 +285,8 @@ var MoneyNetworkAPILib = (function () {
         if (!options) options = {} ;
         for (key in options) {
             if (group_debug_operations[group_debug_seq][key]) continue ;
-            if (['start_at', 'finish_at', 'elapsed_time', 'error', 'sent'].indexOf(key) != -1) continue ;
+            if (['this_session_start_at', 'this_session_finish_at', 'this_session_elapsed_time', 'this_session_error',
+                    'other_session_start_at', 'other_session_finish_at', 'other_session_elapsed_time', 'sent_count'].indexOf(key) != -1) continue ;
             group_debug_operations[group_debug_seq][key] = options[key] ;
         } // for key
     } // debug_group_operation_update
@@ -304,10 +304,10 @@ var MoneyNetworkAPILib = (function () {
             console.log(pgm2 + 'Error. Has already set finish_at timestamp for group_debug_seq ' + group_debug_seq) ;
             return ;
         }
-        if (error) group_debug_operations[group_debug_seq].error = error ;
-        group_debug_operations[group_debug_seq].finish_at = new Date().getTime() ;
-        group_debug_operations[group_debug_seq].elapsed_time = group_debug_operations[group_debug_seq].finish_at - group_debug_operations[group_debug_seq].start_at ;
-        console.log(pgm2 + 'total elapsed time for group_debug_seq ' + group_debug_seq + ' was ' + group_debug_operations[group_debug_seq].elapsed_time + ' ms') ;
+        if (error) group_debug_operations[group_debug_seq].this_session_error = error ;
+        group_debug_operations[group_debug_seq].this_session_finish_at = new Date().getTime() ;
+        group_debug_operations[group_debug_seq].this_session_elapsed_time = group_debug_operations[group_debug_seq].this_session_finish_at - group_debug_operations[group_debug_seq].this_session_start_at ;
+        console.log(pgm2 + 'total elapsed time for group_debug_seq ' + group_debug_seq + ' was ' + group_debug_operations[group_debug_seq].this_session_elapsed_time + ' ms') ;
         console.log(pgm2 + 'group_debug_operations = ' + JSON.stringify(group_debug_operations[group_debug_seq])) ;
     } // debug_group_operation_end
 
@@ -322,33 +322,105 @@ var MoneyNetworkAPILib = (function () {
         }
         stat = [] ;
         console.log(pgm + 'this_session_filename = ' + encrypt.this_session_filename) ;
+        //this_session_filename = 4e545024a7
         console.log(pgm + 'group_debug_operations = ' + JSON.stringify(group_debug_operations)) ;
+        //group_debug_operations = {
+        //    "27": {
+        //        "this_session_start_at": 1510743385811,
+        //        "this_session_filename": "4e545024a7",
+        //        "direction": "in",
+        //        "filename": "5e901f6760-i.1510743365584",
+        //        "msgtype": "get_password",
+        //        "this_session_finish_at": 1510743408797,
+        //        "this_session_elapsed_time": 22986
+        //    }
+        //};
         for (group_debug_seq in group_debug_operations) {
             if (encrypt.this_session_filename != group_debug_operations[group_debug_seq].this_session_filename) continue ; // not this session
-            if (group_debug_operations[group_debug_seq].error) continue ; // not a full request-response cycle
-            if (group_debug_operations[group_debug_seq].direction != 'in') continue ; // not an incoming request from other session
-            // check sent count. send info twice just to be sure
-            if (!group_debug_operations[group_debug_seq].sent) group_debug_operations[group_debug_seq].sent = 0 ;
-            if (group_debug_operations[group_debug_seq].sent > 2) continue ;
-            group_debug_operations[group_debug_seq].sent++ ;
+            if (group_debug_operations[group_debug_seq].this_session_error) continue ; // cannot use this information. not a full request-response cycle
+            if (!group_debug_operations[group_debug_seq].filename) continue ; // error or not yet any filename for this group debug operation
+            if (!group_debug_operations[group_debug_seq].msgtype) continue ; // error. no msgtype for this group debug operation
+            if (group_debug_operations[group_debug_seq].direction != 'in') continue ; // not an incoming request
+            if (!group_debug_operations[group_debug_seq].this_session_finish_at) continue ; // wait. group operation is not yet finished
+            // check sent count. send info twice to other session just to be sure
+            if (!group_debug_operations[group_debug_seq].sent_count) group_debug_operations[group_debug_seq].sent_count = 0 ;
+            if (group_debug_operations[group_debug_seq].sent_count > 2) continue ;
+            group_debug_operations[group_debug_seq].sent_count++ ;
             // send operation info to other session
             stat.push({
+                filename: group_debug_operations[group_debug_seq].filename,
                 msgtype: group_debug_operations[group_debug_seq].msgtype,
-                start_at: group_debug_operations[group_debug_seq].start_at,
-                finish_at: group_debug_operations[group_debug_seq].finish_at,
-                error: group_debug_operations[group_debug_seq].error
+                start_at: group_debug_operations[group_debug_seq].this_session_start_at,
+                finish_at: group_debug_operations[group_debug_seq].this_session_finish_at
             }) ;
         }
         if (!stat.length) console.log(pgm + 'warning. could not find any group operations for this session') ;
         return stat ;
     } // debug_group_operation_get_stat
 
-    // receive timeout stat from other session
+    // receive timeout stat from other session. May be contain additional info about a previous timeout response error in this session
     function debug_group_operation_receive_stat (encrypt, stat) {
         var pgm = module + '.debug_group_operation_receive_stat: ' ;
-        console.log(pgm + 'group_debug_operations = ' + JSON.stringify(group_debug_operations)) ;
+        var i, group_debug_seq ;
+        console.log(pgm + 'group_debug_operations (before) = ' + JSON.stringify(group_debug_operations)) ;
         console.log(pgm + 'stat = ' + JSON.stringify(stat)) ;
         console.log(pgm + 'todo: merge info from stat into group_debug_operations') ;
+        if (!is_MoneyNetworkAPI(encrypt)) throw pgm + 'invalid call. required parameter encrypt must be a MoneyNetworkAPI instance' ;
+        if (!encrypt.this_session_filename) {
+            console.log(pgm + 'error. encrypt.this_session_filename is not initialized') ;
+            return ;
+        }
+
+        // timeout message received from W2:
+        // request = {
+        //    "msgtype":"timeout",
+        //    "stat":[
+        //       {"msgtype":"ping",
+        //        "start_at":1510676123675, == 17:15:23 = received in W2 sesssion
+        //        "finish_at":1510676146675 == 17:15:46 = signed in W2 session = elapsed time 23 seconds
+        //    }]
+        //}
+        //
+        // group operation stat in MN
+        // group_debug_operations = {
+        //    "start_at":1510676121739, == 17:15:21 == start in MN session
+        //    "msgtype":"ping",
+        //    "this_session_filename":"3a875e6813",
+        //    "error":"Timeout. ping response was not received", == error message in MN session
+        //    "finish_at":1510676132715, ==  17:15:32 == timeout in MN session
+        //    "elapsed_time":10976
+        // }
+
+        for (i=0 ; i<stat.length ; i++) {
+            for (group_debug_seq in group_debug_operations) {
+                if (group_debug_operations[group_debug_seq].this_session_filename != encrypt.this_session_filename) continue ; // not this session
+                if (group_debug_operations[group_debug_seq].filename != stat[i].filename) continue ; // not this file
+                if (group_debug_operations[group_debug_seq].other_session_start_at) break ; // already received
+                if (group_debug_operations[group_debug_seq].msgtype != stat[i].msgtype) {
+                    console.log(pgm + 'error. identical filename but different msgtype. group_debug_seq = ' + group_debug_seq + ', stat = ' + JSON.stringify(stat[i]) + ', group_debug_operations = ' + JSON.stringify(group_debug_operations[group_debug_seq])) ;
+                    continue ;
+                }
+                group_debug_operations[group_debug_seq].other_session_start_at = stat[i].start_at ;
+                group_debug_operations[group_debug_seq].other_session_finish_at = stat[i].finish_at ;
+                group_debug_operations[group_debug_seq].other_session_elapsed_time = stat[i].finish_at - stat[i].start_at ;
+                break ;
+            }
+        }
+        console.log(pgm + 'group_debug_operations (after) = ' + JSON.stringify(group_debug_operations)) ;
+        // group_debug_operations (after) = {
+        //    "75": {
+        //        "this_session_start_at": 1510761567341,
+        //        "msgtype": "balance",
+        //        "this_session_filename": "82356e9dcf",
+        //        "filename": "82356e9dcf-i.1510761567353",
+        //        "this_session_error": "Timeout. balance response was not received",
+        //        "this_session_finish_at": 1510761573453,
+        //        "this_session_elapsed_time": 6112,
+        //        "other_session_start_at": 1510761569914,
+        //        "other_session_finish_at": 1510761592947,
+        //        "other_session_elapsed_time": 23033
+        //    }
+        //};
     } // debug_group_operation_receive_stat
 
 
@@ -798,10 +870,10 @@ var MoneyNetworkAPILib = (function () {
                     if (!fileget) return step_3_run_cb({db_query_at: now}, null, null) ; // cb must fileGet and decrypt
                     // received a request. use group_debug_seq to follow request-response cycle from start to end.
                     // information used in debugging and in timeout message
-                    group_debug_seq = debug_group_operation_start(encrypt) ;
+                    group_debug_seq = debug_group_operation_start() ;
                     pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                     encrypt.get_session_filenames({}, function(this_session_filename, other_session_filename, unlock_pwd2) {
-                        MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {this_session_filename: this_session_filename, direction: direction}) ;
+                        MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {this_session_filename: this_session_filename, direction: direction, filename: (direction == 'in' ? filename : null)}) ;
                         options = { inner_path: inner_path} ;
                         // filetypes: -i, -e, -o, -io, -p
                         if (['-e', '-o'].indexOf(optional) != -1) {
@@ -837,6 +909,8 @@ var MoneyNetworkAPILib = (function () {
                 }  ;
                 step_1_fileget() ;
                 done[filename] = true;
+                // prevent mutating variables in loop. only one incoming message for each demon loop = one message every 500 ms
+                break ;
             } // for i
 
         }); // dbQuery callback
@@ -1290,7 +1364,19 @@ var MoneyNetworkAPILib = (function () {
                         "additionalProperties": false
                     },
                     "stat": {
-                        "type": 'array'
+                        "type": 'array',
+                        "items": {
+                            "type": 'object',
+                            "properties": {
+                                "filename": { "type": 'string'},
+                                "msgtype": {"type": 'string'},
+                                "start_at": {"type": 'number', "multipleOf": 1.0},
+                                "finish_at": {"type": 'number', "multipleOf": 1.0}
+                            },
+                            "required": ['filename', 'msgtype', 'start_at', 'finish_at'],
+                            "additionalProperties": false
+                        },
+                        "minItems": 1
                     }
                 },
                 "required": ['msgtype', 'stat'],
@@ -2070,7 +2156,7 @@ var MoneyNetworkAPILib = (function () {
 
             // get a group debug seq. track all connected log messages. there can be many running processes
             if (extra && extra.group_debug_seq) group_debug_seq = extra.group_debug_seq ;
-            else group_debug_seq = debug_group_operation_start(encrypt);
+            else group_debug_seq = debug_group_operation_start();
             pgm = module + '.process_publish_messages/' + group_debug_seq + ': ';
             console.log(pgm + 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request && request.msgtype ? 'receive ' + request.msgtype + ' message' : 'process_publish_messages') + ' operation', group_debug_seq);
             if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype}) ;
@@ -2630,12 +2716,12 @@ var MoneyNetworkAPI = function (options) {
     else console.log(pgm + prefix + 'Encryption setup: waiting for ' + missing_keys.join(', '));
 }; // MoneyNetworkAPI
 
-MoneyNetworkAPI.prototype.log = function (calling_pgm, text, debug_seq) {
+MoneyNetworkAPI.prototype.log = function (calling_pgm, text, group_debug_seq) {
     var pgm = this.module + '.log: ' ;
     var prefix;
     if (!this.debug) return;
     if (arguments.length < 2) throw pgm + 'invalid call. two arguments pgm and text expected' ;
-    prefix = this.debug == true ? '' : this.debug + (debug_seq ? '/' + debug_seq : '') + ': ';
+    prefix = (this.debug == true ? '' : this.debug) + (group_debug_seq ? '/' + group_debug_seq : '') + ': ';
     console.log(calling_pgm + prefix + text);
 }; // log
 
@@ -3187,7 +3273,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 
     // track all console.log for this send_message call.
     if (options.group_debug_seq) group_debug_seq = options.group_debug_seq ;
-    else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start(self) ;
+    else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start() ;
     self.log(pgm, 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request.msgtype ? 'send ' + request.msgtype + ' message': 'send_message') + ' operation', group_debug_seq);
     if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype});
 
@@ -3196,6 +3282,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     };
     if (typeof cb != 'function') throw pgm + 'Invalid call. parameter 3 cb must be a callback function' ;
 
+    this.log(pgm, 'sessionid = ' + this.sessionid, group_debug_seq) ;
     this.log(pgm, 'request = ' + JSON.stringify(request), group_debug_seq) ;
     request_at = new Date().getTime();
 
@@ -3326,9 +3413,10 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                     var pgm = self.module + '.send_message add_optional_files_support callback 4: ';
                     var inner_path4, json_raw;
                     if (!res || res.error) return set_error('Cannot send message. Add optional files support failed. ' + JSON.stringify(res));
-
+                    self.log(pgm, 'group_debug_seq = ' + JSON.stringify(group_debug_seq)) ; // todo: no group debug seq in optionalFileInfo debug messages
                     // 5: write file
                     inner_path4 = self.this_user_path + this_session_filename + optional + '.' + request_file_timestamp;
+                    MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {filename: this_session_filename + optional + '.' + request_file_timestamp}) ;
                     json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
                     MoneyNetworkAPILib.z_file_write(pgm, inner_path4, btoa(json_raw), {group_debug_seq: group_debug_seq}, function (res) {
                         var pgm = self.module + '.send_message fileWrite callback 5: ';
@@ -3342,6 +3430,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             var pgm = self.module + '.send_message siteSign callback 6: ';
                             var debug_seq6, sign_at, elapsed_time_ms, elapsed_time_s, elapsed_text ;
                             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq5, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+                            self.log(pgm, 'group_debug_seq = ' + JSON.stringify(group_debug_seq)) ; // todo: no group debug seq in optionalFileInfo debug messages
                             self.log(pgm, 'res = ' + JSON.stringify(res), group_debug_seq);
                             if (!response) {
                                 // no response requested for this outgoing message. end group debug operation after sign
@@ -3388,6 +3477,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                 // outgoing optional file:
                                 // - is_pinned=1, is_downloaded=1 and time_added=time_downloaded
 
+                                self.log(pgm, 'group_debug_seq = ' + JSON.stringify(group_debug_seq)) ; // todo: no group debug seq in optionalFileInfo debug messages
                                 if (request.request) {
                                     self.log(pgm, 'sending a response to a previous request. start cleanup job to response. must delete response file after request timeout', group_debug_seq);
                                     cleanup_in = timeout_at - request_at;
@@ -3417,6 +3507,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     var debug_seq1;
                                     if (!cleanup_job_id) return; // already run
                                     cleanup_job_id = null;
+                                    self.log(pgm, 'group_debug_seq = ' + group_debug_seq, group_debug_seq) ;
                                     // problem with fileDelete: Delete error: [Errno 2] No such file or directory. checking file before fileDelete operation
                                     // step 1: check file before fileDelete
                                     debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileGet', null, group_debug_seq);
@@ -3425,7 +3516,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                         var debug_seq2;
                                         MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, res1 ? 'OK' : 'Not found');
                                         if (!res1) {
-                                            console.log(pgm + 'warning. optional file ' + inner_path4 + ' was not found');
+                                            self.log(pgm, 'warning. optional file ' + inner_path4 + ' was not found', group_debug_seq);
                                             return;
                                         }
                                         // transaction. don't delete files while publishing
@@ -3596,10 +3687,15 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 // - optional notification. text or array with type, message and timeout (wrapperNotofication)
 MoneyNetworkAPI.prototype.send_timeout_message = function(inner_path, msgtype, notification) {
     var pgm = this.module + '.send_timeout_message: ';
-    var self, group_debug_seq, pos, notification_type, notification_message, notification_timeout, stat, request, timeout_at ;
+    var self, group_debug_seq, pos, notification_type, notification_message, notification_timeout, stat, request, timeout_at, stat ;
     self = this;
     this.check_destroyed(pgm) ;
-    group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start(this) ;
+    stat = MoneyNetworkAPILib.debug_group_operation_get_stat(this) ;
+    if (!stat.length) {
+        this.log(pgm, 'Skipping timeout_message. No new process information was found in group_debug_operations') ;
+        return ;
+    }
+    group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start() ;
     this.log(pgm, 'Using group_debug_seq ' + group_debug_seq + ' for this send timeout message operation', group_debug_seq);
     if (typeof inner_path != 'string') throw pgm + 'invalid call. parameter 1 inner_path must be a string' ;
     if (msgtype && (typeof msgtype != 'string')) throw pgm + 'invalid call. parameter 2 msgtype must be a string' ;
@@ -3634,7 +3730,7 @@ MoneyNetworkAPI.prototype.send_timeout_message = function(inner_path, msgtype, n
         } ;
         if (notification_timeout) request.nofication.timeout = notification_timeout ;
     }
-    request.stat = MoneyNetworkAPILib.debug_group_operation_get_stat(this) ;
+    request.stat = stat ;
     //request = {
     //    "msgtype": "timeout",
     //    "stat": [

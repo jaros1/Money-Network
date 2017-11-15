@@ -563,7 +563,7 @@ angular.module('MoneyNetwork')
             try {
                 // get a group debug seq. track all connected log messages. there can be many running processes
                 if (extra && extra.group_debug_seq) group_debug_seq = extra.group_debug_seq ;
-                else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start(encrypt);
+                else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start();
                 pgm = service + '.process_incoming_message/' + group_debug_seq + ': ';
                 console.log(pgm + 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request && request.msgtype ? 'receive ' + request.msgtype + ' message' : 'process_incoming_message') + ' operation');
                 if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype});
@@ -812,7 +812,6 @@ angular.module('MoneyNetwork')
                     // timeout message from wallet. wallet sent response after timeout. There may be a timeout failure in MN session
                     // merge MN process information and wallet process information.
                     MoneyNetworkAPILib.debug_group_operation_receive_stat(encrypt, request.stat) ;
-
                 }
                 else {
                     response.error = 'Unknown msgtype ' + request.msgtype;
