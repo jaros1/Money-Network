@@ -358,38 +358,17 @@ var MoneyNetworkAPILib = (function () {
         return stat ;
     } // debug_group_operation_get_stat
 
-    // receive timeout stat from other session. May be contain additional info about a previous timeout response error in this session
+    // receive timeout message stat from other session. May be contain additional info about a previous timeout response error in this session
     function debug_group_operation_receive_stat (encrypt, stat) {
         var pgm = module + '.debug_group_operation_receive_stat: ' ;
-        var i, group_debug_seq ;
-        console.log(pgm + 'group_debug_operations (before) = ' + JSON.stringify(group_debug_operations)) ;
-        console.log(pgm + 'stat = ' + JSON.stringify(stat)) ;
-        console.log(pgm + 'todo: merge info from stat into group_debug_operations') ;
+        var i, group_debug_seq, pgm2 ;
+        // console.log(pgm + 'group_debug_operations (before) = ' + JSON.stringify(group_debug_operations)) ;
+        // console.log(pgm + 'stat = ' + JSON.stringify(stat)) ;
         if (!is_MoneyNetworkAPI(encrypt)) throw pgm + 'invalid call. required parameter encrypt must be a MoneyNetworkAPI instance' ;
         if (!encrypt.this_session_filename) {
             console.log(pgm + 'error. encrypt.this_session_filename is not initialized') ;
             return ;
         }
-
-        // timeout message received from W2:
-        // request = {
-        //    "msgtype":"timeout",
-        //    "stat":[
-        //       {"msgtype":"ping",
-        //        "start_at":1510676123675, == 17:15:23 = received in W2 sesssion
-        //        "finish_at":1510676146675 == 17:15:46 = signed in W2 session = elapsed time 23 seconds
-        //    }]
-        //}
-        //
-        // group operation stat in MN
-        // group_debug_operations = {
-        //    "start_at":1510676121739, == 17:15:21 == start in MN session
-        //    "msgtype":"ping",
-        //    "this_session_filename":"3a875e6813",
-        //    "error":"Timeout. ping response was not received", == error message in MN session
-        //    "finish_at":1510676132715, ==  17:15:32 == timeout in MN session
-        //    "elapsed_time":10976
-        // }
 
         for (i=0 ; i<stat.length ; i++) {
             for (group_debug_seq in group_debug_operations) {
@@ -403,10 +382,12 @@ var MoneyNetworkAPILib = (function () {
                 group_debug_operations[group_debug_seq].other_session_start_at = stat[i].start_at ;
                 group_debug_operations[group_debug_seq].other_session_finish_at = stat[i].finish_at ;
                 group_debug_operations[group_debug_seq].other_session_elapsed_time = stat[i].finish_at - stat[i].start_at ;
+                pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
+                console.log(pgm2 + 'received stat from other session about previous ' + stat[i].msgtype + ' request. group_debug_operations = ' + JSON.stringify(group_debug_operations[group_debug_seq]));
                 break ;
             }
         }
-        console.log(pgm + 'group_debug_operations (after) = ' + JSON.stringify(group_debug_operations)) ;
+        // console.log(pgm + 'group_debug_operations (after) = ' + JSON.stringify(group_debug_operations)) ;
         // group_debug_operations (after) = {
         //    "75": {
         //        "this_session_start_at": 1510761567341,
@@ -739,13 +720,23 @@ var MoneyNetworkAPILib = (function () {
     var timestamp_re = /^[0-9]{13}$/ ;
     function message_demon() {
         var pgm = module + '.message_demon: ';
-        var filename, api_query_1, session_filename, first, now, debug_seq;
+        var filename, api_query_1, session_filename, first, now, debug_seq, timeout_in;
         // check for expired callbacks. processes waiting for a response
         now = new Date().getTime();
         for (filename in done) {
             if (done[filename] == true) continue;
-            if (debug) console.log(pgm + 'done[' + filename + ']=' + JSON.stringify(done[filename]) + ', now = ' + now) ;
-            if (done[filename].timeout_at > now) continue;
+            if (done[filename].timeout_at > now) {
+                if (debug) {
+                    // log at start and and once every 5 seconds
+                    timeout_in = done[filename].timeout_in || -1 ;
+                    done[filename].timeout_in = Math.round((done[filename].timeout_at - now) / 1000) ;
+                    if ((timeout_in == -1) ||
+                        ((done[filename].timeout_in % 5 == 0) && (timeout_in != done[filename].timeout_in))) {
+                        console.log(pgm + 'timeout_in = ' + done[filename].timeout_in + ', done[' + filename + ']=' + JSON.stringify(done[filename]) + ', now = ' + now) ;
+                    }
+                }
+                continue;
+            }
             if (debug) console.log(pgm + 'timeout. running callback for ' + filename);
             try {
                 done[filename].cb({error: 'Timeout while waiting for ' + filename + '. request was ' + JSON.stringify(done[filename].request)});
@@ -3450,6 +3441,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                 new_response = MoneyNetworkAPILib.debug_group_operation_get_response(request.msgtype, self) ;
                 if (new_response) {
                     self.log(pgm, 'previous problems with timeout for ' + request.msgtype + ', old response = ' + cleanup_in + ', new response = ' + new_response, group_debug_seq) ;
+                    self.log(pgm, 'todo: add some parameter to send_message with adjust response setting. autoadjust to max response time may not by the wish from calling code') ;
                     if (new_response > cleanup_in) {
                         // adjust cleanup and timeout_at variables before sending message to other session
                         cleanup_in = new_response ;
@@ -3569,7 +3561,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     // problem with fileDelete: Delete error: [Errno 2] No such file or directory. checking file before fileDelete operation
                                     // step 1: check file before fileDelete
                                     debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'fileGet', null, group_debug_seq);
-                                    MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path4, required: false, timeout: 1}, function (res1) {
+                                    MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path4, required: false, timeout: 1, group_debug_seq: group_debug_seq}, function (res1) {
                                         var pgm = self.module + '.send_message.delete_request fileGet callback 1: ';
                                         var debug_seq2;
                                         MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, res1 ? 'OK' : 'Not found');
