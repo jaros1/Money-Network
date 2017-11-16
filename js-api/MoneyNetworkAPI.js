@@ -424,11 +424,44 @@ var MoneyNetworkAPILib = (function () {
 
     } // debug_group_operation_receive_stat
 
-
+    // lookup rows in group_debug_operations for this message type. Use other session elapsed time + 2 seconds
     function debug_group_operation_get_response(msgtype, encrypt) {
-
+        var pgm = module + '.debug_group_operation_get_response: ' ;
+        var group_debug_seq, elapsed, min, max, sum, avg, count ;
+        if (!is_MoneyNetworkAPI(encrypt)) throw pgm + 'invalid call. required parameter encrypt must be a MoneyNetworkAPI instance' ;
+        if (!encrypt.this_session_filename) {
+            console.log(pgm + 'error. encrypt.this_session_filename is not initialized') ;
+            return ;
+        }
+        count = 0 ;
+        sum = 0 ;
+        for (group_debug_seq in group_debug_operations) {
+            if (group_debug_operations[group_debug_seq].this_session_filename != encrypt.this_session_filename) continue ; // not this session
+            if (group_debug_operations[group_debug_seq].msgtype != msgtype) continue ; // not this msgtype
+            if (!group_debug_operations[group_debug_seq].this_session_finish_at) continue ; // still running
+            if (!group_debug_operations[group_debug_seq].other_session_start_at) continue ; // not yet received any info from other session
+            if (group_debug_operations[group_debug_seq].this_session_error &&
+                !group_debug_operations[group_debug_seq].this_session_error.match(/^timeout/i)) continue ; // error and not a timeout error
+            elapsed = group_debug_operations[group_debug_seq].other_session_elapsed_time + 2000 ;
+            if (count) {
+                if (elapsed < min) min = elapsed ;
+                if (elapsed > max) max = elapsed ;
+            }
+            else {
+                min = elapsed ;
+                max = elapsed ;
+            }
+            sum = sum + elapsed ;
+            count++ ;
+        } // for
+        if (count == 0) {
+            console.log(pgm + 'no process info found for msgtype ' + msgtype) ;
+            return ;
+        }
+        avg = Math.round(sum / count) ;
+        console.log(pgm + 'msgtype = ' + msgtype + ', count = ' + count + ', min = ' + min + ', max = ' + max + ', avg = ' + avg) ;
+        return max ;
     } // debug_group_operation_get_response
-
 
     // global variables client and master. used in MN <=> wallet communication:
     // - client false/master true; MoneyNetwork, site_address !=  1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk. server = true
@@ -3378,7 +3411,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 
 
         cleanup_in = response ;
-        timeout_at = request_at + response;
+        timeout_at = request_at + cleanup_in;
         year = 1000 * 60 * 60 * 24 * 365.2425;
         month = year / 12;
         // use a random timestamp 1 year ago as response filename
@@ -3416,10 +3449,14 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
             if (request.response) {
                 new_response = MoneyNetworkAPILib.debug_group_operation_get_response(request.msgtype, self) ;
                 if (new_response) {
-                    self.log(pgm, 'previous problems with timeout for ' + request.msgtype + ', old response = ' + request.response + ', new response = ' + new_response, group_debug_seq) ;
-                    if (new_response > request.response) request.response = new_response ;
-                    timeout_at = request_at + request.response;
-                    self.log(pgm, 'new timeout_at = ' + timeout_at, group_debug_seq) ;
+                    self.log(pgm, 'previous problems with timeout for ' + request.msgtype + ', old response = ' + cleanup_in + ', new response = ' + new_response, group_debug_seq) ;
+                    if (new_response > cleanup_in) {
+                        // adjust cleanup and timeout_at variables before sending message to other session
+                        cleanup_in = new_response ;
+                        timeout_at = timeout_at = request_at + cleanup_in;
+                        request.timeout_at = timeout_at ;
+                    }
+                    self.log(pgm, 'new cleanup_in = ' + cleanup_in + ', new timeout_at = ' + timeout_at, group_debug_seq) ;
                 }
             }
 
