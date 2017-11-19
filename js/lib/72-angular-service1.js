@@ -1879,9 +1879,6 @@ angular.module('MoneyNetwork')
                                 zeronet_site_publish_interval = 0;
                                 z_cache.publish = false;
 
-                                // inform other running wallet sessions about publish
-                                console.log(pgm + 'todo: send published message to running wallet sessions');
-
                                 // debug: is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
                                 if (z_cache.user_setup.debug && z_cache.user_setup.debug.check_sha256_addresses) check_sha256_addresses('sitePublish', false, false);
 

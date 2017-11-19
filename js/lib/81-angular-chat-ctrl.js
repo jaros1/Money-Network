@@ -1159,7 +1159,7 @@ angular.module('MoneyNetwork')
                     url = '/' + money_transaction.wallet_url;
                     moneyNetworkService.open_window(pgm, url);
                 } ;
-                moneyNetworkService.get_currencies(function (currencies, delayed) {
+                moneyNetworkService.get_currencies({}, function (currencies, refresh_angular_ui) {
                     var pgm = controller + '.open_wallet get_currencies callback 1: ' ;
                     var sessionid, i, balance ;
                     if (!self.currencies) self.currencies = currencies; // initialize currencies array used in UI
@@ -2163,7 +2163,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'todo: currencies. must have a distributed currency list. Symbol 2-5 characters, name and description');
 
                 // get list of currencies from connected wallets
-                moneyNetworkService.get_currencies(function (currencies, delayed) {
+                moneyNetworkService.get_currencies({}, function (currencies, refresh_angular_ui) {
 
                     console.log(pgm + 'currencies = ' + JSON.stringify(currencies));
                     console.log(pgm + 'todo: more currency info in ls_sessions. get_currencies call should be more like a refresh currencies request. currency info is used in chat (money transaction) and before get_currencies has been called');
@@ -2180,7 +2180,7 @@ angular.module('MoneyNetwork')
                     self.show_money = !self.show_money ;
                     console.log(pgm + 'show_money = ' + self.show_money) ;
 
-                    if (delayed) $rootScope.$apply() ;
+                    if (refresh_angular_ui) $rootScope.$apply() ;
 
                     //sessions = {
                     //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
@@ -2471,7 +2471,7 @@ angular.module('MoneyNetwork')
                     var plural, wallet_names, wallet_name, start_trans ;
 
                     plural = (m.message.message.money_transactions.length > 1 ? 's' : '') ;
-                    m.message.message.money_transactions_status.html = 'Staring money transaction' + plural + ' ...' ;
+                    m.message.message.money_transactions_status.html = 'Starting money transaction' + plural + ' ...' ;
                     console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
                     safeApply($scope) ;
 
@@ -2511,7 +2511,8 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
 
                             if (response && response.error && response.error.match(/^Timeout /)) {
-                                // OK. Timeout. Continue with next session
+                                // OK. Timeout. Continue with next wallet
+                                console.log(pgm, 'Timeout while waiting for start_mt response. Expects a timeout message from wallet in a few seconds with process information') ;
                                 set_check_error(wallet_name, 'Start money transaction timeout. Money transaction may or may not have been started') ;
                                 return start_trans(); // start trans in next wallet (if any)
                             }
@@ -2844,7 +2845,7 @@ angular.module('MoneyNetwork')
                         return step_2_ping_wallets() ;
                     } // done. next step
                     money_transaction = m.message.message.money_transactions[index] ;
-                    moneyNetworkService.get_currencies(function (currencies, delayed) {
+                    moneyNetworkService.get_currencies({}, function (currencies, refresh_angular_ui) {
                         var pgm = controller + '.approve_money_transactions.step_1_check_unknown_wallets get_currencies callback 1: ' ;
                         var wallet_name, unknown_wallet, i, balance, sessionid, error ;
                         if (!self.currencies) self.currencies = currencies ; // // initialize currencies array used in UI
