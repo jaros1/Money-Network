@@ -1599,7 +1599,7 @@ angular.module('MoneyNetwork')
                             //    "msgtype": "prepare_mt_response",
                             //    "jsons": [{"return_address": "2N4msGN4EZEJGbMpPVndRKkyQzHCzeQxF4X"}]
                             //};
-
+                            // test 133: response = {"msgtype":"response"}
                             if (response && response.error && response.error.match(/^Timeout /)) {
                                 // OK. Timeout. Continue with next session
                                 set_ping_error(balance.unique_text, 'Wallet validate timeout', true) ;
@@ -1613,6 +1613,14 @@ angular.module('MoneyNetwork')
                                     error = 'Wallet validating error' ;
                                 }
                                 set_ping_error(wallet_name, error, true) ;
+                                return check_transaction(); // check next wallet (if any)
+                            }
+                            if (response.msgtype == 'response') {
+                                // OK response to prepare_mt_request is not allowed.
+                                // must be either an error response or a prepare_mt_response
+                                error = 'Wallet validating error. Invalid response. Expected either a prepare_mt_response or an error response. Received a OK response' ;
+                                console.log(pgm + error) ;
+                                set_ping_error(wallet_name, error, true);
                                 return check_transaction(); // check next wallet (if any)
                             }
                             if (request.money_transactions.length != response.jsons.length) {
