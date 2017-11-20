@@ -618,7 +618,7 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'timeout. file_timestamp = ' + file_timestamp + ', request_timeout_at = ' + request_timeout_at + ', now = ' + now + ', total_overhead = ' + extra.total_overhead) ;
                     console.log(pgm + 'extra = ' + JSON.stringify(extra)) ;
                     if (request_timeout_at + extra.total_overhead < now) {
-                        console.log(pgm + 'error. request timeout. ignoring request = ' + JSON.stringify(request) + ', inner_path = ' + inner_path);
+                        console.log(pgm + 'error. request timeout. ignoring request = ' + JSON.stringify(request) + ', filename = ' + filename);
                         MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'Timeout. Request is too old') ;
                         // sending timeout notification to other process
                         encrypt.send_timeout_message(filename, request.msgtype, 'MoneyNetwork: please resend ' + request.msgtype + ' request') ;

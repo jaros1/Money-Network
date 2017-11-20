@@ -423,7 +423,7 @@ var MoneyNetworkAPILib = (function () {
             if (!group_debug_operations[group_debug_seq].other_session_start_at) continue ; // not yet received any info from other session
             if (group_debug_operations[group_debug_seq].this_session_error &&
                 !group_debug_operations[group_debug_seq].this_session_error.match(/^timeout/i)) continue ; // error and not a timeout error
-            elapsed = group_debug_operations[group_debug_seq].other_session_elapsed_time + 2000 ;
+            elapsed = group_debug_operations[group_debug_seq].other_session_elapsed_time + 3000 ; // adding extra overhead.
             if (count) {
                 if (elapsed < min) min = elapsed ;
                 if (elapsed > max) max = elapsed ;

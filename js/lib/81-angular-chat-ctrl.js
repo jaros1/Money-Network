@@ -2523,7 +2523,7 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'start money transaction error. response = ' + JSON.stringify(response)) ;
                                     error = 'Start money tranaction error' ;
                                 }
-                                set_check_error(wallet_name, error, true) ;
+                                set_check_error(wallet_name, error) ;
                                 return start_trans(); // start trans in next wallet (if any)
                             }
                             // done. OK response
@@ -2632,7 +2632,7 @@ angular.module('MoneyNetwork')
                         if (request.money_transactions.length != wallets_hash[wallet_name].money_transactions.length) {
                             error = 'Error. Expected ' + wallets_hash[wallet_name].money_transactions.length + ' money transactions in request. found ' + request.money_transactions.length;
                             console.log(pgm + error) ;
-                            set_check_error(wallet_name, error, false) ;
+                            set_check_error(wallet_name, error) ;
                             return check_transaction() ;
                         }
 
@@ -2647,7 +2647,7 @@ angular.module('MoneyNetwork')
 
                             if (response && response.error && response.error.match(/^Timeout /)) {
                                 // OK. Timeout. Continue with next session
-                                set_check_error(balance.unique_text, 'Money transaction check timeout', true) ;
+                                set_check_error(wallet_name, 'Money transaction check timeout') ;
                                 return check_transaction(); // check next wallet (if any)
                             }
                             if (!response || response.error) {
@@ -2657,7 +2657,7 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'wallet validation error. response = ' + JSON.stringify(response)) ;
                                     error = 'Wallet validating error' ;
                                 }
-                                set_check_error(wallet_name, error, true) ;
+                                set_check_error(wallet_name, error) ;
                                 return check_transaction(); // check next wallet (if any)
                             }
                             // done. OK response
