@@ -2873,7 +2873,7 @@ var MoneyNetworkAPI = function (options) {
         // else if (this.debug) console.log(pgm + key + ' = ' + this[key]) ;
     }
     prefix = this.debug == true ? '' : this.debug + ': ';
-    if (missing_keys.length == 0) console.log(pgm + prefix + 'Encryption setup done');
+    if (missing_keys.length == 0) console.log(pgm + prefix + 'Encryption setup done for ' + (this.hasOwnProperty('master') ? ' wallet<->wallet' : 'MoneyNetwork<->wallet') + ' communication');
     else console.log(pgm + prefix + 'Encryption setup: waiting for ' + missing_keys.join(', '));
 }; // MoneyNetworkAPI
 
@@ -3010,7 +3010,7 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
         if (['sessionid', 'other_session_pubkey', 'other_session_pubkey2', 'this_session_prvkey', 'this_session_userid2'].indexOf(key) == -1) continue;
         if (this[key] == null) missing_keys.push(key);
     }
-    if (missing_keys.length == 0) this.log(pgm, 'Encryption setup done');
+    if (missing_keys.length == 0) this.log(pgm, 'Encryption setup done for ' + (this.hasOwnProperty('master') ? ' wallet<->wallet' : 'MoneyNetwork<->wallet') + ' communication');
     else this.log(pgm, 'Encryption setup: waiting for ' + missing_keys.join(', '));
 }; // setup_encryption
 
@@ -3174,7 +3174,12 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, options, cb) {
         var pgm = self.module + '.decrypt_2 eciesDecrypt callback 1: ';
         var debug_seq1 ;
         MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, password ? 'OK' : 'Failed') ;
-        if (!password) throw pgm + 'key eciesDecrypt failed. key = ' + key + ', userid2 = ' + JSON.stringify(self.this_session_userid2 || 0);
+        // if (!password) throw pgm + 'key eciesDecrypt failed. key = ' + key + ', userid2 = ' + JSON.stringify(self.this_session_userid2 || 0);
+        if (!password) {
+            // no password. eciesDecrypt / decrypt_2 failed
+            self.log(pgm, 'eciesDecrypt failed. no password returned. key = ' + key) ;
+            return cb() ;
+        }
         // 1b. decrypt encrypted_text
         debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, null, 'aesDecrypt', null, options.group_debug_seq) ;
         self.ZeroFrame.cmd("aesDecrypt", [iv, encrypted_text, password], function (encrypted_text_1) {
@@ -3278,10 +3283,14 @@ MoneyNetworkAPI.prototype.decrypt_json = function (json, options, cb) {
     }
     else if (json.encryption == 2) {
         this.decrypt_2(json.message, {group_debug_seq: options.group_debug_seq}, function (decrypted_text) {
-            var json;
-            json = JSON.parse(decrypted_text);
-            if (json.hasOwnProperty('encryption')) self.decrypt_json(json, options, cb);
-            else cb(json); // done
+            var next_json;
+            if (!decrypted_text) {
+                self.log(pgm, 'decrypt_2 failed. json.message = ' + JSON.stringify(json.message)) ;
+                return cb(null) ;
+            }
+            next_json = JSON.parse(decrypted_text);
+            if (next_json.hasOwnProperty('encryption')) self.decrypt_json(next_json, options, cb);
+            else cb(next_json); // done
         });
     }
     else if (json.encryption == 3) {
@@ -3423,6 +3432,11 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (options, cb) {
 //     null - <session filename>.<timestamp> - normal file. distributed to all peers. used only as a fallback option when optional file distribution fails
 //   - subsystem: calling subsystem. for example api, mn or wallet. used for json schema validations
 //   - group_debug_seq: use group_debug_seq from calling problem
+
+//   - todo: count_down. function. for spinner count down in UI. wait loop in MoneyNetworkAPI will call count_down function once every second for UI update
+//   - todo: timeout_msg. text or array with timeout notification. Display notification when/if receiving timeout message with stat about response timeout for this send_message
+//   - todo: status: short text. update optional file with money transaction status. used by wallets. one for each wallet.
+
 // - cb: callback. returns an empty hash, a hash with an error messsage or a response
 // todo: how to send a message without waiting for a response and with a cleanup job. for example cleanup in 60 seconds. could be used in w2->MN ping and in timeout messages
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
