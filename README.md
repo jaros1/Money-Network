@@ -9,7 +9,7 @@ This is an attempt to make money free. To change our world's operating system. T
 The vision here is one app with easy access to any kind of money.
 Use the money systems you like and not only our outdated dangerous money system.
 Choose your money in the same way you choose clothes, food, housing, work, boyfriend, etc.
-We are only free if we are free to choose money systems. No more time for bullshit. Be free.
+We are only free if we are free to choose money systems. No more bullshit. Be free.
 
 Here is the demo. 
 
@@ -27,7 +27,7 @@ Being implemented:
 
 Todo:
 - Wallet or Money page: Test, add, use, rate and remove wallet sites.
-- Wallet or Money page. Money transaction overview
+- Wallet or Money page. Money transaction overview.
 
 ## MoneyNetwork Demo
 - http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
