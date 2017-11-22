@@ -1,7 +1,7 @@
 # MoneyNetwork
 Demo with complementary and alternative money. Implemented in ZeroFrame and AngularJS. Focus on privacy, encryption, max data on client and min data on server. 
 
-Money is everything. MoneyNetwork is a demo about money. With inspiration from Charles Eisenstein, Bernard Lietaer and others.
+Money is the force that permeates everything in our society. MoneyNetwork is a demo about money. With inspiration from Charles Eisenstein, Bernard Lietaer and others.
 
 Our world has one serious error. Our current monetary system. Almost all problems on our planet is caused by this error.
 This is an attempt to make money free. To build a bridge between our present traditional monetary system and an ecosystem of complementare and alternative money systems. A monetary ecosystem will solve many of the problems the world are facing today.
@@ -12,20 +12,23 @@ Choose your money in the same way you choose clothes, food, housing, work, boyfr
 We are only free if our money systems are also free.
 No more time for bullshit. Be free.
 
-Here is the demo. Someone more skilled than I may bring the vision into real existence.
+Here is the demo. 
 
 ## Project status
-Spare time project, work in progress, no money in here yet. For now just a chat app on a very promising platform (ZeroNet). 
+Spare time project, work in progress, working on money integration. For now mostly a chat app on a very promising platform (ZeroNet). 
 
 Implemented:
 - End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags and public chat are stored in clear on ZeroNet. 
 - Contact list: Categories: new, guest, unverified, verified and ignored.
 - Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat, markdown, emojis, reactions and comments
 
+Being implemented:
+- MoneyNetworkAPI for MoneyNetwork <=> wallets and wallet <=> wallet communication
+- Money: Send and request money in chat.  
+
 Todo:
-- API for ZeroNet communication between MoneyNetwork and wallet sites using ZeroNet merger site plugin. One ZeroNet merger site for each external money system. Starting with a test BitCoins wallet (blocktrail.com).
-- Wallet page: Test, add, use, rate and remove wallet sites.
-- Chat page: Add money transactions to chat ($). Send money, receive money, pay, receive payment etc.
+- Wallet or Money page: Test, add, use, rate and remove wallet sites.
+- Wallet or Money page. Money transaction overview
 
 ## MoneyNetwork Demo
 - http://127.0.0.1:43110/moneynetwork.bit/ ([ZeroNet](https://zeronet.readthedocs.io/en/latest/using_zeronet/installing/) required)
@@ -43,7 +46,7 @@ You can see all ZeroNet sites on proxy servers but do not use your normal ZeroNe
 
 ## API
 
-Two layers API between MoneyNetwork and external moneysystems. MoneyNetwork <=> API1 <=> MoneyNetwork wallet <=> API2 <=> external money system.
+Two layers API between MoneyNetwork and external money systems. MoneyNetwork <=> API1 <=> MoneyNetwork wallet sites <=> API2 <=> external money systems.
 
 API1: Used inside ZeroNet only. See below.
 
@@ -51,8 +54,9 @@ API2: Used between Money Network wallet sites and external money systems.
 Specific for each external API. For example https://www.blocktrail.com/api/docs that is a BitCoin API. See https://github.com/jaros1/Money-Network-W2/
 
 
-API1 is at present time very unstable. Json validation for in- and outgoing messages:
+API1 is at present time unstable. Json validation for in- and outgoing messages:
 
+    // Json schemas for json validation of ingoing and outgoing MoneyNetworkAPI messages
     var json_schemas = {
         wallet: {},
         mn: {},
@@ -420,13 +424,26 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
             "start_publish": {
                 "type": 'object',
                 "title": 'MoneyNetwork: Tell wallet session to start publish',
+                "description": 'Use cb_id to force a new publish. Ratelimit error in last wallet publish',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^start_publish$'},
                     "cb_id": {"type": "number", "multipleOf": 1.0}
                 },
                 "required": ['msgtype', 'cb_id'],
                 "additionalProperties": false
-            }, // get_published
+            }, // start_published
+
+            "check_publish": {
+                "type": 'object',
+                "title": 'MoneyNetwork. Asking wallet if publish started with start_publish is still running',
+                "description": 'For example after 30 seconds wait. Maybe a lost message or a JS error has prevented wallet session from reporting back to MoneyNetwork',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^check_publish$'},
+                    "cb_id": {"type": "number", "multipleOf": 1.0}
+                },
+                "required": ['msgtype', 'cb_id'],
+                "additionalProperties": false
+            }, // check_publish
 
             "published": {
                 "type": 'object',
@@ -455,7 +472,43 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
                 },
                 "required": ['msgtype', 'type'],
                 "additionalProperties": false
-            } // notification
+            }, // notification
+
+            "timeout": {
+                "type": 'object',
+                "title": 'MN/Wallet. Timeout message with notification and old processing information',
+                "description": 'Sending process must adjust timeout in requests to avoid timeout',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^timeout$'},
+                    "notification": {
+                        "type": 'object',
+                        "properties": {
+                            "type": { "type": 'string'},
+                            "message": { "type": 'string'},
+                            "timeout": { "type": 'number'}
+                        },
+                        "required": ['msgtype', 'message'],
+                        "additionalProperties": false
+                    },
+                    "stat": {
+                        "type": 'array',
+                        "items": {
+                            "type": 'object',
+                            "properties": {
+                                "filename": { "type": 'string'},
+                                "msgtype": {"type": 'string'},
+                                "start_at": {"type": 'number', "multipleOf": 1.0},
+                                "finish_at": {"type": 'number', "multipleOf": 1.0}
+                            },
+                            "required": ['filename', 'msgtype', 'start_at', 'finish_at'],
+                            "additionalProperties": false
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": ['msgtype', 'stat'],
+                "additionalProperties": false
+            } // timeout
 
         } // api
 
@@ -466,10 +519,9 @@ API1 is at present time very unstable. Json validation for in- and outgoing mess
 - html5, ccs3, javascript and some sql. Simple code, lots of comments and code should be "easy"" to follow. 
 - [AngularJS v1.5.8](https://angularjs.org/) (very well documented).
 - [ZeroNet 5.0](https://zeronet.readthedocs.io/en/latest/site_development/zeroframe_api_reference/) (documentation could be better).
-- Test: for now no testing framework. Just testing manually.
+- Method: Test dreven development. No testing framework. Just manual testing.
 
 ## Help
 Test help would by nice. Create an issue if you find something that should be fixed.
-
-Ideas and inspiration are welcome. Specially on wallet and money API parts that have not yet been started. Fell free to create an issue with your inputs,
+Money support would by nice. The 
 
