@@ -26,6 +26,7 @@
 // - use MN log syntax in in log. for example: <inner_path> fileWrite started. <inner_path> fileWrite finished. res = <res>
 // - add MN debug messages for ZeroNet API calls. See debug_z_api_operation_start and debug_z_api_operation_end
 // - add API version.
+// - all throw. output error in log before throw. exception is not always reported correct back to calling code
 
 
 // MoneyNetworkAPILib. Demon. Monitor and process incoming messages from other session(s)
@@ -240,7 +241,10 @@ var MoneyNetworkAPILib = (function () {
     function debug_z_api_operation_end (debug_seq, res) {
         var pgm, inner_path, cmd, debug_this, started_at, finished_at, elapsed_time, group_debug_seq ;
         pgm = module + '.debug_z_api_operation_end: ' ;
-        if (!z_debug_operations[debug_seq]) throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
+        if (!z_debug_operations[debug_seq]) {
+            console.log(pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found') ;
+            throw pgm + 'error. ZeroNet API operation with seq ' + debug_seq + ' was not found' ;
+        }
         pgm = z_debug_operations[debug_seq].pgm ;
         inner_path = z_debug_operations[debug_seq].inner_path ;
         cmd = z_debug_operations[debug_seq].cmd ;
@@ -546,13 +550,13 @@ var MoneyNetworkAPILib = (function () {
                 demon_id = setInterval(message_demon, (interval || 500));
                 if (debug) console.log(pgm + 'Started demon. process id = ' + demon_id);
             }
-            if (debug) {
-                // list sessions and debug info. See issue https://github.com/jaros1/Money-Network-W2/issues/15
-                for (other_session_filename in sessions) {
-                    encrypt = sessions[other_session_filename].encrypt ;
-                    console.log(pgm + 'other_session_filename ' + other_session_filename + (encrypt && encrypt.debug ? ' should be processed by ' + encrypt.debug : '')) ;
-                }
-            }
+            //if (debug) {
+            //    // list sessions and debug info. See issue https://github.com/jaros1/Money-Network-W2/issues/15
+            //    for (other_session_filename in sessions) {
+            //        encrypt = sessions[other_session_filename].encrypt ;
+            //        console.log(pgm + 'other_session_filename ' + other_session_filename + (encrypt && encrypt.debug ? ' should be processed by ' + encrypt.debug : '')) ;
+            //    }
+            //}
         }); // is_client callback
     } // add_session
 
@@ -715,6 +719,20 @@ var MoneyNetworkAPILib = (function () {
         if (debug) console.log(pgm + 'added a callback function for ' + response_filename + '. request = ' + JSON.stringify(options.request) + ', done[' + response_filename + '] = ' + JSON.stringify(done[response_filename]));
         return null;
     } // wait_for_file
+
+
+    // ask message_demon to reprocess already done file
+    // fallback used in case of lost messages or files arriving in wrong order
+    // see receive w2_check_mt message in w2 process_incoming_message (test bitcoin wallet)
+    function redo_file (request_filename) {
+        if (!done[request_filename]) return 'Not found in done' ;
+        if (done[request_filename] == true) {
+            delete done[request_filename] ;
+            return null ;
+        }
+        // must be a callback object
+        return 'Callback is already waiting for this file' ;
+    } // redo_file
 
 
     var timestamp_re = /^[0-9]{13}$/ ;
@@ -2759,6 +2777,7 @@ var MoneyNetworkAPILib = (function () {
         get_session: get_session,
         get_sessions: get_sessions,
         wait_for_file: wait_for_file,
+        redo_file: redo_file,
         delete_session: delete_session,
         delete_all_sessions: delete_all_sessions,
         clear_all_data: clear_all_data,
@@ -2806,6 +2825,7 @@ var MoneyNetworkAPILib = (function () {
 // - cb. callback function to process incoming messages for this session
 // - extra. hash with any additional session info. Not used by MoneyNetworkAPI
 // - master. only used for wallet to wallet communication. set client/master role for API instance and ignores global client/master setting
+// - todo: rename mester to sender and client to received https://github.com/jaros1/Money-Network/issues/273
 var MoneyNetworkAPI = function (options) {
     var pgm = 'new MoneyNetworkAPI: ';
     var missing_keys, key, prefix;
@@ -3942,5 +3962,21 @@ MoneyNetworkAPI.prototype.send_timeout_message = function(msgtype, notification)
     }) ; // send_message callback 1
 
 }; // send_timeout_message
+
+// ask message_demon to reprocess an already done incoming message. Used as fallback in case of lost messages or messages arriving in wrong order
+MoneyNetworkAPI.prototype.redo_file = function(request_filename) {
+    var pgm = this.module + '.redo_file: ';
+    var self;
+    self = this;
+    this.check_destroyed(pgm);
+    this.encrypt.get_session_filenames({}, function(this_session_filename, other_session_filename, unlock_pwd2) {
+        var pgm = self.module + '.redo_file get_session_filenames callback: ';
+        var lng ;
+        lng = other_session_filename.length ;
+        if (request_filename.substr(0,lng) != other_session_filename) return 'Invalid request_filename path. Expected path to start with ' + other_session_filename ;
+        return MoneyNetworkAPILib.redo_file(request_filename) ;
+    }) ; // get_session_filenames callback
+}; // redo_file
+
 
 // end MoneyNetworkAPI class
