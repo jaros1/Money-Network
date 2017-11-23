@@ -1828,7 +1828,7 @@ angular.module('MoneyNetwork')
             self.changed_chat_msg = "";
             self.edit_chat_msg = function (message, spam) {
                 var pgm = controller + '.edit_chat_msg: ';
-                var textarea_id, img_id, focus_textarea, update_zeronet ;
+                var textarea_id, img_id, focus_textarea, update_zeronet, msg_text ;
                 // console.log(pgm + 'message.message = ' + JSON.stringify(message.message));
                 if ((message.message.folder == 'outbox') && (message.message.message.msgtype == 'chat msg')) {
                     // edit previously sent chat message. open edit/delete message dialog
@@ -1859,6 +1859,33 @@ angular.module('MoneyNetwork')
                         else console.log(pgm + 'textarea element with id ' + id + ' was not found in page') ;
                     };
                     $timeout(focus_textarea);
+                }
+                else if (message.message.message.money_transactions) {
+                    console.log(pgm + 'inbox message with money transactions. confirm before delete') ;
+                    msg_text = formatChatMessage(message);
+                    if (msg_text.length > 40) msg_text = msg_text.substring(0, 20) + "..." + msg_text.substring(msg_text.length - 15);
+                    ZeroFrame.cmd("wrapperConfirm", ['Chat message with money transactions!<br>Delete "' + msg_text + '"?', "Delete"], function (confirmed) {
+                        if (!confirmed) return;
+
+                        // console.log(pgm + 'delete message. message = ' + JSON.stringify(message));
+                        // logical delete here. physical delete in ls_save_contacts
+                        message.chat_filter = false ;
+                        if (spam) {
+                            // move contact to ignored list and hide ignored list
+                            message.contact.type = 'ignore' ;
+                            if (self.setup.contact_filters.ignore == 'green') self.toggle_filter('ignore', spam) ;
+                            update_zeronet = false ;
+                        }
+                        else {
+                            // message.message.deleted_at = new Date().getTime();
+                            update_zeronet = moneyNetworkService.recursive_delete_message(message) ;
+                        } // logical delete.
+                        // if (apply) $scope.$apply();
+                        // update localStorage and optional zeronet
+                        // var update_zeronet = ((message.message.folder == 'outbox') && message.message.zeronet_msg_id) ;
+                        moneyNetworkService.ls_save_contacts(update_zeronet); // physical delete
+
+                    }) ;
                 }
                 else {
                     //// just delete other type of messages from localStorage (ingoing chat messages, contact added, contact deleted etc)

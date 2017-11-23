@@ -1401,7 +1401,7 @@ angular.module('MoneyNetwork')
                                 ignore_zeronet_msg_id[auth_address].push(message_with_envelope.zeronet_msg_id) ;
                             }
                             // 2) remember local_msg_seq from deleted inbox messages. Contact may request feedback info for this local_msg_seq later
-                            local_msg_seq = message.local_msg_seq ;
+                            local_msg_seq = message_with_envelope.local_msg_seq ;
                             if (local_msg_seq) {
                                 if (!contact.deleted_inbox_messages) contact.deleted_inbox_messages = {};
                                 key = contact.type == 'group' ? message_with_envelope.participant + ',' + local_msg_seq : local_msg_seq ;

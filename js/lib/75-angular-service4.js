@@ -796,9 +796,14 @@ angular.module('MoneyNetwork')
                     // received at notification from a wallet session. just display
                     // adding wallet_title to notification') ;
                     console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                    //request = {
+                    //    "msgtype": "notification",
+                    //    "type": "error",
+                    //    "message": "Stopping post start_mt processing<br>pubkeys message has already been sent"
+                    //};
                     MoneyNetworkAPILib.get_wallet_info(session_info.wallet_sha256, function (wallet_info, delayed) {
                         var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_wallet_info callback/' + group_debug_seq + ': ';
-                        var message;
+                        var message, notification;
                         if (!wallet_info || wallet_info.error || !wallet_info[session_info.wallet_sha256]) {
                             response.error = 'could not find wallet information for wallet_sha256 ' + session_info.wallet_sha256 + '. wallet_info = ' + JSON.stringify(wallet_info);
                             console.log(pgm + response.error);
@@ -807,8 +812,11 @@ angular.module('MoneyNetwork')
                             return done_and_send(response, encryptions);
                         }
                         message = $sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + $sanitize(request.message);
-                        console.log(pgm + 'message = ' + message) ;
-                        ZeroFrame.cmd("wrapperNotification", [request.type, message, request.timeout]);
+                        // console.log(pgm + 'message = ' + message) ;
+                        notification = [request.type, message] ;
+                        if (request.timeout) notification.push(request.timeout) ;
+                        // console.log(pgm + 'notification = ' + JSON.stringify(notification)) ;
+                        ZeroFrame.cmd("wrapperNotification", notification);
                         done_and_send(response, encryptions);
                     });
                     return;
