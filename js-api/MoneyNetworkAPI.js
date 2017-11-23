@@ -1850,12 +1850,12 @@ var MoneyNetworkAPILib = (function () {
         // todo: optional pattern. maybe optional files pattern overrules files_allowed pattern?
         extra = {} ;
         extra.optional_file = (['content.json', 'data.json', 'status.json', 'like.json', 'avatar.jpg', 'avatar.png', 'wallet.json'].indexOf(filename) == -1);
-        if (options.timeout_count) {
+        if (options.hasOwnProperty('timeout_count')) {
             // special MN option. retry optional fileGet <timeout_count> times. First fileGet will often fail with timeout
             extra.timeout_count = options.timeout_count ;
             delete options.timeout_count ;
         }
-        if (options.group_debug_seq) {
+        if (options.hasOwnProperty('group_debug_seq')) {
             // log option. add group debug seq to long serie of connected debug logs (send_message, process_incoming_message etc)
             extra.group_debug_seq = options.group_debug_seq ;
             delete options.group_debug_seq ;

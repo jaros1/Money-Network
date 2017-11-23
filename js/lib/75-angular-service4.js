@@ -656,12 +656,17 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'response = ' + JSON.stringify(response));
                         console.log(pgm + 'encryptions = ' + JSON.stringify(encryptions));
                     }
-                    else return; // exit. no response was requested
+                    else {
+                        // exit. no response was requested
+                        MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq) ;
+                        return;
+                    }
 
                     // send response to other session
                     encrypt.send_message(response, {timestamp: response_timestamp, msgtype: request.msgtype, request: file_timestamp, subsystem: 'api', timeout_at: request_timeout_at, group_debug_seq: group_debug_seq, encryptions: encryptions}, function (res) {
                         var pgm = service + '.process_incoming_message send_message callback 3/' + group_debug_seq + ': ';
                         console.log(pgm + 'res = ' + JSON.stringify(res));
+                        MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq) ;
                     }); // send_message callback 3
 
                 }; // done_and_send
@@ -790,6 +795,7 @@ angular.module('MoneyNetwork')
                 else if (request.msgtype == 'notification') {
                     // received at notification from a wallet session. just display
                     // adding wallet_title to notification') ;
+                    console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                     MoneyNetworkAPILib.get_wallet_info(session_info.wallet_sha256, function (wallet_info, delayed) {
                         var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_wallet_info callback/' + group_debug_seq + ': ';
                         var message;
@@ -801,8 +807,9 @@ angular.module('MoneyNetwork')
                             return done_and_send(response, encryptions);
                         }
                         message = $sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + $sanitize(request.message);
+                        console.log(pgm + 'message = ' + message) ;
                         ZeroFrame.cmd("wrapperNotification", [request.type, message, request.timeout]);
-
+                        done_and_send(response, encryptions);
                     });
                     return;
                 }
