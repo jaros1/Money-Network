@@ -2806,7 +2806,7 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'getting session. using sessionid = ' + session_info.sessionid);
                         MoneyNetworkAPILib.get_session(session_info.sessionid, function (session) {
                             var pgm = controller + '.approve_money_transaction.step_2_ping_wallets.ping_wallet get_session callback 1: ';
-                            var request, error, url ;
+                            var request, error, timeout_msg ;
                             if (!session) {
                                 error = 'error. could not ping ' + session_info.wallet_name + ' wallet. ' +
                                     'could not find any old session with sessionid ' + session_info.sessionid +
@@ -2823,7 +2823,8 @@ angular.module('MoneyNetwork')
                             // but long timeout for a not running wallet session is also a problem.
                             // keeping 10 sec timeout
                             request = { msgtype: 'ping' };
-                            session.encrypt.send_message(request, {response: 10000}, function (response) {
+                            timeout_msg = ['info', 'Issue with ping wallet timeout may have been solved<br>Please try again (Approve money transaction)', 10000] ;
+                            session.encrypt.send_message(request, {response: 10000, timeout_msg: timeout_msg}, function (response) {
                                 var pgm = controller + '.approve_money_transaction.step_2_ping_wallets.ping_wallet send_message callback 2: ';
                                 if (response && response.error && response.error.match(/^Timeout /)) {
                                     // OK. Timeout. Continue with next session

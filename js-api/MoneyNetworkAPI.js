@@ -377,7 +377,7 @@ var MoneyNetworkAPILib = (function () {
     // receive timeout message stat from other session. May be contain additional info about a previous timeout response error in this session
     function debug_group_operation_receive_stat (encrypt, stat) {
         var pgm = module + '.debug_group_operation_receive_stat: ' ;
-        var i, group_debug_seq, pgm2 ;
+        var i, group_debug_seq, pgm2, timeout_msg ;
         // console.log(pgm + 'group_debug_operations (before) = ' + JSON.stringify(group_debug_operations)) ;
         // console.log(pgm + 'stat = ' + JSON.stringify(stat)) ;
         if (!is_MoneyNetworkAPI(encrypt)) throw pgm + 'invalid call. required parameter encrypt must be a MoneyNetworkAPI instance' ;
@@ -400,6 +400,28 @@ var MoneyNetworkAPILib = (function () {
                 group_debug_operations[group_debug_seq].other_session_elapsed_time = stat[i].finish_at - stat[i].start_at ;
                 pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                 console.log(pgm2 + 'received stat from other session about previous ' + stat[i].msgtype + ' request. group_debug_operations = ' + JSON.stringify(group_debug_operations[group_debug_seq]));
+                // display timeout_msg?
+                //group_debug_operations = {
+                //    "this_session_start_at": 1511542656372,
+                //    "msgtype": "ping",
+                //    "timeout_msg": ["info", "Issue with ping wallet timeout may have been solved<br>Please try again (Approve money transaction)", 10000],
+                //    "this_session_filename": "88fdcc5c30",
+                //    "filename": "88fdcc5c30-i.1511542656375",
+                //    "this_session_error": "Timeout. ping response was not received",
+                //    "this_session_finish_at": 1511542667512,
+                //    "this_session_elapsed_time": 11140,
+                //    "other_session_start_at": 1511542658867,
+                //    "other_session_finish_at": 1511542681855,
+                //    "other_session_elapsed_time": 22988
+                //};
+                if (group_debug_operations[group_debug_seq].this_session_error &&
+                    group_debug_operations[group_debug_seq].this_session_error.match(/^timeout/i) &&
+                    group_debug_operations[group_debug_seq].timeout_msg) {
+                    timeout_msg = group_debug_operations[group_debug_seq].timeout_msg ;
+                    console.log(pgm + 'display timeout_msg = ' + JSON.stringify(timeout_msg)) ;
+                    if (typeof timeout_msg == 'string') timeout_msg = ['info', timeout_msg, 10000] ;
+                    ZeroFrame.cmd("wrapperNotification", timeout_msg) ;
+                }
                 break ;
             }
         }
@@ -687,7 +709,7 @@ var MoneyNetworkAPILib = (function () {
     // register callback to handle incoming message (response) with this filename
     // options:
     // - request: request json message. for debug messages
-    // - timeout: ńumber of ms before timeout.
+    // - timeout_at: ńumber of ms before timeout.
     // - cb: callback to handle incoming message
     // - cb_fileget: boolean: fileGet file before calling callback cb
     // - cb_decrypt: boolean: decrypt message before calling callback cb
@@ -697,7 +719,7 @@ var MoneyNetworkAPILib = (function () {
         error = function (error) {
             console.log(pgm + error) ;
             return error ;
-        }
+        };
         // check parameters
         // parameter 1: response_filename
         if (typeof response_filename != 'string') return error('invalid call. expected response_filename to be a string. response_filename = ' + JSON.stringify(response_filename));
@@ -3466,9 +3488,11 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (options, cb) {
 //     null - <session filename>.<timestamp> - normal file. distributed to all peers. used only as a fallback option when optional file distribution fails
 //   - subsystem: calling subsystem. for example api, mn or wallet. used for json schema validations
 //   - group_debug_seq: use group_debug_seq from calling problem
+//   - timeout_msg. text or array with timeout notification. Only used after timeout while waiting for response.
+//     notification will be displayed when/if receiving a timeout message with stat about response timeout for this send_message
+//     for example walet ping timeout. receive timeout message from other session. display timeout_msg in this session
 
 //   - todo: count_down. function. for spinner count down in UI. wait loop in MoneyNetworkAPI will call count_down function once every second for UI update
-//   - todo: timeout_msg. text or array with timeout notification. Display notification when/if receiving timeout message with stat about response timeout for this send_message
 //   - todo: status: short text. update optional file with money transaction status. used by wallets. one for each wallet.
 
 // - cb: callback. returns an empty hash, a hash with an error messsage or a response
@@ -3476,7 +3500,8 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (options, cb) {
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
     var self, response, request_msgtype, request_timestamp, encryptions, error, request_at, request_file_timestamp,
-        default_timeout, timeout_at, month, year, cleanup_in, debug_seq0, subsystem, optional, group_debug_seq, set_error ;
+        default_timeout, timeout_at, month, year, cleanup_in, debug_seq0, subsystem, optional, group_debug_seq,
+        set_error ;
     self = this;
     this.check_destroyed(pgm) ;
 
@@ -3532,6 +3557,18 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     }
     else optional = subsystem == 'api' ? '-i' : '-e' ; // optional file (internal or external)
     self.log(pgm, 'msgtype = ' + request.msgtype + ', subsystem = ' + subsystem + ', optional = ' + optional, group_debug_seq) ;
+    // timeout_msg
+    if (options.timeout_msg) {
+        // special notification display after receiving timeout message from other session (timeout when sending this message)
+        if (!response) return set_error('Invalid call. options.timeout_msg set and not waiting for any response') ;
+        if (typeof options.timeout_msg == 'string') ; // OK
+        else if (!Array.isArray(options.timeout_msg)) return set_error('invalid call. options.timeout_msg must be a string or an array with [type, message <,timeout> ]') ;
+        else if ((options.timeout_msg.length < 2) || (options.timeout_msg.length > 3)) return set_error('invalid call. options.timeout_msg must be a string or an [type, message <,timeout>] notification array') ;
+        else if (['info', 'error', 'done'].indexOf(options.timeout_msg[0]) == -1) return set_error('invalid call. first element in options.timeout_msg array must be info, error or done') ;
+        else if (typeof options.timeout_msg[1] != 'string') return set_error('invalid call. second element in options.timeout_msg array must be a string') ;
+        else if (options.timeout_msg[2] && (typeof options.timeout_msg[2] != 'number')) return set_error('invalid call. third element in options.timeout_msg array must be number') ;
+        MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {timeout_msg: options.timeout_msg}) ;
+    }
 
     // check setup
     // ZeroNet state
