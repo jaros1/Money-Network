@@ -19,6 +19,10 @@ angular.module('MoneyNetwork')
             return true ;
         }
 
+        function get_merger_type () {
+            return MoneyNetworkAPILib.get_merged_type() ;
+        }
+
         // debug wrappers
         function show_debug (keys) {
             return MoneyNetworkHelper.show_debug(keys) ;
@@ -42,7 +46,7 @@ angular.module('MoneyNetwork')
         // lost Merger:MoneyNetwork permission after fileGet operation to a "bad" file
         // https://github.com/HelloZeroNet/ZeroNet/issues/944 & https://github.com/HelloZeroNet/ZeroNet/issues/965
         var bad_files = [
-            "merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/19i2UW7b2mPd4n2iDEwmTSkc59ctF5raYa/1496604770300-1496604770300-2-chat.json"
+            "merged-" + get_merger_type() + "/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/19i2UW7b2mPd4n2iDEwmTSkc59ctF5raYa/1496604770300-1496604770300-2-chat.json"
         ] ;
 
         // startup tag cloud.
@@ -2050,7 +2054,7 @@ angular.module('MoneyNetwork')
 
             // is image attachment ready for download? should not be a problem ...
             // temp image_path - only used in error messages
-            image_path = "merged-MoneyNetwork/" + hub + "/data/users/" + auth_address + '/' + message_with_envelope.sent_at + '-%-image.json' ;
+            image_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + auth_address + '/' + message_with_envelope.sent_at + '-%-image.json' ;
             mn_query_8 =
                 "select filename, files_optional.size " +
                 "from files_optional, json " +
@@ -2079,7 +2083,7 @@ angular.module('MoneyNetwork')
                     return ;
                 }
                 // set real image_path. should be new format with <user_seq> in filename
-                image_path = "merged-MoneyNetwork/" + hub + "/data/users/" + auth_address + '/' + res[0].filename ;
+                image_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + auth_address + '/' + res[0].filename ;
                 if (res[0].size <= 2) {
                     console.log(pgm + 'optional image file ' + image_path + ' has been deleted') ;
                     if (cb) cb(false) ;
@@ -2580,7 +2584,7 @@ angular.module('MoneyNetwork')
                     contact = get_contact_by_unique_id(unique_id);
 
                     // temporary image path. used in error messages
-                    image_path = "merged-MoneyNetwork/" + contact.hub + "/data/users/" + contact.auth_address + '/' + res.timestamp + '-%-image.json';
+                    image_path = "merged-" + get_merger_type() + "/" + contact.hub + "/data/users/" + contact.auth_address + '/' + res.timestamp + '-%-image.json';
 
                     // check if image attachment exist. could have been cleanup or deleted by user
                     mn_query_9 =
@@ -2610,7 +2614,7 @@ angular.module('MoneyNetwork')
                             return;
                         }
                         // OK. optional image json file exist. start download. will trigger a event_file_done when ready
-                        image_path = "merged-MoneyNetwork/" + query_res[0].directory + '/' + query_res[0].filename;
+                        image_path = "merged-" + get_merger_type() + "/" + query_res[0].directory + '/' + query_res[0].filename;
                         debug('inbox', pgm + 'downloading image ' + image_path);
                         z_file_get(pgm, {inner_path: image_path, required: true}, function (image) {
                             var pgm = service + '.process_incoming_cryptmessage z_file_get callback 4: ';
@@ -2996,7 +3000,7 @@ angular.module('MoneyNetwork')
                             if (decrypted_message.timestamp > parseInt(key_a[0])) continue ; // to timestamp
                             if (decrypted_message.timestamp < parseInt(key_a[1])) continue ; // from timestamp
                             debug('reaction', pgm + 'object of reaction may be in ' + key) ;
-                            user_path = "merged-MoneyNetwork/" + z_cache.my_user_hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
+                            user_path = "merged-" + get_merger_type() + "/" + z_cache.my_user_hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
                             cache_filename = user_path + '/' + key ;
                             break ;
                         }
@@ -4335,7 +4339,7 @@ angular.module('MoneyNetwork')
                 "from " +
                 "  (select " +
                 "     substr(json.directory, 1, instr(json.directory,'/')-1) as hub," +
-                "     'merged-MoneyNetwork/' + || json.directory || '/' || files_optional.filename as filename," +
+                "     'merged-" + get_merger_type() + "/' + || json.directory || '/' || files_optional.filename as filename," +
                 "      substr(json.directory, instr(json.directory,'/data/users/')+12) || ',' ||  substr(filename,1,13) as image_index" +
                 "   from files_optional, json" +
                 "   where files_optional.filename like '%-image.json'" +
@@ -4518,7 +4522,7 @@ angular.module('MoneyNetwork')
             debug('file_done', pgm + 'filename = ' + filename) ;
 
             // read json file (content.json, data.json, status.json, -chat.json or -image.json)
-            merged_filename = 'merged-MoneyNetwork/' + hub + '/' + filename ;
+            merged_filename = 'merged-' + get_merger_type() + '/' + hub + '/' + filename ;
             z_file_get(pgm, {inner_path: merged_filename, required: false}, function (res) {
                 var pgm = service + '.event_file_done z_file_get callback 1: ';
                 var i, contact, auth_address, contacts_updated, index, my_pubkey_sha256, using_my_pubkey,
@@ -5400,7 +5404,7 @@ angular.module('MoneyNetwork')
 
                         // remove any already running getFile requests from previous get_public_chat requests
                         for (i=res.length-1 ; i >= 0 ; i--) {
-                            cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                            cache_filename = 'merged-' + get_merger_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
                             cache_status = files_optional_cache[cache_filename] ;
                             if (cache_status && cache_status.is_pending) res.splice(i,1) ;
                         }
@@ -5427,7 +5431,7 @@ angular.module('MoneyNetwork')
                                 continue ;
                             }
                             // other users logical deleted json files. 2) physical deleted by downloader here
-                            cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                            cache_filename = 'merged-' + get_merger_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
                             // cache_filename = data/users/16SNxdSpUYVLdVQWx6azQjoZXsZJHJUzKN/1485167995925-1485167995925-3-chat.json
                             if (files_optional_cache[cache_filename] && files_optional_cache[cache_filename].is_deleted) {
                                 res.splice(i,1) ;
@@ -5486,7 +5490,7 @@ angular.module('MoneyNetwork')
                         }
                         for (i=0 ; i<res.length ; i++) {
                             //if (res[i].size == 2) continue ; // logical deleted json files
-                            cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                            cache_filename = 'merged-' + get_merger_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
                             if (!compare_files1[cache_filename]) compare_files1[cache_filename] = {} ;
                             compare_files1[cache_filename].in_query = true ;
                             compare_files1[cache_filename].query_size = res[i].size ;
@@ -5671,7 +5675,7 @@ angular.module('MoneyNetwork')
 
                         // remove search results no longer within page context
                         for (i=res.length-1 ; i >= 0 ; i--) {
-                            cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                            cache_filename = 'merged-' + get_merger_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
                             if (!file_within_chat_page_context(cache_filename)) {
                                 res.splice(i,1) ;
                                 // continue ;
@@ -5695,7 +5699,7 @@ angular.module('MoneyNetwork')
                         // any already downloaded but not yet loaded public chat messages?
                         for (i=0 ; i < res.length ; i++) {
                             //if (res[i].size == 2) continue ; // logical deleted json file
-                            cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
+                            cache_filename = 'merged-' + get_merger_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
                             cache_status = files_optional_cache[cache_filename] ;
                             if (cache_status) {
                                 if (cache_status.is_pending) {
@@ -5785,7 +5789,7 @@ angular.module('MoneyNetwork')
                         // todo: what about running ui-server but offline internet? lots of download failures. but maybe offline internet already is reported in ZeroNet UI? (Content publish failed message only)
                         one_hour_ago = new Date().getTime() - 1000*60*60 ;
                         for (i=res.length-1 ; i >= 0 ; i--) {
-                            cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
+                            cache_filename = 'merged-' + get_merger_type + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
                             cache_status = files_optional_cache[cache_filename];
                             res[i].download_failed_at = [] ;
                             if (cache_status && cache_status.download_failed_at) {
@@ -5854,7 +5858,7 @@ angular.module('MoneyNetwork')
                             if ( (i != -1) &&
                                 ((i <= 10) || ((i > 10) && (max_peers < 3)))) {
                                 // get number of peers for file i
-                                cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
+                                cache_filename = 'merged-' + get_merger_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
                                 ZeroFrame.cmd("optionalFileInfo", [cache_filename], function (file_info) {
                                     var pgm = service + '.get_public_chat optionalFileInfo callback 2 : ';
                                     var cache_status ;
@@ -5885,7 +5889,7 @@ angular.module('MoneyNetwork')
                             // download optional file. file with most peers or random file
                             i = max_peers_i || Math.floor(Math.random() * res.length) ;
                             debug('public_chat', pgm + 'selected res[' + i + '] = ' + JSON.stringify(res[i])) ;
-                            cache_filename = 'merged-MoneyNetwork/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
+                            cache_filename = 'merged-' + get_merger_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
 
                             debug('public_chat', pgm + 'get and load chat file ' + cache_filename);
                             get_and_load_chat_file(cache_filename, res[i].size, null, cb2) ;
@@ -6206,7 +6210,7 @@ angular.module('MoneyNetwork')
                             } // for j (messages)
                             if (message) {
                                 old_z_filename = message.z_filename ;
-                                old_cache_filename = 'merged-MoneyNetwork/' + contact.hub + '/data/users/' + contact.auth_address + '/' + old_z_filename ;
+                                old_cache_filename = 'merged-' + get_merger_type() + '/' + contact.hub + '/data/users/' + contact.auth_address + '/' + old_z_filename ;
                                 old_cache_status = files_optional_cache[old_cache_filename] ;
 
                                 debug('public_chat', pgm + 'found old already read message in a new chat file. timestamp = ' + timestamp);

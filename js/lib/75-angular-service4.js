@@ -21,6 +21,10 @@ angular.module('MoneyNetwork')
             return true ;
         }
 
+        function get_merger_type () {
+            return MoneyNetworkAPILib.get_merged_type() ;
+        }
+
         // debug wrappers
         function show_debug (keys) {
             return MoneyNetworkHelper.show_debug(keys) ;
@@ -397,7 +401,7 @@ angular.module('MoneyNetwork')
                                             MoneyNetworkAPILib.end_transaction(transaction_timestamp) ;
                                             return ;
                                         }
-                                        inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
+                                        inner_path = 'merged-' + get_merger_type() + '/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
                                         // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + 'sign') ;
                                         debug_seq = debug_z_api_operation_start(pgm, inner_path, 'siteSign', show_debug('z_site_publish')) ;
                                         ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
@@ -412,7 +416,7 @@ angular.module('MoneyNetwork')
                                     }
                                     // delete next file
                                     filename = delete_files.shift() ;
-                                    inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
+                                    inner_path = 'merged-' + get_merger_type() + '/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
                                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete') ;
                                     debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileDelete', show_debug('z_file_delete')) ;
                                     ZeroFrame.cmd("fileDelete", inner_path, function (res) {
@@ -861,7 +865,7 @@ angular.module('MoneyNetwork')
 
             get_my_user_hub(function (hub) {
                 var user_path ;
-                user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
+                user_path = 'merged-' + get_merger_type() + '/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
                 MoneyNetworkAPILib.config({this_user_path: user_path});
                 // setup session instances and listen for incoming messages
                 create_sessions() ;

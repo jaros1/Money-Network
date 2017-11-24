@@ -565,7 +565,6 @@ angular.module('MoneyNetwork')
         // end contactAlias filter
     }])
 
-
     .filter('findContactAvatar', [function () {
         // find contact avatar - used in must cases
         return function (contact) {
@@ -574,7 +573,7 @@ angular.module('MoneyNetwork')
             if (['jpg','png'].indexOf(contact.avatar) != -1) {
                 // contact with uploaded avatar
                 if (!contact.pubkey) src = 'public/images/image_failed.gif' ; // deleted contact
-                else src = 'merged-MoneyNetwork/' + contact.hub + '/data/users/' + contact.auth_address + '/avatar.' + contact.avatar ;
+                else src = 'merged-' + MoneyNetworkAPILib.get_merged_type() + '/' + contact.hub + '/data/users/' + contact.auth_address + '/avatar.' + contact.avatar ;
             }
             else {
                 // must be contact with a random assigned avatar or avatarz for public chat

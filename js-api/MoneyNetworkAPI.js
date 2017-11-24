@@ -47,11 +47,22 @@ var MoneyNetworkAPILib = (function () {
         if (!encrypt) return false ;
         return encrypt instanceof MoneyNetworkAPI ;
     }
+
+    // merged_type used in all inner_paths merged-<merge_type>/<hub>/data/users/<auth_address>/....
+    // default is MoneyNetwork. used for user data hubs (MN) and wallet data hubs (wallets)
+    var merged_type = 'MoneyNetwork' ;
+    function set_merged_type (text) {
+        merged_type = text ;
+    }
+    function get_merged_type () {
+        return merged_type ;
+    }
+
     // validate user_path format: merged-MoneyNetwork/<hub>/data/users/<auth_address>/
     var user_path_regexp ;
     (function(){
         var bitcoin_adr = '1[a-km-zA-HJ-NP-Z1-9]{25,34}' ;
-        user_path_regexp = new RegExp('^merged-MoneyNetwork\/' + bitcoin_adr + '\/data\/users\/' + bitcoin_adr + '\/$') ;
+        user_path_regexp = new RegExp('^merged-' + get_merged_type() + '\/' + bitcoin_adr + '\/data\/users\/' + bitcoin_adr + '\/$') ;
     })() ;
     function is_user_path (user_path) {
         if (typeof user_path != 'string') return false ;
@@ -93,7 +104,7 @@ var MoneyNetworkAPILib = (function () {
             if (cb) cb(null) ;
             return true ; // // not working inside siteInfo callback
         };
-        if (!is_user_path(user_path)) return error('"' + user_path + '" is not a valid user path. please use "merged-MoneyNetwork/<hub>/data/users/<auth_address>/" as user_path') ;
+        if (!is_user_path(user_path)) return error('"' + user_path + '" is not a valid user path. please use "merged-' + get_merged_type() + '/<hub>/data/users/<auth_address>/" as user_path') ;
         if (options.readonly) {
             // readonly inside a MoneyNetworkAPI instance.
             readonly({this_user_path: user_path}, 'this_user_path', this_user_path) ;
@@ -176,6 +187,7 @@ var MoneyNetworkAPILib = (function () {
             optional = options.optional;
         }
         if (options.this_user_path) set_this_user_path(options.this_user_path, {throw: true}) ;
+        if (options.merger_type) set_merged_type(options.merger_type) ;
     } // config
 
     // check if ZeroFrame has been injected into this library
@@ -451,7 +463,8 @@ var MoneyNetworkAPILib = (function () {
     // global variables client and master. used in MN <=> wallet communication:
     // - client false/master true; MoneyNetwork, site_address !=  1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk. server = true
     // - client true/master false: MoneyNetwork wallet. site_address == '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk, master = false
-    // used for this_session_filename, other_session_filename, send_message, demon etc
+    // for wallet to wallet communication is sender=master and receiver=client
+    // used for this_session_filename, other_session_filename, send_message, demon process etc
     var client, server; // null, x, true or false
     var is_client_cbs = []; // callbacks waiting for is_client response
     function is_client(cb) {
@@ -522,8 +535,8 @@ var MoneyNetworkAPILib = (function () {
         }
         // extend is_client.
         is_client2 = function (cb) {
-            if (encrypt && (encrypt.client || encrypt.master)) cb(encrypt.client) ; // instance level master/client role. W2W communication
-            else is_client(cb) ; // global level master/client role. M2W communication
+            if (encrypt && (encrypt.receiver || encrypt.sender)) cb(encrypt.receiver) ; // instance level master/client role. W2W communication
+            else is_client(cb) ; // global level master/client role. M2W communication. MN is master, wallet is client.
         } ;
         is_client2(function (client) {
             var this_session_filename, other_session_filename, start_demon ;
@@ -842,7 +855,7 @@ var MoneyNetworkAPILib = (function () {
                     done[filename] = true ;
                     continue ;
                 }
-                other_user_path = 'merged-MoneyNetwork/' + directory + '/' ;
+                other_user_path = 'merged-' + get_merged_type() + '/' + directory + '/' ;
                 inner_path = other_user_path + filename;
                 if (!encrypt.other_user_path) encrypt.setup_encryption({other_user_path: other_user_path}) ;
                 if (other_user_path != encrypt.other_user_path) {
@@ -1657,7 +1670,7 @@ var MoneyNetworkAPILib = (function () {
                 if (!row) return cb(results, refresh_angular_ui) ; // done
                 if (results[row.wallet_sha256]) return check_wallet() ; // wallet info is already found for this sha256 value
                 // check wallet.json file
-                inner_path = 'merged-MoneyNetwork/' + row.directory + '/wallet.json' ;
+                inner_path = 'merged-' + get_merged_type() + '/' + row.directory + '/wallet.json' ;
                 debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet');
                 ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
                     var pgm = module + '.get_wallet_info.check_wallet fileGet callback: ' ;
@@ -1812,8 +1825,8 @@ var MoneyNetworkAPILib = (function () {
     // - todo: add long running operation warning to debug_z_api_operation_pending
     var inner_path_re1 = /data\/users\// ; // user directory?
     var inner_path_re2 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
-    var inner_path_re3 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/content\.json$/ ; // extract hub
-    var inner_path_re4 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/(.*?)\/(.*?)$/ ; // extract hub, auth_address and filename
+    var inner_path_re3 = new RegExp('^merged-' + get_merged_type() + '\/(.*?)\/data\/users\/content\.json$') ; // extract hub
+    var inner_path_re4 = new RegExp('^merged-' + get_merged_type() + '\/(.*?)\/data\/users\/(.*?)\/(.*?)$') ; // extract hub, auth_address and filename
     function z_file_get (pgm, options, cb) {
         var inner_path, match2, hub, pos, filename, extra, optional_file, get_optional_file_info, pgm2 ;
 
@@ -2671,7 +2684,7 @@ var MoneyNetworkAPILib = (function () {
         if (filename != 'content.json') {
             console.log(pgm + 'warning. sitePublish should be called with path to user content.json file. inner_path = ' + JSON.stringify(inner_path)) ;
             hub = match4[1] ;
-            inner_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + auth_address + '/content.json' ;
+            inner_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/content.json' ;
             options.inner_path = inner_path ;
         }
         // check encrypt option. wallet sites only. wallet sites should use MN publish queue to keep interval between publish >= 30 seconds
@@ -2683,7 +2696,7 @@ var MoneyNetworkAPILib = (function () {
         }
         else {
             // MN publish without encrypt object
-            user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + auth_address + '/' ;
+            user_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/' ;
         }
 
         // start publish transaction. publish must wait for long running update transactions to finish and
@@ -2765,6 +2778,8 @@ var MoneyNetworkAPILib = (function () {
 
     // export MoneyNetworkAPILib
     return {
+        set_merged_type: set_merged_type,
+        get_merged_type: get_merged_type,
         config: config,
         set_this_user_path: set_this_user_path,
         get_ZeroFrame: get_ZeroFrame,
@@ -2824,8 +2839,7 @@ var MoneyNetworkAPILib = (function () {
 // - optional. optional files pattern to be added to user content.json file (new users).
 // - cb. callback function to process incoming messages for this session
 // - extra. hash with any additional session info. Not used by MoneyNetworkAPI
-// - master. only used for wallet to wallet communication. set client/master role for API instance and ignores global client/master setting
-// - todo: rename mester to sender and client to received https://github.com/jaros1/Money-Network/issues/273
+// - sender. only used for wallet to wallet communication. set sender/receiver role for API instance (W2W) and ignores global client/master setting (MN-Wallet)
 var MoneyNetworkAPI = function (options) {
     var pgm = 'new MoneyNetworkAPI: ';
     var missing_keys, key, prefix;
@@ -2868,12 +2882,12 @@ var MoneyNetworkAPI = function (options) {
     }
     // extra info not used by MoneyNetworkAPI
     this.extra = options.extra ;
-    // set master/client role on MoneyNetworkAPI instance level. Used in wallet to wallet communication
-    if (options.hasOwnProperty('master')) {
-        if (typeof options.master != 'boolean') throw pgm + 'invalid call. options.master must be a boolean' ;
-        if (!this.sessionid) throw pgm + 'invalid call. sessionid is required when using the master parameter' ;
-        this.master = options.master ;
-        this.client = !this.master ;
+    // set sender/receiver role on MoneyNetworkAPI instance level. Used in wallet to wallet communication
+    if (options.hasOwnProperty('sender')) {
+        if (typeof options.sender != 'boolean') throw pgm + 'invalid call. options.sender must be a boolean' ;
+        if (!this.sessionid) throw pgm + 'invalid call. sessionid is required when using the sender parameter' ;
+        this.sender = options.sender ;
+        this.receiver = !this.sender ;
     }
     if (this.sessionid) {
         // monitor incoming messages for this sessionid.
@@ -2893,7 +2907,7 @@ var MoneyNetworkAPI = function (options) {
         // else if (this.debug) console.log(pgm + key + ' = ' + this[key]) ;
     }
     prefix = this.debug == true ? '' : this.debug + ': ';
-    if (missing_keys.length == 0) console.log(pgm + prefix + 'Encryption setup done for ' + (this.hasOwnProperty('master') ? ' wallet<->wallet' : 'MoneyNetwork<->wallet') + ' communication');
+    if (missing_keys.length == 0) console.log(pgm + prefix + 'Encryption setup done for ' + (this.hasOwnProperty('sender') ? ' wallet<->wallet' : 'MoneyNetwork<->wallet') + ' communication');
     else console.log(pgm + prefix + 'Encryption setup: waiting for ' + missing_keys.join(', '));
 }; // MoneyNetworkAPI
 
@@ -3030,7 +3044,7 @@ MoneyNetworkAPI.prototype.setup_encryption = function (options) {
         if (['sessionid', 'other_session_pubkey', 'other_session_pubkey2', 'this_session_prvkey', 'this_session_userid2'].indexOf(key) == -1) continue;
         if (this[key] == null) missing_keys.push(key);
     }
-    if (missing_keys.length == 0) this.log(pgm, 'Encryption setup done for ' + (this.hasOwnProperty('master') ? ' wallet<->wallet' : 'MoneyNetwork<->wallet') + ' communication');
+    if (missing_keys.length == 0) this.log(pgm, 'Encryption setup done for ' + (this.hasOwnProperty('sender') ? ' wallet<->wallet' : 'MoneyNetwork<->wallet') + ' communication');
     else this.log(pgm, 'Encryption setup: waiting for ' + missing_keys.join(', '));
 }; // setup_encryption
 
@@ -3049,8 +3063,8 @@ MoneyNetworkAPI.prototype.check_destroyed = function (pgm) {
 }; // check_destroyed
 
 MoneyNetworkAPI.prototype.is_client = function (cb) {
-    if (this.client || this.master) cb(this.client) ; // W2W communication. Wallet that starts the communication is the master.
-    else MoneyNetworkAPILib.is_client(cb) ; // MN2W communication. MN session is always the master.
+    if (this.receiver || this.sender) cb(this.receiver) ; // W2W communication. Wallet that starts the communication is the sender/master. receiver is "client".
+    else MoneyNetworkAPILib.is_client(cb) ; // MN-W communication. MN session is always the master in MN-W communication
 } ; // is_client
 
 // get session filenames for MN <=> wallet communication
@@ -3530,7 +3544,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     if (!this.sessionid && (encryptions.indexOf(3) != -1)) return set_error('Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'); // encrypt_3
     if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
     if (!this.this_user_path) return set_error('Cannot send message. this_user_path is missing in setup');
-    if (!MoneyNetworkAPILib.is_user_path(this.this_user_path)) return set_error('Cannot send message. "' + this.this_user_path + '" is not a valid user path. Please use "merged-MoneyNetwork/<hub>/data/users/<auth_address>/" as user_path');
+    if (!MoneyNetworkAPILib.is_user_path(this.this_user_path)) return set_error('Cannot send message. "' + this.this_user_path + '" is not a valid user path. Please use "merged-' + MoneyNetworkAPILib.get_merger_type() + '/<hub>/data/users/<auth_address>/" as user_path');
     if (response) {
         // Ingoing encryption
         if (!this.this_session_prvkey && (encryptions.indexOf(1) != -1) && (request.msgtype != 'get_password')) return set_error('Cannot JSEncrypt decrypt expected ingoing receipt. prvkey is missing in encryption setup'); // decrypt_1
@@ -3847,7 +3861,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 
                                     // 7: wait for response. loop. wait until timeout_at
                                     api_query_5 =
-                                        "select 'merged-MoneyNetwork' || '/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
+                                        "select 'merged-" + MoneyNetworkAPILib.get_merged_type() + "/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
                                         "from files_optional, json " +
                                         "where files_optional.filename = '" + response_filename + "' " +
                                         "and json.json_id = files_optional.json_id";

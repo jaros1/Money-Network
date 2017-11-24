@@ -45,6 +45,10 @@ angular.module('MoneyNetwork')
             return true ;
         }
 
+        function get_merger_type () {
+            return MoneyNetworkAPILib.get_merged_type() ;
+        }
+
         // debug wrappers
         function show_debug (keys) {
             return MoneyNetworkHelper.show_debug(keys) ;
@@ -643,7 +647,7 @@ angular.module('MoneyNetwork')
                             hub = dictionary.substr(0,dictionary.indexOf('/')) ;
                             console.log(pgm + 'dictionary = ' + dictionary + ', hub = ' + hub) ;
                             // 1: read content.json
-                            inner_path = 'merged-MoneyNetwork/' + dictionary + '/content.json' ;
+                            inner_path = 'merged-' + get_merger_type() + '/' + dictionary + '/content.json' ;
 
                             z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
                                 var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 1: ';
@@ -774,8 +778,8 @@ angular.module('MoneyNetwork')
             get_my_user_hub(function(my_hub) {
                 var pgm = service + '.merge_user_hub get_my_user_hub callback 1: ';
                 var hub_user_path, my_user_path, inner_path0, debug_seq0 ;
-                hub_user_path = 'merged-MoneyNetwork/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
-                my_user_path = 'merged-MoneyNetwork/' + my_hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
+                hub_user_path = 'merged-' + get_merger_type() + '/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
+                my_user_path = 'merged-' + get_merger_type() + '/' + my_hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' ;
                 // read hub content.json
                 inner_path0 = hub_user_path + 'content.json' ;
                 z_file_get(pgm, {inner_path: inner_path0, required: false}, function (hub_content_str) {
@@ -928,9 +932,6 @@ angular.module('MoneyNetwork')
                         // check file info for optional file
                         ZeroFrame.cmd("optionalFileInfo", [filename], function (file_info) {
                             var pgm = service + '.merge_user_hub.step_3_get_file_info optionalFileInfo callback 2: ';
-                            if (filename == 'merged-MoneyNetwork/182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/000b72320e.1499349613092') {
-                                console.log(pgm + 'filename = ' + filename + ', file_info = ' + JSON.stringify(file_info)) ;
-                            }
                             hub_content.files_optional[key].file_info = file_info || {} ;
                             // continue with next optional file
                             step_3_get_file_info(cb3) ;
@@ -1546,7 +1547,7 @@ angular.module('MoneyNetwork')
                 var user_path, debug_seq ;
                 // download data.json and add file to cache
                 if (detected_client_log_out(pgm)) return ;
-                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 z_file_get(pgm, {inner_path: user_path + '/data.json', required: false}, function (data_str) {
                     var pgm = service + '.get_data_json z_file_get callback 1: ';
                     var data, empty;
@@ -1578,7 +1579,7 @@ angular.module('MoneyNetwork')
             // find user data hub
             get_my_user_hub (function (hub) {
                 var user_path, data, json_raw, debug_seq ;
-                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 data = z_cache.data_json || {} ;
                 json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/data.json fileWrite') ;
@@ -1605,9 +1606,9 @@ angular.module('MoneyNetwork')
             // callback 1 - get user data hub
             get_my_user_hub(function (hub) {
                 var pgm = service + '.get_status_json get_my_user_hub callback 1: ';
-                var user_path, debug_seq ;
+                var user_path ;
                 if (detected_client_log_out(pgm)) return ;
-                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 // read status.jsonn into cache
                 z_file_get(pgm, {inner_path: user_path + '/status.json', required: false}, function (status) {
                     var pgm = service + '.get_status_json z_file_get callback 2: ';
@@ -1639,7 +1640,7 @@ angular.module('MoneyNetwork')
                 get_my_user_hub(function (hub) {
                     var pgm = service + '.write_status_json get_my_user_hub callback 1: ';
                     var user_path, status, json_raw, debug_seq ;
-                    user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                    user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                     status = z_cache.status_json || {} ;
                     json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/status.json fileWrite') ;
@@ -1708,7 +1709,7 @@ angular.module('MoneyNetwork')
                     var debug_seq ;
                     if (detected_client_log_out(pgm)) return;
                     // callback 3 - download like.json and add file to cache
-                    user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                    user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                     z_file_get(pgm, {inner_path: user_path + '/like.json', required: false}, function (like_str) {
                         var pgm = service + '.get_like_json z_file_get callback 3: ';
                         // console.log(pgm + 'like = ' + JSON.stringify(like));
@@ -1750,7 +1751,7 @@ angular.module('MoneyNetwork')
                 var debug_seq ;
                 if (detected_client_log_out(pgm)) return ;
                 // callback 2 - write like.json
-                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 like = z_cache.like_json || {} ;
                 json_raw = unescape(encodeURIComponent(JSON.stringify(like, null, "\t")));
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/like.json fileWrite') ;
@@ -1799,7 +1800,7 @@ angular.module('MoneyNetwork')
                 var user_path;
 
                 if (detected_client_log_out(pgm)) return ;
-                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
 
                 // get user_seq if ready
                 get_user_seq(function (user_seq) {
@@ -2561,7 +2562,7 @@ angular.module('MoneyNetwork')
                     // sign/publish is not working. 1CCiJ97XHgVeJ@moneynetwork should be moderator and allowed to delete old user files
                     // http://127.0.0.1:43110/Blog.ZeroNetwork.bit/?Post:46:ZeroNet+site+development+tutorial+2#Comments
                     var sign_and_publish = function (directory) {
-                        var filename = 'merged-MoneyNetwork/' + directory + '/content.json';
+                        var filename = 'merged-' + get_merger_type() + '/' + directory + '/content.json';
                         var debug_seq ;
                         // console.log(pgm + 'sign and publish. filename = ' + filename);
                         // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + filename + ' sitePublish') ;
@@ -2585,7 +2586,7 @@ angular.module('MoneyNetwork')
                             sign_and_publish(last_directory);
                             last_directory = res[i].directory;
                         }
-                        filename = "merged-MoneyNetwork/" + res[i].directory + "/" + res[i].filename;
+                        filename = "merged-" + get_merger_type() + "/" + res[i].directory + "/" + res[i].filename;
                         if (res[i].optional == 'N') {
                             debug_seq = debug_z_api_operation_start(pgm, filename, 'fileDelete', show_debug('z_file_delete')) ;
                             ZeroFrame.cmd("fileDelete", filename, function (res) {
@@ -2646,7 +2647,7 @@ angular.module('MoneyNetwork')
             get_my_user_hub(function (hub) {
                 var pgm = service + '.i_am_online get_my_user_hub callback 1: ';
 
-                user_path = "merged-MoneyNetwork/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
 
                 // some information nice to have when debugging
                 console.log(
