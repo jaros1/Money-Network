@@ -2817,7 +2817,11 @@ angular.module('MoneyNetwork')
                             }
                             // save session. also used in step_3_ todo: xxx
                             wallets_hash[session_info.wallet_name].session = session ;
+
                             // send ping. timeout max 10 seconds. Expects Timeout or OK response
+                            // timeout 10 sec is an issue on slow running devices. For example vm2.
+                            // but long timeout for a not running wallet session is also a problem.
+                            // keeping 10 sec timeout
                             request = { msgtype: 'ping' };
                             session.encrypt.send_message(request, {response: 10000}, function (response) {
                                 var pgm = controller + '.approve_money_transaction.step_2_ping_wallets.ping_wallet send_message callback 2: ';
