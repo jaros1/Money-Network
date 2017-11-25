@@ -1,0 +1,56 @@
+{
+ "address": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+ "files": {},
+ "files_optional": {
+  "1000-mn-login-cert-and-merger-notifications.png": {
+   "sha512": "a346059f8d77d9c8e0c71415a835c9cab018044036326865d62d5ed8d26aa98d",
+   "size": 90395
+  },
+  "1010-mn-login-register-new-user.png": {
+   "sha512": "7738127c066919b320fabcdbc303e7129447d4708eafa34ae04f28b2615651a7",
+   "size": 72500
+  },
+  "1100-mn-account-update-user-info.png": {
+   "sha512": "903e6e006c20571a13f85e9df8231ec772eb03a286159d664cfe24c18025012d",
+   "size": 100036
+  },
+  "1300-mn-chat.png": {
+   "sha512": "9ecbc1b75a96f0bb0fdc182b5bb3695355fd0916a3d96e64ece956d393d6d383",
+   "size": 176654
+  },
+  "1380-mn-chat-send-money.png": {
+   "sha512": "58113f6a82091409e4596e7ed03b6c65d403428f2539fac925949dc8054393c8",
+   "size": 154104
+  },
+  "1381-mn-chat-send-money.png": {
+   "sha512": "048d9284d269ebe33a36748cc3c8243be0a5bfe28f5de600cdefe5d76e5eed06",
+   "size": 147543
+  },
+  "1400-mn-wallet-test-start.png": {
+   "sha512": "af2acda797d8f4d8ae73a386291d8d137a143fcc347c944b6731f2d26acc4d78",
+   "size": 31028
+  },
+  "1401-mn-wallet-test-start.png": {
+   "sha512": "0899d074602b76c296d68edf00349b809811c569e8c6c8e1195625ccf675a80a",
+   "size": 62969
+  },
+  "1450-mn-wallet-test-ok.png": {
+   "sha512": "5cc7a07b37914e8341e4a577c606f6739afaa93fe1b79afd5d8f0143bbab8f4e",
+   "size": 63404
+  },
+  "2010-w2-w2-cert-and-merger-permission.png": {
+   "sha512": "449dc1010a944531f2d83a4cb681d13746ebbb597c3f24f71a6cf065e2b73e0c",
+   "size": 101594
+  },
+  "2020-w2-w2-create-wallet.png": {
+   "sha512": "48d787317b1a8763f770ecd03b26bb425f4cc91f4b99db5dec47e75967e11695",
+   "size": 125258
+  }
+ },
+ "inner_path": "screendumps/content.json",
+ "modified": 1507216735,
+ "optional": ".*.png",
+ "signs": {
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HLMwwwj0f/Va/tK17ujdCC6zbeefhWAeqZwbbZoy8NfpbSRI5m/eWzuMPrqYnQPyrDFsYbr3Mim6P8ATIdnbhb0="
+ }
+}

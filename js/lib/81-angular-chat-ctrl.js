@@ -1330,7 +1330,7 @@ angular.module('MoneyNetwork')
                 // callback function - optional step - tell wallet session that money transaction(s) has been sent
                 step_5_send_send_mt = function() {
                     var pgm = controller + '.send_chat_msg.step_5_send_send_mt: ';
-                    var wallet_names, wallet_name, send_mt ;
+                    var wallet_names, wallet_name, send_mt, countdown_cb ;
 
                     // one send_mt message for wallet in
                     wallet_names = [] ;
@@ -1351,9 +1351,14 @@ angular.module('MoneyNetwork')
                             msgtype: "send_mt",
                             money_transactionid: money_transactionid
                         } ;
+                        countdown_cb = function (countdown) {
+                            self.money_transactions_countdown = countdown ;
+                            $scope.$apply() ;
+                        } ;
                         // send message. wallet session should be ready and running. have just pinged and validated money transaction
-                        session.encrypt.send_message(request, {response: 10000}, function (response) {
+                        session.encrypt.send_message(request, {response: 10000, countdown_cb: countdown_cb}, function (response) {
                             var pgm = controller + '.send_chat_msg.send_chat_msg.step_5_send_send_mt.send_mt send_message callback: ';
+                            self.money_transactions_countdown = null ;
                             console.log(pgm + 'response = ' + JSON.stringify(response));
                             // response = {"msgtype":"response","error":"message is invalid. Unknown msgtype send_mt"}
 
@@ -1434,11 +1439,11 @@ angular.module('MoneyNetwork')
                         return;
                     }
 
-                    if (message.money_transactions) {
-                        error = 'Sorry. Money transaction is not yet implemented<br>Todo: receive chat with money transaction' ;
-                        console.log(pgm + error) ;
-                        ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
-                    }
+                    //if (message.money_transactions) {
+                    //    error = 'Sorry. Money transaction is not yet implemented<br>Todo: receive chat with money transaction' ;
+                    //    console.log(pgm + error) ;
+                    //    ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                    //}
 
                     // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
                     // send message
@@ -1492,7 +1497,7 @@ angular.module('MoneyNetwork')
                     check_transaction = function () {
                         var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction: ';
                         var wallet_name, session, request, i, j, money_transaction, factor, units, errors, error,
-                            money_transactionid, unique_text, balance ;
+                            money_transactionid, unique_text, balance, countdown_cb ;
                         wallet_name = wallet_names.shift() ;
                         if (!wallet_name) {
                             // todo: done checking money transactions. count errors. notification, stop or continue
@@ -1590,10 +1595,15 @@ angular.module('MoneyNetwork')
                             set_ping_error(wallet_name, error, false) ;
                             return check_transaction() ;
                         }
+                        countdown_cb = function (countdown) {
+                            self.money_transactions_countdown = countdown ;
+                            $scope.$apply() ;
+                        } ;
 
                         // send validate money transactions request to wallet (wait max 60 seconds. wallet may call external API in validation process)
-                        session.encrypt.send_message(request, {response: 60000}, function (response) {
+                        session.encrypt.send_message(request, {response: 60000, countdown_cb: countdown_cb}, function (response) {
                             var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction send_message callback: ';
+                            self.money_transactions_countdown = null ;
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                             //response = {
                             //    "msgtype": "prepare_mt_response",
@@ -1754,7 +1764,7 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'getting session. using sessionid = ' + session_info.sessionid + '. maybe wrong sessionid. see issue #208');
                         MoneyNetworkAPILib.get_session(session_info.sessionid, function (session) {
                             var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet get_session callback 1: ';
-                            var request, error, url ;
+                            var request, error, countdown_cb ;
                             if (!session) {
                                 error = 'error. could not ping ' + session_info.wallet_name + ' wallet. ' +
                                     'could not find any old session with sessionid ' + session_info.sessionid +
@@ -1767,8 +1777,13 @@ angular.module('MoneyNetwork')
                             wallets_hash[session_info.wallet_name].session = session ;
                             // send ping. timeout max 10 seconds. Expects Timeout or OK response
                             request = { msgtype: 'ping' };
-                            session.encrypt.send_message(request, {response: 10000}, function (response) {
+                            countdown_cb = function (countdown) {
+                                self.money_transactions_countdown = countdown ;
+                                $scope.$apply() ;
+                            } ;
+                            session.encrypt.send_message(request, {response: 10000, countdown_cb: countdown_cb}, function (response) {
                                 var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet send_message callback 2: ';
+                                self.money_transactions_countdown = null ;
                                 if (response && response.error && response.error.match(/^Timeout /)) {
                                     // OK. Timeout. Continue with next session
                                     console.log(pgm + 'ping wallet timeout for sessionid ' + session_info.sessionid) ;
@@ -2289,6 +2304,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'todo: set money_transaction.message. error message and/or wallet balance') ;
 
             } ; // money_currency_changed
+            self.money_transactions_countdown = null ;
 
             // insert money transaction row. tab/enter
             self.money_insert_row = function (money_transaction) {

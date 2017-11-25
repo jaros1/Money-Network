@@ -732,9 +732,10 @@ var MoneyNetworkAPILib = (function () {
     // - cb: callback to handle incoming message
     // - cb_fileget: boolean: fileGet file before calling callback cb
     // - cb_decrypt: boolean: decrypt message before calling callback cb
+    // - countdown_cb: special callback called once every second to update remaining time before timeout in UI
     function wait_for_file(response_filename, options) {
         var pgm = module + '.wait_for_file: ';
-        var error, session_filename, timeout_at, cb_fileget, cb_decrypt ;
+        var error, session_filename, timeout_at, cb_fileget, cb_decrypt, countdown_cb ;
         error = function (error) {
             console.log(pgm + error) ;
             return error ;
@@ -762,13 +763,18 @@ var MoneyNetworkAPILib = (function () {
         if (options.hasOwnProperty('cb_fileget')) cb_fileget = options.cb_fileget ? true : false ;
         if (options.hasOwnProperty('cb_decrypt')) cb_decrypt = options.cb_decrypt ? true : false ;
         if (cb_decrypt) cb_fileget = true ;
+        if (options.countdown_cb) {
+            if (typeof options.countdown_cb != 'function') return error('invalid call. options.countdown_cb must be a callback function') ;
+            countdown_cb = options.countdown_cb ;
+        }
         timeout_at = options.timeout_at || ((new Date().getTime()) + 30000);
         done[response_filename] = {
             request: options.request,
             timeout_at: timeout_at,
             cb: options.cb,
             cb_fileget: cb_fileget,
-            cb_decrypt: cb_decrypt
+            cb_decrypt: cb_decrypt,
+            countdown_cb: countdown_cb
         };
         if (debug) console.log(pgm + 'added a callback function for ' + response_filename + '. request = ' + JSON.stringify(options.request) + ', done[' + response_filename + '] = ' + JSON.stringify(done[response_filename]));
         return null;
@@ -792,7 +798,7 @@ var MoneyNetworkAPILib = (function () {
     var timestamp_re = /^[0-9]{13}$/ ;
     function message_demon() {
         var pgm = module + '.message_demon: ';
-        var filename, api_query_1, session_filename, first, now, debug_seq, timeout_in;
+        var filename, api_query_1, session_filename, first, now, timeout_in, countdown, call_countdown_cb;
         // check for expired callbacks. processes waiting for a response
         now = new Date().getTime();
         for (filename in done) {
@@ -806,6 +812,17 @@ var MoneyNetworkAPILib = (function () {
                         ((done[filename].timeout_in % 5 == 0) && (timeout_in != done[filename].timeout_in))) {
                         console.log(pgm + 'timeout_in = ' + done[filename].timeout_in + ', done[' + filename + ']=' + JSON.stringify(done[filename]) + ', now = ' + now) ;
                     }
+                }
+                if (done[filename].countdown_cb) {
+                    // call special countdown_cb function once every second while waiting for timeout countdown in UI (spinner)
+                    call_countdown_cb = false ;
+                    countdown = Math.round((done[filename].timeout_at - now) / 1000) ;
+                    if (typeof done[filename].last_countdown == 'number') {
+                        if (countdown != done[filename].last_countdown) call_countdown_cb = true ;
+                    }
+                    else call_countdown_cb = true ;
+                    done[filename].last_countdown = countdown ;
+                    if (call_countdown_cb) done[filename].countdown_cb(countdown) ;
                 }
                 continue;
             }
@@ -3524,6 +3541,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (options, cb) {
 //   - timeout_msg. text or array with timeout notification. Only used after timeout while waiting for response.
 //     notification will be displayed when/if receiving a timeout message with stat about response timeout for this send_message
 //     for example walet ping timeout. receive timeout message from other session. display timeout_msg in this session
+//   - countdown_cb: callback function. called once every second to update spinner count down in UI
 
 //   - todo: count_down. function. for spinner count down in UI. wait loop in MoneyNetworkAPI will call count_down function once every second for UI update
 //   - todo: status: short text. update optional file with money transaction status. used by wallets. one for each wallet.
@@ -3534,7 +3552,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
     var self, response, request_msgtype, request_timestamp, encryptions, error, request_at, request_file_timestamp,
         default_timeout, timeout_at, month, year, cleanup_in, debug_seq0, subsystem, optional, group_debug_seq,
-        set_error ;
+        set_error, countdown_cb ;
     self = this;
     this.check_destroyed(pgm) ;
 
@@ -3598,6 +3616,12 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         error = MoneyNetworkAPILib.validate_timeout_msg(options.timeout_msg) ;
         if (error) return set_error('invalid call. options.timeout. ' + error) ;
         MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {timeout_msg: options.timeout_msg}) ;
+    }
+    if (options.countdown_cb) {
+        // special callback function to update remaing time before timeout in UI (spinner)
+        if (!response) return set_error('Invalid call. options.countdown_cb used and not waiting for any response') ;
+        if (typeof options.countdown_cb != 'function') return set_error('Invalid call. options.countdown_cb must be a callback function') ;
+        countdown_cb = options.countdown_cb ;
     }
 
     // check setup
@@ -3920,7 +3944,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                 if (MoneyNetworkAPILib.is_session(self.sessionid)) {
                                     // demon is running and is monitoring incoming messages for this sessionid
                                     self.log(pgm, 'demon is running. wait for response file ' + response_filename + '. cb = get_and_decrypt', group_debug_seq);
-                                    error = MoneyNetworkAPILib.wait_for_file(response_filename, {request: request, timeout_at: timeout_at, cb: get_and_decrypt});
+                                    error = MoneyNetworkAPILib.wait_for_file(response_filename, {request: request, timeout_at: timeout_at, cb: get_and_decrypt, countdown_cb: countdown_cb});
                                     if (error) return set_error(error);
                                 }
                                 else {
@@ -3935,7 +3959,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     self.log(pgm, 'api query 5 = ' + api_query_5, group_debug_seq) ;
 
                                     // loop
-                                    wait_for_response = function () {
+                                    wait_for_response = function (last_countdown) {
                                         var pgm = self.module + '.send_message.wait_for_response 8: ';
                                         var now, debug_seq8;
                                         now = new Date().getTime();
@@ -3944,17 +3968,30 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                             self.log(pgm, 'request was ' + JSON.stringify(request), group_debug_seq) ;
                                             self.log(pgm, 'request filename was ' + inner_path4, group_debug_seq) ;
                                             self.log(pgm, 'expected response filename was ' + response_filename, group_debug_seq) ;
+                                            if (countdown_cb && last_countdown) countdown_cb(0) ;
                                             return set_error('Timeout while waiting for ' + request.msgtype + ' response');
                                         }
                                         // 9: dbQuery
                                         debug_seq8 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'api query 5', 'dbQuery', null, group_debug_seq);
                                         self.ZeroFrame.cmd("dbQuery", [api_query_5], function (res) {
                                             var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 9: ';
-                                            var inner_path9;
+                                            var inner_path9, call_countdown_cb, countdown, wait_for_response_with_countdown;
                                             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq8, (!res || res.error) ? 'Failed' : 'OK');
                                             if (res.error) return set_error('Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error);
                                             if (!res.length) {
-                                                setTimeout(wait_for_response, 500);
+                                                if (countdown_cb) {
+                                                    call_countdown_cb = false ;
+                                                    countdown = Math.round((timeout_at - now) / 1000) ;
+                                                    if (typeof last_countdown == 'number') {
+                                                        if (countdown != last_countdown) call_countdown_cb = true ;
+                                                    }
+                                                    else call_countdown_cb = true ;
+                                                    if (call_countdown_cb) countdown_cb(countdown) ;
+                                                }
+                                                wait_for_response_with_countdown = function() {
+                                                    wait_for_response(countdown) ;
+                                                };
+                                                setTimeout(wait_for_response_with_countdown, 500);
                                                 return;
                                             }
                                             inner_path9 = res[0].inner_path;

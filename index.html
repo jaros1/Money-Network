@@ -542,7 +542,7 @@
                             <tr>
                                 <td colspan="7" style="text-align: left">
                                     <span ng-bind-html="m.message.message.money_transactions_status.html"></span>
-                                    <span ng-show="m.message.message.money_transactions_status.spinner"><img src="public/images/spinner-16.gif"></span>
+                                    <span ng-show="m.message.message.money_transactions_status.spinner"><img src="public/images/spinner-16.gif"></span></span>
                                 </td>
                             </tr>
                             </tbody>
@@ -1186,7 +1186,7 @@
                                                     <tr>
                                                         <td colspan="5">
                                                             <span ng-bind="c.validate_money_transactions(true)"></span>
-                                                            <span ng-show="c.new_chat_msg_disabled"><img src="public/images/spinner-16.gif"></span>
+                                                            <span ng-show="c.new_chat_msg_disabled"><img src="public/images/spinner-16.gif"><span ng-bind="c.money_transactions_countdown"></span></span>
                                                         </td>
                                                     </tr>
                                                     </tbody>
