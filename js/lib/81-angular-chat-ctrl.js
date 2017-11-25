@@ -2533,7 +2533,7 @@ angular.module('MoneyNetwork')
                     // loop for each wallet. send start_mt requests
                     start_trans = function() {
                         var pgm = controller + '.approve_money_transactions.step_4_start_transactions.start_trans: ' ;
-                        var wallet_name, money_transactionid, session, request ;
+                        var wallet_name, money_transactionid, session, request, countdown_cb ;
                         wallet_name = wallet_names.shift() ;
                         if (!wallet_name) {
                             // done.
@@ -2555,10 +2555,16 @@ angular.module('MoneyNetwork')
                             money_transactionid: money_transactionid
                         };
                         console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                        countdown_cb = function (countdown) {
+                            m.message.message.money_transactions_status.countdown = countdown ;
+                            $scope.$apply() ;
+                        } ;
+
                         // send start_mt request to wallet. expects a fast response. all info has been checked and is ready in wallet
-                        session.encrypt.send_message(request, {response: 10000}, function (response) {
+                        session.encrypt.send_message(request, {response: 10000, countdown_cb: countdown_cb}, function (response) {
                             var pgm = controller + '.approve_money_transactions.step_4_start_transactions.start_trans send_message callback: ' ;
                             var error ;
+                            m.message.message.money_transactions_status.countdown = null ;
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
 
                             if (response && response.error && response.error.match(/^Timeout /)) {
@@ -2607,7 +2613,7 @@ angular.module('MoneyNetwork')
                     // loop for each wallet. send received money transaction(s) to wallet for check before final go
                     check_transaction = function() {
                         var pgm = controller + '.approve_money_transactions.step_3_check_transactions.check_transaction: ' ;
-                        var wallet_name, errors, i, money_transaction, plural, error, money_transactionid, session, request, j ;
+                        var wallet_name, errors, i, money_transaction, plural, error, money_transactionid, session, request, j, countdown_cb ;
                         wallet_name = wallet_names.shift() ;
                         if (!wallet_name) {
                             // done checking money transactions. count number of check errors
@@ -2686,10 +2692,15 @@ angular.module('MoneyNetwork')
                             set_check_error(wallet_name, error) ;
                             return check_transaction() ;
                         }
+                        countdown_cb = function (countdown) {
+                            m.message.message.money_transactions_status.countdown = countdown ;
+                            $scope.$apply() ;
+                        } ;
 
                         // send validate money transactions request to wallet (wait max 60 seconds. wallet may call external API in validation process)
-                        session.encrypt.send_message(request, {response: 60000}, function (response) {
+                        session.encrypt.send_message(request, {response: 60000, countdown_cb: countdown_cb}, function (response) {
                             var pgm = controller + '.approve_money_transactions.step_3_check_transactions.check_transaction send_message callback: ';
+                            m.message.message.money_transactions_status.countdown = null ;
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
                             //response = {
                             //    "msgtype": "prepare_mt_response",
@@ -2822,7 +2833,7 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'getting session. using sessionid = ' + session_info.sessionid);
                         MoneyNetworkAPILib.get_session(session_info.sessionid, function (session) {
                             var pgm = controller + '.approve_money_transaction.step_2_ping_wallets.ping_wallet get_session callback 1: ';
-                            var request, error, timeout_msg ;
+                            var request, error, timeout_msg, countdown_cb ;
                             if (!session) {
                                 error = 'error. could not ping ' + session_info.wallet_name + ' wallet. ' +
                                     'could not find any old session with sessionid ' + session_info.sessionid +
@@ -2840,8 +2851,13 @@ angular.module('MoneyNetwork')
                             // keeping 10 sec timeout
                             request = { msgtype: 'ping' };
                             timeout_msg = ['info', 'Issue with ping wallet timeout may have been solved<br>Please try again (Approve money transaction)', 10000] ;
-                            session.encrypt.send_message(request, {response: 10000, timeout_msg: timeout_msg}, function (response) {
+                            countdown_cb = function (countdown) {
+                                m.message.message.money_transactions_status.countdown = countdown ;
+                                $scope.$apply() ;
+                            } ;
+                            session.encrypt.send_message(request, {response: 10000, timeout_msg: timeout_msg, countdown_cb: countdown_cb}, function (response) {
                                 var pgm = controller + '.approve_money_transaction.step_2_ping_wallets.ping_wallet send_message callback 2: ';
+                                m.message.message.money_transactions_status.countdown = null ;
                                 if (response && response.error && response.error.match(/^Timeout /)) {
                                     // OK. Timeout. Continue with next session
                                     console.log(pgm + 'ping wallet timeout for sessionid ' + session_info.sessionid) ;
