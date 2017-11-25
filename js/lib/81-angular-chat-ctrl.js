@@ -1497,7 +1497,7 @@ angular.module('MoneyNetwork')
                     check_transaction = function () {
                         var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction: ';
                         var wallet_name, session, request, i, j, money_transaction, factor, units, errors, error,
-                            money_transactionid, unique_text, balance, countdown_cb ;
+                            money_transactionid, unique_text, balance, timeout_msg, countdown_cb ;
                         wallet_name = wallet_names.shift() ;
                         if (!wallet_name) {
                             // todo: done checking money transactions. count errors. notification, stop or continue
@@ -1595,13 +1595,13 @@ angular.module('MoneyNetwork')
                             set_ping_error(wallet_name, error, false) ;
                             return check_transaction() ;
                         }
+                        timeout_msg = ['info', 'Issue with validate money transaction timeout may have been solved<br>Please try again (Send chat message)', 10000] ;
                         countdown_cb = function (countdown) {
                             self.money_transactions_countdown = countdown ;
                             $scope.$apply() ;
                         } ;
-
                         // send validate money transactions request to wallet (wait max 60 seconds. wallet may call external API in validation process)
-                        session.encrypt.send_message(request, {response: 60000, countdown_cb: countdown_cb}, function (response) {
+                        session.encrypt.send_message(request, {response: 60000, timeout_msg: timeout_msg, countdown_cb: countdown_cb}, function (response) {
                             var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction send_message callback: ';
                             self.money_transactions_countdown = null ;
                             console.log(pgm + 'response = ' + JSON.stringify(response)) ;
@@ -1764,7 +1764,7 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'getting session. using sessionid = ' + session_info.sessionid + '. maybe wrong sessionid. see issue #208');
                         MoneyNetworkAPILib.get_session(session_info.sessionid, function (session) {
                             var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet get_session callback 1: ';
-                            var request, error, countdown_cb ;
+                            var request, error, timeout_msg, countdown_cb ;
                             if (!session) {
                                 error = 'error. could not ping ' + session_info.wallet_name + ' wallet. ' +
                                     'could not find any old session with sessionid ' + session_info.sessionid +
@@ -1777,11 +1777,12 @@ angular.module('MoneyNetwork')
                             wallets_hash[session_info.wallet_name].session = session ;
                             // send ping. timeout max 10 seconds. Expects Timeout or OK response
                             request = { msgtype: 'ping' };
+                            timeout_msg = ['info', 'Issue with ping wallet timeout may have been solved<br>Please try again (Send chat message)', 10000] ;
                             countdown_cb = function (countdown) {
                                 self.money_transactions_countdown = countdown ;
                                 $scope.$apply() ;
                             } ;
-                            session.encrypt.send_message(request, {response: 10000, countdown_cb: countdown_cb}, function (response) {
+                            session.encrypt.send_message(request, {response: 10000, timeout_msg: timeout_msg, countdown_cb: countdown_cb}, function (response) {
                                 var pgm = controller + '.send_chat_msg.step_2_ping_wallets.ping_wallet send_message callback 2: ';
                                 self.money_transactions_countdown = null ;
                                 if (response && response.error && response.error.match(/^Timeout /)) {
