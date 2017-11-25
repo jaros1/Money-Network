@@ -825,12 +825,32 @@ angular.module('MoneyNetwork')
                     });
                     return;
                 }
-                //else if (request.msgtype == 'published') {
-                //    // wallet session has just published content OK.
-                //    // minimum interval between publish is 16 seconds
-                //    console.log(pgm + 'request = ' + JSON.stringify(request));
-                //    MoneyNetworkAPILib.set_last_published(request.timestamp);
-                //}
+                else if (request.msgtype == 'confirm') {
+                    // received a confirm dialog request from wallet session. display and wait for user feedback.
+                    // wallet session expects OK response (confirmed) or timeout (not confirmed)
+                    // adding wallet_title to confirm dialog
+                    console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                    MoneyNetworkAPILib.get_wallet_info(session_info.wallet_sha256, function (wallet_info, delayed) {
+                        var pgm = service + '.process_incoming_message.' + request.msgtype + ' get_wallet_info callback/' + group_debug_seq + ': ';
+                        var message, button_caption, confirm;
+                        if (!wallet_info || wallet_info.error || !wallet_info[session_info.wallet_sha256]) {
+                            response.error = 'could not find wallet information for wallet_sha256 ' + session_info.wallet_sha256 + '. wallet_info = ' + JSON.stringify(wallet_info);
+                            console.log(pgm + response.error);
+                            console.log(pgm + 'ignoring confirm request = ' + JSON.stringify(request));
+                            return done_and_send(response, encryptions);
+                        }
+                        message = $sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + $sanitize(request.message);
+                        button_caption = $sanitize(request.button_caption || 'OK') ;
+                        confirm = [message, button_caption] ;
+                        // console.log(pgm + 'notification = ' + JSON.stringify(notification)) ;
+                        ZeroFrame.cmd("wrapperConfirm", confirm, function (confirm) {
+                            if (!confirm) return ; // not confirmed = timeout in wallet session
+                            // confirmed. send OK response to wallet session
+                            return done_and_send(response, encryptions);
+                        });
+                    });
+                    return ;
+                }
                 else if (request.msgtype == 'timeout') {
                     // timeout message from wallet. wallet sent response after timeout. There may be a timeout failure in MN session
                     // merge MN process information and wallet process information.

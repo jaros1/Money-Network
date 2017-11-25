@@ -1446,9 +1446,22 @@ var MoneyNetworkAPILib = (function () {
                     "message": { "type": 'string'},
                     "timeout": { "type": 'number'}
                 },
-                "required": ['msgtype', 'type'],
+                "required": ['msgtype', 'type', 'message'],
                 "additionalProperties": false
             }, // notification
+
+            "confirm" : {
+                "type": 'object',
+                "title": 'MN/Wallet. send confirm request, see wrapperConfirm, to other session',
+                "description": 'For example: MoneyNetworkW2: confirm money transfer. OK response or timeout',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^confirm$'},
+                    "message": { "type": 'string'},
+                    "button_caption": { "type": 'string'}
+                },
+                "required": ['msgtype', 'message'],
+                "additionalProperties": false
+            }, // confirm
 
             "timeout": {
                 "type": 'object',
