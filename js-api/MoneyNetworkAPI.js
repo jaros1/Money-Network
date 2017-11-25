@@ -271,6 +271,17 @@ var MoneyNetworkAPILib = (function () {
             '. elapsed time ' + elapsed_time + ' ms (' + debug_seq + (group_debug_seq ? '/' + group_debug_seq : '') + '). ' +
             debug_z_api_operation_pending()) ;
     } // debug_z_api_operation_end
+    
+    function validate_timeout_msg (timeout_msg) {
+        if (typeof timeout_msg == 'string') return null ;
+        if (!Array.isArray(timeout_msg)) return 'timeout_msg must be a string or an array with [type, message <,timeout> ]' ;
+        if ((timeout_msg.length < 2) || (timeout_msg.length > 3)) return 'timeout_msg must be a string or an [type, message <,timeout>] notification array' ;
+        if (['info', 'error', 'done'].indexOf(timeout_msg[0]) == -1) return 'first element in timeout_msg array must be info, error or done (type)' ;
+        if (typeof timeout_msg[1] != 'string') return 'second element in timeout_msg array must be a string (message)' ;
+        if (timeout_msg.length < 3) return null ;
+        if (typeof timeout_msg[2] != 'number') return 'third element in timeout_msg array must be number (milliseconds)' ;
+        if (timeout_msg[2] <= 0) return 'third element in timeout_msg array must be number (milliseconds)'
+    } // validate_timeout_msg
 
     // monitor "long" running operations (request-response cycles) from start to end
     // normally starts in message_demon and ends when signing response to other process
@@ -288,7 +299,7 @@ var MoneyNetworkAPILib = (function () {
     // add extra information about group debug operation. most important is msgtype as different msgtype may have different elapsed time
     function debug_group_operation_update (group_debug_seq, options) {
         var pgm = module + '.debug_group_operation_update: ' ;
-        var pgm2, key ;
+        var pgm2, key, error ;
         if (!group_debug_operations[group_debug_seq])  {
             console.log(pgm + 'Error. Could not found any group operation with group_debug_seq ' + JSON.stringify(group_debug_seq));
             return ;
@@ -303,6 +314,13 @@ var MoneyNetworkAPILib = (function () {
             if (group_debug_operations[group_debug_seq][key]) continue ;
             if (['this_session_start_at', 'this_session_finish_at', 'this_session_elapsed_time', 'this_session_error',
                     'other_session_start_at', 'other_session_finish_at', 'other_session_elapsed_time', 'sent_count'].indexOf(key) != -1) continue ;
+            if (key == 'timeout_msg') {
+                error = validate_timeout_msg(options.timeout_msg) ;
+                if (error) {
+                    console.log(pgm + 'invalid call. ' + error) ;
+                    continue ;
+                }
+            }
             group_debug_operations[group_debug_seq][key] = options[key] ;
         } // for key
     } // debug_group_operation_update
@@ -392,8 +410,9 @@ var MoneyNetworkAPILib = (function () {
                 if (group_debug_operations[group_debug_seq].filename != stat[i].filename) continue ; // not this file
                 if (group_debug_operations[group_debug_seq].other_session_start_at) break ; // already received
                 if (group_debug_operations[group_debug_seq].msgtype != stat[i].msgtype) {
-                    console.log(pgm + 'error. identical filename but different msgtype. group_debug_seq = ' + group_debug_seq + ', stat = ' + JSON.stringify(stat[i]) + ', group_debug_operations = ' + JSON.stringify(group_debug_operations[group_debug_seq])) ;
-                    continue ;
+                    console.log(pgm + 'warning. identical filename but different msgtype. ' +
+                        'group_debug_seq = ' + group_debug_seq + ', stat = ' + JSON.stringify(stat[i]) +
+                        ', group_debug_operations = ' + JSON.stringify(group_debug_operations[group_debug_seq])) ;
                 }
                 group_debug_operations[group_debug_seq].other_session_start_at = stat[i].start_at ;
                 group_debug_operations[group_debug_seq].other_session_finish_at = stat[i].finish_at ;
@@ -2829,6 +2848,7 @@ var MoneyNetworkAPILib = (function () {
         debug_z_api_operation_start:debug_z_api_operation_start,
         debug_z_api_operation_end: debug_z_api_operation_end,
         get_group_debug_seq_pgm: get_group_debug_seq_pgm,
+        validate_timeout_msg: validate_timeout_msg,
         debug_group_operation_start: debug_group_operation_start,
         debug_group_operation_update: debug_group_operation_update,
         debug_group_operation_end: debug_group_operation_end,
@@ -3559,14 +3579,11 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     self.log(pgm, 'msgtype = ' + request.msgtype + ', subsystem = ' + subsystem + ', optional = ' + optional, group_debug_seq) ;
     // timeout_msg
     if (options.timeout_msg) {
-        // special notification display after receiving timeout message from other session (timeout when sending this message)
+        // special notification to display after receiving timeout message from other session (timeout when sending this message)
+        // see MoneyNetworkAPI.send_timeout_message and MoneyNetworkAPILib.debug_group_operation_receive_stat
         if (!response) return set_error('Invalid call. options.timeout_msg set and not waiting for any response') ;
-        if (typeof options.timeout_msg == 'string') ; // OK
-        else if (!Array.isArray(options.timeout_msg)) return set_error('invalid call. options.timeout_msg must be a string or an array with [type, message <,timeout> ]') ;
-        else if ((options.timeout_msg.length < 2) || (options.timeout_msg.length > 3)) return set_error('invalid call. options.timeout_msg must be a string or an [type, message <,timeout>] notification array') ;
-        else if (['info', 'error', 'done'].indexOf(options.timeout_msg[0]) == -1) return set_error('invalid call. first element in options.timeout_msg array must be info, error or done') ;
-        else if (typeof options.timeout_msg[1] != 'string') return set_error('invalid call. second element in options.timeout_msg array must be a string') ;
-        else if (options.timeout_msg[2] && (typeof options.timeout_msg[2] != 'number')) return set_error('invalid call. third element in options.timeout_msg array must be number') ;
+        error = MoneyNetworkAPILib.validate_timeout_msg(options.timeout_msg) ;
+        if (error) return set_error('invalid call. options.timeout. ' + error) ;
         MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {timeout_msg: options.timeout_msg}) ;
     }
 
@@ -3948,7 +3965,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 
 }; // send_message
 
-// report timeout problems to other process. other process should retry failed message with changed timeout setting
+// report timeout problems to other process. other process may retry failed request or display a timeout message in UI
 // params:
 // - optional msgtype if request had a valid msgtype
 // - optional notification. text or array with type, message and timeout (wrapperNotofication)
@@ -4020,7 +4037,7 @@ MoneyNetworkAPI.prototype.redo_file = function(request_filename) {
     var self;
     self = this;
     this.check_destroyed(pgm);
-    this.encrypt.get_session_filenames({}, function(this_session_filename, other_session_filename, unlock_pwd2) {
+    this.get_session_filenames({}, function(this_session_filename, other_session_filename, unlock_pwd2) {
         var pgm = self.module + '.redo_file get_session_filenames callback: ';
         var lng ;
         lng = other_session_filename.length ;
