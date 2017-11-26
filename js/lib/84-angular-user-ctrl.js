@@ -8,8 +8,8 @@ angular.module('MoneyNetwork')
         if (!MoneyNetworkHelper.getItem('userid')) return ; // not logged in - skip initialization of controller
         console.log(controller + ' loaded');
 
-        function get_merger_type() {
-            return MoneyNetworkAPILib.get_merger_type() ;
+        function get_merged_type() {
+            return MoneyNetworkAPILib.get_merged_type() ;
         }
 
         // debug wrappers
@@ -374,7 +374,7 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.get_my_user_hub(function (hub) {
                     var user_path ;
 
-                    user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                    user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                     var my_auth_address = ZeroFrame.site_info.auth_address ;
 
                     // create callbacks for cleanup operation
@@ -638,7 +638,7 @@ angular.module('MoneyNetwork')
             // zeroNet info
             moneyNetworkService.get_my_user_hub(function (hub) {
                 var pgm = controller + ' get_my_user_hub callback 1: ' ;
-                user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 z_file_get(pgm, {inner_path: user_path + '/content.json', required: false}, function (content) {
                     var pgm = controller + ' z_file_get callback 2: ' ;
                     var filename, z_files, z_bytes, chat_files, chat_bytes ;
@@ -703,7 +703,7 @@ angular.module('MoneyNetwork')
             // 4-6 - add localStorage, encrypt and export
             moneyNetworkService.get_my_user_hub(function (hub) {
 
-                user_path = "merged-" + get_merger_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
 
                 // callbacks:
                 step_6_export = function () {

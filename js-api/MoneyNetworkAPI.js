@@ -1578,6 +1578,7 @@ var MoneyNetworkAPILib = (function () {
             else if ((request_msgtype == 'get_balance') && (json.msgtype == 'balance')) null; // OK combination
             else if ((request_msgtype == 'prepare_mt_request') && (json.msgtype == 'prepare_mt_response')) null; // OK combination
             else if ((request_msgtype == 'get_published') && (json.msgtype == 'published')) null; // OK combination
+            else if ((request_msgtype == 'queue_publish') && (json.msgtype == 'start_publish')) null; // OK combination
             else return 'Invalid ' + request_msgtype + ' request ' + json.msgtype + ' response combination';
         }
         if (typeof tv4 === 'undefined') {
@@ -2351,18 +2352,30 @@ var MoneyNetworkAPILib = (function () {
                                     cb(null) ;
                                     return ;
                                 }
-                                // OK queue_publish. publish request was queue in MN session. wait for start_publish message from MN before starting publish
-                                publish_queue.push({
-                                    client: true,
-                                    cb: cb,
-                                    cb_id: cb_id,
-                                    options: options
-                                }) ;
-                                console.log(pgm2 + 'OK queue_publish. wait for start_publish message from MN') ;
 
-                                // 4) MN will add object with session info and cb_id to publish_queue_cbs
-                                // 5) W2 will wait for "start_publish" message from MN with cb_id. Return OK and run cb
-                                // 6) send "published" message to MN with published result and last_published timestamp
+                                if (response.msgtype == 'start_publish') {
+                                    // start_publish response from MN. Ready for publish in wallet session
+                                    publish_queue.push({
+                                        client: true,
+                                        cb_id: cb_id,
+                                        options: options,
+                                        publishing: true
+                                    }) ;
+                                    // execute publish cb
+                                    cb(cb_id, options.encrypt) ;
+                                }
+                                else {
+                                    // OK queue_publish. publish request was queue in MN session. wait for start_publish message from MN before starting publish
+                                    publish_queue.push({
+                                        client: true,
+                                        cb: cb,
+                                        cb_id: cb_id,
+                                        options: options
+                                    }) ;
+                                    console.log(pgm2 + 'OK queue_publish. wait for start_publish message from MN') ;
+                                    // 5) W2 will wait for "start_publish" message from MN with cb_id. Return OK and run cb
+                                    // 6) send "published" message to MN with published result and last_published timestamp
+                                }
 
                             }
                             catch (e) {cb2(pgm, e)}
@@ -2490,8 +2503,23 @@ var MoneyNetworkAPILib = (function () {
                 // MN received a queue_publish request from a wallet session.
                 (function(){
                     var pgm = module + '.process_publish_messages.' + request.msgtype + '/' + group_debug_seq + ': ';
-                    // add wallet publish request to publish queue. publish demon will execute callback keeping interval between publish > 15 seconds
-                    queue_publish({client: true, cb_id: request.cb_id, encrypt: encrypt, group_debug_seq: group_debug_seq}, function(cb_id, encrypt) {
+                    var elapsed_s ;
+                    elapsed_s = Math.round(now/1000) - last_published ;
+                    console.log(pgm + 'publish_queue.length = ' + publish_queue.length + ', elapsed since last publish = ' + elapsed_s) ;
+                    if (!publish_queue.length && (elapsed_s >= 30)) {
+                        // shortcut. publish queue is empty and interval since last publish >= 30 seconds
+                        // skip OK response and go direct to start_publish response.
+                        response.msgtype = 'start_publish' ;
+                        response.cb_id = request.cb_id ;
+                        publish_queue.push({
+                            client: true,
+                            cb_id: request.cb_id,
+                            options: { encrypt: encrypt},
+                            publishing: now
+                        }) ;
+                    }
+                    // add wallet publish request to publish queue. publish demon will execute callback keeping interval between publish >= 30 seconds
+                    else queue_publish({client: true, cb_id: request.cb_id, encrypt: encrypt, group_debug_seq: group_debug_seq}, function(cb_id, encrypt) {
                         var pgm = module + '.process_publish_messages.' + request.msgtype + ' queue_publish callback 1: ';
                         var request ;
                         // callback released from publish queue. send start_publish message to wallet session
@@ -3605,6 +3633,8 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     else if ((subsystem == 'api') && (['queue_publish', 'start_publish', 'check_publish', 'published'].indexOf(request.msgtype) != -1)) {
         // optional file used in special published messages between MN sessions
         optional = '-p' ;
+        if ((request_msgtype == 'queue_publish') && (request.msgtype == 'start_publish')) optional = '-i' ;
+
     }
     else optional = subsystem == 'api' ? '-i' : '-e' ; // optional file (internal or external)
     self.log(pgm, 'msgtype = ' + request.msgtype + ', subsystem = ' + subsystem + ', optional = ' + optional, group_debug_seq) ;
@@ -3635,7 +3665,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     if (!this.sessionid && (encryptions.indexOf(3) != -1)) return set_error('Cannot symmetric encrypt outgoing message. sessionid is missing in encryption setup'); // encrypt_3
     if (!this.this_user_path) this.this_user_path = MoneyNetworkAPILib.get_this_user_path() ;
     if (!this.this_user_path) return set_error('Cannot send message. this_user_path is missing in setup');
-    if (!MoneyNetworkAPILib.is_user_path(this.this_user_path)) return set_error('Cannot send message. "' + this.this_user_path + '" is not a valid user path. Please use "merged-' + MoneyNetworkAPILib.get_merger_type() + '/<hub>/data/users/<auth_address>/" as user_path');
+    if (!MoneyNetworkAPILib.is_user_path(this.this_user_path)) return set_error('Cannot send message. "' + this.this_user_path + '" is not a valid user path. Please use "merged-' + MoneyNetworkAPILib.get_merged_type() + '/<hub>/data/users/<auth_address>/" as user_path');
     if (response) {
         // Ingoing encryption
         if (!this.this_session_prvkey && (encryptions.indexOf(1) != -1) && (request.msgtype != 'get_password')) return set_error('Cannot JSEncrypt decrypt expected ingoing receipt. prvkey is missing in encryption setup'); // decrypt_1
