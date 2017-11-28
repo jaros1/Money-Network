@@ -785,12 +785,18 @@ var MoneyNetworkAPILib = (function () {
     // fallback used in case of lost messages or files arriving in wrong order
     // see receive w2_check_mt message in w2 process_incoming_message (test bitcoin wallet)
     function redo_file (request_filename) {
-        if (!done[request_filename]) return 'Not found in done' ;
+        var pgm = module + '.redo_file: ' ;
+        if (!done[request_filename]) {
+            if (debug) console.log(pgm + request_filename + ' was not found in done') ;
+            return 'Not found in done' ;
+        }
         if (done[request_filename] == true) {
             delete done[request_filename] ;
+            if (debug) console.log(pgm + request_filename + ' was removed from done') ;
             return null ;
         }
         // must be a callback object
+        if (debug) console.log(pgm + 'callback is already waiting for ' + request_filename) ;
         return 'Callback is already waiting for this file' ;
     } // redo_file
 
@@ -838,18 +844,20 @@ var MoneyNetworkAPILib = (function () {
         // find any new messages
         first = true;
         api_query_1 =
-            "select json.directory, files_optional.filename, keyvalue.value as modified " +
-            "from files_optional, json, keyvalue " +
+            "select json.directory, all_files.filename, keyvalue.value as modified " +
+            "from (select filename, json_id from files " +
+            "        union all " +
+            "      select filename, json_id from files_optional) as all_files, json, keyvalue " +
             "where ";
         for (session_filename in sessions) {
             api_query_1 += first ? "(" : " or ";
-            api_query_1 += "files_optional.filename like '" + session_filename + "%'";
+            api_query_1 += "all_files.filename like '" + session_filename + "%'";
             first = false ;
         }
         api_query_1 +=
-            ") and json.json_id = files_optional.json_id " +
+            ") and json.json_id = all_files.json_id " +
             "and keyvalue.json_id = json.json_id and keyvalue.key = 'modified' " +
-            "order by substr(files_optional.filename, instr(files_optional.filename,'.')+1)";
+            "order by substr(all_files.filename, instr(all_files.filename,'.')+1)";
         if (first) {
             console.log(pgm + 'error. no sessions were found');
             clearInterval(demon_id);
@@ -3981,7 +3989,12 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     // demon is not running or demon is not monitoring this sessionid
 
                                     // 7: wait for response. loop. wait until timeout_at
-                                    api_query_5 =
+                                    if (optional == '') api_query_5 =
+                                        "select 'merged-" + MoneyNetworkAPILib.get_merged_type() + "/' || json.directory || '/'   ||  files.filename as inner_path " +
+                                        "from files, json " +
+                                        "where files.filename = '" + response_filename + "' " +
+                                        "and json.json_id = files.json_id";
+                                    else api_query_5 =
                                         "select 'merged-" + MoneyNetworkAPILib.get_merged_type() + "/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
                                         "from files_optional, json " +
                                         "where files_optional.filename = '" + response_filename + "' " +
