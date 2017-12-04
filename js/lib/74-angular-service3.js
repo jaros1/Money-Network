@@ -69,8 +69,8 @@ angular.module('MoneyNetwork')
         function z_file_get (pgm, options, cb) {
             moneyNetworkHubService.z_file_get(pgm, options, cb) ;
         }
-        function z_file_write (inner_path, content, cb) {
-            MoneyNetworkAPILib.z_file_write(inner_path, content, {}, cb) ;
+        function z_file_write (pgm, inner_path, content, cb) {
+            MoneyNetworkAPILib.z_file_write(pgm, inner_path, content, {}, cb) ;
         }
         function get_data_json (cb) {
             moneyNetworkHubService.get_data_json(cb) ;
@@ -1602,7 +1602,7 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + image_path + ' fileWrite') ;
                                 debug_seq = debug_z_api_operation_start(pgm, image_path, 'fileWrite', show_debug('z_file_write')) ;
-                                z_file_write(image_path, btoa(json_raw), function (res) {
+                                z_file_write(pgm, image_path, btoa(json_raw), function (res) {
                                 //ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
                                     var pgm = service + '.z_update_2a_data_json_encrypt fileWrite callback: ';
                                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -1794,7 +1794,7 @@ angular.module('MoneyNetwork')
                                     console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + image_path + ' fileWrite') ;
                                     debug_seq = debug_z_api_operation_start(pgm, image_path, 'fileWrite', show_debug('z_file_write')) ;
-                                    z_file_write(image_path, btoa(json_raw), function (res) {
+                                    z_file_write(pgm, image_path, btoa(json_raw), function (res) {
                                     // ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
                                         var pgm = service + '.z_update_2b_data_json_encrypt fileWrite callback 5: ';
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -2433,7 +2433,7 @@ angular.module('MoneyNetwork')
                                         debug('public_chat', 'issue #84 - json_raw.length = ' + json_raw.length + ', JSON.stringify(chat).length = ' + JSON.stringify(chat).length) ;
                                         // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + new_file_path + ' fileWrite') ;
                                         debug_seq = debug_z_api_operation_start(pgm, new_file_path, 'fileWrite', show_debug('z_file_write')) ;
-                                        z_file_write(new_file_path, btoa(json_raw), function (res) {
+                                        z_file_write(pgm, new_file_path, btoa(json_raw), function (res) {
                                         // ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
                                             var pgm = service + '.z_update_5_public_chat fileWrite callback 3a: ';
                                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -2614,7 +2614,7 @@ angular.module('MoneyNetwork')
                                     debug('public_chat', 'issue #84: json_raw.length = ' + json_raw.length + ', JSON.stringify(chat).length = ' + JSON.stringify(chat).length) ;
                                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + new_file_path + ' fileWrite') ;
                                     debug_seq = debug_z_api_operation_start(pgm, new_file_path, 'fileWrite', show_debug('z_file_write')) ;
-                                    z_file_write(new_file_path, btoa(json_raw), function (res) {
+                                    z_file_write(pgm, new_file_path, btoa(json_raw), function (res) {
                                     // ZeroFrame.cmd("fileWrite", [new_file_path, btoa(json_raw)], function (res) {
                                         var pgm = service + '.z_update_5_public_chat fileWrite callback 3b: ';
                                         var error, js_message_row ;
