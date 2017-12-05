@@ -2286,38 +2286,41 @@ var MoneyNetworkAPILib = (function () {
     // use start_transaction and end_transaction
     var transactions = {} ; // timestamp => object with transaction info
 
-    function start_transaction(pgm, cb) {
+    function start_transaction(calling_pgm, cb) {
         var pgm = module + '.start_transaction: ' ;
-        var transaction_timestamp, key;
+        var transaction_timestamp, key, running;
         if (typeof cb != 'function') throw pgm + 'start_transaction: invalid call. second parameter cb must be a callback function';
 
         transaction_timestamp = new Date().getTime();
         while (transactions[transaction_timestamp]) transaction_timestamp++;
         transactions[transaction_timestamp] = {
-            pgm: pgm,
+            pgm: calling_pgm,
             created_at: transaction_timestamp,
             cb: cb,
             running: false
         };
-        console.log(pgm + 'added transaction with timestamp ' + transaction_timestamp + ' to transactions. pgm = ' + pgm) ;
+        console.log(pgm + 'added transaction with timestamp ' + transaction_timestamp + ' to transactions. calling_pgm = ' + calling_pgm) ;
+
         // any running transactions
+        running = 0 ;
         for (key in transactions) {
             if (transactions[key].running) {
                 // wait
-                console.log(pgm + 'paused ' + pgm + '. ' + (Object.keys(transactions).length - 1) + ' transactions in queue (1 running)');
+                running++ ;
+                console.log(pgm + 'pause ' + calling_pgm + '. ' + transactions[key].pgm + ' is running');
                 return;
             }
         }
+        if (running) return ;
+
         // start now
         transactions[transaction_timestamp].running = true;
         transactions[transaction_timestamp].started_at = transaction_timestamp;
         transactions[transaction_timestamp].cb(transaction_timestamp);
-
-
     } // start_transaction
 
     function end_transaction (transaction_timestamp) {
-        var pgm = module + '.end_update_transaction: ' ;
+        var pgm = module + '.end_transaction: ' ;
         var now, waittime, elapsedtime, key ;
         if (!transactions[transaction_timestamp]) throw 'could not find any transaction with transaction_timestamp = ' + transaction_timestamp;
         now = new Date().getTime() ;
@@ -2325,7 +2328,7 @@ var MoneyNetworkAPILib = (function () {
         transactions[transaction_timestamp].finished_at = now ;
         waittime = transactions[transaction_timestamp].started_at - transactions[transaction_timestamp].created_at ;
         elapsedtime = transactions[transaction_timestamp].finished_at - transactions[transaction_timestamp].started_at ;
-        console.log(module + '.transactions: finished running ' + transactions[transaction_timestamp].pgm + ', waittime = ' + waittime + ' ms. elapsed time = ' + elapsedtime + ' ms');
+        console.log(pgm + 'finished running ' + transactions[transaction_timestamp].pgm + ', waittime = ' + waittime + ' ms. elapsed time = ' + elapsedtime + ' ms');
         delete transactions[transaction_timestamp] ;
         if (!Object.keys(transactions).length) return ;
         for (key in transactions) {
@@ -3013,12 +3016,23 @@ var MoneyNetworkAPILib = (function () {
             // console.log(pgm + 'calling queue_publish') ;
             queue_publish({encrypt: encrypt}, function (cb_id, encrypt) {
                 var pgm = module + '.z_site_publish queue_publish callback 2: ' ;
-                var debug_seq ;
+                var debug_seq, site_publish_cb, site_publish_cb_done, process_id, site_publish_timeout ;
                 // console.log(pgm + 'queue_publish OK. cb_id = ', cb_id, ', encrypt = ', encrypt) ;
-                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish') ;
-                ZeroFrame.cmd("sitePublish", options, function (res) {
+
+                // prevent publish operation hanging for ever. add 60 seconds timeout to sitePublish request
+                site_publish_cb_done = false ;
+                site_publish_cb = function (res) {
                     var pgm = module + '.z_site_publish sitePublish callback 3: ' ;
                     var run_cb, get_content_json ;
+                    // stop timeout process + check for already run callback
+                    if (process_id) {
+                        try {$timeout.cancel(process_id)}
+                        catch (e) {}
+                        process_id = null ;
+                    }
+                    if (site_publish_cb_done) return ; // sitePublish cb has already run
+                    site_publish_cb_done = true ;
+                    // ok. run sitePublish callback
                     debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                     debug_seq = null ;
 
@@ -3075,7 +3089,18 @@ var MoneyNetworkAPILib = (function () {
 
                     }) ; // get_content_json callback 4
 
-                }) ; // sitePublish callback 3
+
+                } ; // sitePublish callback 3
+
+                // execute sitePublish callback by either sitePublish or by timeout fnk
+                site_publish_timeout = function () {
+                    site_publish_cb({error: 'timeout'}) ;
+                };
+                process_id = setTimeout(site_publish_timeout, 60000) ;
+
+
+                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish') ;
+                ZeroFrame.cmd("sitePublish", options, site_publish_cb) ;
 
             }) ; // queue_publish callback 2
 
