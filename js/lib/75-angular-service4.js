@@ -958,13 +958,16 @@ angular.module('MoneyNetwork')
 
             // find full wallet info from sha256 values
             console.log(pgm + 'find full wallet info from wallet_sha256_values array = ' + JSON.stringify(wallet_sha256_values)) ;
+            // wallet_sha256_values = ["e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7","593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de"] ;
+
             MoneyNetworkAPILib.get_wallet_info(wallet_sha256_values, function (wallet_info, refresh_angular_ui) {
                 var wallet_sha256, i, key, balance, j, k, currency, unique_id, unique_ids, old_row, new_row, unique_texts,
                     sessionid, changed_wallet_sha256_values, status, step_1_get_session, step_2_ping_other_session,
-                    step_3_other_user_path, step_n_done, doublet_wallet_sha256, non_unique_text, doublet_wallets ;
+                    step_3_other_user_path, step_n_done, doublet_wallet_address, non_unique_text, doublet_wallets,
+                    error_count, wallet_address;
                 if (pending_refresh_angular_ui) refresh_angular_ui = true ; // fixing problem with changed wallet_sha256 values
                 // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
-                doublet_wallet_sha256 = {} ;
+                doublet_wallet_address = {} ;
                 doublet_wallets = false ;
                 if (!wallet_info || (typeof wallet_info != 'object') || wallet_info.error) {
                     console.log(pgm + 'could not find wallet_info for sha256 values ' + JSON.stringify(wallet_sha256_values) + '. wallet_info = ' + JSON.stringify(wallet_info)) ;
@@ -976,13 +979,14 @@ angular.module('MoneyNetwork')
                         for (key in wallet_info[wallet_sha256]) {
                             temp_currencies[i][key] = wallet_info[wallet_sha256][key] ;
                         } // for key
-                        if (doublet_wallet_sha256[wallet_sha256]) {
-                            // more that one session with this wallet_sha256. use session with last request_at timestamp
+                        wallet_address = temp_currencies[i].wallet_address ;
+                        if (doublet_wallet_address[wallet_address]) {
+                            // more that one session with this wallet_address. use session with last request_at timestamp
                             doublet_wallets = true ;
-                            if (temp_currencies[i].last_request_at > doublet_wallet_sha256[wallet_sha256].last_request_at) doublet_wallet_sha256[wallet_sha256].last_request_at = temp_currencies[i].last_request_at ;
+                            if (temp_currencies[i].last_request_at > doublet_wallet_address[wallet_address].last_request_at) doublet_wallet_address[wallet_address].last_request_at = temp_currencies[i].last_request_at ;
                         }
-                        else doublet_wallet_sha256[wallet_sha256] = { last_request_at: temp_currencies[i].last_request_at, count: 0} ;
-                        doublet_wallet_sha256[wallet_sha256].count++ ;
+                        else doublet_wallet_address[wallet_address] = { last_request_at: temp_currencies[i].last_request_at, count: 0} ;
+                        doublet_wallet_address[wallet_address].count++ ;
                     } // for i
                 } // for wallet_sha256
 
@@ -990,22 +994,28 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
                 if (doublet_wallets) {
                     // maybe using wrong sessionid in currencies array?
-                    console.log(pgm + 'issue #253: doublet_wallet_sha256 = ' + JSON.stringify(doublet_wallet_sha256)) ;
+                    for (wallet_address in doublet_wallet_address) {
+                        if (doublet_wallet_address[wallet_address].count == 1) delete doublet_wallet_address[wallet_address] ;
+                    }
+                    console.log(pgm + 'issue #253: doublet_wallet_address = ' + JSON.stringify(doublet_wallet_address)) ;
                     //doublet_wallet_sha256 = {
+                    //    "593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de": {
+                    //        "last_request_at": 1512832107997,
+                    //        "count": 1
+                    //    },
                     //    "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7": {
-                    //        "last_request_at": 1511027234069,
+                    //        "last_request_at": 1509177734358,
                     //        "count": 2
                     //    }
                     //};
+
                     console.log(pgm + 'issue #253: temp_currencies (before) = ' + JSON.stringify(temp_currencies)) ;
-                    // new session: bukuddycoq4ofc2amwxg5sapzniiftptwz5vogkpembqkzjysxqdjkbxw0tc
-                    // old not restored session: pqohpdesc8vfnzhnmwhlvl8zkvfsydrz662vpjcl6mexbn6p2lx2uwr9ikfb
-                    //temp_currencies (before) [{
+                    //temp_currencies_before = [{
                     //    "code": "tBTC",
-                    //    "amount": 0,
-                    //    "last_request_at": 1511027129067, == Saturday, November 18, 2017 6:45:29 PM GMT+01:00 (oldest session)
-                    //    "balance_at": 1511013580438,
-                    //    "sessionid": "pqohpdesc8vfnzhnmwhlvl8zkvfsydrz662vpjcl6mexbn6p2lx2uwr9ikfb",
+                    //    "amount": 1.3,
+                    //    "last_request_at": 1507220147701,
+                    //    "balance_at": 1507220217138,
+                    //    "sessionid": "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1",
                     //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
                     //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
                     //    "wallet_title": "MoneyNetworkW2",
@@ -1020,10 +1030,10 @@ angular.module('MoneyNetwork')
                     //    "api_url": "https://www.blocktrail.com/api/docs"
                     //}, {
                     //    "code": "tBTC",
-                    //    "amount": 0.001,
-                    //    "last_request_at": 1511027234069, == Saturday, November 18, 2017 6:47:14 PM GMT+01:00 (newest session)
-                    //    "balance_at": 1511027243659,
-                    //    "sessionid": "bukuddycoq4ofc2amwxg5sapzniiftptwz5vogkpembqkzjysxqdjkbxw0tc",
+                    //    "amount": 1.3,
+                    //    "last_request_at": 1509177734358,
+                    //    "balance_at": 1509095766549,
+                    //    "sessionid": "n0bz1eocrbyyhv9llcpon8emf2f13j5kbebtcdtkn6io8mwfpcl6ccx7fcci",
                     //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
                     //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
                     //    "wallet_title": "MoneyNetworkW2",
@@ -1036,24 +1046,64 @@ angular.module('MoneyNetwork')
                     //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
                     //    }],
                     //    "api_url": "https://www.blocktrail.com/api/docs"
+                    //}, {
+                    //    "code": "tBTC",
+                    //    "amount": 0.09720024,
+                    //    "last_request_at": 1512835746010,
+                    //    "balance_at": 1512835905049,
+                    //    "sessionid": "wt35gjugpud6787osg0v710xgylgvvjhhmvnotii5fhuqdbl9bkq8vm0mtsz",
+                    //    "wallet_sha256": "593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de",
+                    //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //    "wallet_title": "MoneyNetworkW2",
+                    //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                    //    "currencies": [{
+                    //        "code": "tBTC",
+                    //        "name": "Test Bitcoin",
+                    //        "url": "https://en.bitcoin.it/wiki/Testnet",
+                    //        "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                    //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                    //    }],
+                    //    "api_url": "https://www.blocktrail.com/api/docs"
                     //}];
+
+
                 }
-                for (wallet_sha256 in doublet_wallet_sha256) {
-                    if (doublet_wallet_sha256.count == 1) continue ;
+
+                for (wallet_address in doublet_wallet_address) {
+                    if (doublet_wallet_address[wallet_address].count == 1) continue ;
                     for (i=temp_currencies.length-1 ; i>=0 ; i--) {
-                        if (temp_currencies[i].wallet_sha256 != wallet_sha256) continue ;
-                        if (temp_currencies[i].last_request_at < doublet_wallet_sha256[wallet_sha256].last_request_at) temp_currencies.splice(i,1) ;
+                        if (temp_currencies[i].wallet_address != wallet_address) continue ;
+                        if (temp_currencies[i].last_request_at < doublet_wallet_address[wallet_address].last_request_at) temp_currencies.splice(i,1) ;
                     }
                 }
+
                 // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
                 if (doublet_wallets) console.log(pgm + 'issue #253: temp_currencies (after) = ' + JSON.stringify(temp_currencies)) ;
-                //temp_currencies (after) = [{
+                //temp_currencies_after = [{
                 //    "code": "tBTC",
-                //    "amount": 0.001,
-                //    "last_request_at": 1511027234069, (OK newest sessionid)
-                //    "balance_at": 1511027243659,
-                //    "sessionid": "bukuddycoq4ofc2amwxg5sapzniiftptwz5vogkpembqkzjysxqdjkbxw0tc", (OK newest sessionid)
+                //    "amount": 1.3,
+                //    "last_request_at": 1509177734358,
+                //    "balance_at": 1509095766549,
+                //    "sessionid": "n0bz1eocrbyyhv9llcpon8emf2f13j5kbebtcdtkn6io8mwfpcl6ccx7fcci",
                 //    "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
+                //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //    "wallet_title": "MoneyNetworkW2",
+                //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                //    "currencies": [{
+                //        "code": "tBTC",
+                //        "name": "Test Bitcoin",
+                //        "url": "https://en.bitcoin.it/wiki/Testnet",
+                //        "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                //    }],
+                //    "api_url": "https://www.blocktrail.com/api/docs"
+                //}, {
+                //    "code": "tBTC",
+                //    "amount": 0.09720024,
+                //    "last_request_at": 1512835746010,
+                //    "balance_at": 1512835905049,
+                //    "sessionid": "wt35gjugpud6787osg0v710xgylgvvjhhmvnotii5fhuqdbl9bkq8vm0mtsz",
+                //    "wallet_sha256": "593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de",
                 //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
                 //    "wallet_title": "MoneyNetworkW2",
                 //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
@@ -1085,38 +1135,60 @@ angular.module('MoneyNetwork')
                 }
                 console.log(pgm + 'sessions (after get_currencies) = ' + JSON.stringify(ls_sessions)) ;
                 //sessions_after_get_currencies = {
-                //    "pqohpdesc8vfnzhnmwhlvl8zkvfsydrz662vpjcl6mexbn6p2lx2uwr9ikfb": {
+                //    "z1a4wzejn0bifkglpblefqqedevpdiyissdstq5kbppardmbzdytbtrzkp2w": {
+                //        "_$session_info": {
+                //            "password": "U2FsdGVkX1+6+X4pSDQOf8/Bb+3xG+nFQDyhr3/7syi+wYXKEZ6UL49dB2ftq1gmC5/LKfI2XfJS2fEsEy5CYscRBDuoUxJEqKNwiiiiXBA=",
+                //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCsOMfAvHPTp0K9qZfoItdJ9898\nU3S2gAZZSLuLZ1qMXr1dEnO8AwxS58UvKGwHObT1XQG8WT3Q1/6OGlJms4mYY1rF\nQXzYEV5w0RlcSrMpLz3+nJ7cVb9lYKOO8hHZFWudFRywkYb/aeNh6mAXqrulv92z\noX0S7YMeNd2YrhqefQIDAQAB\n-----END PUBLIC KEY-----",
+                //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                //            "last_request_at": 1503137602267,
+                //            "done": {},
+                //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
+                //        }
+                //    },
+                //    "wslrlc5iomh45byjnblebpvnwheluzzdhqlqwvyud9mu8dtitus3kjsmitc1": {
                 //        "_$session_info": {
                 //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                //            "password": "U2FsdGVkX1/pBgtEW2qYhGhw93HRsEksImi8na4cMFtEvEynBqNSW9EmOEhPK6A/dg2hk25XyYk8lUYmfVIqPC8BR3E7Ie4FvCwl8d2wBa0=",
-                //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgF5KrTfm5XtqNr480ehs8T6Vc9Ey\nu4jDaYcYRm/CRuOqS2oI0Z18Ksb8HonFgBKDR49rmsLwJLfMw+tRKhsIhrlz6PLa\n4iAK6eEUXiTjVOifEckm36rdybCS0siPAUafwixb/eg8Fpxsb9zlGQe22OSRr/h8\n/OinFVQbRj6z4lqpAgMBAAE=\n-----END PUBLIC KEY-----",
-                //            "pubkey2": "AiTobs/UzL7+mPYqmE0FvbtbinWwK/J15upHdjDEIm/+",
-                //            "last_request_at": 1511027129067,
-                //            "done": {
-                //            },
+                //            "password": "U2FsdGVkX18MyosYqdGVowB1nw/7Nm2nbzATu3TexEXMig7rjInIIr13a/w4G5TzFLFz9GE+rqGZsqRP+Ms0Ez3w8cA9xNhPjtrhOaOkT1M=",
+                //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCuM/Sevlo2UYUkTVteBnnUWpsd\n5JjAUnYhP0M2o36da15z192iNOmd26C+UMg0U8hitK8pOJOLiWi8x6TjvnaipDjc\nIi0p0l3vGBEOvIyNEYE7AdfGqW8eEDzzl9Cezi1ARKn7gq1o8Uk4U2fjkm811GTM\n/1N9IwACfz3lGdAm4QIDAQAB\n-----END PUBLIC KEY-----",
+                //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                //            "last_request_at": 1507220147701,
+                //            "done": {},
+                //            "balance": [{"code": "tBTC", "amount": 1.3}],
+                //            "balance_at": 1507220217138,
+                //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7"
+                //        }
+                //    },
+                //    "n0bz1eocrbyyhv9llcpon8emf2f13j5kbebtcdtkn6io8mwfpcl6ccx7fcci": {
+                //        "_$session_info": {
+                //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //            "password": "U2FsdGVkX1/8bnMqL/vsF15GJB/ZB/6BtOPkPZEvAFBQXOz4XvyPhXXT4GTEixgUxOkGGtco5/uyMThs9lQH3PeNj6eIgofRhvxQN07rxVM=",
+                //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgGufijn8Otb4RzILbnjr/g+pLRRt\nfRPL8dpAw0r5qRg1gvryXGqcWj585HVjdiubXonk2T9JjaEJFq7y++/zFA7TKRfV\nyyeGTDmmXCvNKSYLKk5vlhNCUMCfxTjUemV+A5bQ9GLcvx+Y5jMKkLJlN+YHwx+q\n4/ccqapavkGSr3SXAgMBAAE=\n-----END PUBLIC KEY-----",
+                //            "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                //            "last_request_at": 1509177734358,
+                //            "done": {},
+                //            "balance": [{"code": "tBTC", "amount": 1.3}],
+                //            "balance_at": 1509095766549,
+                //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7"
+                //        }
+                //    },
+                //    "wt35gjugpud6787osg0v710xgylgvvjhhmvnotii5fhuqdbl9bkq8vm0mtsz": {
+                //        "_$session_info": {
+                //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                //            "password": "U2FsdGVkX18QPA/RYfcE1oznPC6xUzF/9OOCeFYpoeYiLf1Krzifywucf4dAKcEinRp5o8AX1CVgGnMDiwvi5b+9SAxzmdxMI7C7dEaHKwE=",
+                //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCQPO/2hYRrec/5uZHa7tG3iY7u\nvAO0etDgwiBwobNzOH8o2Q8fu69bVyFEV8Ls66/A4R8H0CnAJFW+jhlO8/rIh50s\n5EolFm+fbPkuSP57v7c2xZcVvi6wd5OB0XL0Cf/sw9TfBTbfmgEJchWxdaREaWGu\nBcWJpMX8ckm3g+18QQIDAQAB\n-----END PUBLIC KEY-----",
+                //            "pubkey2": "AjNp+TH4ho3DEmyfa73v447KWgv/W8t3R94/mY+ib/2+",
+                //            "last_request_at": 1512835746010,
+                //            "done": {"1512835744349": 1512835744982, "1512835746010": 1512835747153},
+                //            "wallet_sha256": "593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de",
+                //            "balance": [{"code": "tBTC", "amount": 0.09720024}],
+                //            "balance_at": 1512835905049,
                 //            "currencies": [{
                 //                "code": "tBTC",
                 //                "name": "Test Bitcoin",
                 //                "url": "https://en.bitcoin.it/wiki/Testnet",
                 //                "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
                 //                "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
-                //            }],
-                //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7",
-                //            "balance": [{"code": "tBTC", "amount": 0}],
-                //            "balance_at": 1511013580438
-                //        }
-                //    },
-                //    "bukuddycoq4ofc2amwxg5sapzniiftptwz5vogkpembqkzjysxqdjkbxw0tc": {
-                //        "_$session_info": {
-                //            "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                //            "password": "U2FsdGVkX19/wYohFHcDtjyuAryFUAI+2zMGdmI/VybJHBVwxkUrdoNSiTqZk4qyxOgcFPGAimHdA7fJm0iigjiKqSM6CXpMPflNQk2hdAo=",
-                //            "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCGiIdIhNQTXgKALyU5lqlPgqX2\nRKthstnt6WK/FO8eH+nbvfZQRtCf36S0Mdp6lCong3/B4f6QeIlQDXbJ8AoAcbRq\n9fRZGDJxXmD5Wz8M3wVbc8xMSSPDj/vEleZ72OLf2LkcSDzBMlvH3Qr4C1KcI2XT\nl+19BDH2fhHKDyTivQIDAQAB\n-----END PUBLIC KEY-----",
-                //            "pubkey2": "AiTobs/UzL7+mPYqmE0FvbtbinWwK/J15upHdjDEIm/+",
-                //            "last_request_at": 1511027234069,
-                //            "done": {"1511027142453": 1511027152151, "1511027234069": 1511027243668},
-                //            "balance": [{"code": "tBTC", "amount": 0.001}],
-                //            "balance_at": 1511027243659,
-                //            "wallet_sha256": "e488d78dc26af343688045189a714658ed0f7975d4db158a7c0c5d0a218bfac7"
+                //            }]
                 //        }
                 //    }
                 //};
@@ -1154,6 +1226,7 @@ angular.module('MoneyNetwork')
 
                 // wallet_name must be unique. starting with wallet_title and switching to wallet_address
                 // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;
+                error_count = 0 ;
                 while (true) {
                     unique_texts = {} ;
                     non_unique_text = null ;
@@ -1166,6 +1239,12 @@ angular.module('MoneyNetwork')
                     }
                     if (!non_unique_text) break ; // OK. unique_text is unique
                     console.log(pgm + 'non unique text ' + non_unique_text + '. count = ' + unique_texts[balance.unique_text]) ;
+                    error_count++ ;
+                    if (error_count > 100) {
+                        // https://github.com/jaros1/Money-Network/issues/294
+                        console.log(pgm + 'issue #294. loop running forever!') ;
+                        break ;
+                    }
                     // fix problem. used wallet_address instead of wallet_title.
                     for (i=0 ; i<temp_currencies.length ; i++) {
                         balance = temp_currencies[i] ;
