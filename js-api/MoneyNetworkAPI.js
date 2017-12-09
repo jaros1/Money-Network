@@ -738,6 +738,7 @@ var MoneyNetworkAPILib = (function () {
     // - cb_fileget: boolean: fileGet file before calling callback cb
     // - cb_decrypt: boolean: decrypt message before calling callback cb
     // - countdown_cb: special callback called once every second to update remaining time before timeout in UI
+    // - group_debug_seq: use this group_debug_seq when processing incoming response in message_debug
     function wait_for_file(response_filename, options) {
         var pgm = module + '.wait_for_file: ';
         var error, session_filename, timeout_at, cb_fileget, cb_decrypt, countdown_cb ;
@@ -779,7 +780,8 @@ var MoneyNetworkAPILib = (function () {
             cb: options.cb,
             cb_fileget: cb_fileget,
             cb_decrypt: cb_decrypt,
-            countdown_cb: countdown_cb
+            countdown_cb: countdown_cb,
+            group_debug_seq: options.group_debug_seq
         };
         if (debug) console.log(pgm + 'added a callback function for ' + response_filename + '. request = ' + JSON.stringify(options.request) + ', done[' + response_filename + '] = ' + JSON.stringify(done[response_filename]));
         return null;
@@ -935,7 +937,8 @@ var MoneyNetworkAPILib = (function () {
                     continue ;
                 }
 
-                group_debug_seq = debug_group_operation_start() ;
+                if (done[filename] && done[filename].group_debug_seq) group_debug_seq = done[filename].group_debug_seq ;
+                else group_debug_seq = debug_group_operation_start() ;
                 pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                 if (debug) console.log(pgm2 + 'Using group_debug_seq ' + group_debug_seq + ' for this incoming message') ;
 
@@ -2307,7 +2310,7 @@ var MoneyNetworkAPILib = (function () {
             if (transactions[key].running) {
                 // wait
                 running++ ;
-                console.log(pgm + 'pause ' + calling_pgm + '. ' + transactions[key].pgm + ' is running');
+                console.log(pgm + 'pause ' + calling_pgm + '. ' + transactions[key].pgm + ' is running. transaction timestamp = ' + key);
                 return;
             }
         }
@@ -2964,147 +2967,151 @@ var MoneyNetworkAPILib = (function () {
     // - privatekey is not supported
     // - inner_path must be an user directory /^merged-MoneyNetwork\/(.*?)\/data\/users\/content\.json$/ path
     // - minimum interval between publish is 30 seconds (shared for MN and MN wallet sites)
-    function z_site_publish (options, cb) {
-        var pgm = module + '.z_site_publish: ' ;
-        var inner_path, match4, auth_address, filename, hub, encrypt, user_path ;
+    function z_site_publish(options, cb) {
+        var pgm = module + '.z_site_publish: ';
+        var inner_path, match4, auth_address, filename, hub, encrypt, user_path;
         if (!ZeroFrame) throw pgm + 'sitePublish aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
         // check private key
         if (options.privatekey) {
-            console.log(pgm + 'warning. siteSign with privatekey is not supported. Ignoring privatekey') ;
-            delete options.privatekey ;
+            console.log(pgm + 'warning. siteSign with privatekey is not supported. Ignoring privatekey');
+            delete options.privatekey;
         }
         // check inner_path
-        inner_path = options.inner_path ;
-        if (!inner_path || inner_path.match(inner_path_re2)) throw 'sitePublish aborted. Not a merger-site path. inner_path = ' + inner_path ; // old before moving to merger sites
-        if (!(match4=inner_path.match(inner_path_re4))) throw 'sitePublish aborted. Not a merger-site path. inner_path = ' + inner_path ;
-        auth_address = match4[2] ;
-        if (!ZeroFrame.site_info) throw 'sitePublish aborted. ZeroFrame is not yet ready' ;
-        if (!ZeroFrame.site_info.cert_user_id) throw 'sitePublish aborted. No ZeroNet certificate selected' ;
+        inner_path = options.inner_path;
+        if (!inner_path || inner_path.match(inner_path_re2)) throw 'sitePublish aborted. Not a merger-site path. inner_path = ' + inner_path; // old before moving to merger sites
+        if (!(match4 = inner_path.match(inner_path_re4))) throw 'sitePublish aborted. Not a merger-site path. inner_path = ' + inner_path;
+        auth_address = match4[2];
+        if (!ZeroFrame.site_info) throw 'sitePublish aborted. ZeroFrame is not yet ready';
+        if (!ZeroFrame.site_info.cert_user_id) throw 'sitePublish aborted. No ZeroNet certificate selected';
         if (auth_address != ZeroFrame.site_info.auth_address) {
             console.log(pgm + 'inner_path = ' + inner_path + ', auth_address = ' + auth_address + ', ZeroFrame.site_info.auth_address = ' + ZeroFrame.site_info.auth_address);
-            throw pgm + 'sitePublish aborted. Publishing an other user directory.' ;
+            throw pgm + 'sitePublish aborted. Publishing an other user directory.';
         }
-        filename = match4[3] ;
+        filename = match4[3];
         if (filename != 'content.json') {
-            console.log(pgm + 'warning. sitePublish should be called with path to user content.json file. inner_path = ' + JSON.stringify(inner_path)) ;
-            hub = match4[1] ;
-            inner_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/content.json' ;
-            options.inner_path = inner_path ;
+            console.log(pgm + 'warning. sitePublish should be called with path to user content.json file. inner_path = ' + JSON.stringify(inner_path));
+            hub = match4[1];
+            inner_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/content.json';
+            options.inner_path = inner_path;
         }
         // check encrypt option. wallet sites only. wallet sites should use MN publish queue to keep interval between publish >= 30 seconds
         if (options.encrypt) {
             // wallet publish with encrypt object
-            if (!is_MoneyNetworkAPI(options.encrypt)) throw pgm + 'encrypt must be a MoneyNetworkAPI instance' ;
-            encrypt = options.encrypt ;
-            delete options.encrypt ;
-            console.log(pgm + 'wallet publish with encrypt object') ;
+            if (!is_MoneyNetworkAPI(options.encrypt)) throw pgm + 'encrypt must be a MoneyNetworkAPI instance';
+            encrypt = options.encrypt;
+            delete options.encrypt;
+            console.log(pgm + 'wallet publish with encrypt object');
         }
         else {
             // MN publish without encrypt object
-            user_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/' ;
-            console.log(pgm + 'MN publish without encrypt object') ;
+            user_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/';
+            console.log(pgm + 'MN publish without encrypt object');
         }
 
-        // start publish transaction. publish must wait for long running update transactions to finish and
-        console.log(pgm + 'calling start_transaction') ;
-        start_transaction(pgm, function(transaction_timestamp){
-            var pgm = module + '.z_site_publish start_transaction callback 1: ' ;
-            console.log(pgm + 'start_transaction OK') ;
+        // add publish callback to publish queue and wait for publish demon to start publish
+        // callback parameters cb_id and encrypt. only wallet session. wallet must send published message to MN when finish publishing
+        // console.log(pgm + 'calling queue_publish') ;
+        queue_publish({encrypt: encrypt}, function (cb_id, encrypt) {
+            var pgm = module + '.z_site_publish queue_publish callback 1: ';
+            var debug_seq, site_publish_cb, site_publish_cb_done, process_id, site_publish_timeout;
+            // console.log(pgm + 'queue_publish OK. cb_id = ', cb_id, ', encrypt = ', encrypt) ;
 
-            // add publish callback to publish queue and wait for publish demon to start publish
-            // callback parameters cb_id and encrypt. only wallet session. wallet must send published message to MN when finish publishing
-            // console.log(pgm + 'calling queue_publish') ;
-            queue_publish({encrypt: encrypt}, function (cb_id, encrypt) {
-                var pgm = module + '.z_site_publish queue_publish callback 2: ' ;
-                var debug_seq, site_publish_cb, site_publish_cb_done, process_id, site_publish_timeout ;
-                // console.log(pgm + 'queue_publish OK. cb_id = ', cb_id, ', encrypt = ', encrypt) ;
+            // start publish transaction. publish must wait for long running update transactions to finish and
+            console.log(pgm + 'calling start_transaction');
+            start_transaction(pgm, function (transaction_timestamp) {
+                var pgm = module + '.z_site_publish start_transaction callback 2: ';
+                console.log(pgm + 'start_transaction OK');
 
                 // prevent publish operation hanging for ever. add 60 seconds timeout to sitePublish request
-                site_publish_cb_done = false ;
+                site_publish_cb_done = false;
                 site_publish_cb = function (res) {
-                    var pgm = module + '.z_site_publish sitePublish callback 3: ' ;
-                    var run_cb, get_content_json ;
+                    var pgm = module + '.z_site_publish sitePublish callback 3: ';
+                    var run_cb, get_content_json;
                     // stop timeout process + check for already run callback
                     if (process_id) {
-                        try {$timeout.cancel(process_id)}
-                        catch (e) {}
-                        process_id = null ;
+                        try {
+                            $timeout.cancel(process_id)
+                        }
+                        catch (e) {
+                        }
+                        process_id = null;
                     }
-                    if (site_publish_cb_done) return ; // sitePublish cb has already run
-                    site_publish_cb_done = true ;
+                    if (site_publish_cb_done) return; // sitePublish cb has already run
+                    site_publish_cb_done = true;
                     // ok. run sitePublish callback
                     debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
-                    debug_seq = null ;
+                    debug_seq = null;
 
                     // run sitePublish cb callback (content published)
-                    run_cb = function () { cb(res)} ;
-                    setTimeout(run_cb, 0) ;
+                    run_cb = function () {
+                        cb(res)
+                    };
+                    setTimeout(run_cb, 0);
 
                     // res = ok only. get content.json modified timestamp. used in MN publish queue
                     get_content_json = function (cb) {
-                        if (res != 'ok') return cb() ; // publish failed. keep last_published timestamp
+                        if (res != 'ok') return cb(); // publish failed. keep last_published timestamp
                         z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
-                            var content ;
-                            content = JSON.parse(content_str) ;
+                            var content;
+                            content = JSON.parse(content_str);
                             // publish ok. update last_published timestamp
-                            if (cb_id) set_last_published(content.modified, 'W', encrypt) ;
-                            else set_last_published(content.modified, 'MN', user_path) ;
-                            cb() ;
-                        }) ;
-                    } ; // get_modified
-                    get_content_json(function() {
-                        var pgm = module + '.z_site_publish send_message callback 5: ' ;
-                        var request ;
+                            if (cb_id) set_last_published(content.modified, 'W', encrypt);
+                            else set_last_published(content.modified, 'MN', user_path);
+                            cb();
+                        });
+                    }; // get_modified
+                    get_content_json(function () {
+                        var pgm = module + '.z_site_publish send_message callback 5: ';
+                        var request;
 
                         // end transaction. start any transaction waiting for publish to finish
-                        end_transaction(transaction_timestamp) ;
+                        end_transaction(transaction_timestamp);
 
                         // remove publish callback from publish queue
                         if (cb_id) {
                             // wallet session
-                            if (!encrypt.sessionid) return ; // no MN-W2 session. published without MN publish queue
-                            console.log(pgm + 'wallet session is sending published message to MoneyNetwork') ;
+                            if (!encrypt.sessionid) return; // no MN-W2 session. published without MN publish queue
+                            console.log(pgm + 'wallet session is sending published message to MoneyNetwork');
                             request = {
                                 msgtype: 'published',
                                 cb_id: cb_id,
                                 res: res,
                                 last_published_at: last_published
-                            } ;
-                            console.log(pgm + 'published request = ' + JSON.stringify(request)) ;
+                            };
+                            console.log(pgm + 'published request = ' + JSON.stringify(request));
                             encrypt.send_message(request, {response: 5000}, function (response) {
-                                var pgm = module + '.z_site_publish send_message callback 5: ' ;
-                                console.log(pgm + 'published response = ' + JSON.stringify(response)) ;
-                            }) ; // send_message callback 5
+                                var pgm = module + '.z_site_publish send_message callback 5: ';
+                                console.log(pgm + 'published response = ' + JSON.stringify(response));
+                            }); // send_message callback 5
                         }
                         else {
                             // MoneyNetwork session. This publish should be first row in publish queue
-                            if (!publish_queue.length) console.log(pgm + 'error. MN just published and no rows in publish queue') ;
-                            else if (publish_queue[0].client) console.log(pgm + 'error. MN just published and first row in publish queue is a wallet publish') ;
-                            else if (!publish_queue[0].publishing) console.log(pgm + 'error. MN just published and first row in publish queue is not publishing') ;
+                            if (!publish_queue.length) console.log(pgm + 'error. MN just published and no rows in publish queue');
+                            else if (publish_queue[0].client) console.log(pgm + 'error. MN just published and first row in publish queue is a wallet publish');
+                            else if (!publish_queue[0].publishing) console.log(pgm + 'error. MN just published and first row in publish queue is not publishing');
                             else {
-                                console.log(pgm + 'MoneyNetwork publish removed from publish queue') ;
-                                publish_queue.splice(0, 1) ;
+                                console.log(pgm + 'MoneyNetwork publish removed from publish queue');
+                                publish_queue.splice(0, 1);
                             }
                         }
 
-                    }) ; // get_content_json callback 4
+                    }); // get_content_json callback 4
 
-
-                } ; // sitePublish callback 3
+                }; // sitePublish callback 3
 
                 // execute sitePublish callback by either sitePublish or by timeout fnk
                 site_publish_timeout = function () {
-                    site_publish_cb({error: 'timeout'}) ;
+                    site_publish_cb({error: 'timeout'});
                 };
-                process_id = setTimeout(site_publish_timeout, 60000) ;
+                process_id = setTimeout(site_publish_timeout, 60000);
 
 
-                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish') ;
-                ZeroFrame.cmd("sitePublish", options, site_publish_cb) ;
+                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish');
+                ZeroFrame.cmd("sitePublish", options, site_publish_cb);
 
-            }) ; // queue_publish callback 2
+            }); // start_transaction callback 2
 
-        }) ; // start_transaction callback 1
+        }); // queue_publish callback 1
 
     } // z_site_publish
 
@@ -3790,10 +3797,10 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (options, cb) {
 //   - request: request timestamp. only used when sending response. Added to response json after validation. used for offline transactions
 //   - timeout_at: timestamp. only used when sending response to a previous request. other session expects response before timeout_at. cleanup response after timeout
 //   - optional: session filename extension used for optional files. default found via json.msgtype => subsystem. api: i, other: e
-//     i    - <session filename>-i.<timestamp> - internal API communication between MN and wallet. not published and no distribution help is needed
-//     e    - <session filename>-e.<timestamp> - external wallet to wallet communication. published and distribution help would be nice
+//     i    - <session filename>-i.<timestamp> - internal API communication between MN and wallet. signed only and no distribution help is needed
+//     e    - <session filename>-e.<timestamp> - external wallet to wallet communication. published. distribution help would be nice
 //     o    - <session filename>-o.<timestamp> - offline wallet to wallet communication. published. distribution help would be nice.
-//     io   - <session filename>-io.<timestamp> - internal and offline. offline messages between wallet and mn sessions. no distribution help is needed
+//     io   - <session filename>-io.<timestamp> - internal and offline. offline messages between wallet and mn sessions. signed only. no distribution help is needed
 //     p    - <session filename>-p.<timestamp> - internal API communication between MN and wallets. not published and no distribution help is needed (publishing messages)
 //     null - <session filename>.<timestamp> - normal file. distributed to all peers. used only as a fallback option when optional file distribution fails
 //   - subsystem: calling subsystem. for example api, mn or wallet. used for json schema validations
@@ -4182,7 +4189,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                 if (MoneyNetworkAPILib.is_session(self.sessionid)) {
                                     // demon is running and is monitoring incoming messages for this sessionid
                                     self.log(pgm, 'demon is running. wait for response file ' + response_filename + '. cb = get_and_decrypt', group_debug_seq);
-                                    error = MoneyNetworkAPILib.wait_for_file(response_filename, {request: request, timeout_at: timeout_at, cb: get_and_decrypt, countdown_cb: countdown_cb});
+                                    error = MoneyNetworkAPILib.wait_for_file(response_filename, {request: request, timeout_at: timeout_at, cb: get_and_decrypt, countdown_cb: countdown_cb, group_debug_seq: group_debug_seq});
                                     if (error) return set_error(error);
                                 }
                                 else {
