@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
 
-    .controller('WalletCtrl', ['$rootScope', '$window', '$location', '$timeout', 'MoneyNetworkService', 'MoneyNetworkHubService', 'MoneyNetworkWService',
-                     function ($rootScope, $window, $location, $timeout, moneyNetworkService, moneyNetworkHubService, moneyNetworkWService)
+    .controller('WalletCtrl', ['$scope', '$rootScope', '$window', '$location', '$timeout', 'safeApply', 'MoneyNetworkService', 'MoneyNetworkHubService', 'MoneyNetworkWService',
+                     function ($scope, $rootScope, $window, $location, $timeout, safeApply, moneyNetworkService, moneyNetworkHubService, moneyNetworkWService)
     {
         var self = this;
         var controller = 'WalletCtrl';
@@ -330,7 +330,7 @@ angular.module('MoneyNetwork')
                         if (!ok) return ;
                         info.test_ok = true ;
                         self.test_feedback(test3_allow_popup, 'OK') ;
-                        $rootScope.$apply() ;
+                        safeApply($scope) ;
                     }) ;
                 }
             }
@@ -658,7 +658,7 @@ angular.module('MoneyNetwork')
                     info.disabled = true ;
                     self.test_running = false ;
                     // finish. update UI just to be sure everything is OK
-                    $rootScope.$apply();
+                    safeApply($scope);
                 } ;
                 if (['Test skipped', 'Test OK'].indexOf(info.status) != -1) {
                     console.log(pgm + 'Skipping test ' + info.no + '. test' + info.no + ' status = ' + info.status) ;
@@ -803,6 +803,10 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.add_new_wallet: ' ;
             console.log(pgm + 'new wallet url = ' + self.new_wallet_url) ;
         };
+
+        self.click_test_url = function() {
+            self.new_wallet_url = '1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1' ;
+        }
 
         // end WalletCtrl
     }])

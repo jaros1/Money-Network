@@ -2542,7 +2542,7 @@ var MoneyNetworkAPILib = (function () {
                         console.log(pgm2 + 'sending queue_publish request to MN. request = ' + JSON.stringify(request)) ;
                         options.encrypt.send_message(request, {response: 30000}, function (response) {
                             var pgm = module + '.queue_publish send_message callback 2: ' ;
-                            var pgm2 ;
+                            var pgm2, wait_timeout ;
                             pgm2 = get_group_debug_seq_pgm(pgm, options.group_debug_seq) ;
 
                             try {
@@ -2583,6 +2583,33 @@ var MoneyNetworkAPILib = (function () {
                                     console.log(pgm2 + 'OK queue_publish. wait for start_publish message from MN') ;
                                     // 5) W2 will wait for "start_publish" message from MN with cb_id. Return OK and run cb
                                     // 6) send "published" message to MN with published result and last_published timestamp
+
+                                    // #292 MoneyNetworkAPI - max wait time for a start_publish request
+                                    // https://github.com/jaros1/Money-Network/issues/292
+                                    // wait max 120 seconds
+                                    wait_timeout = function() {
+                                        var pgm = module + '.queue_publish.wait_timeout: ' ;
+                                        var found, i ;
+                                        // check publish_queue.
+                                        found = -1 ;
+                                        for (i=0 ; i<publish_queue.length ; i++) {
+                                            if (publish_queue[i].cb_id == cb_id) {
+                                                found = i ;
+                                                break ;
+                                            }
+                                        } // for i
+                                        if (found == -1) {
+                                            console.log(pgm + 'Error. No publish request with cb_id ' + cb_id + ' was found in publish queue') ;
+                                            return ;
+                                        }
+                                        if (publish_queue[found].publishing) return ; // Ok. publish cb already run
+                                        // send OK response to MN
+                                        console.log(pgm + 'Timeout while waiting for start_publish message from MN. Starting publish') ;
+                                        // start publish process
+                                        publish_queue[found].publishing = true ;
+                                        publish_queue[found].cb(cb_id, options.encrypt) ;
+                                    } ; // wait_timeout
+                                    setTimeout(wait_timeout, 120000) ;
                                 }
 
                             }
@@ -2675,9 +2702,7 @@ var MoneyNetworkAPILib = (function () {
                     return ;
                 }
                 else {
-                    console.log(pgm + 'warning. request timeout. adding total_overhead ' + extra.total_overhead + ' ms to request_timeout_at. other session may reject response after timeout');
-                    request_timeout_at = request_timeout_at + extra.total_overhead ;
-                    console.log(pgm + 'new request_timeout_at = ' + request_timeout_at) ;
+                    console.log(pgm + 'warning. request timeout. other session may reject response after timeout. processing request anyway');
                 }
             }
 

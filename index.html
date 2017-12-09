@@ -1261,7 +1261,7 @@
                 <button ng-show="w.test_running" type="submit" ng-click="w.reset_test()">Reset</button>
                 <button ng-show="w.show_add_new_wallet()" type="submit" ng-click="w.add_new_wallet()" ng-disabled="w.test_running">Add</button>
                 <span ng-hide="w.show_test_new_wallet(2)">
-                    <br>( Tip: You can test with URL = 1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1 )
+                    <br>( Tip: You can test with URL = <a href="" ng-click="w.click_test_url()">1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1</a> )
                 </span>
             </p>
 
@@ -2241,9 +2241,9 @@
   all.js ~= 1.3 Mb and distribution is slow on zeronet
   js/all.js.zip is small and distributed fast (~= 200 Kb)
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->

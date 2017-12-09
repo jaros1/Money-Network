@@ -629,9 +629,7 @@ angular.module('MoneyNetwork')
                         return;
                     }
                     else {
-                        console.log(pgm + 'warning. request timeout. adding total_overhead ' + extra.total_overhead + ' ms to request_timeout_at. other session may reject response after timeout');
-                        request_timeout_at = request_timeout_at + extra.total_overhead ;
-                        console.log(pgm + 'new request_timeout_at = ' + request_timeout_at) ;
+                        console.log(pgm + 'warning. request timeout. other session may reject response after timeout. processing request anyway');
                     }
                 }
 
