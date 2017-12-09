@@ -1452,6 +1452,9 @@ angular.module('MoneyNetwork')
             local_storage_contacts_clone = JSON.parse(JSON.stringify(ls_contacts));
             for (i=local_storage_contacts_clone.length-1 ; i >= 0 ; i--) {
                 contact = local_storage_contacts_clone[i] ;
+                if (contact.auth_address == '18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ') {
+                    contact.auth_address = contact.auth_address + '' ; // debug this
+                }
                 if (!contact.messages) contact.messages = [] ;
                 // remove public chat. stored in optional files on Zeronet
                 if (contact.type == 'public') {
@@ -1459,7 +1462,7 @@ angular.module('MoneyNetwork')
                     local_storage_contacts_clone.splice(i,1) ;
                     continue ;
                 }
-                for (j=contact.messages.length-1 ; j >=0 ; j--) if (message_with_envelope.z_filename) contact.messages.splice(j,1) ;
+                for (j=contact.messages.length-1 ; j >=0 ; j--) if (contact.messages[j].z_filename) contact.messages.splice(j,1) ;
                 // remove empty contacts
                 if ((['new', 'guest'].indexOf(contact.type) != -1) && (contact.messages.length == 0)) {
                     local_storage_contacts_clone.splice(i,1) ;
@@ -1545,6 +1548,7 @@ angular.module('MoneyNetwork')
             } // for i (contacts)
 
             //console.log(pgm + 'local_storage_contacts_clone = ' + JSON.stringify(local_storage_contacts_clone)) ;
+            console.log(pgm + 'saved contacts') ;
             MoneyNetworkHelper.setItem('contacts', JSON.stringify(local_storage_contacts_clone)) ;
             MoneyNetworkHelper.setItem('deleted_sha256', JSON.stringify(ls_contacts_deleted_sha256)) ;
 

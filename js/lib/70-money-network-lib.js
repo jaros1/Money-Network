@@ -113,7 +113,10 @@ var MoneyNetworkHelper = (function () {
     // write JS copy of local storage back to ZeroFrame API
     function ls_save() {
         var pgm = module + '.ls_save: ' ;
-        if (!ls_use_private_data) return ;
+        if (!ls_use_private_data) {
+            console.log(pgm + 'lS was not saved. ls_use_private_data = ' + ls_use_private_data) ;
+            return ;
+        }
         // console.log(pgm + 'calling wrapperSetLocalStorage');
 
         ZeroFrame.cmd("wrapperSetLocalStorage", [local_storage], function () {
