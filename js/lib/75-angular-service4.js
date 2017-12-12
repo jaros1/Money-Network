@@ -70,7 +70,13 @@ angular.module('MoneyNetwork')
             if (ls_sessions) return ls_sessions ; // already loaded
             sessions_str = MoneyNetworkHelper.getItem('sessions') ;
             if (!sessions_str) return {} ;
-            sessions = JSON.parse(sessions_str) ;
+            try {
+                sessions = JSON.parse(sessions_str) ;
+            }
+            catch (e) {
+                console.log(pgm + 'error. sessions was invalid. error = ' + e.message) ;
+                return {} ;
+            }
             delete_sessions = [] ;
             for (sessionid in sessions) {
                 session_info = sessions[sessionid] ;

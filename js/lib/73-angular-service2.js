@@ -344,7 +344,15 @@ angular.module('MoneyNetwork')
             }
             else {
                 user_info_str = MoneyNetworkHelper.getItem('user_info') ;
-                if (user_info_str) new_user_info = JSON.parse(user_info_str) ;
+                if (user_info_str) {
+                    try {
+                        new_user_info = JSON.parse(user_info_str) ;
+                    }
+                    catch (e) {
+                        console.log(pgm + 'error. user_info was invalid. error = ' + e.message) ;
+                        new_user_info = [empty_user_info_line()] ;
+                    }
+                }
                 else new_user_info = [empty_user_info_line()] ;
             }
             z_cache.user_info.splice(0,z_cache.user_info.length) ;

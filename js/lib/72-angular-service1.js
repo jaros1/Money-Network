@@ -652,7 +652,15 @@ angular.module('MoneyNetwork')
                             z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
                                 var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 1: ';
                                 var content, json_raw, debug_seq1 ;
-                                if (content_str) content = JSON.parse(content_str) ;
+                                if (content_str) {
+                                    try {
+                                        content = JSON.parse(content_str) ;
+                                    }
+                                    catch (e) {
+                                        console.log(pgm + 'ignoring invalid content.json. error = ' + e.message) ;
+                                        content = {} ;
+                                    }
+                                }
                                 else content = {} ;
                                 content.optional = Z_CONTENT_OPTIONAL ;
 
@@ -702,7 +710,7 @@ angular.module('MoneyNetwork')
                                         z_file_get(pgm, {inner_path: inner_path, required: false}, function (content_str) {
                                             var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 4: ';
                                             var content ;
-                                            content = JSON.parse(content_str) ;
+                                            content = JSON.parse(content_str) ; // sign OK. No need for try catch here
                                             console.log(pgm + 'issue #1147. ' + hub + ': issue_1147 = ' + show_debug('issue_1147') + ', files_optional = ' + JSON.stringify(content.files_optional)) ;
 
                                             if (!dictionaries.length) return step_3_find_user_hubs() ; // done - continue with next step
@@ -794,7 +802,13 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'error. ' + inner_path0 + ' was not found') ;
                         return cb(null) ;
                     }
-                    hub_content = JSON.parse(hub_content_str) ;
+                    try {
+                        hub_content = JSON.parse(hub_content_str) ;
+                    }
+                    catch (e) {
+                        console.log(pgm + 'error. ' + inner_path0 + ' is invalid. error = ' + e.message) ;
+                        return cb(null) ;
+                    }
 
                     // keep track of pending file updates and publish operations
                     status = {
@@ -850,7 +864,7 @@ angular.module('MoneyNetwork')
                                         console.log(pgm + inner_path0 + ' z_file_get failed.') ;
                                         return cb(null) ;
                                     }
-                                    hub_content = JSON.parse(new_hub_content_str) ;
+                                    hub_content = JSON.parse(new_hub_content_str) ; // sign ok. no need for try catch here
                                     // any files to merge into current user hub?
                                     if (!hub_content.files_optional) hub_content.files_optional = [] ;
                                     if ((Object.keys(hub_content.files).length == 0) &&
@@ -894,7 +908,13 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'error. ' + inner_path0 + ' was not found') ;
                                 return cb(null) ;
                             }
-                            my_content = JSON.parse(content_str) ;
+                            try {
+                                my_content = JSON.parse(content_str) ;
+                            }
+                            catch (e) {
+                                console.log(pgm + 'error. ' + inner_path0 + ' is invalid. error = ' + e.message) ;
+                                return cb(null) ;
+                            }
                             if (!my_content.files_optional) my_content.files_optional = [] ;
                             if (Object.keys(my_content.files_optional).length == 0) return cb2() ;
                             remove_files = [] ;
@@ -994,7 +1014,13 @@ angular.module('MoneyNetwork')
                                 var error ;
                                 if (!data_str) hub_data = empty_data ;
                                 else {
-                                    hub_data = JSON.parse(data_str) ;
+                                    try {
+                                        hub_data = JSON.parse(data_str) ;
+                                    }
+                                    catch (e) {
+                                        console.log(pgm + 'error. ' + inner_path0 + ' is invalid. error = ' + e.message) ;
+                                        hub_data = empty_data ;
+                                    }
                                     zeronet_migrate_data(hub_data);
                                     error = MoneyNetworkHelper.validate_json (pgm, hub_data, 'data.json', 'Invalid json file') ;
                                     if (error) hub_data = empty_data ;
@@ -1019,10 +1045,15 @@ angular.module('MoneyNetwork')
                                 var error ;
                                 if (!status_str) hub_status = empty_status ;
                                 else {
-                                    hub_status = JSON.parse(status_str) ;
+                                    try {
+                                        hub_status = JSON.parse(status_str) ;
+                                    }
+                                    catch (e) {
+                                        console.log(pgm + 'error. ' + inner_path0 + ' is invalid. error = ' + e.message) ;
+                                        hub_status = empty_status ;
+                                    }
                                     error = MoneyNetworkHelper.validate_json (pgm, hub_status, 'status.json', 'Invalid json file') ;
                                     if (error) hub_status = empty_status ;
-
                                 }
                                 cb6() ;
                             }) ; // z_file_get callback 2
@@ -1047,7 +1078,13 @@ angular.module('MoneyNetwork')
                                 var error ;
                                 if (!like_str) hub_like = empty_like ;
                                 else {
-                                    hub_like = JSON.parse(like_str) ;
+                                    try {
+                                        hub_like = JSON.parse(like_str) ;
+                                    }
+                                    catch (e) {
+                                        console.log(pgm + 'error. ' + inner_path0 + ' is invalid. error = ' + e.message) ;
+                                        hub_like = empty_like ;
+                                    }
                                     error = MoneyNetworkHelper.validate_json (pgm, hub_like, 'like.json', 'Invalid json file') ;
                                     if (error) hub_like = empty_like ;
                                 }
@@ -1544,18 +1581,31 @@ angular.module('MoneyNetwork')
             z_cache.data_json = true ;
             // find user data hub (if any)
             get_my_user_hub (function (hub) {
-                var user_path, debug_seq ;
+                var user_path, inner_path ;
                 // download data.json and add file to cache
                 if (detected_client_log_out(pgm)) return ;
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
-                z_file_get(pgm, {inner_path: user_path + '/data.json', required: false}, function (data_str) {
+                inner_path = user_path + '/data.json' ;
+                z_file_get(pgm, {inner_path: inner_path, required: false}, function (data_str) {
                     var pgm = service + '.get_data_json z_file_get callback 1: ';
                     var data, empty;
                     if (detected_client_log_out(pgm)) return ;
                     if (data_str) {
-                        data = JSON.parse(data_str);
+                        try {
+                            data = JSON.parse(data_str);
+                            empty = false ;
+                        }
+                        catch (e) {
+                            console.log(pgm + 'error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                            data = {
+                                version: dbschema_version,
+                                users: [],
+                                search: [],
+                                msg: []
+                            };
+                            empty = true ;
+                        }
                         zeronet_migrate_data(data);
-                        empty = false ;
                     }
                     else {
                         data = {
@@ -1606,11 +1656,12 @@ angular.module('MoneyNetwork')
             // callback 1 - get user data hub
             get_my_user_hub(function (hub) {
                 var pgm = service + '.get_status_json get_my_user_hub callback 1: ';
-                var user_path ;
+                var user_path, inner_path ;
                 if (detected_client_log_out(pgm)) return ;
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                inner_path = user_path + '/status.json' ;
                 // read status.jsonn into cache
-                z_file_get(pgm, {inner_path: user_path + '/status.json', required: false}, function (status) {
+                z_file_get(pgm, {inner_path: inner_path, required: false}, function (status) {
                     var pgm = service + '.get_status_json z_file_get callback 2: ';
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
                     var empty;
@@ -1620,9 +1671,16 @@ angular.module('MoneyNetwork')
                         empty = true ;
                     }
                     else {
-                        status = JSON.parse(status);
+                        try {
+                            status = JSON.parse(status);
+                            empty = false ;
+                        }
+                        catch (e) {
+                            console.log(pgm + 'error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                            status = {version: dbschema_version, status: []};
+                            empty = true ;
+                        }
                         z_migrate_status(status);
-                        empty = false ;
                     }
                     z_cache.status_json = status ;
                     cb(status, empty);
@@ -1706,19 +1764,30 @@ angular.module('MoneyNetwork')
                 // callback 2 - find user data hub
                 get_my_user_hub(function (hub) {
                     var pgm = service + '.get_like_json get_my_user_hub callback 2: ';
-                    var debug_seq ;
+                    var user_path, inner_path ;
                     if (detected_client_log_out(pgm)) return;
                     // callback 3 - download like.json and add file to cache
                     user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
-                    z_file_get(pgm, {inner_path: user_path + '/like.json', required: false}, function (like_str) {
+                    inner_path = user_path + '/like.json' ;
+                    z_file_get(pgm, {inner_path: inner_path, required: false}, function (like_str) {
                         var pgm = service + '.get_like_json z_file_get callback 3: ';
                         // console.log(pgm + 'like = ' + JSON.stringify(like));
                         var like, empty;
                         if (detected_client_log_out(pgm)) return;
                         if (like_str) {
-                            like = JSON.parse(like_str);
+                            try {
+                                like = JSON.parse(like_str);
+                                empty = false;
+                            }
+                            catch (e) {
+                                console.log(pgm + inner_path + ' was invalid. error = ' + e.message) ;
+                                like = {
+                                    version: dbschema_version,
+                                    like: []
+                                };
+                                empty = true;
+                            }
                             // zeronet_migrate_like(like);
-                            empty = false;
                         }
                         else {
                             like = {
@@ -1887,10 +1956,7 @@ angular.module('MoneyNetwork')
                                 check_merger_permission(pgm, function () {
 
                                     // check content.json and add optional file support if missing
-                                    z_file_get(pgm, {
-                                        inner_path: user_path + '/content.json',
-                                        required: false
-                                    }, function (content) {
+                                    z_file_get(pgm, {inner_path: user_path + '/content.json', required: false}, function (content) {
                                         var pgm = service + '.zeronet_site_publish z_file_get callback 6: ';
                                         var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
                                             logical_deleted_files, now, max_logical_deleted_files, some_time_ago, debug_seq2;
@@ -1903,7 +1969,7 @@ angular.module('MoneyNetwork')
                                         // 3) <timestamp>-<userseq>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
                                         // Z_CONTENT_OPTIONAL has been changed to a very simple pattern for optional files [0-9]
                                         // use MN_CONTENT_OPTIONAL pattern for full optional filename validation
-                                        content = JSON.parse(content);
+                                        content = JSON.parse(content); // just published - no need for try catch
                                         if (content.optional == Z_CONTENT_OPTIONAL) {
                                             // optional file support also in place. save to my_files_optional. used in public chat
                                             save_my_files_optional(content.files_optional || {});

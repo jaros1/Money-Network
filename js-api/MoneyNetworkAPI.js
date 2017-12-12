@@ -3078,7 +3078,7 @@ var MoneyNetworkAPILib = (function () {
                         if (res != 'ok') return cb(); // publish failed. keep last_published timestamp
                         z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
                             var content;
-                            content = JSON.parse(content_str);
+                            content = JSON.parse(content_str); // just published. content.json should by OK
                             // publish ok. update last_published timestamp
                             if (cb_id) set_last_published(content.modified, 'W', encrypt);
                             else set_last_published(content.modified, 'MN', user_path);
@@ -3494,7 +3494,15 @@ MoneyNetworkAPI.prototype.decrypt_1 = function (encrypted_text_1, options, cb) {
     var encrypted_array, key, encrypted_text, encrypt, password, output_wa, clear_text;
     this.check_destroyed(pgm) ;
     if (!this.this_session_prvkey) throw pgm + 'decrypt_1 failed. prvkey is missing in encryption setup';
-    encrypted_array = JSON.parse(encrypted_text_1);
+    try {
+        encrypted_array = JSON.parse(encrypted_text_1);
+    }
+    catch (e) {
+        this.log(pgm, 'error. JSON.parse failed. decrypt_1 failed', options.group_debug_seq) ;
+        this.log(pgm, 'encrypted_text_1 = ' + encrypted_text_1, options.group_debug_seq) ;
+        this.log(pgm, 'error            = ' + e.message, options.group_debug_seq) ;
+        cb(null) ;
+    }
     key = encrypted_array[0];
     encrypted_text = encrypted_array[1];
     encrypt = new JSEncrypt();
@@ -3564,7 +3572,21 @@ MoneyNetworkAPI.prototype.decrypt_2 = function (encrypted_text_2, options, cb) {
     self = this;
     if (!this.ZeroFrame) throw pgm + 'decryption failed. ZeroFrame is missing in encryption setup';
     this.log(pgm, 'encrypted_text_2 = ' + encrypted_text_2, options.group_debug_seq);
-    encrypted_array = JSON.parse(encrypted_text_2);
+    try {
+        encrypted_array = JSON.parse(encrypted_text_2);
+    }
+    catch (e) {
+        this.log(pgm, 'error. JSON.parse failed. decrypt_2 failed', options.group_debug_seq) ;
+        this.log(pgm, 'encrypted_text_2 = ' + encrypted_text_2, options.group_debug_seq) ;
+        this.log(pgm, 'error            = ' + e.message, options.group_debug_seq) ;
+        cb(null) ;
+    }
+    if (!Array.isArray(encrypted_array) || (encrypted_array.length != 3)) {
+        this.log(pgm, 'error. decrypt_2 failed', options.group_debug_seq) ;
+        this.log(pgm, 'encrypted_text_2 = ' + encrypted_text_2, options.group_debug_seq) ;
+        this.log(pgm, 'error            = Expected an array with 3 elements (key, iv and encryted text)') ;
+        cb(null) ;
+    }
     key = encrypted_array[0];
     iv = encrypted_array[1];
     encrypted_text = encrypted_array[2];
@@ -3673,12 +3695,26 @@ MoneyNetworkAPI.prototype.decrypt_json = function (json, options, cb) {
         if (json.msgtype != 'pubkeys') this.log(pgm, 'Warning. received unencrypted json message ' + JSON.stringify(json));
         cb(json);
     }
+    else if (typeof json.message != 'string') {
+        this.log(pgm, 'Warning. cannot decrypt json without a text message. json = ' + JSON.stringify(json)) ;
+        cb(json);
+    }
     else if (json.encryption == 1) {
         this.decrypt_1(json.message, {group_debug_seq: options.group_debug_seq}, function (decrypted_text) {
-            var json;
-            json = JSON.parse(decrypted_text);
-            if (json.hasOwnProperty('encryption')) self.decrypt_json(json, options, cb);
-            else cb(json); // done
+            var next_json;
+            if (!decrypted_text) {
+                self.log(pgm, 'decrypt_1 failed. json.message = ' + JSON.stringify(json.message)) ;
+                return cb(null) ;
+            }
+            try {
+                next_json = JSON.parse(decrypted_text);
+            }
+            catch (e) {
+                self.log(pgm, 'decrypt_1 failed. JSON.Parse failed. decrypted_text = ' + decrypted_text + '. error = ' + e.message) ;
+                return cb(null) ;
+            }
+            if (next_json.hasOwnProperty('encryption')) self.decrypt_json(next_json, options, cb);
+            else cb(next_json); // done
         });
     }
     else if (json.encryption == 2) {
@@ -3688,17 +3724,33 @@ MoneyNetworkAPI.prototype.decrypt_json = function (json, options, cb) {
                 self.log(pgm, 'decrypt_2 failed. json.message = ' + JSON.stringify(json.message)) ;
                 return cb(null) ;
             }
-            next_json = JSON.parse(decrypted_text);
+            try {
+                next_json = JSON.parse(decrypted_text);
+            }
+            catch (e) {
+                self.log(pgm, 'decrypt_2 failed. JSON.Parse failed. decrypted_text = ' + decrypted_text + '. error = ' + e.message) ;
+                return cb(null) ;
+            }
             if (next_json.hasOwnProperty('encryption')) self.decrypt_json(next_json, options, cb);
             else cb(next_json); // done
         });
     }
     else if (json.encryption == 3) {
         this.decrypt_3(json.message, {group_debug_seq: options.group_debug_seq}, function (decrypted_text) {
-            var json;
-            json = JSON.parse(decrypted_text);
-            if (json.hasOwnProperty('encryption')) self.decrypt_json(json, options, cb);
-            else cb(json); // done
+            var next_json;
+            if (!decrypted_text) {
+                self.log(pgm, 'decrypt_3 failed. json.message = ' + JSON.stringify(json.message)) ;
+                return cb(null) ;
+            }
+            try {
+                next_json = JSON.parse(decrypted_text);
+            }
+            catch (e) {
+                self.log(pgm, 'decrypt_3 failed. JSON.Parse failed. decrypted_text = ' + decrypted_text + '. error = ' + e.message) ;
+                return cb(null) ;
+            }
+            if (next_json.hasOwnProperty('encryption')) self.decrypt_json(next_json, options, cb);
+            else cb(next_json); // done
         });
     }
     else {
@@ -3725,8 +3777,15 @@ MoneyNetworkAPI.prototype.get_content_json = function (options, cb) {
         var pgm = self.module + '.get_content_json fileGet callback 1: ';
         var content, json_raw;
         if (content_str) {
-            content = JSON.parse(content_str);
-            return cb(content);
+            try {
+                content = JSON.parse(content_str);
+                return cb(content);
+            }
+            catch (e) {
+                this.log(pgm, 'Error. JSON.parse failed. error = ' + e.message, group_debug_seq) ;
+                this.log(pgm, 'Continue with a new empty content.json file', group_debug_seq) ;
+                content = {} ;
+            }
         }
         else content = {};
         if (!self.this_optional) return cb(content); // maybe an error but optional files support was not requested
@@ -3752,7 +3811,7 @@ MoneyNetworkAPI.prototype.get_content_json = function (options, cb) {
                     var content;
                     MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq3, content_str ? 'OK' : 'Not found');
                     if (!content_str) return cb(); // error. second fileGet failed
-                    content = JSON.parse(content_str);
+                    content = JSON.parse(content_str); // just signed. content.json should be OK
                     cb(content);
                 }); // fileGet callback 4
             }); // siteSign callback 3
@@ -4166,7 +4225,16 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                             self.log(pgm, 'extra   = ' + JSON.stringify(extra)) ;
                                             return set_error(error);
                                         }
-                                        encrypted_response = JSON.parse(response_str);
+                                        try {
+                                            encrypted_response = JSON.parse(response_str);
+                                        }
+                                        catch (e) {
+                                            error = 'invalid response. JSON.parse error ' + e.message ;
+                                            self.log(pgm, error, group_debug_seq) ;
+                                            self.log(pgm, 'request      = ' + JSON.stringify(request)) ;
+                                            self.log(pgm, 'response_str = ' + response_str) ;
+                                            return set_error(error);
+                                        }
                                         self.log(pgm, 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid, group_debug_seq);
                                         // read response. run cleanup job now
                                         if (cleanup_job_id) {

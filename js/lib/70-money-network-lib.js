@@ -172,7 +172,15 @@ var MoneyNetworkHelper = (function () {
                 if (ls_str == ls_export_import_test) console.log(pgm + 'Test OK. import == export') ;
                 else console.log(pgm + 'Test failed. import != export') ;
             }
-            ls = JSON.parse (ls_str).local_storage ;
+            try {
+                ls = JSON.parse (ls_str).local_storage ;
+            }
+            catch (e) {
+                error = 'import failed. Not a JSON string. Parse error = ' + e.message ;
+                console.log(pgm + error) ;
+                if (cb) cb(error) ;
+                return ;
+            }
             if (!ls) {
                 error = 'no localStorage data was found in file' ;
                 console.log(pgm + error) ;
@@ -201,28 +209,35 @@ var MoneyNetworkHelper = (function () {
     var debug_seq = 0 ;
     var debug_operations = {} ;
 
-
     // initialize array with public avatars from public/images/avatar
     var public_avatars = [] ;
     var emojis = {} ;
     function load_public_avatars () {
         var pgm = module + '.load_public_avatars: ' ;
         var debug_seq = debug_z_api_operation_start(pgm, 'content.json', 'fileGet', show_debug('z_file_get')) ;
-        ZeroFrame.cmd("fileGet", ['content.json', false], function (res) {
+        ZeroFrame.cmd("fileGet", ['content.json', false], function (content_str) {
             var pgm = module + '.load_public_avatars fileGet callback: ';
-            var folders, key, emojis_keys, emojis_total_no, emojis_total_bytes, emojis_total_mb,
+            var content, folders, key, emojis_keys, emojis_total_no, emojis_total_bytes, emojis_total_mb,
                 step_1_read_sub_content, step_2_check_context, step_3_check_optional_file_list, step_4_download_emojis ;
             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-            debug_z_api_operation_end(debug_seq, res ? 'OK' : 'Not found') ;
-            if (res) res = JSON.parse(res) ;
-            else res = { files: {} } ;
-            for (key in res.files) {
-                if (!res.files.hasOwnProperty(key)) continue ;
+            debug_z_api_operation_end(debug_seq, content_str ? 'OK' : 'Not found') ;
+            if (content_str) {
+                try {
+                    content = JSON.parse(content_str) ;
+                }
+                catch (e) {
+                    console.log(pgm + 'ignoring invalid content.json. content_str = ' + content_str + ', error = ' + e.message) ;
+                    content = { files: {} }
+                }
+            }
+            else content = { files: {} } ;
+            for (key in content.files) {
+                if (!content.files.hasOwnProperty(key)) continue ;
                 if (key.substr(0,20) == 'public/images/avatar') public_avatars.push(key.substr(20,key.length-20)) ;
             } // for key
             if (public_avatars.length != 11) console.log(pgm + 'finished loading public avatars. found ' + public_avatars.length + ' public avatars') ;
-            if (!res.files_optional) res.files_optional = {} ;
-            for (key in res.files_optional) {
+            if (!content.files_optional) content.files_optional = {} ;
+            for (key in content.files_optional) {
                 if (key.substr(0,6) != 'emoji/') continue ;
                 emojis[key] = true ;
             }
@@ -230,10 +245,10 @@ var MoneyNetworkHelper = (function () {
             // console.log(pgm + 'emojis = ' + JSON.stringify(emojis)) ;
             if (Object.keys(emojis).length) return ; // OK - list of emojis loaded from MoneyNetwork content.json file
             // console.log(pgm + 'includes = ' + JSON.stringify(res.includes)) ;
-            if (!res.includes) return ;
-            if (!Object.keys(res.includes).length) return ;
+            if (!content.includes) return ;
+            if (!Object.keys(content.includes).length) return ;
             folders = [] ;
-            for (key in res.includes) {
+            for (key in content.includes) {
                 if (!key.match(/^emoji/)) continue ;
                 folders.push(key) ;
             }
@@ -253,26 +268,32 @@ var MoneyNetworkHelper = (function () {
                 }
                 inner_path = folders.shift() ;
                 debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', show_debug('z_file_get')) ;
-                ZeroFrame.cmd("fileGet", [inner_path, false], function (res) {
+                ZeroFrame.cmd("fileGet", [inner_path, false], function (content_str) {
                     var pgm = module + '.load_public_avatars.read_sub_content fileGet callback: ';
-                    var folder, key ;
+                    var content, folder, key ;
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
-                    debug_z_api_operation_end(debug_seq, res ? 'OK' : 'Not found');
-                    if (!res) {
+                    debug_z_api_operation_end(debug_seq, content_str ? 'OK' : 'Not found');
+                    if (!content_str) {
                         console.log(pgm + 'fileGet ' + inner_path + ' failed') ;
                         return step_1_read_sub_content(cb2) ;
                     }
-                    res = JSON.parse(res) ;
-                    if (!res.files_optional || (Object.keys(res.files_optional).length == 0)) {
+                    try {
+                        content = JSON.parse(content_str) ;
+                    }
+                    catch (e) {
+                        console.log(pgm + 'Invalid json file ' + inner_path + '. content_str = ' + content_str + ', error = ' + e.message) ;
+                        return step_1_read_sub_content(cb2) ;
+                    }
+                    if (!content.files_optional || (Object.keys(content.files_optional).length == 0)) {
                         console.log(pgm + 'No optional files found in ' + inner_path) ;
-                        console.log(pgm + 'res = ' + JSON.stringify(res));
+                        console.log(pgm + 'res = ' + JSON.stringify(content));
                         return step_1_read_sub_content(cb2) ;
                     }
                     folder = inner_path.substr(0,inner_path.length-12) ;
                     if (!emojis_total_bytes) emojis_total_bytes = 0 ;
-                    for (key in res.files_optional) {
+                    for (key in content.files_optional) {
                         emojis[folder+key] = true ;
-                        emojis_total_bytes += res.files_optional[key].size ;
+                        emojis_total_bytes += content.files_optional[key].size ;
                     }
                     // next emoji folder
                     step_1_read_sub_content(cb2)
@@ -581,8 +602,14 @@ var MoneyNetworkHelper = (function () {
     // cache getItem('login'). used in almost all get/set operations
     var use_login = true ;
     function use_login_changed() {
-        use_login = JSON.parse(getItem('login')) ;
-    }
+        try {
+            use_login = JSON.parse(getItem('login')) ;
+        }
+        catch (e) {
+            console.log(pgm + 'ls.login was invalid. JSON error = ' + e.message) ;
+            use_login = true ;
+        }
+    } // use_login_changed
 
     // get/set item
     function getItem(key) {
@@ -861,7 +888,15 @@ var MoneyNetworkHelper = (function () {
         passwords_s = getItem('passwords');
         // console.log(pgm + 'passwords_s = ' + passwords_s) ;
         if ((passwords_s == null) || (passwords_s == '')) passwords_a = [];
-        else passwords_a = JSON.parse(passwords_s);
+        else {
+            try {
+                passwords_a = JSON.parse(passwords_s);
+            }
+            catch (e) {
+                console.log(pgm + 'Invalid ls.password JSON. passwords_s = ' + passwords_s + '. error = ' + e.message) ;
+                passwords_a = [];
+            }
+        }
         // console.log(pgm + 'password_sha256 = ' + password_sha256) ;
         // check old accounts
         for (i = 0; i < passwords_a.length; i++) {
@@ -931,9 +966,16 @@ var MoneyNetworkHelper = (function () {
     } // client_logout
 
     function change_password (old_password, new_password) {
+        var pgm = module + '.change_password: ' ;
         var password, userid, passwords, key, old_password_sha256, new_password_sha256, i  ;
         userid = parseInt(getItem('userid')) ;
-        passwords = JSON.parse(getItem('passwords')) ;
+        try {
+            passwords = JSON.parse(getItem('passwords')) ;
+        }
+        catch (e) {
+            console.log(pgm + 'JSON.parse passwords failed. error = ' + e.message) ;
+            passwords = [] ;
+        }
         password = getItem('password') ;
         key = getItem('key') ;
         old_password_sha256 = sha256(old_password) ;
@@ -961,7 +1003,13 @@ var MoneyNetworkHelper = (function () {
         if (!guestid) return ; // no guest account
         // set password to null
         guestid = parseInt(guestid) ;
-        passwords = JSON.parse(getItem('passwords'));
+        try {
+            passwords = JSON.parse(getItem('passwords'));
+        }
+        catch (e) {
+            console.log(pgm + 'JSON.parse password failed. error = ' + e.message) ;
+            passwords = [] ;
+        }
         passwords[guestid-1] = null ;
         setItem('passwords', JSON.stringify(passwords));
         // delete all keys starting with <guestid>_
@@ -1485,15 +1533,23 @@ var MoneyNetworkHelper = (function () {
     var user_setup = {} ;
     var old_debug_setup ;
     function load_user_setup() {
-        var setup = getItem('setup') ;
-        if (!setup) return ;
-        setup = JSON.parse(setup);
-        for (var key in user_setup) delete user_setup[key] ;
+        var pgm = module + '.load_user_setup: ' ;
+        var setup_str, setup, key, new_debug_setup, debug_changed ;
+        setup_str = getItem('setup') ;
+        if (!setup_str) return ;
+        try {
+            setup = JSON.parse(setup_str);
+        }
+        catch (e) {
+            console.log(pgm + 'setup is not a JSON string. error = ' + e.message) ;
+            return ;
+        }
+        for (key in user_setup) delete user_setup[key] ;
         for (key in setup) user_setup[key] = setup[key] ;
         // debug settings changed?
-        var new_debug_setup = JSON.stringify(user_setup.debug) ;
+        new_debug_setup = JSON.stringify(user_setup.debug) ;
         if (new_debug_setup == old_debug_setup) return ;
-        var debug_changed = old_debug_setup ;
+        debug_changed = old_debug_setup ;
         old_debug_setup = new_debug_setup ;
         if (!debug_changed) return ;
         for (key in debug_cache) delete debug_cache[key] ;

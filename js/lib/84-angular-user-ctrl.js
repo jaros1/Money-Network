@@ -333,7 +333,13 @@ angular.module('MoneyNetwork')
             var passwords, i, no_local_accounts, pubkey, current_cert_user_id, cert_user_ids, contact, text;
 
             // number local accounts. has other local user accounts been created including guest accounts?
-            passwords = JSON.parse(MoneyNetworkHelper.getItem('passwords')) ;
+            try {
+                passwords = JSON.parse(MoneyNetworkHelper.getItem('passwords')) ;
+            }
+            catch (e) {
+                console.log(pgm + 'error. passwords was invalid. error = ' + e.message) ;
+                passwords = [] ;
+            }
             no_local_accounts = 0 ;
             for (i=0 ; i<passwords.length ; i++) if (passwords[i]) no_local_accounts++ ;
 
@@ -456,12 +462,19 @@ angular.module('MoneyNetwork')
                     }; // step_3_delete_status_json
                     var step_3_update_status_json = function (my_user_seq) {
                         var pgm = controller + '.delete_user2.step_3_update_status_json: ' ;
-                        var debug_seq ;
-                        z_file_get(pgm, {inner_path: user_path + '/' + 'status.json', required: false}, function (status) {
+                        var debug_seq, inner_path ;
+                        inner_path = user_path + '/' + 'status.json' ;
+                        z_file_get(pgm, {inner_path: inner_path, required: false}, function (status) {
                             var pgm = controller + '.delete_user2.step_3_update_status_json z_file_get: ' ;
                             var i, json_raw ;
-                            if (!status) { step_4_publish() ; return }
-                            status = JSON.parse(status) ;
+                            if (!status) return step_4_publish() ;
+                            try {
+                                status = JSON.parse(status) ;
+                            }
+                            catch (e) {
+                                console.log(pgm + 'error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                                return step_4_publish() ;
+                            }
                             if (!status.status) status.status = [] ;
                             for (i=status.status.length-1 ; i >= 0 ; i--) if (status.status[i].user_seq == my_user_seq) status.status.splice(i,1);
                             if (status.status.length == 0) {
@@ -504,12 +517,19 @@ angular.module('MoneyNetwork')
                     };
                     var step_2_update_data_json = function (my_user_seq) {
                         var pgm = controller + '.delete_user2.step_2_update_data_json: ' ;
-                        var debug_seq ;
-                        z_file_get(pgm, {inner_path: user_path + '/' + 'data.json', required: false}, function (data) {
+                        var debug_seq, inner_path ;
+                        inner_path = user_path + '/' + 'data.json' ;
+                        z_file_get(pgm, {inner_path: inner_path, required: false}, function (data) {
                             var pgm = controller + '.delete_user2.step_2_update_data_json z_file_get callback: ' ;
                             var i, json_raw ;
-                            if (!data) { step_3_update_or_delete_status_json(user_seq) ; return }
-                            data = JSON.parse(data) ;
+                            if (!data) return step_3_update_or_delete_status_json(my_user_seq) ;
+                            try {
+                                data = JSON.parse(data) ;
+                            }
+                            catch (e) {
+                                console.log(pgm + 'error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                                return step_3_update_or_delete_status_json(my_user_seq) ;
+                            }
                             if (!data.users) data.users = [] ;
                             for (i=data.users.length-1 ; i >= 0 ; i--) if (data.users[i].user_seq == my_user_seq) data.users.splice(i,1);
                             if (!data.search) data.search = [] ;
@@ -631,19 +651,33 @@ angular.module('MoneyNetwork')
             var ls_size, passwords, i, no_users, user_path, debug_seq ;
             // localStorage info
             ls_size = JSON.stringify(MoneyNetworkHelper.ls_get()).length ;
-            passwords = JSON.parse(MoneyNetworkHelper.getItem('passwords')) ;
+            try {
+                passwords = JSON.parse(MoneyNetworkHelper.getItem('passwords')) ;
+            }
+            catch (e) {
+                console.log(pgm + 'error. passwords was invalid. error = ' + e.message) ;
+                passwords = [] ;
+            }
             no_users = 0 ;
             for (i=0 ; i<passwords.length ; i++) if (passwords[i]) no_users++ ;
             self.export_info.ls = no_users + ' account' + (no_users > 1 ? 's' : '') + ', ' + ls_size + ' bytes' ;
             // zeroNet info
             moneyNetworkService.get_my_user_hub(function (hub) {
                 var pgm = controller + ' get_my_user_hub callback 1: ' ;
+                var inner_path ;
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
-                z_file_get(pgm, {inner_path: user_path + '/content.json', required: false}, function (content) {
+                inner_path = user_path + '/content.json' ;
+                z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
                     var pgm = controller + ' z_file_get callback 2: ' ;
                     var filename, z_files, z_bytes, chat_files, chat_bytes ;
                     if (!content) return ;
-                    content = JSON.parse(content) ;
+                    try {
+                        content = JSON.parse(content) ;
+                    }
+                    catch (e) {
+                        console.log(pgm + 'error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                        return ;
+                    }
                     z_files = 0 ; z_bytes = 0 ;
                     // user files (data.json, status.json and avatar)
                     if (content.files) for (filename in content.files) {
@@ -796,7 +830,15 @@ angular.module('MoneyNetwork')
                                 ZeroFrame.cmd("wrapperNotification", ['error', error]);
                                 return ;
                             }
-                            data.z_files[filename] = JSON.parse(content) ;
+                            try {
+                                data.z_files[filename] = JSON.parse(content) ;
+                            }
+                            catch (e) {
+                                error = ['Cannot export zeronet data. ', 'file ' + filename + ' was invalid', 'error = ' + e.message] ;
+                                console.log(pgm + error.join('. ')) ;
+                                ZeroFrame.cmd("wrapperNotification", ['error', error.join('<br>')]);
+                                return ;
+                            }
                             step_3_read_zeronet_file() ;
                         }) ; // z_file_get cb
                     }
@@ -814,7 +856,15 @@ angular.module('MoneyNetwork')
                             ZeroFrame.cmd("wrapperNotification", ['error', error]);
                             return ;
                         }
-                        content = JSON.parse(content) ;
+                        try {
+                            content = JSON.parse(content) ;
+                        }
+                        catch (e) {
+                            error = ['Cannot export zeronet data', 'content.json was invalid', 'error = ' + e.message] ;
+                            console.log(pgm + error.join('. ')) ;
+                            ZeroFrame.cmd("wrapperNotification", ['error', error.join('<br>')]);
+                            return ;
+                        }
                         data.z_files = {} ;
                         if (data.options.z) {
                             // export user files (data.json. status.json and optional avatar image)
@@ -1022,8 +1072,20 @@ angular.module('MoneyNetwork')
                         return;
                     }
                     enc_data_str = data.enc_data ;
-                    data_str = MoneyNetworkHelper.decrypt(enc_data_str, password) ;
-                    data2 = JSON.parse(data_str) ;
+                    try {
+                        data_str = MoneyNetworkHelper.decrypt(enc_data_str, password) ;
+                    }
+                    catch (e) {
+                        ZeroFrame.cmd("wrapperNotification", ['info', 'Import cancelled. Invalid password or file<br>error = ' + e.message, 5000]);
+                        return;
+                    }
+                    try {
+                        data2 = JSON.parse(data_str) ;
+                    }
+                    catch (e) {
+                        ZeroFrame.cmd("wrapperNotification", ['info', 'Import cancelled. Invalid password or file<br>error = ' + e.message, 5000]);
+                        return;
+                    }
                     if (!is_data_ok(data2)) return ;
                     step_3_confirm_import(data2) ;
                 }); // wrapperPrompt
@@ -1043,7 +1105,13 @@ angular.module('MoneyNetwork')
                         if (data_str == self.export_import_test) console.log(pgm + 'Test OK. import == export') ;
                         else console.log(pgm + 'Test failed. import != export') ;
                     }
-                    data = JSON.parse (data_str) ;
+                    try {
+                        data = JSON.parse (data_str) ;
+                    }
+                    catch (e) {
+                        ZeroFrame.cmd("wrapperNotification", ['info', 'Import cancelled. Invalid file<br>error = ' + e.message, 5000]);
+                        return;
+                    }
                     // check json structure
                     if (data.enc_data) return step_2_decrypt_data(data) ; // encrypted. json check in next step
                     else if (is_data_ok(data)) step_3_confirm_import(data) ;

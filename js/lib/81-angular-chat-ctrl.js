@@ -743,13 +743,14 @@ angular.module('MoneyNetwork')
             self.show_delete_user1 = moneyNetworkService.is_admin() ;
             self.delete_user1 = function () {
                 var pgm = controller + '.delete_user1: ' ;
-                var contact, debug_seq ;
+                var contact, user_path, inner_path ;
                 if (!self.contact || (self.contact.type == 'group')) return ;
                 contact = self.contact ;
 
                 // any files to delete? check content.json file
-                var user_path = "data/users/" + contact.auth_address;
-                moneyNetworkService.z_file_get(pgm, {inner_path: user_path + '/content.json', required: false}, function (content) {
+                user_path = "data/users/" + contact.auth_address;
+                inner_path = user_path + '/content.json' ;
+                moneyNetworkService.z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
                     var pgm = controller + '.delete_user1 z_file_get callback: ' ;
                     var error, files, file_names, total_size, file_name, file_texts, text, files_optional,
                         file_names_lng1, file_names_lng2, last_online, modified, dif ;
@@ -759,7 +760,15 @@ angular.module('MoneyNetwork')
                         ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
                         return ;
                     }
-                    content = JSON.parse(content) ;
+                    try {
+                        content = JSON.parse(content) ;
+                    }
+                    catch (e) {
+                        error = 'system error. invalid content.json file for auth_address ' + contact.auth_address ;
+                        console.log(pgm + error) ;
+                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                        return ;
+                    }
                     files = content.files ;
                     file_names = [] ;
                     file_texts = [] ;
@@ -1505,7 +1514,7 @@ angular.module('MoneyNetwork')
                             errors = 0 ;
                             for (i=0 ; i<self.money_transactions.length ; i++) {
                                 money_transaction = self.money_transactions[i] ;
-                                if (money_transaction.message.ping) errors++ ;
+                                if (money_transaction.message && money_transaction.message.ping) errors++ ;
                             }
                             if (errors) {
                                 // one or more wallet ping errors. stop end chat message
@@ -1612,7 +1621,7 @@ angular.module('MoneyNetwork')
                             // test 133: response = {"msgtype":"response"}
                             if (response && response.error && response.error.match(/^Timeout /)) {
                                 // OK. Timeout. Continue with next session
-                                set_ping_error(balance.unique_text, 'Wallet validate timeout', true) ;
+                                set_ping_error(wallet_name, 'Wallet validate timeout', true) ;
                                 return check_transaction(); // check next wallet (if any)
                             }
                             if (!response || response.error) {
@@ -2410,6 +2419,16 @@ angular.module('MoneyNetwork')
                 else return 'Press <Tab> to insert extra rows' ;
             } ; // validate_money_transaction
 
+            function format_money_transaction_message (money_transaction) {
+                var messages = [] ;
+                if (money_transaction.message.balance) messages.push(money_transaction.message.balance) ;
+                if (money_transaction.message.ping) messages.push(red(money_transaction.message.ping)) ; // wallet ping error (timeout or error)
+                if (money_transaction.message.check) messages.push(red(money_transaction.message.check)) ; // wallet check money transaction request error
+                if (messages.length) money_transaction.message.html = $sce.trustAsHtml(messages.join('. ') + '.') ;
+                else money_transaction.message.html = null ;
+            } // format_money_transaction_message
+
+            // approve incoming money transaction(s)
             self.approve_money_transactions = function (m) {
                 var pgm = controller + '.approve_money_transactions: ' ;
                 var step_1_check_unknown_wallets, step_2_ping_wallets, step_3_check_transactions,
@@ -2477,14 +2496,6 @@ angular.module('MoneyNetwork')
                 wallets_hash = {} ;
 
                 // todo: when to initialize message.balance for incoming money transactions?
-                format_money_transaction_message = function (money_transaction) {
-                    var messages = [] ;
-                    if (money_transaction.message.balance) messages.push(money_transaction.message.balance) ;
-                    if (money_transaction.message.ping) messages.push(red(money_transaction.message.ping)) ; // wallet ping error (timeout or error)
-                    if (money_transaction.message.check) messages.push(red(money_transaction.message.check)) ; // wallet check money transaction request error
-                    if (messages.length) money_transaction.message.html = $sce.trustAsHtml(messages.join('. ') + '.') ;
-                    else money_transaction.message.html = null ;
-                }; // format_money_transaction_message
 
                 set_ping_error = function (wallet_name, error) {
                     var pgm = controller + '.approve_money_transaction.set_ping_error: ';
@@ -2987,6 +2998,7 @@ angular.module('MoneyNetwork')
 
             }; // approve_money_transactions
 
+            // reject incoming money transaction(s)
             self.reject_money_transactions = function (m) {
                 var pgm = controller + '.reject_money_transactions: ' ;
                 console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
@@ -2997,10 +3009,83 @@ angular.module('MoneyNetwork')
 
             }; // reject_money_transactions
 
+            // edit incoming money transaction(s) - reject + new outgoing money transaction(s)
             self.edit_money_transactions = function (m) {
                 var pgm = controller + '.edit_money_transactions: ' ;
                 console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
             }; // edit_money_transactions
+
+            // show/update wallet balance in incoming money transaction(s)
+            self.balance_money_transactions = function (m) {
+                var pgm = controller + '.balance_money_transactions: ' ;
+                console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
+
+                moneyNetworkService.get_currencies({}, function (currencies, refresh_angular_ui) {
+                    var pgm = controller + '.balance_money_transactions get_currencies callback: ';
+                    var i, money_transaction, balances, amount, units, j, k, balance ;
+                    if (!self.currencies) self.currencies = currencies; // initialize currencies array used in UI
+
+                    // lookup wallet balance for each money transaction
+                    for (i=0 ; i<m.message.message.money_transactions.length ; i++) {
+                        money_transaction = m.message.message.money_transactions[i] ;
+                        // lookup balance
+                        balances = [] ;
+                        for (j=0 ; j<self.currencies.length ; j++) {
+                            if (self.currencies[j].code != money_transaction.code) continue ;
+                            if ([self.currencies[j].wallet_address, self.currencies[j].wallet_domain].indexOf(money_transaction.wallet_url) == -1) continue ;
+                            // console.log(pgm + 'self.currencies[' + j + '] = ' + JSON.stringify(self.currencies[j])) ;
+                            //self.currencies[0] = {
+                            //    "code": "tBTC",
+                            //    "amount": 3.69559209,
+                            //    "last_request_at": 1513075990512,
+                            //    "balance_at": 1512831462926,
+                            //    "sessionid": "fvtqjprbarxpn65xxysixa8ahxua7niurc9wijmloiey5zbzgkn3acvwyezc",
+                            //    "wallet_sha256": "593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de",
+                            //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //    "wallet_title": "MoneyNetworkW2",
+                            //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                            //    "api_url": "https://www.blocktrail.com/api/docs",
+                            //    "unique_id": "593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de/tBTC",
+                            //    "name": "Test Bitcoin",
+                            //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                            //    "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                            //    "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}],
+                            //    "wallet_name": "MoneyNetworkW2",
+                            //    "unique_text": "tBTC Test Bitcoin from MoneyNetworkW2"
+                            //};
+                            // console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
+                            //money_transaction = {
+                            //    "wallet_url": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //    "wallet_sha256": "593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de",
+                            //    "wallet_name": "MoneyNetworkW2",
+                            //    "action": "Send",
+                            //    "code": "tBTC",
+                            //    "name": "Test Bitcoin",
+                            //    "amount": 0.00019002,
+                            //    "money_transactionid": "EvKeyjEe5zMZ07Rd13tA57nloTXq2s5HdLohd5NPHVRuY78azzfmHiK1eOGS",
+                            //    "json": {"return_address": "2MvaqsETdfWtbKQCPVun9Z32QACiek2ovAA"},
+                            //    "$$hashKey": "object:1007"
+                            //};
+                            amount = self.currencies[j].amount ;
+                            // units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                            units = self.currencies[j].units ;
+                            for (k=0 ; k<units.length ; k++) {
+                                balance = amount / units[k].factor + ' ' + units[k].unit ;
+                                if (units[k].factor == 1) balances.unshift(balance) ;
+                                else balances.push(balance) ;
+                            } // for j
+                        } // for k
+                        if (balances.length) {
+                            if (!money_transaction.message) money_transaction.message = {} ;
+                            money_transaction.message.balance = 'Wallet balance ' + balances.join(' = ') ;
+                            format_money_transaction_message(money_transaction) ;
+                        }
+                    } // for i
+                    safeApply($scope) ;
+
+                }) ; // get_currencies callback
+
+            }; // balance_money_transactions
 
             // public chat checkbox changed - add/remove public chat from UI
             self.public_chat_changed = function () {

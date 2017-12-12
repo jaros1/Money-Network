@@ -929,7 +929,15 @@ angular.module('MoneyNetwork')
             var pgm = service + '.ls_load_contacts: ' ;
             var contacts_str, new_contacts, unique_id, new_contact ;
             contacts_str = MoneyNetworkHelper.getItem('contacts') ;
-            if (contacts_str) new_contacts = JSON.parse(contacts_str);
+            if (contacts_str) {
+                try {
+                    new_contacts = JSON.parse(contacts_str);
+                }
+                catch (e) {
+                    console.log(pgm + 'error. contacts was invalid. error = ' + e.message) ;
+                    new_contacts = [] ;
+                }
+            }
             else new_contacts = [] ;
             clear_contacts() ;
             clear_messages() ;
@@ -1079,7 +1087,15 @@ angular.module('MoneyNetwork')
             // load sender_sha256 addresses used in deleted contacts
             var deleted_sha256_str, new_deleted_sha256, sender_sha256 ;
             deleted_sha256_str = MoneyNetworkHelper.getItem('deleted_sha256') ;
-            if (deleted_sha256_str) new_deleted_sha256 = JSON.parse(deleted_sha256_str);
+            if (deleted_sha256_str) {
+                try {
+                    new_deleted_sha256 = JSON.parse(deleted_sha256_str);
+                }
+                catch (e) {
+                    console.log(pgm + 'error. deleted_sha256 was invalid. error = ' + e.message) ;
+                    new_deleted_sha256 = {} ;
+                }
+            }
             else new_deleted_sha256 = {} ;
             for (sender_sha256 in new_deleted_sha256) {
                 ls_contacts_deleted_sha256[sender_sha256] = new_deleted_sha256[sender_sha256] ;
@@ -2033,9 +2049,18 @@ angular.module('MoneyNetwork')
         }
 
         function next_local_msg_seq () {
+            var pgm = service + '.next_local_msg_seq: ' ;
             // next local msg seq
             var local_msg_seq = MoneyNetworkHelper.getItem('msg_seq');
-            if (local_msg_seq) local_msg_seq = JSON.parse(local_msg_seq) ;
+            if (local_msg_seq) {
+                try {
+                    local_msg_seq = JSON.parse(local_msg_seq) ;
+                }
+                catch (e) {
+                    console.log(pgm + 'error. msg_seq was invalid. error = ' + e.message) ;
+                    local_msg_seq = 0 ;
+                }
+            }
             else local_msg_seq = 0 ;
             local_msg_seq++ ;
             // no ls_save. next_local_msg_seq must be part of a contact update operation - ingoing or outgoing messages
@@ -2043,8 +2068,6 @@ angular.module('MoneyNetwork')
             return local_msg_seq ;
         } // next_local_msg_seq
         moneyNetworkZService.inject_functions({next_local_msg_seq: next_local_msg_seq});
-
-
 
         // received an incoming message with image=true
         // download optional file and insert image in message
@@ -2280,11 +2303,12 @@ angular.module('MoneyNetwork')
                     // Return true to save contacts and refresh angularJS UI
                     return true ;
                 }
-                if (['error2', 'error3', 'error4'].indexOf(decrypted_message_str) != -1) {
+                if (['error2', 'error3', 'error4', 'error5'].indexOf(decrypted_message_str) != -1) {
                     // known errors from cryptMessage decrypt:
                     // - error2 - certificate check failed - error on dbQuery select - never see that error
-                    // - error3 - decrypt error but no other known ZeroNet certificates were found .... - never see that error
+                    // - error3 - decrypt error but no other known ZeroNet certificates were found .... - never seen that error
                     // - error4 - issue 131 - trying to decrypt same cryptMessage again - should be processed in recheck_old_decrypt_errors after client login
+                    // - error5 - invalid json  after cryptMessage decrypt. never seen that error
                     debug('lost_message', pgm + 'ignored new incoming message with decrypt error = ' + decrypted_message_str + '. res = ' + JSON.stringify(res)) ;
                     return false ;
                 }
@@ -3530,8 +3554,13 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'decrypted_message_str = ' + decrypted_message_str);
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq1, null) ;
-
-                    decrypted_message = JSON.parse(decrypted_message_str) ;
+                    try {
+                        decrypted_message = JSON.parse(decrypted_message_str) ;
+                    }
+                    catch (e) {
+                        res.decrypted_message_password = 'error5' ;
+                        return cb() ;
+                    }
                     if (sent_at) {
                         // process_incoming_message was called from recheck_old_decrypt_errors
                         // user has log out, changed ZeroNet cert, logged in again and no longer decrypt error
@@ -4532,7 +4561,15 @@ angular.module('MoneyNetwork')
                 var i, contact, auth_address, contacts_updated, index, my_pubkey_sha256, using_my_pubkey,
                     cleanup_inbox_messages_lng1, cleanup_inbox_messages_lng2, cleanup_inbox_messages_lng3, timestamp ;
                 if (!res) res = {} ;
-                else res = JSON.parse(res) ;
+                else {
+                    try {
+                        res = JSON.parse(res) ;
+                    }
+                    catch (e) {
+                        console.log(pgm + 'error. ' + merged_filename + ' was invalid. error = ' + e.message) ;
+                        res = {} ;
+                    }
+                }
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 auth_address = filename.split('/')[2] ;
 
@@ -5104,7 +5141,7 @@ angular.module('MoneyNetwork')
         // get files_optional from z_cache or read from content.json file
         function get_files_optional (cb) {
             var pgm = service + '.get_files_optional: ' ;
-            var user_path, debug_seq ;
+            var user_path, inner_path ;
             // check z_cache
             if (z_cache.files_optional) {
                 // console.log(pgm + 'found files_optional in cache') ;
@@ -5114,14 +5151,22 @@ angular.module('MoneyNetwork')
             // not in z_cache. check zeronet
             // console.log(pgm + 'files_option was not in cache. reading content.json file');
             user_path = "data/users/" + ZeroFrame.site_info.auth_address;
-            z_file_get(pgm, {inner_path: user_path + '/content.json', required: false}, function (content) {
+            inner_path = user_path + '/content.json' ;
+            z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
                 var pgm = service + '.get_user_seq z_file_get callback 1: ';
                 if (!content) {
                     // console.log(pgm + 'content.json file was not found') ;
                     if (cb) cb(null) ;
                     return ;
                 }
-                content = JSON.parse(content) ;
+                try {
+                    content = JSON.parse(content) ;
+                }
+                catch (e) {
+                    console.log(pgm + 'error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                    if (cb) cb(null) ;
+                    return ;
+                }
                 if (content.optional != Z_CONTENT_OPTIONAL) {
                     // console.log(pgm + 'optional option not ready in content.json file. will be added/updated after next publish') ;
                     if (cb) cb(null) ;
@@ -6354,7 +6399,13 @@ angular.module('MoneyNetwork')
                 passwords = MoneyNetworkHelper.getItem('passwords') ;
                 if (!passwords) create_new_account = true ;
                 else {
-                    passwords = JSON.parse(passwords) ;
+                    try {
+                        passwords = JSON.parse(passwords) ;
+                    }
+                    catch (e) {
+                        console.log(pgm + 'error. passwords was invalid. error = ' + e.message) ;
+                        passwords = [] ;
+                    }
                     salt = MoneyNetworkHelper.getItem('salt') || '' ; // null for old users
                     password_sha256 = MoneyNetworkHelper.sha256(salt + password) ;
                     create_new_account = true ;
@@ -6858,7 +6909,17 @@ angular.module('MoneyNetwork')
                 MoneyNetworkHelper.setItem('login', JSON.stringify(login)) ;
                 MoneyNetworkHelper.ls_save() ;
             }
-            else login = JSON.parse(login) ;
+            else {
+                try {
+                    login = JSON.parse(login) ;
+                }
+                catch (e) {
+                    console.log(pgm + 'error. login was invalid. error = ' + e.message) ;
+                    login = true ;
+                    MoneyNetworkHelper.setItem('login', JSON.stringify(login)) ;
+                    MoneyNetworkHelper.ls_save() ;
+                }
+            }
             MoneyNetworkHelper.use_login_changed() ;
             if (login) return ;
 

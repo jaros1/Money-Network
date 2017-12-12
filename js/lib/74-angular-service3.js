@@ -152,7 +152,15 @@ angular.module('MoneyNetwork')
                         if (lock_pgm) z_update_1_data_json (lock_pgm) ;
                         return
                     }
-                    data = JSON.parse(data) ;
+                    try {
+                        data = JSON.parse(data) ;
+                    }
+                    catch (e) {
+                        console.log(pgm + 'Error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                        user_contents_max_size = -1 ;
+                        if (lock_pgm) z_update_1_data_json (lock_pgm) ;
+                        return
+                    }
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
                     user_contents_max_size = 0 ;
                     var user_contents = data['user_contents'] ;
@@ -513,7 +521,7 @@ angular.module('MoneyNetwork')
 
             get_my_user_hub(function(hub) {
                 var pgm = service + '.load_avatar get_my_user_hub callback 1: ';
-                var debug_seq ;
+                var user_path, inner_path ;
 
                 if (z_cache.user_setup.avatar && (['jpg','png'].indexOf(z_cache.user_setup.avatar) != -1)) {
                     // uploaded avatar found in user setup
@@ -522,11 +530,20 @@ angular.module('MoneyNetwork')
                 }
 
                 // 1) get content.json - check if user already has uploaded an avatar
-                var user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
-                z_file_get(pgm, {inner_path: user_path + "/content.json", required: false}, function (content) {
+                user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
+                inner_path = user_path + "/content.json"
+                z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
                     var pgm = service + '.load_avatar z_file_get callback 2: ';
                     var ls_avatar, public_avatars, index ;
-                    if (content) content = JSON.parse(content);
+                    if (content) {
+                        try {
+                            content = JSON.parse(content);
+                        }
+                        catch (e) {
+                            console.log(pgm + 'error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                            content = { files: {} } ;
+                        }
+                    }
                     else content = { files: {} } ;
                     // console.log(pgm + 'content = ' + JSON.stringify(content));
 

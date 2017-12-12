@@ -19,7 +19,15 @@ angular.module('MoneyNetwork')
             var passwords, no_users ;
             passwords = MoneyNetworkHelper.getItem('passwords') ;
             if (!passwords) no_users = 0 ;
-            else no_users = JSON.parse(passwords).length ;
+            else {
+                try {
+                    no_users = JSON.parse(passwords).length ;
+                }
+                catch (e) {
+                    console.log(pgm + 'error. password is invalid. error = ' + e.message) ;
+                    no_users = 0 ;
+                }
+            }
             self.register = (no_users == 0) ? 'Y' : 'N';
         }
 
@@ -39,7 +47,13 @@ angular.module('MoneyNetwork')
                 $timeout(set_use_login, 100) ;
                 return ;
             }
-            login = JSON.parse(login) ;
+            try {
+                login = JSON.parse(login) ;
+            }
+            catch (e) {
+                console.log(pgm + 'login was invalid. error = ' + e.message) ;
+                login = true ;
+            }
             self.use_login = login ;
             // console.log(pgm + 'login = ' + login + ', self.use_login = ' + self.use_login) ;
         }

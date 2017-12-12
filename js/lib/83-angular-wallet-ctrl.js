@@ -592,8 +592,14 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path) ;
                             return test_done('Test failed') ;
                         }
-                        wallet = JSON.parse(wallet_str) ;
-                        console.log(pgm + 'wallet = ' + JSON.stringify(wallet)) ;
+                        try {
+                            wallet = JSON.parse(wallet_str) ;
+                        }
+                        catch (e) {
+                            console.log(pgm + 'error. ' + inner_path + ' was invalid. error = ' + e.message) ;
+                            return test_done('Test failed') ;
+                        }
+                        console.log(pgm + 'wallet = ' + wallet_str) ;
                         // validate wallet.json after read
                         error = MoneyNetworkAPILib.validate_json(pgm, wallet, null, 'api') ;
                         if (error) {
