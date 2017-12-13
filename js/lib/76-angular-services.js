@@ -7035,7 +7035,10 @@ angular.module('MoneyNetwork')
             open_window: moneyNetworkWService.open_window,
             get_currencies: moneyNetworkWService.get_currencies,
             get_currency_by_unique_text: moneyNetworkWService.get_currency_by_unique_text,
-            z_file_get: z_file_get
+            z_file_get: z_file_get,
+            ls_get_sessions: moneyNetworkWService.ls_get_sessions,
+            ls_save_sessions: moneyNetworkWService.ls_save_sessions,
+            get_session_info_key: moneyNetworkWService.get_session_info_key
         };
 
         // end MoneyNetworkService

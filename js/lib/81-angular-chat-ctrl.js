@@ -1,9 +1,9 @@
 angular.module('MoneyNetwork')
     
     .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location', 'safeApply',
-        'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', '$window', 'dateFilter', '$sce', '$sanitize',
+        'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', 'shortChatTimeFilter', '$window', 'dateFilter', '$sce', '$sanitize',
         function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location, safeApply,
-                  chatEditTextAreaId, chatEditImgId, formatChatMessage, $window, date, $sce, $sanitize)
+                  chatEditTextAreaId, chatEditImgId, formatChatMessage, shortChatTime, $window, date, $sce, $sanitize)
         {
             
             var self = this;
@@ -3015,17 +3015,22 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
             }; // edit_money_transactions
 
+            var SESSION_INFO_KEY = moneyNetworkService.get_session_info_key();
+
             // show/update wallet balance in incoming money transaction(s)
-            self.balance_money_transactions = function (m) {
+            self.balance_money_transactions = function (m, balance_updated) {
                 var pgm = controller + '.balance_money_transactions: ' ;
                 console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
 
                 moneyNetworkService.get_currencies({}, function (currencies, refresh_angular_ui) {
                     var pgm = controller + '.balance_money_transactions get_currencies callback: ';
-                    var i, money_transaction, balances, amount, units, j, k, balance ;
+                    var i, money_transaction, balances, amount, units, j, k, balance, now, elapsed_s, elapsed_text,
+                        sessionid, sessionids, get_balance, ls_sessions;
                     if (!self.currencies) self.currencies = currencies; // initialize currencies array used in UI
+                    now = new Date().getTime() ;
 
                     // lookup wallet balance for each money transaction
+                    sessionids = [] ;
                     for (i=0 ; i<m.message.message.money_transactions.length ; i++) {
                         money_transaction = m.message.message.money_transactions[i] ;
                         // lookup balance
@@ -3074,14 +3079,105 @@ angular.module('MoneyNetwork')
                                 if (units[k].factor == 1) balances.unshift(balance) ;
                                 else balances.push(balance) ;
                             } // for j
+                            elapsed_s = Math.round((now - self.currencies[j].balance_at) / 1000) ;
+                            elapsed_text = shortChatTime(self.currencies[j].balance_at) ;
+                            sessionid = self.currencies[j].sessionid ;
+                            if ((elapsed_s > 120) && (sessionids.indexOf(sessionid) == -1)) sessionids.push(sessionid);
                         } // for k
                         if (balances.length) {
                             if (!money_transaction.message) money_transaction.message = {} ;
                             money_transaction.message.balance = 'Wallet balance ' + balances.join(' = ') ;
                             format_money_transaction_message(money_transaction) ;
+                            console.log(pgm + money_transaction.message.html + ' last updated ' + elapsed_text) ;
                         }
                     } // for i
-                    safeApply($scope) ;
+
+                    if (balance_updated) {
+                        // wallet balance has already been updated
+                        safeApply($scope) ;
+                        return ;
+                    }
+
+                    // update wallet balance.
+                    ls_sessions = moneyNetworkService.ls_get_sessions() ;
+
+                    get_balance = function() {
+                        var pgm = controller + '.balance_money_transactions.get_balence: ';
+                        var sessionid, mn_session_info ;
+                        sessionid = sessionids.shift() ;
+                        if (!sessionid) {
+                            if (balance_updated) self.balance_money_transactions(m, true) ;
+                            safeApply($scope) ;
+                            return ;
+                        }
+                        mn_session_info = ls_sessions[sessionid] ? ls_sessions[sessionid][SESSION_INFO_KEY] : null;
+                        if (!mn_session_info) {
+                            console.log(pgm + 'error. could not find sessionid ' + sessionid + ' in lS sessions') ;
+                            return get_balance() ;
+                        }
+
+                        // lookup sessionid in MoneyNetworkAPI sessions (encrypt = MoneyNetworkAPI instance)
+                        MoneyNetworkAPILib.get_session(sessionid, function (api_session_info) {
+                            var pgm = controller + '.balance_money_transactions.get_balence get_session callback 1: ';
+                            var request ;
+                            if (!api_session_info || !api_session_info.encrypt) {
+                                // session lookup failed
+                                console.log(pgm + 'error. could not find session info for sessionid ' + sessionid) ;
+                                return get_balance() ;
+                            }
+                            // get balance
+                            request = { msgtype: 'get_balance', open_wallet: true } ;
+                            api_session_info.encrypt.send_message(request, {response: 30000}, function (response) {
+                                var pgm = controller + '.balance_money_transactions.get_balence send_message callback 2: ';
+                                var old_balance, new_balance ;
+                                if (response && response.error && response.error.match(/^Timeout /)) {
+                                    // OK. Timeout. Continue with next session
+                                    return get_balance() ;
+                                }
+                                if (!response || response.error || (response.msgtype != 'balance')) {
+                                    console.log(pgm + 'get_balance request failed. response = ' + JSON.stringify(response)) ;
+                                    return get_balance() ;
+                                }
+                                // copy updated balance info into session_info
+                                console.log(pgm + 'response = ' + JSON.stringify(response));
+                                //response = {
+                                //    "msgtype": "balance",
+                                //    "balance": [{"code": "tBTC", "amount": 3.69539209}],
+                                //    "balance_at": 1513158476645 == Wednesday, December 13, 2017 10:47:56 AM GMT+01:00
+                                //};
+                                console.log(pgm + 'mn_session_info = ' + JSON.stringify(mn_session_info)) ;
+                                //mn_session_info = {
+                                //    "url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                                //    "password": "U2FsdGVkX18VZhU0BdFeaei7S7b1RUJzNWQdpH2EbgrUYfjsR1AhYtGq+2LuP7EH7cRzhTdRL2DElaXVpGJ8geMfjfYTaBxNnw40Kwnb3JU=",
+                                //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHRyekzttFPmsyNG8Fz4fQTTXbtE\n1XsezBrWZkTl2afS1j+rxkPwg6+hhzwcJQXgI3WCG8oLpSFZFboJUYeKJVRAlOgq\n45Li5VnoRp1BrTbHzmCVNSbDLCwfnQIaPHC+B3FMKVCuqzQbWNzcjR8JtvzoHoWr\ndBcvINIznnD+PpfzAgMBAAE=\n-----END PUBLIC KEY-----",
+                                //    "pubkey2": "Ahn94vCUvT+S/nefej83M02n/hP8Jvqc8KbxMtdSsT8R",
+                                //    "last_request_at": 1513158011723,
+                                //    "done": {},
+                                //    "wallet_sha256": "593af9949006a3f1b27c00c10baec3719b2978b7d34224fa606f63ab167fe1de",
+                                //    "balance": [{"code": "tBTC", "amount": 3.69559209}],
+                                //    "balance_at": 1512831462926 ==  Saturday, December 9, 2017 3:57:42 PM GMT+01:00
+                                //};
+                                if (mn_session_info.balance_at && (mn_session_info.balance_at >= request.balance_at)) {
+                                    console.log(pgm + 'balance was not updated') ;
+                                    return get_balance() ;
+                                }
+                                // update ls_sessions
+                                mn_session_info.balance_at = response.balance_at ;
+                                old_balance = JSON.parse(JSON.stringify(mn_session_info.balance)) ;
+                                new_balance = response.balance ;
+                                old_balance.sort(function (a,b) { return a.code < a.code ? -1 : 1 }) ;
+                                new_balance.sort(function (a,b) { return a.code < a.code ? -1 : 1 }) ;
+                                if (JSON.stringify(old_balance) != JSON.stringify(new_balance)) {
+                                    mn_session_info.balance = response.balance ;
+                                    balance_updated = true ;
+                                }
+                                moneyNetworkService.ls_save_sessions() ;
+
+                            }) ; // send_message callback 2
+
+                        }); // get_session callback 1
+                    } ;
+                    get_balance() ;
 
                 }) ; // get_currencies callback
 
