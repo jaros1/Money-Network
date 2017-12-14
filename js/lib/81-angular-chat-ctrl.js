@@ -2432,8 +2432,7 @@ angular.module('MoneyNetwork')
             self.approve_money_transactions = function (m) {
                 var pgm = controller + '.approve_money_transactions: ' ;
                 var step_1_check_unknown_wallets, step_2_ping_wallets, step_3_check_transactions,
-                    step_4_start_transactions, unknown_wallets, balances, wallets_hash, format_money_transaction_message,
-                    set_ping_error, set_check_error, i ;
+                    step_4_start_transactions, unknown_wallets, balances, wallets_hash, set_ping_error, set_check_error, i ;
                 console.log(pgm + 'click. message = ' + JSON.stringify(m.message)) ;
                 //message = {
                 //    "local_msg_seq": 5947,
@@ -3091,10 +3090,10 @@ angular.module('MoneyNetwork')
                             console.log(pgm + money_transaction.message.html + ' last updated ' + elapsed_text) ;
                         }
                     } // for i
+                    safeApply($scope) ;
 
                     if (balance_updated) {
-                        // wallet balance has already been updated
-                        safeApply($scope) ;
+                        // second call. wallet balance has already been updated
                         return ;
                     }
 
