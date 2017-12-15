@@ -339,7 +339,7 @@ var MoneyNetworkAPILib = (function () {
             return ;
         }
         pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
-        if (group_debug_operations[group_debug_seq].finish_at) {
+        if (group_debug_operations[group_debug_seq].this_session_finish_at) {
             console.log(pgm2 + 'Error. Has already set finish_at timestamp for group_debug_seq ' + group_debug_seq) ;
             return ;
         }
@@ -1484,6 +1484,20 @@ var MoneyNetworkAPILib = (function () {
                 "required": ['msgtype', 'money_transactionid'],
                 "additionalProperties": false
             }, // start_mt
+
+            // status for money transaction. short text. send by wallet sessions. one for each wallet. displayed in UI
+            "status_mt": {
+                "type": 'object',
+                "title": 'Status for money transaction(s)',
+                "description": 'W: inform MN and other wallet session about money transaction status. Only encrypted with money_transactionid (see send_mt and start_mt)',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^status_mt'},
+                    "status": {"type": 'string', "maxLength": 50},
+                    "salt": { "type": 'number'}
+                },
+                "required": ['msgtype', 'status', 'salt'],
+                "additionalProperties": false
+            }, // status_mt
 
             // publish sync. between MN and wallet sessions. minimum interval between publish is 16 seconds. MN session manages publish queue.
             "queue_publish": {
@@ -3892,7 +3906,8 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (options, cb) {
 //     p    - <session filename>-p.<timestamp> - internal API communication between MN and wallets. not published and no distribution help is needed (publishing messages)
 //     null - <session filename>.<timestamp> - normal file. distributed to all peers. used only as a fallback option when optional file distribution fails
 //   - subsystem: calling subsystem. for example api, mn or wallet. used for json schema validations
-//   - group_debug_seq: use group_debug_seq from calling problem
+//   - group_debug_seq: use group_debug_seq from calling program
+//   - end_group_operation: default is true: use false to prevent ..... call after sign
 //   - timeout_msg. text or array with timeout notification. Only used after timeout while waiting for response.
 //     notification will be displayed when/if receiving a timeout message with stat about response timeout for this send_message
 //     for example walet ping timeout. receive timeout message from other session. display timeout_msg in this session
@@ -3907,7 +3922,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
     var self, response, request_msgtype, request_timestamp, encryptions, error, request_at, request_file_timestamp,
         default_timeout, timeout_at, month, year, cleanup_in, debug_seq0, subsystem, optional, group_debug_seq,
-        set_error, countdown_cb, files, status ;
+        set_error, countdown_cb, files, status, end_group_operation ;
     self = this;
     this.check_destroyed(pgm) ;
 
@@ -3916,6 +3931,14 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start() ;
     self.log(pgm, 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request.msgtype ? 'send ' + request.msgtype + ' message': 'send_message') + ' operation', group_debug_seq);
     if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype});
+
+    // end group_debug_seq operation within this send_message call?
+    // default is true. use false to prevent MoneyNetworkAPILib.debug_group_operation_end call
+    // for example used for send notification
+    if (options.hasOwnProperty('group_debug_seq')) {
+        end_group_operation = options.hasOwnProperty('end_group_operation') ? options.end_group_operation : true ;
+    }
+    else end_group_operation = true ;
 
     if (!cb) cb = function (response) {
         self.log(pgm, 'response = ' + JSON.stringify(response), group_debug_seq);
@@ -3928,7 +3951,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
 
     // error wrapper. end group debug operation and return error
     set_error =  function (error) {
-        MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, error) ;
+        if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, error) ;
         return cb({error: error})
     } ; // set_error
 
@@ -4155,7 +4178,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                     if (!response) {
                                         // no response requested for this outgoing message. end group debug operation after sign
                                         // rest of message processing is only cleanup operations and not important for process communication
-                                        MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, (res == 'ok' ? null : res)) ;
+                                        if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, (res == 'ok' ? null : res)) ;
                                     }
 
                                     sign_at = new Date().getTime();
@@ -4246,7 +4269,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                             var error ;
                                             if (typeof inner_path == 'object') {
                                                 self.log(pgm, 'inner_path is an object. must be a timeout error returned from MoneyNetworkAPILib.wait_for_file function. inner_path = ' + JSON.stringify(inner_path), group_debug_seq);
-                                                MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'Timeout. ' + request.msgtype + ' response was not received') ;
+                                                if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'Timeout. ' + request.msgtype + ' response was not received') ;
                                                 return cb(inner_path);
                                             }
                                             //if (timeout_at) {
@@ -4306,7 +4329,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                                                         ', request_file_timestamp = ' + request_file_timestamp, group_debug_seq);
 
                                                     // end group debug operation. cb will do something with response. Maybe a new request-response cycle?
-                                                    MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq) ;
+                                                    if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq) ;
                                                     cb(response);
                                                 }); // decrypt_json callback 8.2
                                             }); // fileGet callback 8.1
@@ -4547,11 +4570,11 @@ MoneyNetworkAPI.prototype.update_wallet_status = function(status, options, cb) {
         debug_seq1 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'api query 7', 'dbQuery', null, group_debug_seq);
         ZeroFrame.cmd("dbQuery", [api_query_7], function (old_files) {
             var pgm = self.module + '.update_wallet_status dbQuery callback 1: ';
-            var re, i, timestamp, max_timestamp, json ;
+            var re, i, timestamp, max_timestamp, json, error ;
             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq1, (!old_files || old_files.error) ? 'Failed' : 'OK');
             if (old_files.error) {
-                self.log(pgm, 'lookup old wallet status failed with ' + JSON.stringify(old_files)) ;
-                self.log(pgm, 'api_query_7 = ' + api_query_7) ;
+                self.log(pgm, 'lookup old wallet status failed with ' + JSON.stringify(old_files), group_debug_seq) ;
+                self.log(pgm, 'api_query_7 = ' + api_query_7, group_debug_seq) ;
                 return cb({}) ; // continue without wallet status update
             }
             max_timestamp = 0 ;
@@ -4572,9 +4595,16 @@ MoneyNetworkAPI.prototype.update_wallet_status = function(status, options, cb) {
             max_timestamp++ ;
             max_timestamp = ('0000000000000' + max_timestamp).substr(-13) ;
 
-            // encrypt new wallet status
-            json = { msgtype: 'status', status: status } ;
+            // validate new wallet status
+            json = { msgtype: 'status_mt', status: status, salt: Math.random() } ;
             self.log(pgm, 'json = ' + JSON.stringify(json), group_debug_seq) ;
+            error = MoneyNetworkAPILib.validate_json(pgm, json, null, 'api');
+            if (error) {
+                self.log(pgm, 'cannot write invalid status_mt file. json = ' + JSON.stringify(json) + ', error = ' + error, group_debug_seq) ;
+                return cb({}) ; // continue without wallet status update
+            }
+
+            // encrypt new wallet status
             self.encrypt_json(json, {encryptions: [3], group_debug_seq: group_debug_seq}, function (encrypted_json) {
                 var pgm = self.module + '.update_wallet_status encrypt_json callback 2: ';
                 var request_filename, inner_path2, json_raw ;
