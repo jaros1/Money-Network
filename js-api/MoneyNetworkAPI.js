@@ -189,6 +189,7 @@ var MoneyNetworkAPILib = (function () {
         if (options.this_user_path) set_this_user_path(options.this_user_path, {throw: true}) ;
         if (options.merger_type) set_merged_type(options.merger_type) ;
         if (options.waiting_for_file_publish) {
+            // publish callback used after sending waiting_for_file request to other wallet session
             // wallet site publish function. For example retry failed publish operations.
             if (typeof options.waiting_for_file_publish != 'function') throw pgm + 'invalid call. options.waiting_for_file_publish must be a callback function' ;
             waiting_for_file_publish = options.waiting_for_file_publish ;
@@ -1084,6 +1085,10 @@ var MoneyNetworkAPILib = (function () {
                             extra.db_query_at = now ;
                             extra.group_debug_seq = group_debug_seq ;
                             if (!json_str) {
+                                if (extra.optional_file && !extra.file_info) {
+                                    console.log(pgm + 'deleted optional file. do not run cb. maybe renamed to a normal file after a waiting_for_file message') ;
+                                    return ;
+                                }
                                 // timeout or deleted file. continue anyway.
                                 console.log(pgm2 + 'timeout or file not found. extra = ' + JSON.stringify(extra)) ;
                                 return step_3_run_cb(extra, null, null) ;
@@ -2106,9 +2111,14 @@ var MoneyNetworkAPILib = (function () {
                 delete options.group_debug_seq ;
             }
             if (options.hasOwnProperty('waiting_for_file')) {
-                // after first timeout. send a waiting_for_file notification to other wallet session
+                // after first timeout. set submit_waiting_for_file to true. submit waiting_for_file in next fileGet request
                 extra.waiting_for_file = options.waiting_for_file ;
                 delete options.waiting_for_file ;
+            }
+            if (options.hasOwnProperty('submit_waiting_for_file')) {
+                // after first timeout. send a waiting_for_file notification to other wallet session
+                extra.submit_waiting_for_file = options.submit_waiting_for_file ;
+                delete options.submit_waiting_for_file ;
             }
             pgm2 = get_group_debug_seq_pgm(pgm, extra.group_debug_seq) ;
             if (debug) console.log(pgm2 + 'filename = ' + JSON.stringify(filename) + ', optional_file = ' + extra.optional_file) ;
@@ -2153,6 +2163,14 @@ var MoneyNetworkAPILib = (function () {
                         if (warnings.length && debug) console.log(pgm2 + 'Warning: ' + warnings.join('. ') + '. old options = ' + old_options + ', new_options = ' + JSON.stringify(options)) ;
                     }
                 }
+                if (extra.waiting_for_file && extra.submit_waiting_for_file) {
+                    // timeout in previous fileGet request and z_file_get was called with a waiting_for_file callback
+                    // send waiting_for_file message to other wallet session
+                    // for example other client is using optional files and ZeroNet port is closed
+                    setTimeout(extra.waiting_for_file, 0) ;
+                    delete extra.waiting_for_file ;
+                    delete extra.submit_waiting_for_file ;
+                }
 
                 // extend cb. add ZeroNet API debug messages + timeout processing.
                 // cb2 is run as fileGet callback or is run by setTimeout (sometimes problem with optional fileGet operation running forever)
@@ -2174,9 +2192,8 @@ var MoneyNetworkAPILib = (function () {
                         if (debug) console.log(pgm2 + inner_path + ' fileGet failed. timeout_count was ' + extra.timeout_count) ;
                         if (extra.waiting_for_file) {
                             // optional fileGet timeout and waiting_for_file callback has been injected into z_file_get (message_demon).
-                            // send waiting_for_file notification and continue with normal fallback for failed fileGet.
-                            // other wallet session may resend missing optional file as a normal file
-                            extra.waiting_for_file() ;
+                            // submit in next fileGet request
+                            extra.submit_waiting_for_file = true ;
                         }
                         if (extra.timeout_count > 0) {
                             // optional fileGet failed. called with a timeout_count. Retry operation
@@ -2185,6 +2202,11 @@ var MoneyNetworkAPILib = (function () {
                             options_clone.timeout_count-- ;
                             if (debug) console.log(pgm2 + 'retrying ' + inner_path + ' fileGet with timeout_count = ' + options_clone.timeout_count) ;
                             options_clone.group_debug_seq = extra.group_debug_seq ;
+                            if (extra.submit_waiting_for_file) {
+                                // send waiting_for_file message in next fileGet request
+                                options_clone.waiting_for_file = extra.waiting_for_file ;
+                                options_clone.submit_waiting_for_file = extra.submit_waiting_for_file ;
+                            }
                             z_file_get(pgm, options_clone, cb) ;
                             return ;
                         }
@@ -2472,8 +2494,14 @@ var MoneyNetworkAPILib = (function () {
             // param 3 is encrypt object
             encrypt = encrypt_or_user_path ;
             if (!is_MoneyNetworkAPI(encrypt)) throw pgm + 'invalid call. parameter 3 encrypt must be a instance of MoneyNetworkAPI' ;
-            user_path = encrypt.other_user_path ;
-            if (!user_path) throw pgm + 'invalid call. user_path is not yet initialized in encrypt object' ;
+            if (!encrypt.sessionid) {
+                console.log(pgm + 'No MN-Wallet session handskake. Publish without MN publish queue. Skipping last published update. May cause problems with not distributed content.json due to ratelimit check in receiving peers') ;
+                user_path = 'N/A' ;
+            }
+            else {
+                user_path = encrypt.other_user_path ;
+                if (!user_path) throw pgm + 'invalid call. user_path is not yet initialized in encrypt object' ;
+            }
         }
         // save publish information
         if (published > 9999999999) published = Math.floor(published / 1000) ; // ms => s
@@ -2485,6 +2513,8 @@ var MoneyNetworkAPILib = (function () {
         else updated = false ;
         elapsed = last_published - old_last_published ;
         console.log(pgm + 'user_path = ' + user_path + ', elapsed = ' + elapsed + ', old_last_published = ' + old_last_published + ', last_publish = ' + last_published) ;
+
+        if (user_path == 'N/A') return ; // no MN-Wallet session. no publish interval check
 
         // add to last_publish_hash and check distance to previous and next publish
         last_published_hash[published] = { system: system, user_path: user_path, encrypt: encrypt } ;
@@ -2512,10 +2542,23 @@ var MoneyNetworkAPILib = (function () {
     var next_cb_id = 0 ;
     function queue_publish (options, cb) {
         var pgm = module + '.queue_publish: ' ;
-        var cb2, cb_done, pgm2 ;
+        var cb2, cb_done, pgm2, encrypt ;
         // console.log(pgm + 'options=', options, ', cb=', cb) ;
         if (typeof cb != 'function') throw pgm + 'invalid call. parameter 2 cb must be a callback function' ;
+        if (!options) options = {} ;
+        if (!options.group_debug_seq) {
+            if (options.encrypt) {
+                // stringify not allowed for encrypt object: Blocked a frame with origin "null" from accessing a cross-origin frame
+                encrypt = options.encrypt ;
+                delete options.encrypt ;
+            }
+            options = JSON.parse(JSON.stringify(options)) ;
+            if (encrypt) options.encrypt = encrypt ;
+            options.group_debug_seq = debug_group_operation_start() ;
+        }
         pgm2 = get_group_debug_seq_pgm(pgm, options.group_debug_seq) ;
+        console.log(pgm2 + 'Using group_debug_seq ' + options.group_debug_seq + ' for this queue_publish operation');
+
         // extend cb. has cb run or not. cb must already run and must only run once.
         // using try catch block in JS code to ensure that exceptions does not stop publishing
         cb_done = false ;
@@ -2537,14 +2580,14 @@ var MoneyNetworkAPILib = (function () {
                     if (client) {
                         // client (wallet session). send message to MN publish queue
                         // wallet session wish to start a publish. using messages "queue_publish", "start_publish" and "published" (-p messages processed by MoneyNetworkAPILib)
-                        if (!options.encrypt) throw pgm + 'invalid call. options.encrypt (MoneyNetworkAPI instance) is required' ;
-                        if (!is_MoneyNetworkAPI(options.encrypt)) throw pgm + 'invalid call. options.encrypt must be a MoneyNetworkAPI instance' ;
+                        if (!options.encrypt) throw pgm2 + 'invalid call. options.encrypt (MoneyNetworkAPI instance) is required' ;
+                        if (!is_MoneyNetworkAPI(options.encrypt)) throw pgm2 + 'invalid call. options.encrypt must be a MoneyNetworkAPI instance' ;
                         // 1) get unique cb_id from sequence. used in messages between MN and wallet sessions
                         next_cb_id++ ;
                         cb_id = next_cb_id ;
                         // MN-wallet session?
                         if (!options.encrypt.sessionid) {
-                            console.log(pgm + 'No MN-Wallet session handshake. Continue with publish without MN publish queue. May cause problems with not distributed content.json due to ratelimit check in receiving peers') ;
+                            console.log(pgm2 + 'No MN-Wallet session handshake. Continue with publish without MN publish queue. May cause problems with not distributed content.json due to ratelimit check in receiving peers') ;
                             cb(cb_id, options.encrypt) ;
                             return ;
                         }
@@ -2604,7 +2647,8 @@ var MoneyNetworkAPILib = (function () {
                                     // wait max 120 seconds
                                     wait_timeout = function() {
                                         var pgm = module + '.queue_publish.wait_timeout: ' ;
-                                        var found, i ;
+                                        var pgm2, found, i ;
+                                        pgm2 = get_group_debug_seq_pgm(pgm, options.group_debug_seq) ;
                                         // check publish_queue.
                                         found = -1 ;
                                         for (i=0 ; i<publish_queue.length ; i++) {
@@ -2614,12 +2658,12 @@ var MoneyNetworkAPILib = (function () {
                                             }
                                         } // for i
                                         if (found == -1) {
-                                            console.log(pgm + 'Error. No publish request with cb_id ' + cb_id + ' was found in publish queue') ;
+                                            console.log(pgm2 + 'Error. No publish request with cb_id ' + cb_id + ' was found in publish queue') ;
                                             return ;
                                         }
                                         if (publish_queue[found].publishing) return ; // Ok. publish cb already run
                                         // send OK response to MN
-                                        console.log(pgm + 'Timeout while waiting for start_publish message from MN. Starting publish') ;
+                                        console.log(pgm2 + 'Timeout while waiting for start_publish message from MN. Starting publish') ;
                                         // start publish process
                                         publish_queue[found].publishing = true ;
                                         publish_queue[found].cb(cb_id, options.encrypt) ;
@@ -2842,10 +2886,11 @@ var MoneyNetworkAPILib = (function () {
                     var pgm = module + '.process_publish_messages.' + request.msgtype + '/' + group_debug_seq + ': ';
                     var i ;
                     for (i=0 ; i<publish_queue.length ; i++) {
-                        if (publish_queue[i].cb_id == request.cb_id) return send_response() ;
+                        if ((publish_queue[i].cb_id == request.cb_id) && publish_queue[i].publishing) return send_response() ;
                     } // for i
-                    response.error = 'No publishing process was found with cb_id = ' + request.cb_id ;
+                    send_response('No publishing process was found with cb_id = ' + request.cb_id) ;
                 })() ;
+                return ;
                 // end check_publish
             }
             else if (request.msgtype == 'published') {
@@ -2868,8 +2913,11 @@ var MoneyNetworkAPILib = (function () {
                         }
                     } // for i
                     if (found == -1) return send_response('Error. No publish request with cb_id ' + request.cb_id + ' was found in publish queue') ;
+                    // OK published request
                     publish_queue.splice(found,1) ;
+                    send_response() ;
                 })() ;
+                return ;
             }
             else response.error = 'Unknown msgtype ' + request.msgtype;
             console.log(pgm + 'response = ' + JSON.stringify(response));
@@ -3093,19 +3141,49 @@ var MoneyNetworkAPILib = (function () {
 
                     // res = ok only. get content.json modified timestamp. used in MN publish queue
                     get_content_json = function (cb) {
-                        if (res != 'ok') return cb(); // publish failed. keep last_published timestamp
-                        z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
-                            var content;
-                            content = JSON.parse(content_str); // just published. content.json should by OK
-                            // publish ok. update last_published timestamp
-                            if (cb_id) set_last_published(content.modified, 'W', encrypt);
-                            else set_last_published(content.modified, 'MN', user_path);
-                            cb();
-                        });
+                        var now ;
+                        // try-catch. always run cb and end transaction lock
+                        if (res != 'ok') {
+                            // publish failed. use current timestamp. next publish try in 30 seconds
+                            now = Math.ceil(new Date().getTime()/1000) ;
+                            // try-catch. always run cb and end transaction lock
+                            try {
+                                if (cb_id) set_last_published(now, 'W', encrypt);
+                                else set_last_published(now, 'MN', user_path);
+                            }
+                            catch (e) {
+                                console.log(pgm + e.message);
+                                console.log(e.stack);
+                            }
+                            return cb();
+                        }
+                        // published ok. get modified timestamp from content.json.
+                        try {
+                            z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
+                                var content;
+                                // try-catch. always run cb and end transaction lock
+                                try {
+                                    content = JSON.parse(content_str); // just published. content.json should by OK
+                                    // publish ok. update last_published timestamp
+                                    if (cb_id) set_last_published(content.modified, 'W', encrypt);
+                                    else set_last_published(content.modified, 'MN', user_path);
+                                }
+                                catch (e) {
+                                    console.log(pgm + e.message);
+                                    console.log(e.stack);
+                                }
+                                cb();
+                            });
+                        }
+                        catch (e) {
+                            console.log(pgm + e.message);
+                            console.log(e.stack);
+                            cb() ;
+                        }
                     }; // get_modified
                     get_content_json(function () {
                         var pgm = module + '.z_site_publish send_message callback 5: ';
-                        var request;
+                        var group_debug_seq, pgm2, request;
 
                         // end transaction. start any transaction waiting for publish to finish
                         end_transaction(transaction_timestamp);
@@ -3114,17 +3192,23 @@ var MoneyNetworkAPILib = (function () {
                         if (cb_id) {
                             // wallet session
                             if (!encrypt.sessionid) return; // no MN-W2 session. published without MN publish queue
-                            console.log(pgm + 'wallet session is sending published message to MoneyNetwork');
+
+                            group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start() ;
+                            pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
+                            console.log(pgm2, 'Using group_debug_seq ' + group_debug_seq + ' for this send published message');
+                            console.log(pgm2 + 'wallet session is sending published message to MoneyNetwork');
                             request = {
                                 msgtype: 'published',
                                 cb_id: cb_id,
                                 res: res == 'ok' ? res : (res && res.error ? res.error : JSON.stringify(res)),
                                 last_published_at: last_published
                             };
-                            console.log(pgm + 'published request = ' + JSON.stringify(request));
-                            encrypt.send_message(request, {response: 5000}, function (response) {
+                            console.log(pgm2 + 'published request = ' + JSON.stringify(request));
+                            encrypt.send_message(request, {response: 5000, group_debug_seq: group_debug_seq}, function (response) {
                                 var pgm = module + '.z_site_publish send_message callback 5: ';
-                                console.log(pgm + 'published response = ' + JSON.stringify(response));
+                                var pgm2 ;
+                                pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
+                                console.log(pgm2 + 'published response = ' + JSON.stringify(response));
                             }); // send_message callback 5
                         }
                         else {
@@ -3797,15 +3881,15 @@ MoneyNetworkAPI.prototype.get_content_json = function (options, cb) {
         if (content_str) {
             try {
                 content = JSON.parse(content_str);
-                return cb(content);
             }
             catch (e) {
-                this.log(pgm, 'Error. JSON.parse failed. error = ' + e.message, group_debug_seq) ;
-                this.log(pgm, 'Continue with a new empty content.json file', group_debug_seq) ;
+                self.log(pgm, 'Error. JSON.parse failed. error = ' + e.message, group_debug_seq) ;
+                self.log(pgm, 'Continue with a new empty content.json file', group_debug_seq) ;
                 content = {} ;
             }
         }
         else content = {};
+        if (JSON.stringify(content) != JSON.stringify({})) return cb(content) ;
         if (!self.this_optional) return cb(content); // maybe an error but optional files support was not requested
         // 2: fileWrite (empty content.json file)
         // new content.json file and optional files support requested. write + sign + get
@@ -4153,9 +4237,9 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             self.update_wallet_status(status, {group_debug_seq: group_debug_seq, optional: optional}, function (res) {
                                 var pgm = self.module + '.send_message update_wallet_status callback 5.5: ';
 
-                                // 6: siteSign. publish not needed for within client communication
+                                // 6: siteSign. publish not needed for for internal MN-wallet communication
                                 inner_path5 = self.this_user_path + 'content.json';
-                                self.log(pgm, 'sign content.json with new optional file ' + request_filename, group_debug_seq);
+                                self.log(pgm, 'sign content.json with new optional file ' + request_filename + ' (' + request.msgtype + ')', group_debug_seq);
                                 debug_seq5 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path5, 'siteSign', null, group_debug_seq);
                                 self.ZeroFrame.cmd("siteSign", {inner_path: inner_path5, remove_missing_optional: true}, function (res) {
                                     var pgm = self.module + '.send_message siteSign callback 6: ';

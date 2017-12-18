@@ -34,8 +34,8 @@
    "size": 139116
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "7f07e20610006f7744ddcd1bef44a81e3f92fac876e8a9a56e0d60aee63ab851",
-   "size": 284070
+   "sha512": "c5a090eaa979b4c2c0d1008566b74845fa72afbde5b91e639c7adbfb8a993f33",
+   "size": 289141
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -306,7 +306,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1513352916,
+ "modified": 1513605544,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -318,7 +318,7 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HKWobSJ2hUyfMw8htFDnAjPloymW3StULhHKUQk1zxLsdwbbemuH0Jfpp+gMvKfMxzhmKFJ0i1ddAf2Wcg/dtsA="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G9bbI9NihVAg9x14M9fYyP6A6InGTNd/Jqdsg4JU55NeB+7EsHT8G2wohtmrKgfEL0DcbE64KLVDwDCzg+XSysU="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",

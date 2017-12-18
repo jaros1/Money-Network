@@ -623,21 +623,6 @@ angular.module('MoneyNetwork')
         // end findContactAvatar filter
     }])
 
-
-
-
-    //.filter('contactGlyphicon', [function () {
-    //    // return glyphicon class for contact type
-    //    return function (contact) {
-    //        if (!contact || (contact.type == 'public')) return 'glyphicon glyphicon-globe' ;
-    //        else if (contact.type == 'group') return 'glyphicon glyphicon-pushpin';
-    //        else return 'glyphicon glyphicon-user';
-    //    } ;
-    //    // end contactAlias filter
-    //}])
-
-
-
     .filter('messageGlyphicon', ['contactGlyphiconFilter', function (contactGlyphicon) {
         // inbox glyphicon - glyphicon class for message type
         return function (message) {
@@ -1266,6 +1251,34 @@ angular.module('MoneyNetwork')
             return emoji_folder + '/' + unicode + '.png' ;
         } ;
         // end reactionURL filter
+    }])
+
+    .filter('myTransactionStatus', [ 'MoneyNetworkService', function (moneyNetworkService) {
+        // show my wallet transaction status for chat msg with money transaction(s)
+        // one or more transactionids = one or more wallet transaction statuses
+        return function (message) {
+            if (!message.message.message) return null ; // not a chat msg
+            if (message.message.message.this_money_transaction_status) return message.message.message.this_money_transaction_status.join('. ') ;
+            if (!message.message.message.money_transactions) return null ;
+            if (!message.message.message.money_transactions.length) return null ;
+            moneyNetworkService.monitor_money_transaction(message) ;
+            return message.message.message.this_money_transaction_status.join('. ') ;
+        } ;
+        // end myTransactionStatus
+    }])
+
+    .filter('contactTransactionStatus', [ 'MoneyNetworkService', function (moneyNetworkService) {
+        // show contact wallet transaction status for chat msg with money transaction(s)
+        // one or more transactionids = one or more wallet transaction statuses
+        return function (message) {
+            if (!message.message.message) return null ; // not a chat msg
+            if (message.message.message.other_money_transaction_status) return message.message.message.other_money_transaction_status.join('. ') ;
+            if (!message.message.message.money_transactions) return null ;
+            if (!message.message.message.money_transactions.length) return null ;
+            moneyNetworkService.monitor_money_transaction(message) ;
+            return message.message.message.other_money_transaction_status.join('. ') ;
+        } ;
+        // end contactTransactionStatus
     }])
 
 ;

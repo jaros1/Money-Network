@@ -860,6 +860,19 @@ angular.module('MoneyNetwork')
                     // merge MN process information and wallet process information.
                     MoneyNetworkAPILib.debug_group_operation_receive_stat(encrypt, request.stat) ;
                 }
+                else if (request.msgtype == 'status_mt') {
+                    (function status_mt() {
+                        var pgm = service + '.process_incoming_message.' + request.msgtype + '/' + group_debug_seq + ': ';
+                        console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                        console.log(pgm + 'extra = ' + JSON.stringify(encrypt.extra)) ;
+                        // insert status in UI. See monitor_money_transaction and xxxTransactionStatus filters
+                        encrypt.extra.array[encrypt.extra.index] = request.status ;
+
+                    })() ;
+                    return ;
+
+
+                }
                 else {
                     response.error = 'Unknown msgtype ' + request.msgtype;
                     console.log(pgm + 'request = ' + JSON.stringify(request));
@@ -1549,6 +1562,74 @@ angular.module('MoneyNetwork')
             return null ;
         } // get_currency_by_unique_text
 
+        // showing chat msg with money transaction in chat
+        // monitor money transaction status for transactionid(s) for this message
+        // one or more money_transactionid(s) for each massage'
+        // one money transaction status for each wallet (my wallet and contact wallet)
+        // fileGet operations in wallet session. no optional file download in MN sesion
+        // just display latest wallet transaction status for my and contact wallet in UI
+        function monitor_money_transaction (message) {
+            var pgm = service + '.monitor_money_transaction: ' ;
+            var i, money_transactionids, money_transaction, money_transactionid ;
+            message.message.message.this_money_transaction_status = [] ; // used in myTransactionStatus filter
+            message.message.message.other_money_transaction_status = [] ; // used in contactTransactionStatus filter
+            if (!message.message.message) return ; // error. not a chat message
+            if (!message.message.message.money_transactions) return ; // error. no money transactions in this chat msg
+            if (!message.message.message.money_transactions.length) return ; // error. no money transactions in this chat msg
+            console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message.message)) ;
+            money_transactionids = [] ;
+            for (i=0 ; i<message.message.message.money_transactions.length ; i++) {
+                money_transaction = message.message.message.money_transactions[i] ;
+                money_transactionid = money_transaction.money_transactionid ;
+                if (money_transactionids.indexOf(money_transactionid) == -1) money_transactionids.push(money_transactionid) ;
+            } // for i
+            // start with empty status (N/A)
+            for (i=0 ; i<money_transactionids.length ; i++) {
+                message.message.message.this_money_transaction_status.push('N/A') ;
+                message.message.message.other_money_transaction_status.push('N/A') ;
+            }
+            // create speciel MoneyNetworkAPI instance.
+            // 1) only sessionid (=money_transactionid), no public keys.
+            // 2) must monitor files for both this session filename (my money transaction status) and other session filename (contact money transaction status)
+            // 3) todo: message_demon should only monitor ....
+            // 5) use extra to map MoneyNetworkAPI instance to element in this_money_transaction_status and other_money_transaction_status arrays
+
+            for (i=0 ; i<money_transactionids.length ; i++) {
+                money_transactionid = money_transactionids[i] ;
+                // as sender of money transaction. monitoring messages from receiver of money transaction
+                try {
+                    new MoneyNetworkAPI({
+                        sessionid: money_transactionid,
+                        debug: z_cache.user_setup.debug && z_cache.user_setup.debug.money_network_api,
+                        sender: true,
+                        extra: {
+                            array: message.message.folder == 'outbox' ? message.message.message.other_money_transaction_status : message.message.message.this_money_transaction_status,
+                            index: i
+                        }
+                    }) ;
+                }
+                catch (e) {
+                    console.log(pgm + 'error. could not create a session with sessionid ' + money_transactionid + '. error = ' + (e.message || 'see previous message in log')) ;
+                }
+                // as receiver of money transaction. monitoring messages from sender of money transaction
+                try {
+                    new MoneyNetworkAPI({
+                        sessionid: money_transactionid,
+                        debug: z_cache.user_setup.debug && z_cache.user_setup.debug.money_network_api,
+                        sender: false,
+                        extra: {
+                            array: message.message.folder == 'inbox' ? message.message.message.other_money_transaction_status : message.message.message.this_money_transaction_status,
+                            index: i
+                        }
+                    }) ;
+                }
+                catch (e) {
+                    console.log(pgm + 'error. could not create a session with sessionid ' + money_transactionid + '. error = ' + (e.message || 'see previous message in log')) ;
+                }
+            } // for i
+
+        } // monitor_money_transaction
+
         // export MoneyNetworkWService API
         return {
             get_session_info_key: get_session_info_key,
@@ -1558,7 +1639,8 @@ angular.module('MoneyNetwork')
             w_logout: w_logout,
             open_window: open_window,
             get_currencies: get_currencies,
-            get_currency_by_unique_text: get_currency_by_unique_text
+            get_currency_by_unique_text: get_currency_by_unique_text,
+            monitor_money_transaction: monitor_money_transaction
         };
 
         // end MoneyNetworkWService

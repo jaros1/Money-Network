@@ -7038,7 +7038,8 @@ angular.module('MoneyNetwork')
             z_file_get: z_file_get,
             ls_get_sessions: moneyNetworkWService.ls_get_sessions,
             ls_save_sessions: moneyNetworkWService.ls_save_sessions,
-            get_session_info_key: moneyNetworkWService.get_session_info_key
+            get_session_info_key: moneyNetworkWService.get_session_info_key,
+            monitor_money_transaction: moneyNetworkWService.monitor_money_transaction
         };
 
         // end MoneyNetworkService
