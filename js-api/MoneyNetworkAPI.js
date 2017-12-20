@@ -810,6 +810,7 @@ var MoneyNetworkAPILib = (function () {
 
 
     var timestamp_re = /^[0-9]{13}$/ ;
+    var waiting_for_files = {} ; // new_filename => inner_path for waiting_for_file request.
     function message_demon() {
         var pgm = module + '.message_demon: ';
         var filename, api_query_1, session_filename, first, now, timeout_in, countdown, call_countdown_cb, group_debug_seq;
@@ -935,8 +936,13 @@ var MoneyNetworkAPILib = (function () {
                 if (!encrypt.other_user_path) encrypt.setup_encryption({other_user_path: other_user_path}) ;
                 if (other_user_path != encrypt.other_user_path) {
                     console.log(pgm + 'Rejected incoming message ' + inner_path + '. Expected incoming messages for this session to come from ' + encrypt.other_user_path) ;
+                    console.log(pgm + 'sessionid = ' + encrypt.sessionid) ;
                     done[filename] = true;
                     continue ;
+                }
+
+                if (waiting_for_files[filename]) {
+                    console.log(pgm + 'received waiting_for_file response. waiting_for_files[' + filename + ']=' + waiting_for_files[filename]) ;
                 }
 
                 if (done[filename] && done[filename].group_debug_seq) group_debug_seq = done[filename].group_debug_seq ;
@@ -1045,9 +1051,9 @@ var MoneyNetworkAPILib = (function () {
                                     if (debug) console.log(pgm2 + 'sending waiting_for_file notification to other wallet. request = ' + JSON.stringify(request)) ;
                                     encryptions = [1,2,3] ;
                                     if (!encrypt.other_session_pubkey || !encrypt.other_session_pubkey2) encryptions = [3] ; // pubkeys message from other wallet is still missing. maybe this file
-                                    encrypt.send_message(request, {optional: null, group_debug_seq: group_debug_seq, encryptions: encryptions}, function (response) {
+                                    encrypt.send_message(request, {optional: null, group_debug_seq: group_debug_seq, encryptions: encryptions}, function (response, request_filename) {
                                         var pgm = module + '.message_demon.step_1_fileget.waiting_for_file send_message callback 1: ';
-                                        var error ;
+                                        var error, new_filename ;
                                         pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                                         if (!response || response.error) {
                                             error = 'failed to send waiting_for_file message. response = ' + JSON.stringify(response) ;
@@ -1055,6 +1061,13 @@ var MoneyNetworkAPILib = (function () {
                                             MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, error) ;
                                             return ;
                                         }
+                                        // cleanup for waiting_file_file request.
+                                        // a) after wallet page reload. waiting_for_file requests are not in session_info.files object
+                                        // b) here. monitor incoming files and delete old waiting_for_file request when receiving new renamed file
+                                        console.log(pgm2 + 'request_filename = ' + request_filename) ;
+                                        new_filename = filename.substr(0,10) + '.' + filename.substr(-13) ;
+                                        waiting_for_files[new_filename] = encrypt.this_user_path + request_filename ;
+                                        console.log(pgm2 + 'waiting_for_files = ' + JSON.stringify(waiting_for_files)) ;
                                         if (waiting_for_file_publish) {
                                             // publish callback code injected from wallet site. for example retry after failed publish
                                             MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, error) ;
@@ -1063,7 +1076,7 @@ var MoneyNetworkAPILib = (function () {
                                         else {
                                             // using MoneyNetworkAPILib sitePublish code. No retry after failed publish
                                             inner_path = encrypt.this_user_path + 'content.json' ;
-                                            z_site_publish({inner_path: inner_path, encrypt: encrypt, group_debug_seq: group_debug_seq}, function (response) {
+                                            z_site_publish({inner_path: inner_path, encrypt: encrypt}, function (response) {
                                                 var pgm = module + '.message_demon.step_1_fileget.waiting_for_file z_site_publish callback 2: ';
                                                 pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                                                 if (debug) console.log(pgm2 + 'response = ' + JSON.stringify(response));
@@ -2417,7 +2430,7 @@ var MoneyNetworkAPILib = (function () {
         if (last_published_hash[published].system == 'MN') {
             // new publish in MoneyNetwork session to replace failed publish
             if (!last_published_hash[published].hasOwnProperty('retry_publish_nterval')) last_published_hash[published].retry_publish_interval = 0 ;
-            z_site_publish({inner_path: user_path + 'content.json', group_debug_seq: group_debug_seq}, function (res) {
+            z_site_publish({inner_path: user_path + 'content.json'}, function (res) {
                 var pgm = module + '.ratelimit_error z_site_publish callback: ' ;
                 var pgm2, retry ;
                 pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
@@ -3232,7 +3245,10 @@ var MoneyNetworkAPILib = (function () {
                 };
                 process_id = setTimeout(site_publish_timeout, 60000);
 
-
+                if (options.hasOwnProperty('group_debug_seq')) {
+                    console.log(pgm + 'removing invalid group_debug_seq ' + options.group_debug_seq + ' from sitePublish options') ;
+                    delete options.group_debug_seq ;
+                }
                 debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish');
                 ZeroFrame.cmd("sitePublish", options, site_publish_cb);
 

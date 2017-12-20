@@ -571,6 +571,13 @@ angular.module('MoneyNetwork')
                 error, response, i, key, value, encryptions, done_and_send, group_debug_seq, now;
 
             try {
+                // skip wallet to wallet messages. can only process status_mt messages. encrypted with money_transactionid only
+                // console.log(pgm + 'encrypt.extra = ' + JSON.stringify(encrypt.extra)) ;
+                if (!request && encrypt.extra && encrypt.extra.hasOwnProperty('array') && encrypt.extra.hasOwnProperty('index')) {
+                    console.log(pgm + 'ignoring wallet to wallet message ' + filename) ;
+                    return ;
+                }
+
                 // get a group debug seq. track all connected log messages. there can be many running processes
                 if (extra && extra.group_debug_seq) group_debug_seq = extra.group_debug_seq ;
                 else group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start();
@@ -1568,14 +1575,20 @@ angular.module('MoneyNetwork')
         // one money transaction status for each wallet (my wallet and contact wallet)
         // fileGet operations in wallet session. no optional file download in MN sesion
         // just display latest wallet transaction status for my and contact wallet in UI
+        var monitoring_money_transaction = {} ;
+        function is_monitoring_money_transaction (message) {
+            return monitoring_money_transaction[message.message.local_msg_seq] ;
+        }
         function monitor_money_transaction (message) {
             var pgm = service + '.monitor_money_transaction: ' ;
-            var i, money_transactionids, money_transaction, money_transactionid ;
-            message.message.message.this_money_transaction_status = [] ; // used in myTransactionStatus filter
-            message.message.message.other_money_transaction_status = [] ; // used in contactTransactionStatus filter
+            var i, money_transactionids, money_transaction, money_transactionid, new_msg ;
+            if (monitoring_money_transaction[message.message.local_msg_seq]) return ; // already monitoring money transaction status for this message
+            monitoring_money_transaction[message.message.local_msg_seq] = true ;
+
             if (!message.message.message) return ; // error. not a chat message
             if (!message.message.message.money_transactions) return ; // error. no money transactions in this chat msg
             if (!message.message.message.money_transactions.length) return ; // error. no money transactions in this chat msg
+
             console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message.message)) ;
             money_transactionids = [] ;
             for (i=0 ; i<message.message.message.money_transactions.length ; i++) {
@@ -1583,10 +1596,15 @@ angular.module('MoneyNetwork')
                 money_transactionid = money_transaction.money_transactionid ;
                 if (money_transactionids.indexOf(money_transactionid) == -1) money_transactionids.push(money_transactionid) ;
             } // for i
-            // start with empty status (N/A)
-            for (i=0 ; i<money_transactionids.length ; i++) {
-                message.message.message.this_money_transaction_status.push('N/A') ;
-                message.message.message.other_money_transaction_status.push('N/A') ;
+
+            if (!message.message.message.this_money_transaction_status || !message.message.message.other_money_transaction_status) {
+                message.message.message.this_money_transaction_status = [] ; // used in myTransactionStatus filter
+                message.message.message.other_money_transaction_status = [] ; // used in contactTransactionStatus filter
+                // start with empty status (N/A)
+                for (i=0 ; i<money_transactionids.length ; i++) {
+                    message.message.message.this_money_transaction_status.push('N/A') ;
+                    message.message.message.other_money_transaction_status.push('N/A') ;
+                }
             }
             // create speciel MoneyNetworkAPI instance.
             // 1) only sessionid (=money_transactionid), no public keys.
@@ -1640,6 +1658,7 @@ angular.module('MoneyNetwork')
             open_window: open_window,
             get_currencies: get_currencies,
             get_currency_by_unique_text: get_currency_by_unique_text,
+            is_monitoring_money_transaction: is_monitoring_money_transaction,
             monitor_money_transaction: monitor_money_transaction
         };
 

@@ -1258,7 +1258,7 @@ angular.module('MoneyNetwork')
         // one or more transactionids = one or more wallet transaction statuses
         return function (message) {
             if (!message.message.message) return null ; // not a chat msg
-            if (message.message.message.this_money_transaction_status) return message.message.message.this_money_transaction_status.join('. ') ;
+            if (moneyNetworkService.is_monitoring_money_transaction(message)) return message.message.message.this_money_transaction_status.join('. ') ;
             if (!message.message.message.money_transactions) return null ;
             if (!message.message.message.money_transactions.length) return null ;
             moneyNetworkService.monitor_money_transaction(message) ;
@@ -1272,7 +1272,7 @@ angular.module('MoneyNetwork')
         // one or more transactionids = one or more wallet transaction statuses
         return function (message) {
             if (!message.message.message) return null ; // not a chat msg
-            if (message.message.message.other_money_transaction_status) return message.message.message.other_money_transaction_status.join('. ') ;
+            if (moneyNetworkService.is_monitoring_money_transaction(message)) return message.message.message.other_money_transaction_status.join('. ') ;
             if (!message.message.message.money_transactions) return null ;
             if (!message.message.message.money_transactions.length) return null ;
             moneyNetworkService.monitor_money_transaction(message) ;

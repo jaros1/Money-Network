@@ -7039,6 +7039,7 @@ angular.module('MoneyNetwork')
             ls_get_sessions: moneyNetworkWService.ls_get_sessions,
             ls_save_sessions: moneyNetworkWService.ls_save_sessions,
             get_session_info_key: moneyNetworkWService.get_session_info_key,
+            is_monitoring_money_transaction: moneyNetworkWService.is_monitoring_money_transaction,
             monitor_money_transaction: moneyNetworkWService.monitor_money_transaction
         };
 

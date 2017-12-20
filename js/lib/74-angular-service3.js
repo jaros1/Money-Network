@@ -195,13 +195,16 @@ angular.module('MoneyNetwork')
 
 
         // issue #199: angularJS $$hashKey is added to money_transactions in chat msg before send
-        // most be removed again before JSON validation and before encryption
+        // https://github.com/jaros1/Money-Network/issues/262#issuecomment-352670914 Test 15a
+        // must be removed again before JSON validation and before encryption
         function remove_hashkey (message) {
             var i ;
             if (message.msgtype != 'chat msg') return message ;
             if (!message.money_transactions) return message ;
             message = JSON.parse(JSON.stringify(message)) ;
             for (i=0 ; i<message.money_transactions.length ; i++) delete message.money_transactions[i]['$$hashKey'] ;
+            delete message.this_money_transaction_status;
+            delete message.other_money_transaction_status;
             return message ;
         } //  remove_hashkey
 
