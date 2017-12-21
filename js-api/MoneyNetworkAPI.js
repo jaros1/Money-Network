@@ -877,8 +877,8 @@ var MoneyNetworkAPILib = (function () {
         ZeroFrame.cmd("dbQuery", [api_query_1], function (res) {
             var pgm = module + '.message_demon dbQuery callback: ';
             var i, directory, filename, session_filename, file_timestamp, cb, other_user_path, inner_path, encrypt,
-                pos, re, match, optional, now, fileget, decrypt, step_1_fileget, step_2_decrypt, step_3_run_cb, modified,
-                pgm2, direction;
+                pos, re, match, optional, now, fileget, decrypt, step_1_file_delete, step_2_fileget, step_3_decrypt,
+                step_4_run_cb, modified, pgm2, direction;
             // debug_z_api_operation_end(debug_seq, !res || res.error ? 'failed' : 'OK') ;
             if (res.error) {
                 console.log(pgm + 'query failed. error = ' + res.error);
@@ -943,6 +943,7 @@ var MoneyNetworkAPILib = (function () {
 
                 if (waiting_for_files[filename]) {
                     console.log(pgm + 'received waiting_for_file response. waiting_for_files[' + filename + ']=' + waiting_for_files[filename]) ;
+                    // waiting_for_files[be0e3ca4c6.1513858715983]=merged-MoneyNetwork/1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/75e25fcfe9.1513858827790
                 }
 
                 if (done[filename] && done[filename].group_debug_seq) group_debug_seq = done[filename].group_debug_seq ;
@@ -990,8 +991,8 @@ var MoneyNetworkAPILib = (function () {
                 if (decrypt) fileget = true ;
 
                 // callback chain step 1-3 with optional fileGet and decrypt operations
-                step_3_run_cb = function (extra, encrypted_json, json) {
-                    var pgm = module + '.message_demon.step_3_run_cb: ';
+                step_4_run_cb = function (extra, encrypted_json, json) {
+                    var pgm = module + '.message_demon.step_4_run_cb: ';
                     pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                     if (!extra) extra = {} ;
                     extra.modified = modified ; // content.json modified timestamp.
@@ -1007,24 +1008,24 @@ var MoneyNetworkAPILib = (function () {
                     try { cb(inner_path, encrypt, encrypted_json, json, extra) }
                     catch (e) { console.log(pgm2 + 'Error when processing incomming message ' + inner_path + '. error = ' + e.message)}
                 } ;
-                step_2_decrypt = function (extra, encrypted_json) {
-                    var pgm = module + '.message_demon.step_2_decrypt: ';
+                step_3_decrypt = function (extra, encrypted_json) {
+                    var pgm = module + '.message_demon.step_3_decrypt: ';
                     pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
-                    if (!decrypt) return step_3_run_cb(extra, encrypted_json, null) ; // cb must decrypt
+                    if (!decrypt) return step_4_run_cb(extra, encrypted_json, null) ; // cb must decrypt
                     encrypt.decrypt_json(encrypted_json, {group_debug_seq: extra.group_debug_seq}, function (json) {
                         extra.decrypt_at = new Date().getTime() ;
-                        step_3_run_cb(extra, encrypted_json, json) ;
+                        step_4_run_cb(extra, encrypted_json, json) ;
                     }) ;
                 } ;
-                step_1_fileget = function() {
-                    var pgm = module + '.message_demon.step_1_fileget: ';
+                step_2_fileget = function() {
+                    var pgm = module + '.message_demon.step_2_fileget: ';
                     var options ;
-                    if (!fileget) return step_3_run_cb({db_query_at: now}, null, null) ; // cb must fileGet and decrypt
+                    if (!fileget) return step_4_run_cb({db_query_at: now}, null, null) ; // cb must fileGet and decrypt
                     // received a incoming message. use /group_debug_seq to follow request-response cycle from start to end.
                     // information used in debugging and in timeout message
                     pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                     encrypt.get_session_filenames({}, function(this_session_filename, other_session_filename, unlock_pwd2) {
-                        var pgm = module + '.message_demon.step_1_fileget get_session_filenames callback 1: ';
+                        var pgm = module + '.message_demon.step_2_fileget get_session_filenames callback 1: ';
                         var pgm2, waiting_for_file ;
                         pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                         MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {this_session_filename: this_session_filename, direction: direction, filename: (direction == 'in' ? filename : null)}) ;
@@ -1039,7 +1040,7 @@ var MoneyNetworkAPILib = (function () {
                                 // wallet to wallet communication. workaround for failed fileGet operation (timeout). Send a waiting_for_file notification after first timeout (after 60 seconds)
                                 // use normal file for waiting_for_file message and do not wait for response
                                 waiting_for_file = function() {
-                                    var pgm = module + '.message_demon.step_1_fileget.waiting_for_file: ';
+                                    var pgm = module + '.message_demon.step_2_fileget.waiting_for_file: ';
                                     var group_debug_seq, pgm2, request, encryptions ;
                                     group_debug_seq = debug_group_operation_start() ;
                                     pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
@@ -1052,7 +1053,7 @@ var MoneyNetworkAPILib = (function () {
                                     encryptions = [1,2,3] ;
                                     if (!encrypt.other_session_pubkey || !encrypt.other_session_pubkey2) encryptions = [3] ; // pubkeys message from other wallet is still missing. maybe this file
                                     encrypt.send_message(request, {optional: null, group_debug_seq: group_debug_seq, encryptions: encryptions}, function (response, request_filename) {
-                                        var pgm = module + '.message_demon.step_1_fileget.waiting_for_file send_message callback 1: ';
+                                        var pgm = module + '.message_demon.step_2_fileget.waiting_for_file send_message callback 1: ';
                                         var error, new_filename ;
                                         pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                                         if (!response || response.error) {
@@ -1077,7 +1078,7 @@ var MoneyNetworkAPILib = (function () {
                                             // using MoneyNetworkAPILib sitePublish code. No retry after failed publish
                                             inner_path = encrypt.this_user_path + 'content.json' ;
                                             z_site_publish({inner_path: inner_path, encrypt: encrypt}, function (response) {
-                                                var pgm = module + '.message_demon.step_1_fileget.waiting_for_file z_site_publish callback 2: ';
+                                                var pgm = module + '.message_demon.step_2_fileget.waiting_for_file z_site_publish callback 2: ';
                                                 pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                                                 if (debug) console.log(pgm2 + 'response = ' + JSON.stringify(response));
                                                 MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, error) ;
@@ -1091,7 +1092,7 @@ var MoneyNetworkAPILib = (function () {
                         if (debug) console.log(pgm2 + 'Using group_debug_seq ' + group_debug_seq + ' for this incoming message') ;
                         options.group_debug_seq = group_debug_seq ;
                         z_file_get(pgm, options, function (json_str, extra) {
-                            var pgm = module + '.message_demon.step_1_fileget z_file_get callback 2: ';
+                            var pgm = module + '.message_demon.step_2_fileget z_file_get callback 2: ';
                             var pgm2, encrypted_json ;
                             pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                             if (!extra) extra = {} ;
@@ -1104,7 +1105,7 @@ var MoneyNetworkAPILib = (function () {
                                 }
                                 // timeout or deleted file. continue anyway.
                                 console.log(pgm2 + 'timeout or file not found. extra = ' + JSON.stringify(extra)) ;
-                                return step_3_run_cb(extra, null, null) ;
+                                return step_4_run_cb(extra, null, null) ;
                             }
                             extra.fileget_at = new Date().getTime();
                             try {
@@ -1112,14 +1113,29 @@ var MoneyNetworkAPILib = (function () {
                             }
                             catch (e) {
                                 console.log(pgm2 + inner_path + ' is invalid. json_str = ' + json_str + ', error = ' + e.message) ;
-                                return step_3_run_cb(extra, json_str, null) ;
+                                return step_4_run_cb(extra, json_str, null) ;
                             }
-                            step_2_decrypt(extra, encrypted_json) ;
+                            step_3_decrypt(extra, encrypted_json) ;
                         }) ; // z_file_get callback 2
                     }) ; // get_session_filenames callback 1
-                } ; // step_1_fileget
-                // start callback chain step 1-3
-                step_1_fileget() ;
+                } ; // step_2_fileget
+                step_1_file_delete = function() {
+                    var pgm = module + '.message_demon.step_1_file_delete: ';
+                    var inner_path ;
+                    if (!waiting_for_files[filename]) return step_2_fileget() ;
+                    // just received file is a response to a previous waiting_for_file request
+                    // cleanup old waiting_for_file request before continuing
+                    inner_path = waiting_for_files[filename] ;
+                    delete waiting_for_files[filename] ;
+                    MoneyNetworkAPILib.z_file_delete(pgm, inner_path, function (res) {
+                        var pgm = module + '.message_demon.step_1_file_delete z_file_delete callback: ';
+                        console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                        step_2_fileget() ;
+                    }) ;
+                } ; // step_1_file_delete
+
+                // start callback chain step 1-4
+                step_1_file_delete() ;
                 // done
                 done[filename] = true;
                 // prevent mutating variables in loop. only one incoming message for each demon loop = one message every 500 ms
@@ -2191,7 +2207,7 @@ var MoneyNetworkAPILib = (function () {
                 cb2 = function (data, timeout) {
                     var options_clone ;
                     if (process_id) {
-                        try {$timeout.cancel(process_id)}
+                        try {clearTimeout(process_id)}
                         catch (e) {}
                         process_id = null ;
                     }
@@ -2331,6 +2347,44 @@ var MoneyNetworkAPILib = (function () {
             }); // fileDelete callback 1
         }); // fileGet callback 1
     } // z_file_delete
+
+
+    // https://github.com/jaros1/Money-Network/issues/262#issuecomment-353350093
+    // siteInfo is hanging forever. wait max 1 sec for siteInfo feedback
+    function z_site_info (options, cb) {
+        var pgm = module + '.z_site_info: ' ;
+        var error, debug_seq, group_debug_seq, site_info_cb, site_info_cb_done, site_info_timeout, process_id ;
+        if (!options) options = {} ;
+        group_debug_seq = options.group_debug_seq ;
+        if (!ZeroFrame) throw pgm + 'siteInfo aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
+        if (typeof cb != 'function') {
+            error = 'Invalid call. Parameter 2 cb must be a callback function' ;
+            console.log(pgm + error) ;
+            throw error ;
+        }
+
+        // siteInfo cb with timeout in 1 sec
+        site_info_cb_done = false ;
+        site_info_cb = function (site_info) {
+            if (site_info_cb_done) return ;
+            site_info_cb_done = true ;
+            if (process_id) {
+                try {clearTimeout(process_id)}
+                catch (e) {}
+                process_id = null ;
+            }
+            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, site_info ? 'OK' : 'Failed');
+            cb(site_info || ZeroFrame.site_info) ;
+        }; // site_info_cb
+        site_info_timeout = function () {
+            site_info_cb(null) ;
+        };
+        process_id = setTimeout(site_info_timeout, 1000) ;
+
+        debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, null, 'siteInfo', null, group_debug_seq) ;
+        ZeroFrame.cmd("siteInfo", {}, site_info_cb) ;
+
+    } // z_site_info
 
     // sitePublish. long running operation.
     // sitePublish must wait for previous publish to finish
@@ -3134,7 +3188,7 @@ var MoneyNetworkAPILib = (function () {
                     // stop timeout process + check for already run callback
                     if (process_id) {
                         try {
-                            $timeout.cancel(process_id)
+                            clearTimeout(process_id)
                         }
                         catch (e) {
                         }
@@ -3300,6 +3354,7 @@ var MoneyNetworkAPILib = (function () {
         end_transaction: end_transaction,
         z_merger_site_add: z_merger_site_add,
         z_file_get: z_file_get,
+        z_site_info: z_site_info,
         z_file_write: z_file_write,
         z_file_delete: z_file_delete,
         z_site_publish: z_site_publish,
@@ -4193,11 +4248,9 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
         }
 
         // 1: recheck this_user_path before sending message. can have changed. user may have logged out
-        debug_seq0 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, null, 'siteInfo', null, group_debug_seq) ;
-        self.ZeroFrame.cmd("siteInfo", {}, function (site_info) {
+        MoneyNetworkAPILib.z_site_info({group_debug_seq: group_debug_seq}, function (site_info) {
             var pgm = self.module + '.send_message siteInfo callback 1: ';
             var regexp ;
-            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq0, site_info ? 'OK' : 'Failed');
             if (!site_info.cert_user_id) {
                 self.destroy('User log out') ;
                 return set_error2('invalid call. this_user_path must be null for a not logged in user') ;

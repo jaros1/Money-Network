@@ -874,10 +874,9 @@ angular.module('MoneyNetwork')
                         console.log(pgm + 'extra = ' + JSON.stringify(encrypt.extra)) ;
                         // insert status in UI. See monitor_money_transaction and xxxTransactionStatus filters
                         encrypt.extra.array[encrypt.extra.index] = request.status ;
-
+                        $rootScope.$apply() ;
                     })() ;
                     return ;
-
 
                 }
                 else {
