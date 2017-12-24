@@ -2705,7 +2705,7 @@ var MoneyNetworkAPILib = (function () {
                                         cb_id: cb_id,
                                         options: options
                                     }) ;
-                                    console.log(pgm2 + 'OK queue_publish. wait for start_publish message from MN') ;
+                                    console.log(pgm2 + 'OK queue_publish. wait for start_publish message from MN. cb_id = ' + cb_id) ;
                                     // 5) W2 will wait for "start_publish" message from MN with cb_id. Return OK and run cb
                                     // 6) send "published" message to MN with published result and last_published timestamp
 
