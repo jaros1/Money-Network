@@ -27,6 +27,7 @@ Being implemented:
 - Tested OK with test bitcoins (https://github.com/jaros1/Money-Network-W2/)
 
 Todo:
+- More money transaction operations in UI (reject, edit, cancel and rollback money transaction).
 - Wallet or Money page: Test, add, use, rate and remove wallet sites.
 - Wallet or Money page. Money transaction overview.
 
