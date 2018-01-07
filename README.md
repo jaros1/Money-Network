@@ -55,7 +55,6 @@ Specific for each external API. For example https://www.blocktrail.com/api/docs 
 
 API1 is at present time unstable. Json validation for in- and outgoing messages:
 
-    // Json schemas for json validation of ingoing and outgoing MoneyNetworkAPI messages
     var json_schemas = {
         wallet: {},
         mn: {},
@@ -279,7 +278,15 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                     },
                     "api_url": {"type": 'string'},
                     "wallet_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
-                    "hub": {"type": 'string'}
+                    "hub": {"type": 'string'},
+                    "json_schemas": {
+                        "type": 'object',
+                        "description": 'Extra json schema definitions used in wallet to wallet communication. Used in compatibility check between different wallet sites (different wallet sites supporting identical currencies)'
+                    },
+                    "message_workflow": {
+                        "type": 'object',
+                        "description": 'Json message workflow for extra schemas in wallet communication. Used in compatibility check between two different wallet sites (different wallet sites supporting identical currencies)'
+                    }
                 },
                 "required": ['msgtype', 'wallet_sha256'],
                 "additionalProperties": false
@@ -407,6 +414,20 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                 "additionalProperties": false
             }, // start_mt
 
+            // status for money transaction. short text. send by wallet sessions. one for each wallet. displayed in UI
+            "status_mt": {
+                "type": 'object',
+                "title": 'Status for money transaction(s)',
+                "description": 'W: inform MN and other wallet session about money transaction status. Only encrypted with money_transactionid (see send_mt and start_mt)',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^status_mt'},
+                    "status": {"type": 'string', "maxLength": 50},
+                    "salt": { "type": 'number'}
+                },
+                "required": ['msgtype', 'status', 'salt'],
+                "additionalProperties": false
+            }, // status_mt
+
             // publish sync. between MN and wallet sessions. minimum interval between publish is 16 seconds. MN session manages publish queue.
             "queue_publish": {
                 "type": 'object',
@@ -469,9 +490,22 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                     "message": { "type": 'string'},
                     "timeout": { "type": 'number'}
                 },
-                "required": ['msgtype', 'type'],
+                "required": ['msgtype', 'type', 'message'],
                 "additionalProperties": false
             }, // notification
+
+            "confirm" : {
+                "type": 'object',
+                "title": 'MN/Wallet. send confirm request, see wrapperConfirm, to other session',
+                "description": 'For example: MoneyNetworkW2: confirm money transfer. OK response or timeout',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^confirm$'},
+                    "message": { "type": 'string'},
+                    "button_caption": { "type": 'string'}
+                },
+                "required": ['msgtype', 'message'],
+                "additionalProperties": false
+            }, // confirm
 
             "timeout": {
                 "type": 'object',
@@ -507,7 +541,19 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                 },
                 "required": ['msgtype', 'stat'],
                 "additionalProperties": false
-            } // timeout
+            }, // timeout
+
+            "waiting_for_file": {
+                "type": 'object',
+                "title": 'Wallet/wallet: fileGet operation i hanging. Waiting for a optional file',
+                "description": 'See z_file_get.timeout_count. problem with closed/open ZeroNet port. fallback to normal file in money transaction',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^waiting_for_file$'},
+                    "filename": { "type": 'string'}
+                },
+                "required": ['msgtype', 'filename'],
+                "additionalProperties": false
+            }
 
         } // api
 
