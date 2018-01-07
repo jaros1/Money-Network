@@ -23,7 +23,8 @@ Implemented:
 
 Being implemented:
 - MoneyNetworkAPI for MoneyNetwork <=> wallets and wallet <=> wallet communication
-- Money: Send and request money in chat.  
+- Money: Send and request money in chat
+- Tested OK with test bitcoins (https://github.com/jaros1/Money-Network-W2/)
 
 Todo:
 - Wallet or Money page: Test, add, use, rate and remove wallet sites.
