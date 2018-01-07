@@ -102,7 +102,7 @@ angular.module('MoneyNetwork')
         function get_public_contact (create) {
             return moneyNetworkHubService.get_public_contact(create)
         }
-        function zeronet_site_publish(cb) { moneyNetworkHubService.zeronet_site_publish(cb)}
+        function zeronet_site_publish(options, cb) { moneyNetworkHubService.zeronet_site_publish(options, cb)}
         function get_my_unique_id() { return moneyNetworkHubService.get_my_unique_id()}
         function get_message_by_seq(seq) { return moneyNetworkHubService.get_message_by_seq(seq)}
         function message_add_local_msg_seq(js_messages_row, local_msg_seq) {
@@ -2724,7 +2724,7 @@ angular.module('MoneyNetwork')
                     // ZeroFrame.cmd("wrapperNotification", ["info", "No more updates to publish", 5000]);
                     return ;
                 }
-                zeronet_site_publish(cb) ;
+                zeronet_site_publish({reason: 'z_update'}, cb) ;
             } ; // done
 
             // any new public reactions? (or cancel old public reaction)

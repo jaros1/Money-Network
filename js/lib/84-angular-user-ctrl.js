@@ -150,7 +150,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 self.avatar.src = user_path + "/avatar." + ext + '?rev=' + MoneyNetworkHelper.generate_random_password(10);
                 $scope.$apply() ;
-                moneyNetworkService.zeronet_site_publish() ;
+                moneyNetworkService.zeronet_site_publish({reason: user_path + "/avatar." + ext}) ;
                 self.setup.avatar = ext ;
                 moneyNetworkService.save_user_setup() ;
                 //ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
@@ -438,12 +438,13 @@ angular.module('MoneyNetwork')
                     // step 4 - publish
 
                     var step_4_publish = function () {
-                        ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
+                        MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: 'delete_user2'}, function (res) {
+                        //ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
                             var pgm = controller + '.delete_user2.step_4_publish sitePublish: ' ;
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                             step_5_cleanup_localstorage() ;
                             step_6_logout_and_redirect();
-                        }) // sitePublish
+                        }); // sitePublish
                     }; // step_4_publish
 
 
@@ -954,7 +955,8 @@ angular.module('MoneyNetwork')
 
             step_5_publish = function (data) {
                 var pgm = controller + '.import.step_5_publish: ' ;
-                ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
+                MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: 'import'}, function (res) {
+                // ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
                     if (res == "ok") return step_6_ls_write(data) ;
 
                     error = 'Import error. Publish failed. error = ' + res ;

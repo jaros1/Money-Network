@@ -868,6 +868,7 @@ angular.module('MoneyNetwork')
                     MoneyNetworkAPILib.debug_group_operation_receive_stat(encrypt, request.stat) ;
                 }
                 else if (request.msgtype == 'status_mt') {
+                    // received money transaction status updated. displayed in MN UI while processing money transaction in wallet sessions
                     (function status_mt() {
                         var pgm = service + '.process_incoming_message.' + request.msgtype + '/' + group_debug_seq + ': ';
                         console.log(pgm + 'request = ' + JSON.stringify(request)) ;
@@ -877,7 +878,17 @@ angular.module('MoneyNetwork')
                         $rootScope.$apply() ;
                     })() ;
                     return ;
-
+                }
+                else if (request.msgtype == 'waiting_for_file') {
+                    // ignore waiting_for_file requests. only used in W-W communication
+                    // normally 3-level encrypted and cannot de decrypted by MN
+                    // only exception is waiting for pubkeys message before switching to full encryption between wallet sessions
+                    (function status_mt() {
+                        var pgm = service + '.process_incoming_message.' + request.msgtype + '/' + group_debug_seq + ': ';
+                        console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                        console.log(pgm + 'ignoring wallet-wallet waiting_for_file message. Not used by MN') ;
+                    })() ;
+                    return ;
                 }
                 else {
                     response.error = 'Unknown msgtype ' + request.msgtype;

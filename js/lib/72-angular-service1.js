@@ -1400,11 +1400,13 @@ angular.module('MoneyNetwork')
                             }
                             // sign and publish
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + hub + ' publish') ;
-                            debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish', show_debug('z_site_publish')) ;
-                            ZeroFrame.cmd("sitePublish", {inner_path: inner_path}, function (res) {
+                            // console.log(pgm + 'todo: use z_site_publish');
+                            // debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish', show_debug('z_site_publish')) ;
+                            MoneyNetworkAPILib.z_site_publish({inner_path: inner_path, reason: 'merge_user_hub'}, function (res) {
+                            //ZeroFrame.cmd("sitePublish", {inner_path: inner_path}, function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub sitePublish callback 2: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
-                                debug_z_api_operation_end(debug_seq, format_res(res));
+                                // debug_z_api_operation_end(debug_seq, format_res(res));
                                 if (res != 'ok') {
                                     console.log(pgm + inner_path + ' sitePublish failed. error = ' + JSON.stringify(res)) ;
                                     return ;
@@ -1491,11 +1493,12 @@ angular.module('MoneyNetwork')
 
                             inner_path0 = my_user_path + 'content.json';
                             // debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + my_hub + ' publish');
-                            debug_seq0 = debug_z_api_operation_start(pgm, inner_path0, 'sitePublish', show_debug('z_site_publish'));
-                            ZeroFrame.cmd("sitePublish", {inner_path: inner_path0}, function (res) {
+                            //debug_seq0 = debug_z_api_operation_start(pgm, inner_path0, 'sitePublish', show_debug('z_site_publish'));
+                            MoneyNetworkAPILib.z_site_publish({inner_path: inner_path0, reason: 'merge_user_hub'}, function (res) {
+                            //ZeroFrame.cmd("sitePublish", {inner_path: inner_path0}, function (res) {
                                 var pgm = service + '.merge_user_hub.step_13_write_and_publish_user_data.publish sitePublish callback: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
-                                debug_z_api_operation_end(debug_seq0, format_res(res));
+                                //debug_z_api_operation_end(debug_seq0, format_res(res));
                                 if (res != 'ok') {
                                     console.log(pgm + inner_path0 + ' sitePublish failed. error = ' + JSON.stringify(res));
                                     return;
@@ -1860,9 +1863,12 @@ angular.module('MoneyNetwork')
         // - cb: optional callback function. post publish processing. used in i_am_online. check pubkey2 takes long time and best done after publish
         var zeronet_site_publish_interval = 0 ;
 
-        function zeronet_site_publish(cb) {
+        function zeronet_site_publish(options,cb) {
             var pgm = service + '.zeronet_site_publish: ';
-            var wait;
+            var reason ;
+            if (!options) options = {} ;
+            if (options.reason) reason = options.reason ;
+            if (!cb) cb = function() {} ;
 
             get_my_user_hub(function (hub) {
                 var pgm = service + '.zeronet_site_publish get_my_user_path callback 1: ';
@@ -1921,13 +1927,13 @@ angular.module('MoneyNetwork')
                             }
                             // sitePublish
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + 'publish') ;
-                            console.log(pgm + 'todo: use z_site_publish');
-                            debug_seq = debug_z_api_operation_start(pgm, user_path + '/content.json', 'sitePublish', show_debug('z_site_publish'));
-                            MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json'}, function (res) {
+                            // console.log(pgm + 'todo: use z_site_publish');
+                            // debug_seq = debug_z_api_operation_start(pgm, user_path + '/content.json', 'sitePublish', show_debug('z_site_publish'));
+                            MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: reason}, function (res) {
                                 //ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
                                 var pgm = service + '.zeronet_site_publish sitePublish callback 5: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                debug_z_api_operation_end(debug_seq, format_res(res));
+                                // debug_z_api_operation_end(debug_seq, format_res(res));
                                 console.log(pgm + 'res = ' + JSON.stringify(res) + ' (' + debug_seq + ')');
                                 if (detected_client_log_out(pgm)) return;
                                 if (res != "ok") {
@@ -1937,9 +1943,9 @@ angular.module('MoneyNetwork')
                                     else zeronet_site_publish_interval = zeronet_site_publish_interval * 2;
                                     console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
                                     var retry_zeronet_site_publish = function () {
-                                        zeronet_site_publish();
+                                        zeronet_site_publish({reason: reason});
                                     };
-                                    if (cb) cb();
+                                    cb();
                                     $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval * 1000);
                                     // debug_info() ;
                                     return;
@@ -2065,10 +2071,7 @@ angular.module('MoneyNetwork')
                                             cache_status.size = content.files_optional[filename].size;
                                         }
 
-                                        if (!content_updated) {
-                                            if (cb) cb();
-                                            return;
-                                        }
+                                        if (!content_updated) return cb() ;
 
                                         // update content.json. sign and publish in next publish call
                                         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
@@ -2088,7 +2091,7 @@ angular.module('MoneyNetwork')
                                                 return;
                                             }
                                             // sign and publish in next zeronet_site_publish call
-                                            if (cb) cb();
+                                            cb();
 
                                         }); // fileWrite callback 7
 
@@ -2203,7 +2206,7 @@ angular.module('MoneyNetwork')
                         // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                         if (res == "ok") {
                             if (update_local_storage) ls_save_contacts(false) ;
-                            zeronet_site_publish() ;
+                            zeronet_site_publish({reason: 'check_sha256_addresses'}) ;
                         }
                         else {
                             ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
@@ -2877,7 +2880,7 @@ angular.module('MoneyNetwork')
                             if (res == "ok") {
                                 // update timestamp in status.json and publish
                                 // console.log(pgm + 'calling zeronet_site_publish to update timestamp. user_seq = ' + user_seq) ;
-                                zeronet_site_publish(check_pubkey2_cb) ;
+                                zeronet_site_publish({reason: 'I am online'}, check_pubkey2_cb) ;
                             }
                             else {
                                 ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);

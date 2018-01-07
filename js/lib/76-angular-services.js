@@ -100,8 +100,8 @@ angular.module('MoneyNetwork')
         //// user_seq from i_am_online or z_update_1_data_json. user_seq is null when called from avatar upload. Timestamp is not updated
         //// params:
         //// - cb: optional callback function. post publish processing. used in i_am_online. check pubkey2 takes long time and best done after publish
-        function zeronet_site_publish(cb) {
-            moneyNetworkHubService.zeronet_site_publish(cb);
+        function zeronet_site_publish(options, cb) {
+            moneyNetworkHubService.zeronet_site_publish(options, cb);
         }
 
         function load_user_contents_max_size (lock_pgm) { moneyNetworkZService.load_user_contents_max_size(lock_pgm) }
@@ -5492,11 +5492,10 @@ angular.module('MoneyNetwork')
                             // new debug_seq for each optionalFileDelete request
                             delete_file = function () {
                                 var debug_seq ;
-                                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + cache_filename + ' optionalFileDelete') ;
                                 debug_seq = debug_z_api_operation_start(pgm, cache_filename, 'optionalFileDelete', show_debug('z_file_delete')) ;
                                 ZeroFrame.cmd("optionalFileDelete", { inner_path: cache_filename}, function (res) {
                                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                    debug_z_api_operation_end(debug_seq, format_res(res)) ;
+                                    debug_z_api_operation_end(debug_seq, format_res('ok')) ; //  ignore any error message
                                 }) ;
                             }; // delete_file
                             delete_file() ;
@@ -6124,7 +6123,7 @@ angular.module('MoneyNetwork')
                             if ((file_auth_address == my_auth_address) && (file_user_seq == my_user_seq)) {
                                 // size in content.json is invalid. publish!
                                 debug('public_chat', pgm + 'size in content.json is invalid. publish');
-                                zeronet_site_publish();
+                                zeronet_site_publish({reason: cache_filename});
                             }
                             else {
                                 // file must be old/changed. trigger a new file download
