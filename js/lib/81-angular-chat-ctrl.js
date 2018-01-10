@@ -1407,6 +1407,11 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'balance = ' + JSON.stringify(balance)) ;
                             money_transactionid = wallets_hash[balance.wallet_name].money_transactionid ;
 
+                            // todo: amount is a JS number and not a decimal. Number of decimals in UI is not always correct.
+                            // see issue https://github.com/jaros1/Money-Network/issues/298
+                            // 0.00026220000000000003 in UI. should be 0.00026220. 8 decimals for test bitcoins
+                            // an other problem. amount should be displayed in all units. For example bitcoins (8 decimals) and Satoshi (integer)
+
                             message.money_transactions.push({
                                 wallet_url: balance.wallet_domain || balance.wallet_address, // url for open wallet session
                                 wallet_sha256: balance.wallet_sha256, // link to full wallet information (wallet.json files)
@@ -1414,7 +1419,7 @@ angular.module('MoneyNetwork')
                                 action: money_transaction.action, // Send or Request
                                 code: balance.code, // currency code
                                 name: balance.name, // display info. currency name at transaction start time
-                                amount: money_transaction.amount * money_transaction.factor, // amount without unit (factor = 1)
+                                amount: (money_transaction.amount * money_transaction.factor).toFixed(money_transaction.decimals), // amount without unit (factor = 1)
                                 money_transactionid: money_transactionid,
                                 json: money_transaction.json // wallet specific json. any type
                             }) ;
@@ -1505,7 +1510,7 @@ angular.module('MoneyNetwork')
                     // loop for each wallet. send money transaction to wallet for validation
                     check_transaction = function () {
                         var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction: ';
-                        var wallet_name, session, request, i, j, money_transaction, factor, units, errors, error,
+                        var wallet_name, session, request, i, j, money_transaction, factor, decimals, units, errors, error,
                             money_transactionid, unique_text, balance, timeout_msg, countdown_cb ;
                         wallet_name = wallet_names.shift() ;
                         if (!wallet_name) {
@@ -1575,18 +1580,33 @@ angular.module('MoneyNetwork')
                                 }
                                 factor = units[j].factor ;
                             }
-                            if (factor == null) {
+                            decimals = null ;
+                            for (j=0 ; j<units.length ; j++) if (units[j].factor == 1) {
+                                if ((decimals != null) && (decimals != units[j].decimals)) {
+                                    // doublet unit definition with different conversion factors!
+                                    console.log(pgm + 'System error in units definition. units = ' + JSON.stringify(units)) ;
+                                    set_ping_error(wallet_name, 'Could not number for decimal for unit with factor 1', false) ;
+                                    return check_transaction() ;
+                                }
+                                decimals = units[j].decimals ;
+                            }
+                            if (decimals == null) {
                                 console.log(pgm + 'System error in units definition. units = ' + JSON.stringify(units)) ;
-                                set_ping_error(wallet_name, 'Could not find conversion factor for ' + money_transaction.unit, false) ;
+                                set_ping_error(wallet_name, 'Could not number for decimal for unit with factor 1', false) ;
                                 return check_transaction() ;
                             }
+
                             money_transaction.factor = factor ;
+                            money_transaction.decimals = decimals ;
+                            console.log(pgm + 'factor = ' + factor + ', decimals = ' + decimals) ;
+                            // factor = 1e-8, decimals = 8
 
                             // convert amount to base unit (factor 1) before sending request to wallet
+                            // todo: should send amount as text. number with 8 decimals
                             request.money_transactions.push({
                                 action: money_transaction.action,
                                 code: balance.code,
-                                amount: money_transaction.amount * factor
+                                amount: (money_transaction.amount * factor).toFixed(decimals)
                             }) ;
                         } // for i
                         console.log(pgm + 'request = ' + JSON.stringify(request)) ;

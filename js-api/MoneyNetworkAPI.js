@@ -277,7 +277,7 @@ var MoneyNetworkAPILib = (function () {
             '. elapsed time ' + elapsed_time + ' ms (' + debug_seq + (group_debug_seq ? '/' + group_debug_seq : '') + '). ' +
             debug_z_api_operation_pending()) ;
     } // debug_z_api_operation_end
-    
+
     function validate_timeout_msg (timeout_msg) {
         if (typeof timeout_msg == 'string') return null ;
         if (!Array.isArray(timeout_msg)) return 'timeout_msg must be a string or an array with [type, message <,timeout> ]' ;
@@ -1369,9 +1369,10 @@ var MoneyNetworkAPILib = (function () {
                                         "type": 'object',
                                         "properties": {
                                             "unit": {"type": 'string'},
-                                            "factor": {"type": 'number'}
+                                            "factor": {"type": 'number'},
+                                            "decimals": {"type": 'number', "multipleOf": 1.0}
                                         },
-                                        "required": ['unit', 'factor'],
+                                        "required": ['unit', 'factor', 'decimals'],
                                         "additionalProperties": false
                                     },
                                     "minItems": 1
@@ -1425,7 +1426,7 @@ var MoneyNetworkAPILib = (function () {
                             "properties": {
                                 "action": { "type": 'string', "pattern": '^(Send|Request)$'},
                                 "code": {"type": 'string', "minLength": 2, "maxLength": 5},
-                                "amount": {"type": 'number'}
+                                "amount": {"type": ['number', 'string'], "description": 'number or string with a formatted number (number.toFixed)'}
                             },
                             "required": ['action', 'code', 'amount'],
                             "additionalProperties": false
@@ -1493,7 +1494,7 @@ var MoneyNetworkAPILib = (function () {
                             "properties": {
                                 "action": { "type": 'string', "pattern": '^(Send|Request)$'},
                                 "code": {"type": 'string', "minLength": 2, "maxLength": 5},
-                                "amount": {"type": 'number'},
+                                "amount": {"type": ['number', 'string'], "description": 'number or string with a formatted number (number.toFixed)'},
                                 "json": {}
                             },
                             "required": ['action', 'code', 'amount', 'json'],
@@ -1744,7 +1745,7 @@ var MoneyNetworkAPILib = (function () {
     var pseudo_wallet_sha256 = '0000000000000000000000000000000000000000000000000000000000000000' ;
     function calc_wallet_sha256 (wallet) {
         var pgm = module + '.calc_wallet_sha256: ';
-        var new_wallet, wallet_sha256, i, codes, currency, new_currency, j, unit, units, pseudo_wallet_sha256_added ;
+        var new_wallet, wallet_sha256, i, codes, currency, new_currency, j, unit, units, pseudo_wallet_sha256_added, decimals ;
         if (!wallet.wallet_sha256) {
             wallet.wallet_sha256 = pseudo_wallet_sha256 ;
             pseudo_wallet_sha256_added = true ;
@@ -1787,8 +1788,9 @@ var MoneyNetworkAPILib = (function () {
             } ;
             new_wallet.currencies.push(new_currency) ;
             if (!currency.units) continue ;
-            // add units to currency
+            // add units to currency. unit must be unique. unit with factor 1 is required
             units = [] ;
+            decimals = null ;
             for (j=0 ; j<currency.units.length ; j++) {
                 unit = currency.units[j] ;
                 // check doublet unit code
@@ -1798,8 +1800,13 @@ var MoneyNetworkAPILib = (function () {
                 }
                 units.push(unit.unit) ;
                 // insert normalized unit into units array
-                new_currency.units.push({ unit: unit.unit, factor: unit.factor }) ;
+                new_currency.units.push({ unit: unit.unit, factor: unit.factor, decimals: unit.decimals }) ;
+                if (unit.factor == 1) decimals = unit.decimals ;
             } // for j
+            if (decimals == null) {
+                console.log(pgm + 'No unit with factor 1 was found for currency ' + currency.code) ;
+                return null ;
+            }
             // sort units array
             new_currency.units.sort(function(a,b) { return b.unit > a.unit ? 1 : -1 }) ;
         } // for i
@@ -2391,7 +2398,7 @@ var MoneyNetworkAPILib = (function () {
     // sitePublish must wait for previous publish to finish
     // sitePublish must wait for long running update transactions (write and delete) to finish before starting publish
     // long running update transactions must wait until publish has finished
-    // use start_transaction and end_transaction
+    // use start_transaction and end_transaction. forced transaction timeout after 60 seconds
     var transactions = {} ; // timestamp => object with transaction info
 
     function start_transaction(calling_pgm, cb) {
@@ -2504,11 +2511,13 @@ var MoneyNetworkAPILib = (function () {
         group_debug_seq = debug_group_operation_start() ;
         debug_group_operation_update(group_debug_seq, {msgtype: 'ratelimit'}) ;
         pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
+
         console.log(pgm2 + 'Using group_debug_seq ' + group_debug_seq + ' for this publish operation after a ratelimit error');
+
         encrypt = last_published_hash[published].encrypt ;
         if (last_published_hash[published].system == 'MN') {
             // new publish in MoneyNetwork session to replace failed publish
-            if (!last_published_hash[published].hasOwnProperty('retry_publish_nterval')) last_published_hash[published].retry_publish_interval = 0 ;
+            if (!last_published_hash[published].hasOwnProperty('retry_publish_interval')) last_published_hash[published].retry_publish_interval = 0 ;
             z_site_publish({inner_path: user_path + 'content.json', reason: 'ratelimit error'}, function (res) {
                 var pgm = module + '.ratelimit_error z_site_publish callback: ' ;
                 var pgm2, retry ;

@@ -1116,7 +1116,7 @@ var MoneyNetworkHelper = (function () {
                         "action": { "type": 'string', "pattern": '^(Send|Request)$'},
                         "code": { "type": 'string', "minLength": 2, "maxLength": 5, "description": 'Pseudo currency iso code'},
                         "name": { "type": 'string', "description": 'Display currency name at transaction start time'},
-                        "amount": { "type": 'number'},
+                        "amount": {"type": ['number', 'string'], "description": 'number or string with a formatted number (number.toFixed)'},
                         "money_transactionid": { "type": 'string', "minLength": 60, "maxLength": 60},
                         "json": {}
                     },

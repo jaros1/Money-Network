@@ -34,12 +34,14 @@ ZeroFrame = (function() {
     };
 
     ZeroFrame.prototype.onMessage = function(e) {
-        var cmd, message;
+        var cmd, message, cb;
         message = e.data;
         cmd = message.cmd;
         if (cmd === "response") {
             if (this.waiting_cb[message.to] != null) {
-                this.waiting_cb[message.to](message.result);
+                cb = this.waiting_cb[message.to] ;
+                delete this.waiting_cb[message.to] ;
+                cb(message.result);
             } else {
                 this.log("Websocket callback not found:", message);
             }
@@ -186,7 +188,24 @@ ZeroFrame = (function() {
 
 
     ZeroFrame.prototype.onCloseWebsocket = function() {
+        var self, message_id, count, cb ;
+        self = this ;
         this.log("Websocket close");
+        // execute all waiting callbacks
+        count = 0 ;
+        for (message_id in this.waiting_cb) {
+            if (!this.waiting_cb[message_id]) continue ;
+            cb = this.waiting_cb[message_id] ;
+            delete this.waiting_cb[message_id] ;
+            this.log('Websocket close: ', message_id, '=', cb) ;
+            count++ ;
+            try {cb()}
+            catch (e) {
+                self.log('Websocket close: error = ' + e.message) ;
+                self.log(e.stack);
+            }
+        }
+        this.log("Websocket close: count = " + count);
     };
 
     return ZeroFrame;
