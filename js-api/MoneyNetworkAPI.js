@@ -607,8 +607,13 @@ var MoneyNetworkAPILib = (function () {
             if (cb_decrypt) cb_fileget = true ;
             if (encrypt) sessions[other_session_filename].encrypt = encrypt ;
             if (start_demon) {
-                demon_id = setInterval(message_demon, (interval || 500));
-                if (debug) console.log(pgm + 'Started demon. process id = ' + demon_id);
+                MoneyNetworkAPILib.is_client(function (client) {
+                    var message_demon_job ;
+                    message_demon_job = function() { message_demon(client) }
+                    demon_id = setInterval(message_demon_job, (interval || 500));
+                    if (debug) console.log(pgm + 'Started demon. process id = ' + demon_id);
+
+                }) ;
             }
             //if (debug) {
             //    // list sessions and debug info. See issue https://github.com/jaros1/Money-Network-W2/issues/15
@@ -812,7 +817,7 @@ var MoneyNetworkAPILib = (function () {
 
     var timestamp_re = /^[0-9]{13}$/ ;
     var waiting_for_files = {} ; // new_filename => inner_path for waiting_for_file request.
-    function message_demon() {
+    function message_demon(client) {
         var pgm = module + '.message_demon: ';
         var filename, api_query_1, session_filename, first, now, timeout_in, countdown, call_countdown_cb, group_debug_seq;
         // check for expired callbacks. processes waiting for a response
@@ -1037,7 +1042,7 @@ var MoneyNetworkAPILib = (function () {
                             options.required = true ;
                             options.timeout = 60 ;
                             options.timeout_count = 5 ;
-                            if (encrypt.hasOwnProperty('sender')) {
+                            if (encrypt.hasOwnProperty('sender') && (client==true)) {
                                 // wallet to wallet communication. workaround for failed fileGet operation (timeout). Send a waiting_for_file notification after first timeout (after 60 seconds)
                                 // use normal file for waiting_for_file message and do not wait for response
                                 waiting_for_file = function() {
