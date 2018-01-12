@@ -872,7 +872,7 @@ var MoneyNetworkAPILib = (function () {
         api_query_1 +=
             ") and json.json_id = all_files.json_id " +
             "and keyvalue.json_id = json.json_id and keyvalue.key = 'modified' " +
-            "order by substr(all_files.filename, instr(all_files.filename,'.')+1)";
+            "order by substr(all_files.filename, instr(all_files.filename,'.')+1) desc";
         if (first) {
             console.log(pgm + 'error. no sessions were found');
             clearInterval(demon_id);
