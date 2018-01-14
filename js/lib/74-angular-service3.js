@@ -16,10 +16,8 @@ angular.module('MoneyNetwork')
         //   todo: add option to enable/disable files_optional cache. must be disabled if multiple users are using same zeronet cert at the same time
         var z_cache = moneyNetworkHubService.get_z_cache() ;
 
-        function detected_client_log_out (pgm) {
-            if (z_cache.user_id) return false ;
-            console.log(pgm + 'stop. client log out. stopping ' + pgm + ' process') ;
-            return true ;
+        function detected_client_log_out (pgm, userid) {
+            return moneyNetworkHubService.detected_client_log_out(pgm, userid);
         }
 
         function set_last_online (contact, last_online) {
@@ -139,7 +137,7 @@ angular.module('MoneyNetwork')
             user_contents_max_size = null
         }
         function load_user_contents_max_size (lock_pgm) {
-
+            console.log(lock_pgm + 'calling get_my_user_hub');
             get_my_user_hub(function (hub) {
                 var pgm = service + ".load_user_contents_max_size get_my_user_hub callback 1: " ;
                 var inner_path, debug_seq ;
@@ -521,6 +519,7 @@ angular.module('MoneyNetwork')
                 $timeout(retry_load_avatar,60000);
                 return ;
             }
+            console.log(pgm + 'calling get_my_user_hub');
 
             get_my_user_hub(function(hub) {
                 var pgm = service + '.load_avatar get_my_user_hub callback 1: ';
@@ -636,14 +635,16 @@ angular.module('MoneyNetwork')
         //             for example after update to optional files
         function z_update_1_data_json (lock_pgm, publish) {
             var pgm = service + '.z_update_1_data_json: ' ;
-            var mn_query_1 ;
+            var mn_query_1, old_userid ;
             // console.log(pgm + 'start') ;
+            if (!ZeroFrame.site_info || !ZeroFrame.site_info.cert_user_id) throw 'debug. no cert_user_id' ;
 
             // check login status - client and ZeroNet
             if (!z_cache.user_id) {
                 ZeroFrame.cmd("wrapperNotification", ["error", "Ups. Something is wrong. Not logged in Money Network. Cannot post search words in Zeronet. User_id is null", 10000]);
                 return ;
             }
+            old_userid = z_cache.user_id ;
             if (!ZeroFrame.site_info.cert_user_id) {
                 ZeroFrame.cmd("wrapperNotification", ["error", "Ups. Something is wrong. Not logged in on ZeroNet. Cannot post search words in Zeronet. siteInfo.cert_user_id is null", 10000]);
                 console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info));
@@ -660,16 +661,17 @@ angular.module('MoneyNetwork')
 
 
             // find current user data hub
+            console.log(pgm + 'calling get_my_user_hub');
             get_my_user_hub(function (hub, random_other_hub) {
                 var pgm = service + '.z_update_1_data_json get_my_user_hub callback 1: ';
-                if (detected_client_log_out(pgm)) return ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 console.log(pgm + 'hub = ' + hub + ', random_other_hub = ' + random_other_hub) ;
 
                 // cache like.json file. Check for old public reactions
                 get_like_json(function (like, like_index, empty) {
                     var pgm = service + '.z_update_1_data_json get_like_json callback 2: ';
                     var debug_seq ;
-                    if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
 
                     // check current user disk usage. must keep total file usage <= user_contents_max_size
                     mn_query_1 =
@@ -685,7 +687,7 @@ angular.module('MoneyNetwork')
                         var pgm = service + '.z_update_1_data_json dbQuery callback 3: ';
                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                         debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
-                        if (detected_client_log_out(pgm)) return ;
+                        if (detected_client_log_out(pgm, old_userid)) return ;
                         // console.log(pgm + 'res = ' + JSON.stringify(res));
                         var data_json_max_size, i ;
                         // calculate data.json max size - reserve 1700 (2200 * 0.75) bytes for avatar - reserve 100 bytes for status
@@ -702,7 +704,7 @@ angular.module('MoneyNetwork')
                             var pgm = service + '.z_update_1_data_json get_data_json callback 4: ' ;
                             var local_storage_updated, data_str, row, pubkey, pubkey2, short_avatar, max_user_seq, i,
                                 my_user_i, my_user_seq, new_user_row, guest_id, guest, old_guest_user_seq, old_guest_user_index ;
-                            if (detected_client_log_out(pgm)) return ;
+                            if (detected_client_log_out(pgm, old_userid)) return ;
 
                             // keep track of updates.
                             local_storage_updated = false ; // write localStorage?
@@ -1356,7 +1358,10 @@ angular.module('MoneyNetwork')
         function z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) {
 
             var pgm = service + '.z_update_2a_data_json_encrypt: ' ;
-            if (detected_client_log_out(pgm)) return ;
+            var old_userid ;
+            old_userid = z_cache.user_id ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
+            console.log(pgm + 'calling get_my_user_hub');
 
             get_my_user_hub(function (hub) {
 
@@ -1364,7 +1369,7 @@ angular.module('MoneyNetwork')
                     receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend,
                     user_path, image_path, image_e1, image_e1c1, image_json, json_raw, upload_image_json, error,
                     last_online, debug_seq ;
-                if (detected_client_log_out(pgm)) return ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
 
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
 
@@ -1627,7 +1632,7 @@ angular.module('MoneyNetwork')
                                     var pgm = service + '.z_update_2a_data_json_encrypt fileWrite callback: ';
                                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                                     debug_z_api_operation_end(debug_seq, format_res(res)) ;
-                                    if (detected_client_log_out(pgm)) return ;
+                                    if (detected_client_log_out(pgm, old_userid)) return ;
                                     debug('outbox', pgm + 'res = ' + JSON.stringify(res));
                                     console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;
                                     // continue with other messages to encrypt - callback to z_update_2a_data_json_encrypt
@@ -1661,7 +1666,7 @@ angular.module('MoneyNetwork')
                 // update data.json step 3. cleanup. try to keep data.json file small. check max user dictionary size
                 if (z_update_3_data_json_cleanup (local_storage_updated, data_json_max_size, data)) {
                     // Cleanup OK - write data.json file and continue with any public outbox messages
-                    if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     z_update_4_data_json_write (data, data_str) ;
                 }
                 else {
@@ -1682,23 +1687,25 @@ angular.module('MoneyNetwork')
                                                 pubkey2, message_with_envelope, receiver_sha256, sent_at)
         {
             var pgm = service + '.z_update_2b_data_json_encrypt: ' ;
+            var old_userid ;
+            old_userid = z_cache.user_id ;
 
-            if (detected_client_log_out(pgm)) return ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
             debug('outbox && unencrypted', pgm + 'sending message = ' + JSON.stringify(message_with_envelope.message));
             if (!sent_at) {
                 console.log(pgm + 'Invalid call. sent_at was null. using now') ;
                 sent_at = new Date().getTime() ;
             }
+            console.log(pgm + 'calling get_my_user_hub');
 
             get_my_user_hub(function (hub) {
                 var pgm = service + '.z_update_2b_data_json_encrypt get_my_user_hub callback 1: ';
                 var debug_seq1 ;
-                // debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + 'aesEncrypt') ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 debug_seq1 = debug_z_api_operation_start(pgm, null, 'aesEncrypt', show_debug('z_crypt_message')) ;
                 ZeroFrame.cmd("aesEncrypt", [""], function (res) {
                     var pgm = service + '.z_update_2b_data_json_encrypt aesEncrypt callback 2: ';
                     var password, debug_seq2 ;
-                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1) ;
                     debug_z_api_operation_end(debug_seq1, null) ;
                     password = res[0];
                     // debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_crypt_message', pgm + 'eciesEncrypt') ;
@@ -1861,8 +1868,9 @@ angular.module('MoneyNetwork')
 
             var i, j, k, json_raw, data_clone, data_json_other_users_size, now, one_hour_ago, msg_user_seqs, data_removed,
                 count, contact, contact_last_online, outbox_message, no_feedback_expected, no_feedback_received,
-                available, error, user_seq;
-            if (detected_client_log_out(pgm)) return ;
+                available, error, user_seq, old_userid;
+            old_userid = z_cache.user_id ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
 
             // calculate number of bytes used by other users in data.json file
             user_seq = z_cache.user_seq;
@@ -2123,9 +2131,10 @@ angular.module('MoneyNetwork')
         // last step in data.json update - write and publish
         function z_update_4_data_json_write (data, data_str) {
             var pgm = service + '.z_update_4_data_json_write: ' ;
-            var error ;
+            var error, old_userid ;
             // any changes to data.json file?
-            if (detected_client_log_out(pgm)) return ;
+            old_userid = z_cache.user_id ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
             if (data_str == JSON.stringify(data)) {
                 // debug('public_chat', pgm + 'no updates to data.json. continue with public chat messages and publish') ;
                 // no changes to data.json but maybe a forced publish from z_update_1_data_json param or cleanup_my_image_json callback

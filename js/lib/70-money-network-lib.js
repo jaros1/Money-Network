@@ -38,10 +38,10 @@ var MoneyNetworkHelper = (function () {
     // localStorage javascript copy is loaded from ZeroFrame API. Initialized asyn. Takes a moment before JS local_storage copy is ready
     var ls_use_private_data = true ;
     var local_storage = { loading: true } ;
-    var local_storage_cbs = [] ; // functions waiting for localStorage to be ready. see authCtrl.set_register_yn
+    var local_storage_cbs = [] ; // functions waiting for localStorage to be ready. see MoneyNetworkService. run at startup and when changing ZeroNet cert. One seperate lS for each cert
     function ls_bind(cb) {
-        if (local_storage.loading) local_storage_cbs.push(cb);
-        else cb() ;
+        local_storage_cbs.push(cb);
+        if (!local_storage.loading) cb() ;
     } // ls_bind
 
     function ls_load() {
@@ -50,9 +50,10 @@ var MoneyNetworkHelper = (function () {
         for (key in local_storage) delete local_storage[key] ;
         if (!ls_use_private_data) return ;
         local_storage.loading = true ;
+        console.log(pgm + 'loading localStorage') ;
         // console.log(pgm + 'ZeroFrame=', ZeroFrame) ;
         ZeroFrame.cmd("wrapperGetLocalStorage", [], function (res) {
-            var pgm = module + '.wrapperGetLocalStorage callback (1): ';
+            var pgm = module + '.ls_load wrapperGetLocalStorage callback: ';
             var key, wait_for_site_info ;
             // console.log(pgm + 'typeof res =' + typeof res) ;
             // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
@@ -63,16 +64,18 @@ var MoneyNetworkHelper = (function () {
             // console.log(pgm + 'moving values received from ZeroFrame API to JS local_storage copy');
             for (key in local_storage) if (!res.hasOwnProperty(key)) delete local_storage[key] ;
             for (key in res) local_storage[key] = res[key] ;
+            delete local_storage.loading ;
+            console.log(pgm + 'loaded localStorage') ;
             // console.log(pgm + 'local_storage = ' + JSON.stringify(local_storage));
             if (!local_storage_cbs.length) return ;
-            // check if ZeroFrame.site_info is ready. some functions uses site_info
+            // check if ZeroFrame.site_info is ready. some functions in ls_bind uses site_info
             wait_for_site_info = function () {
-                var cb ;
+                var i, cb ;
                 if (!ZeroFrame.site_info) return setTimeout(wait_for_site_info, 200) ;
-                // execute any callbacks waiting for localStorage to be ready
-                while (local_storage_cbs.length) {
-                    cb = local_storage_cbs.shift() ;
-                    cb();
+                // execute callbacks waiting for localStorage to be ready
+                for (i=0 ; i<local_storage_cbs.length ; i++) {
+                    cb = local_storage_cbs[i] ;
+                    cb() ;
                 }
             }; // wait_fo_site_info
             wait_for_site_info() ;
@@ -614,6 +617,8 @@ var MoneyNetworkHelper = (function () {
     // get/set item
     function getItem(key) {
         var pgm = 'MoneyNetworkHelper.getItem: ';
+        if (!ZeroFrame.site_info) throw pgm + 'ZeroFrame is loading. key = ' + key ;
+        if (!ZeroFrame.site_info.cert_user_id) throw pgm + 'No ZeroNet cert selected. localStorage is not available. key = ' + key ;
         // if (key == 'password') console.log(pgm + 'caller: ' + arguments.callee.caller.toString()) ;
         // console.log(pgm + 'debug 1: key = ' + key) ;
         var pseudo_key = key; // .match(/^gift_[0-9]+$/) ? 'gifts' : key ; // use gifts rule for gift_1, gift_1 etc
@@ -635,6 +640,7 @@ var MoneyNetworkHelper = (function () {
         // console.log(pgm + 'key = ' + key + ', rule.session = ' + rule.session + ', local_storage.loading = ' + local_storage.loading);
         if (!rule.session && local_storage.loading) {
             console.log(pgm + 'LocalStorage are not ready. key = ' + key) ;
+            throw pgm + 'LocalStorage are not ready. key = ' + key ;
             return null ;
         }
         var value = rule.session ? session_storage[key] : local_storage[key]; // localStorage.getItem(key);
@@ -1530,19 +1536,23 @@ var MoneyNetworkHelper = (function () {
     } // validate_json
 
     // for debug. copy of user settings from Account page
+    // optional setup parameter. null: load from ls. not null: not logged in. use temporary setup object
     var user_setup = {} ;
     var old_debug_setup ;
-    function load_user_setup() {
+    function load_user_setup(setup) {
         var pgm = module + '.load_user_setup: ' ;
-        var setup_str, setup, key, new_debug_setup, debug_changed ;
-        setup_str = getItem('setup') ;
-        if (!setup_str) return ;
-        try {
-            setup = JSON.parse(setup_str);
-        }
-        catch (e) {
-            console.log(pgm + 'setup is not a JSON string. error = ' + e.message) ;
-            return ;
+        var setup_str, key, new_debug_setup, debug_changed ;
+        console.log(pgm + 'setup = ' + JSON.stringify(setup)) ;
+        if (!setup) {
+            setup_str = getItem('setup') ;
+            if (!setup_str) return ;
+            try {
+                setup = JSON.parse(setup_str);
+            }
+            catch (e) {
+                console.log(pgm + 'setup is not a JSON string. error = ' + e.message) ;
+                return ;
+            }
         }
         for (key in user_setup) delete user_setup[key] ;
         for (key in setup) user_setup[key] = setup[key] ;
@@ -1719,7 +1729,8 @@ var MoneyNetworkHelper = (function () {
         debug: debug,
         stringify: stringify,
         get_fake_name: get_fake_name,
-        sha256: sha256
+        sha256: sha256,
+        ls_load: ls_load
     };
 })();
 // MoneyNetworkHelper end

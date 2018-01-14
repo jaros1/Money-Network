@@ -33,14 +33,21 @@ angular.module('MoneyNetwork')
         // - user_seqs: from users array in data.json file.
         // - files_optional: from content.json file. loaded at startup and updated after every sign and publish
         //   todo: add option to enable/disable files_optional cache. must be disabled if multiple users are using same zeronet cert at the same time
-        var z_cache = {} ;
+        var z_cache = { user_id: 0} ;
 
         function get_z_cache () {
             return z_cache ;
         }
 
-        function detected_client_log_out (pgm) {
-            if (z_cache.user_id) return false ;
+        function detected_client_log_out (pgm, userid) {
+            //if (!ZeroFrame.site_info.cert_user_id) {
+            //    console.log(pgm + 'stop. not logged in. no ZeroNet cert. stopping ' + pgm + ' process') ;
+            //    return true ;
+            //}
+            if (typeof userid == 'number') {
+                return (z_cache.user_id != userid) ;
+            }
+            else if (z_cache.user_id) return false ;
             console.log(pgm + 'stop. client log out. stopping ' + pgm + ' process') ;
             return true ;
         }
@@ -209,154 +216,8 @@ angular.module('MoneyNetwork')
             json.version = dbschema_version ;
         } // z_migrate_status
 
-        // Moved to MoneyNetworkAPILib
-        // fix "Merger site (MoneyNetwork) does not have permission for merged site: xxx" errors
-        // wait for mergerSiteAdd event to finish. see event_file_done and get_my_user_hub.step_4_get_and_add_default_user_hub
-        // var new_user_data_hub_cbs = {} ; // hub => array with (fileGet) callbacks waiting for hub to be ready
-        //
-        //// demon. dbQuery. check for any json for new user data hub before running any fileGet operations
-        //function monitor_first_hub_event () {
-        //    var pgm = service + '.monitor_first_hub_event: ' ;
-        //    var query, debug_seq ;
-        //    if (!Object.keys(new_user_data_hub_cbs).length) return ; // no more new data hubs to monitor
-        //
-        //    query =
-        //        "select substr(directory, 1, instr(directory,'/')-1) as hub, count(*) as rows " +
-        //        "from json " +
-        //        "group by substr(directory, 1, instr(directory,'/')-1);" ;
-        //    debug_seq = debug_z_api_operation_start(pgm, 'query ?', 'dbQuery', show_debug('z_db_query')) ;
-        //    ZeroFrame.cmd("dbQuery", [query], function (res) {
-        //        var pgm = service + '.monitor_first_hub_event dbQuery callback: ';
-        //        var hub, i, cbs, cb;
-        //        // if (detected_client_log_out(pgm)) return ;
-        //        debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
-        //        if (res.error) {
-        //            console.log(pgm + "first hub lookup failed: " + res.error);
-        //            console.log(pgm + 'query = ' + query);
-        //            for (hub in new_user_data_hub_cbs) console.log(pgm + 'error: ' + new_user_data_hub_cbs[hub].length + ' callbacks are waiting forever for hub ' + hub) ;
-        //            return ;
-        //        }
-        //        for (i=0 ; i<res.length ; i++) {
-        //            hub = res[i].hub ;
-        //            if (!new_user_data_hub_cbs[hub]) continue ;
-        //            console.log(pgm + 'new user data hub ' + hub + ' is ready. ' + new_user_data_hub_cbs[hub].length + ' fileGet operations are waiting in callback queue. running callbacks now') ;
-        //            // move to temporary cbs array
-        //            cbs = [] ;
-        //            while (new_user_data_hub_cbs[hub].length) {
-        //                cb = new_user_data_hub_cbs[hub].shift() ;
-        //                cbs.push(cb) ;
-        //            }
-        //            delete new_user_data_hub_cbs[hub] ;
-        //            // run cbs
-        //            while (cbs.length) {
-        //                cb = cbs.shift() ;
-        //                cb() ;
-        //            }
-        //        }
-        //        $timeout(monitor_first_hub_event, 250) ;
-        //    }) ; // dbQuery callback
-        //
-        //} // monitor_first_hub_event
-
-        // ZeroFrame fileGet wrapper. first fileGet request must wait for mergerSiteAdd operation to finish
-        //var inner_path_re1 = /data\/users\// ; // user directory?
-        //var inner_path_re2 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
-        //var inner_path_re3 = /^merged-MoneyNetwork\/(.*?)\/data\/users\/(.*?)$/ ; // extract hub and auth_address
         function z_file_get (pgm, options, cb) {
             MoneyNetworkAPILib.z_file_get(pgm, options, cb) ;
-            //
-            //var inner_path, match2, hub, pos, filename, optional_file, get_optional_file_info ;
-            //inner_path = options.inner_path ;
-            //
-            //// check inner_path.
-            //if (inner_path.match(inner_path_re1)) {
-            //    // path to user directory.
-            //    if (inner_path.match(inner_path_re2)) throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
-            //    match2 = inner_path.match(inner_path_re3) ;
-            //    if (match2) {
-            //        hub = match2[1] ;
-            //        if (new_user_data_hub_cbs[hub]) {
-            //            console.log(pgm + 'new data hub ' + hub + '. waiting with fileGet request for ' + inner_path) ;
-            //            new_user_data_hub_cbs[hub].push(function() { z_file_get (pgm, options, cb) }) ;
-            //            return ;
-            //        }
-            //    }
-            //    else throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
-            //
-            //    // optional fileGet operation? Some issues with optional fileGet calls
-            //    // problem with fileGet operation for delete optional files. timeout after > 60 seconds. should be solved now. null file_info is returned for deleted optional files
-            //    // also a problem with fileGet operation for optional files without any peer (peer information is not always 100% correct)
-            //    pos = inner_path.lastIndexOf('/') ;
-            //    filename = inner_path.substr(pos+1, inner_path.length-pos) ;
-            //    optional_file = (['content.json', 'data.json', 'status.json', 'like.json', 'avatar.jpg', 'avatar.png', 'wallet.json'].indexOf(filename) == -1);
-            //}
-            //else optional_file = false ; // workaround for optional file fileGet is not relevant outside user directories
-            //debug('z_file_get', pgm + 'filename = ' + JSON.stringify(filename) + ', optional_file = ' + optional_file) ;
-            //
-            //// optional step. get info about optional file before fileGet operation
-            //// "!file_info.is_downloaded && !file_info.peer" should be not downloaded optional files without any peers
-            //// but the information is not already correct. peer can be 0 and other client is ready to serve optional file.
-            //// try a fileGet with required and a "short" timeout
-            //get_optional_file_info = function (cb) {
-            //    if (!optional_file) return cb(null) ;
-            //    ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
-            //        debug('z_file_get', pgm + 'file_info = ' + JSON.stringify(file_info)) ;
-            //        cb(file_info) ;
-            //    }) ; // optionalFileInfo
-            //} ; // get_optional_file_info
-            //get_optional_file_info(function(file_info) {
-            //    var cb2_done, cb2, timeout, process_id, debug_seq, warnings, old_options ;
-            //    if (optional_file && !file_info) {
-            //        debug('z_file_get', pgm + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
-            //        return cb(null) ;
-            //    }
-            //    if (optional_file) {
-            //        // some additional checks and warnings.
-            //        if (!file_info) {
-            //            debug('z_file_get', pgm + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
-            //            return cb(null) ;
-            //        }
-            //        if (!file_info.is_downloaded && !file_info.peer) {
-            //            // not downloaded optional files and (maybe) no peers! peer information is not always correct
-            //            debug('z_file_get', pgm + 'warning. starting fileGet operation for optional file without any peers. file_info = ' + JSON.stringify(file_info)) ;
-            //            warnings = [] ;
-            //            old_options = JSON.stringify(options) ;
-            //            if (!options.required) {
-            //                options.required = true ;
-            //                warnings.push('added required=true to fileGet operation') ;
-            //            }
-            //            if (!options.timeout) {
-            //                options.timeout = 60 ;
-            //                warnings.push('added timeout=60 to fileGet operation') ;
-            //            }
-            //            if (warnings.length) debug('z_file_get', pgm + 'Warning: ' + warnings.join('. ') + '. old options = ' + old_options + ', new_options = ' + JSON.stringify(options)) ;
-            //        }
-            //    }
-            //
-            //    // extend cb. add ZeroNet API debug messages + timeout processing.
-            //    // cb2 is run as fileGet callback or is run by $timeout (sometimes problem with optional fileGet operation running forever)
-            //    cb2_done = false ;
-            //    cb2 = function (data) {
-            //        if (process_id) {
-            //            try {$timeout.cancel(process_id)}
-            //            catch (e) {}
-            //            process_id = null ;
-            //        }
-            //        if (cb2_done) return ; // cb2 has already run
-            //        cb2_done = true ;
-            //        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
-            //        debug_z_api_operation_end(debug_seq, data ? 'OK' : 'Not found');
-            //        cb(data) ;
-            //    } ; // fileGet callback
-            //
-            //    timeout = options.timeout || 60 ; // timeout in seconds
-            //    process_id = $timeout(cb2, timeout*1000) ;
-            //    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_get', pgm + inner_path + ' fileGet') ;
-            //    debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', show_debug('z_file_get')) ;
-            //    ZeroFrame.cmd("fileGet", options, cb2) ;
-            //
-            //}) ; // get_optional_file_info callback
-            //
         } // z_file_get
 
         function z_file_write (pgm, inner_path, content, cb) {
@@ -380,8 +241,18 @@ angular.module('MoneyNetwork')
         var user_data_hubs = [] ;
         var get_my_user_hub_cbs = [] ; // callbacks waiting for query 17 to finish
         function get_my_user_hub (cb) {
-            var pgm = service + '.get_my_hub: ' ;
-            var step_1_merger_site_list, step_2_compare_tables, step_3_find_user_hubs, step_4_get_and_add_default_user_hub, step_5_user_hub_selected, step_6_run_callbacks ;
+            var pgm = service + '.get_my_user_hub: ' ;
+            var step_1_merger_site_list, step_2_compare_tables, step_3_find_user_hubs, step_4_get_and_add_default_user_hub,
+                step_5_user_hub_selected, step_6_run_callbacks, old_userid ;
+            if (!ZeroFrame.site_info.cert_user_id) {
+                console.log(pgm + "No cert_user_id. hub = 'n/a'") ;
+                return cb('n/a','n/a') ;
+            }
+            if (!z_cache.user_id) {
+                console.log(pgm + "Not logged in. hub = 'n/a'") ;
+                return cb('n/a','n/a') ;
+            }
+            old_userid = z_cache.user_id ;
             if (z_cache.my_user_hub == true) {
                 // get_my_user_hub request is already running. please wait
                 get_my_user_hub_cbs.push(cb) ;
@@ -429,6 +300,7 @@ angular.module('MoneyNetwork')
                 MoneyNetworkAPILib.z_merger_site_add(my_user_hub, function (res) {
                     var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub z_merger_site_add callback: ' ;
                     console.log(pgm + 'res = '+ JSON.stringify(res));
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     if (res == 'ok') {
                         z_cache.my_user_hub = my_user_hub ;
                         user_data_hubs.push(my_user_hub) ;
@@ -476,7 +348,7 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("dbQuery", [mn_query_17], function (res) {
                     var pgm = service + '.get_my_user_hub.step_3_find_user_hubs dbQuery callback: ' ;
                     var i, merge_job ;
-                    // if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
                     if (res.error) {
@@ -538,6 +410,7 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 1: ';
                     var mn_query_19, debug_seq2, res, i, index, indexed_by_modified ;
                     debug_z_api_operation_end(debug_seq1, (!res1 || res1.error) ? 'Failed. error = ' + JSON.stringify(res1) : 'OK');
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     if (res1.error) {
                         console.log(pgm + "json and files compare failed: " + res1.error);
                         console.log(pgm + 'mn query 8 = ' + mn_query_6);
@@ -571,6 +444,7 @@ angular.module('MoneyNetwork')
                         var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 2: ';
                         var i, index, hub, missing_rows, dictionaries, modified, sign ;
                         debug_z_api_operation_end(debug_seq2, (!res2 || res2.error) ? 'Failed. error = ' + JSON.stringify(res2) : 'OK');
+                        if (detected_client_log_out(pgm, old_userid)) return ;
                         if (res2.error) {
                             console.log(pgm + "json and files compare failed: " + res2.error);
                             console.log(pgm + 'mn query 19 = ' + mn_query_19);
@@ -652,6 +526,7 @@ angular.module('MoneyNetwork')
                             z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
                                 var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 1: ';
                                 var content, json_raw, debug_seq1 ;
+                                if (detected_client_log_out(pgm, old_userid)) return ;
                                 if (content_str) {
                                     try {
                                         content = JSON.parse(content_str) ;
@@ -679,14 +554,10 @@ angular.module('MoneyNetwork')
 
                                 // 2: write content.json
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(content)));
-                                // debug_seq1 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + inner_path + ' fileWrite');
-                                debug_seq1 = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', show_debug('z_file_write'));
                                 z_file_write(pgm, inner_path, btoa(json_raw), function (res) {
-                                // ZeroFrame.cmd("fileWrite", [inner_path, btoa(json_raw)], function (res) {
                                     var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign fileWrite callback 2: ';
                                     var debug_seq2 ;
-                                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq1);
-                                    debug_z_api_operation_end(debug_seq1, format_res(res));
+                                    if (detected_client_log_out(pgm, old_userid)) return ;
                                     if (res != 'ok') {
                                         console.log(pgm + 'Error: ' + inner_path + ' fileWrite failed. res = ' + JSON.stringify(res));
                                         return step_3_find_user_hubs() ; // error - continue with next step
@@ -698,6 +569,7 @@ angular.module('MoneyNetwork')
                                         var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign siteSign callback 3: ';
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2);
                                         debug_z_api_operation_end(debug_seq2, format_res(res));
+                                        if (detected_client_log_out(pgm, old_userid)) return ;
                                         if (res != 'ok') {
                                             console.log(pgm + inner_path + ' siteSign failed. error = ' + JSON.stringify(res));
                                             return step_3_find_user_hubs() ; // error - continue with next step;
@@ -710,6 +582,7 @@ angular.module('MoneyNetwork')
                                         z_file_get(pgm, {inner_path: inner_path, required: false}, function (content_str) {
                                             var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 4: ';
                                             var content ;
+                                            if (detected_client_log_out(pgm, old_userid)) return ;
                                             content = JSON.parse(content_str) ; // sign OK. No need for try catch here
                                             console.log(pgm + 'issue #1147. ' + hub + ': issue_1147 = ' + show_debug('issue_1147') + ', files_optional = ' + JSON.stringify(content.files_optional)) ;
 
@@ -740,6 +613,7 @@ angular.module('MoneyNetwork')
                 ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
                     var pgm = service + '.get_my_user_hub.step_1_merger_site_list: ';
                     var hub;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
 
                     if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites));
                     else for (hub in merger_sites) {
@@ -783,6 +657,7 @@ angular.module('MoneyNetwork')
         function merge_user_hub (hub, cb) {
             var pgm = service + '.merge_user_hub: ' ;
             console.log(pgm + 'hub = ' + hub) ;
+            console.log(pgm + 'calling get_my_user_hub');
             get_my_user_hub(function(my_hub) {
                 var pgm = service + '.merge_user_hub get_my_user_hub callback 1: ';
                 var hub_user_path, my_user_path, inner_path0, debug_seq0 ;
@@ -1569,7 +1444,9 @@ angular.module('MoneyNetwork')
         var get_data_json_cbs = [] ; // callbacks waiting for get_data_json to finish
         function get_data_json (cb) {
             var pgm = service + '.get_data_json: ' ;
-            if (detected_client_log_out(pgm)) return ;
+            var old_userid ;
+            old_userid = z_cache.user_id ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
             if (z_cache.data_json == true) {
                 // please wait. get_data_json request is already running
                 get_data_json_cbs.push(cb) ;
@@ -1577,22 +1454,23 @@ angular.module('MoneyNetwork')
             }
             if (z_cache.data_json) {
                 // data.json file is already in cache
-                if (detected_client_log_out(pgm)) return ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 cb(z_cache.data_json, false) ;
                 return ;
             }
             z_cache.data_json = true ;
             // find user data hub (if any)
+            console.log(pgm + 'calling get_my_user_hub');
             get_my_user_hub (function (hub) {
                 var user_path, inner_path ;
                 // download data.json and add file to cache
-                if (detected_client_log_out(pgm)) return ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 inner_path = user_path + '/data.json' ;
                 z_file_get(pgm, {inner_path: inner_path, required: false}, function (data_str) {
                     var pgm = service + '.get_data_json z_file_get callback 1: ';
                     var data, empty;
-                    if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     if (data_str) {
                         try {
                             data = JSON.parse(data_str);
@@ -1628,20 +1506,19 @@ angular.module('MoneyNetwork')
         } // get_data_json
         function write_data_json (cb) {
             var pgm = service + '.write_data_json: ' ;
-            if (detected_client_log_out(pgm)) return ;
+            var old_userid ;
+            old_userid = z_cache.user_id ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
             // find user data hub
+            console.log(pgm + 'calling get_my_user_hub');
             get_my_user_hub (function (hub) {
                 var user_path, data, json_raw, debug_seq ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 data = z_cache.data_json || {} ;
                 json_raw = unescape(encodeURIComponent(JSON.stringify(data, null, "\t")));
-                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/data.json fileWrite') ;
-                debug_seq = debug_z_api_operation_start(pgm, user_path + '/data.json', 'fileWrite', show_debug('z_file_write')) ;
                 z_file_write(pgm, user_path + '/data.json', btoa(json_raw), function (res) {
-                // ZeroFrame.cmd("fileWrite", [user_path + '/data.json', btoa(json_raw)], function (res) {
-                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                    debug_z_api_operation_end(debug_seq, format_res(res)) ;
-                    if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     cb(res) ;
                 }) ; // fileWrite callback 2
             }) ; // get_my_user_hub callback 1
@@ -1650,25 +1527,28 @@ angular.module('MoneyNetwork')
         // wrapper for status.json fileGet and fileWrite (cache status.json file in memory)
         function get_status_json (cb) {
             var pgm = service + '.get_status_json: ' ;
-            if (detected_client_log_out(pgm)) return ;
+            var old_userid ;
+            old_userid = z_cache.user_id ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
             if (z_cache.status_json) {
                 // status.json file is already in cache
                 cb(z_cache.status_json, false) ;
                 return ;
             }
             // callback 1 - get user data hub
+            console.log(pgm + 'calling get_my_user_hub');
             get_my_user_hub(function (hub) {
                 var pgm = service + '.get_status_json get_my_user_hub callback 1: ';
                 var user_path, inner_path ;
-                if (detected_client_log_out(pgm)) return ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 inner_path = user_path + '/status.json' ;
-                // read status.jsonn into cache
+                // read status.json into cache
                 z_file_get(pgm, {inner_path: inner_path, required: false}, function (status) {
                     var pgm = service + '.get_status_json z_file_get callback 2: ';
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
                     var empty;
-                    if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     if (!status) {
                         status = {version: dbschema_version, status: []};
                         empty = true ;
@@ -1694,24 +1574,23 @@ angular.module('MoneyNetwork')
         } // get_status_json
         function write_status_json (cb) {
             var pgm = service + '.write_status_json: ' ;
-            if (detected_client_log_out(pgm)) return ;
+            var old_userid ;
+            old_userid = z_cache.user_id ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
             // todo: debug lost Merger:MoneyNetwork permission
             check_merger_permission(pgm, function() {
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 // callback 1 - get user data hub
                 get_my_user_hub(function (hub) {
                     var pgm = service + '.write_status_json get_my_user_hub callback 1: ';
                     var user_path, status, json_raw, debug_seq ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                     status = z_cache.status_json || {} ;
                     json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
-                    // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/status.json fileWrite') ;
-                    debug_seq = debug_z_api_operation_start(pgm, user_path + '/status.json', 'fileWrite', show_debug('z_file_write')) ;
                     z_file_write(pgm, user_path + '/status.json', btoa(json_raw), function (res) {
-                    // ZeroFrame.cmd("fileWrite", [user_path + '/status.json', btoa(json_raw)], function (res) {
                         var pgm = service + '.write_status_json fileWrite callback 2: ';
-                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                        debug_z_api_operation_end(debug_seq, format_res(res)) ;
-                        if (detected_client_log_out(pgm)) return ;
+                        if (detected_client_log_out(pgm, old_userid)) return ;
                         cb(res) ;
                     }) ; // fileWrite callback 2
                 }) ; // get_my_userhub callback 1
@@ -1747,12 +1626,26 @@ angular.module('MoneyNetwork')
         var get_like_json_cbs = [] ; // any callbacks waiting for first get_like_json operation to finish
         function get_like_json(cb) {
             var pgm = service + '.get_like_json: ';
-            if (detected_client_log_out(pgm)) return;
+            var old_userid ;
+            old_userid = z_cache.user_id ;
+            if (!ZeroFrame.site_info.cert_user_id || !z_cache.user_id) {
+                // No ZeroNet cert selected. Display public chat only. No private like.json file is loaded
+                // Not logged in. Display public chat only. No private like.json file is loaded
+                if (!z_cache.like_json) {
+                    z_cache.like_json = {
+                        version: dbschema_version,
+                        like: []
+                    };
+                    z_cache.like_json_index = {} ;
+                }
+                return cb(z_cache.like_json, z_cache.like_json_index, true);
+            }
+            if (detected_client_log_out(pgm, old_userid)) return;
             // callback 1 - ensure that user_seq has been loaded into z_cache. see update_like_index
             get_user_seq(function (my_user_seq) {
                 var pgm = service + '.get_like_json get_user_seq callback 1: ';
                 var user_path;
-                if (detected_client_log_out(pgm)) return;
+                if (detected_client_log_out(pgm, old_userid)) return;
                 if (z_cache.like_json == true) {
                     // get_like_json operation already running. please wait
                     get_like_json_cbs.push(cb) ;
@@ -1765,10 +1658,11 @@ angular.module('MoneyNetwork')
                 }
                 z_cache.like_json = true ;
                 // callback 2 - find user data hub
+                console.log(pgm + 'calling get_my_user_hub');
                 get_my_user_hub(function (hub) {
                     var pgm = service + '.get_like_json get_my_user_hub callback 2: ';
                     var user_path, inner_path ;
-                    if (detected_client_log_out(pgm)) return;
+                    if (detected_client_log_out(pgm, old_userid)) return;
                     // callback 3 - download like.json and add file to cache
                     user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                     inner_path = user_path + '/like.json' ;
@@ -1776,7 +1670,7 @@ angular.module('MoneyNetwork')
                         var pgm = service + '.get_like_json z_file_get callback 3: ';
                         // console.log(pgm + 'like = ' + JSON.stringify(like));
                         var like, empty;
-                        if (detected_client_log_out(pgm)) return;
+                        if (detected_client_log_out(pgm, old_userid)) return;
                         if (like_str) {
                             try {
                                 like = JSON.parse(like_str);
@@ -1815,24 +1709,21 @@ angular.module('MoneyNetwork')
 
         function write_like_json (cb) {
             var pgm = service + '.write_like_json: ' ;
-            var user_path, like, json_raw ;
-            if (detected_client_log_out(pgm)) return ;
+            var user_path, like, json_raw, old_userid ;
+            old_userid = z_cache.user_id ;
+            if (detected_client_log_out(pgm, old_userid)) return ;
             // callback 1 - find user data hub
+            console.log(pgm + 'calling get_my_user_hub');
             get_my_user_hub(function (hub) {
                 var pgm = service + '.write_like_json get_my_user_hub callback 2: ' ;
                 var debug_seq ;
-                if (detected_client_log_out(pgm)) return ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 // callback 2 - write like.json
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 like = z_cache.like_json || {} ;
                 json_raw = unescape(encodeURIComponent(JSON.stringify(like, null, "\t")));
-                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/like.json fileWrite') ;
-                debug_seq = debug_z_api_operation_start(pgm, user_path + '/like.json', 'fileWrite', show_debug('z_file_write')) ;
                 z_file_write(pgm, user_path + '/like.json', btoa(json_raw), function (res) {
-                // ZeroFrame.cmd("fileWrite", [user_path + '/like.json', btoa(json_raw)], function (res) {
-                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                    debug_z_api_operation_end(debug_seq, format_res(res)) ;
-                    if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     cb(res) ;
                 }) ; // fileWrite callback 2
             }) ; // get_my_user_hub callback 1
@@ -1865,28 +1756,30 @@ angular.module('MoneyNetwork')
 
         function zeronet_site_publish(options,cb) {
             var pgm = service + '.zeronet_site_publish: ';
-            var reason ;
+            var reason, old_userid ;
             if (!options) options = {} ;
             if (options.reason) reason = options.reason ;
             if (!cb) cb = function() {} ;
+            old_userid = z_cache.user_id ;
+            console.log(pgm + 'calling get_my_user_hub');
 
             get_my_user_hub(function (hub) {
                 var pgm = service + '.zeronet_site_publish get_my_user_path callback 1: ';
                 var user_path;
 
-                if (detected_client_log_out(pgm)) return ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
 
                 // get user_seq if ready
                 get_user_seq(function (user_seq) {
                     var pgm = service + '.zeronet_site_publish get_user_seq callback 2: ';
-                    if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     // update timestamp in status
                     get_status_json(function (status) {
                         var pgm = service + '.zeronet_site_publish get_status_json callback 3: ';
                         // console.log(pgm + 'data = ' + JSON.stringify(data));
                         var i, index, timestamp, error;
-                        if (detected_client_log_out(pgm)) return ;
+                        if (detected_client_log_out(pgm, old_userid)) return ;
                         if (user_seq) {
                             // remove deleted users (removed in z_update_1_data_json)
                             if (z_cache.user_seqs && (z_cache.user_seqs.indexOf(user_seq) != -1)) {
@@ -1918,7 +1811,7 @@ angular.module('MoneyNetwork')
                         write_status_json(function (res) {
                             var pgm = service + '.zeronet_site_publish write_status_json callback 4: ';
                             var error, debug_seq;
-                            if (detected_client_log_out(pgm)) return ;
+                            if (detected_client_log_out(pgm, old_userid)) return ;
                             if (res != "ok") {
                                 error = "Update was not published. fileWrite failed for status.json: " + res;
                                 console.log(pgm + error);
@@ -1926,16 +1819,10 @@ angular.module('MoneyNetwork')
                                 return ;
                             }
                             // sitePublish
-                            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + 'publish') ;
-                            // console.log(pgm + 'todo: use z_site_publish');
-                            // debug_seq = debug_z_api_operation_start(pgm, user_path + '/content.json', 'sitePublish', show_debug('z_site_publish'));
                             MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: reason}, function (res) {
-                                //ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
                                 var pgm = service + '.zeronet_site_publish sitePublish callback 5: ';
-                                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                // debug_z_api_operation_end(debug_seq, format_res(res));
                                 console.log(pgm + 'res = ' + JSON.stringify(res) + ' (' + debug_seq + ')');
-                                if (detected_client_log_out(pgm)) return;
+                                if (detected_client_log_out(pgm, old_userid)) return;
                                 if (res != "ok") {
                                     ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish: " + res.error, 5000]);
                                     // error - repeat sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
@@ -1966,7 +1853,7 @@ angular.module('MoneyNetwork')
                                         var pgm = service + '.zeronet_site_publish z_file_get callback 6: ';
                                         var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
                                             logical_deleted_files, now, max_logical_deleted_files, some_time_ago, debug_seq2;
-                                        if (detected_client_log_out(pgm)) return;
+                                        if (detected_client_log_out(pgm, old_userid)) return;
                                         content_updated = false;
 
                                         // optional files support:
@@ -2083,7 +1970,7 @@ angular.module('MoneyNetwork')
                                             var error;
                                             // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
                                             debug_z_api_operation_end(debug_seq2, format_res(res));
-                                            if (detected_client_log_out(pgm)) return;
+                                            if (detected_client_log_out(pgm, old_userid)) return;
                                             if (res != "ok") {
                                                 error = "Could not add optional file support to content.json: " + res;
                                                 console.log(pgm + error);
@@ -2227,7 +2114,10 @@ angular.module('MoneyNetwork')
         //// get user_seq from z_cache or read from data.json file
         function get_user_seq (cb) {
             var pgm = service + '.get_user_seq: ' ;
-            if (detected_client_log_out(pgm)) return ;
+            var old_userid ;
+            old_userid = z_cache.user_id ;
+            if (!z_cache.user_id) return cb(0) ; // not logged in. Show public chat only
+            if (detected_client_log_out(pgm, old_userid)) return ;
             // check z_cache
             if (z_cache.user_seq) {
                 if (cb) cb(z_cache.user_seq) ;
@@ -2237,7 +2127,7 @@ angular.module('MoneyNetwork')
             get_data_json(function (data) {
                 var pgm = service + '.get_user_seq get_data_json callback 1: ';
                 var pubkey, i, user_seq ;
-                if (detected_client_log_out(pgm)) return ;
+                if (detected_client_log_out(pgm, old_userid)) return ;
                 // console.log(pgm + 'data = ' + JSON.stringify(data));
                 if (!data.users || !data.users.length) {
                     console.log(pgm + 'users array in data.json is empty') ;
@@ -2516,6 +2406,8 @@ angular.module('MoneyNetwork')
         var admin_auth_address = ['16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH', '18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ', '1CCiJ97XHgVeJrkbnzLgfXvYRr8QEWxnWF'] ;
         function is_admin () {
             var pgm = service + '.is_admin: ' ;
+            if (!ZeroFrame.site_info) return false ;
+            if (!ZeroFrame.site_info.cert_user_id) return false ;
             if (z_cache.user_setup.guest) return false ;
             var admin =  (admin_auth_address.indexOf(ZeroFrame.site_info.auth_address) != -1) ;
             // console.log(pgm + 'admin = ' + admin) ;
@@ -2694,7 +2586,7 @@ angular.module('MoneyNetwork')
         // - z_update_1_data_json: callback function injected from calling service
         // - is_user_info_empty: callback function injected from calling service
         function i_am_online (z_update_1_data_json, is_user_info_empty) {
-            var pgm, info, user_path;
+            var pgm, info, user_path, old_userid;
             if (z_cache.user_setup.not_online) pgm = service + '.i_am_not_online: ';
             else pgm = service + '.i_am_online: ';
             info = '. Skipping status.json update';
@@ -2703,6 +2595,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'No client login' + info);
                 return;
             }
+            old_userid = z_cache.user_id ;
             if (!ZeroFrame.site_info) {
                 console.log(pgm + 'ZeroFrame is not ready' + info);
                 return;
@@ -2713,8 +2606,10 @@ angular.module('MoneyNetwork')
             }
 
             // get user hub
+            console.log(pgm + 'calling get_my_user_hub');
             get_my_user_hub(function (hub) {
                 var pgm = service + '.i_am_online get_my_user_hub callback 1: ';
+                if (detected_client_log_out(pgm, old_userid)) return ;
 
                 user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
 
@@ -2730,7 +2625,7 @@ angular.module('MoneyNetwork')
                     var pgm = service + '.i_am_online get_data_json callback 2: ';
                     var my_user_seq, data_user_seqs, i, pubkey, pubkey2, ls, compare, key, count, in_both,
                         check_pubkey2_cb, debug_seq, inner_path ;
-                    if (detected_client_log_out(pgm)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return ;
                     pubkey = MoneyNetworkHelper.getItem('pubkey') ;
                     pubkey2 = MoneyNetworkHelper.getItem('pubkey2') ;
                     // console.log(pgm + 'data = ' + JSON.stringify(data));
@@ -2834,7 +2729,7 @@ angular.module('MoneyNetwork')
                     get_status_json(function (status) {
                         var pgm = service + '.i_am_online get_status_json callback 3: ';
                         var my_user_seq_found, status_updated, error ;
-                        if (detected_client_log_out(pgm)) return ;
+                        if (detected_client_log_out(pgm, old_userid)) return ;
                         // console.log(pgm + 'data = ' + JSON.stringify(data));
                         // remove deleted users from status.json
                         my_user_seq_found = false ;
@@ -2876,7 +2771,7 @@ angular.module('MoneyNetwork')
                         write_status_json(function (res) {
                             var pgm = service + '.i_am_online write_status_json callback 4: ' ;
                             // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                            if (detected_client_log_out(pgm)) return ;
+                            if (detected_client_log_out(pgm, old_userid)) return ;
                             if (res == "ok") {
                                 // update timestamp in status.json and publish
                                 // console.log(pgm + 'calling zeronet_site_publish to update timestamp. user_seq = ' + user_seq) ;
@@ -3074,7 +2969,6 @@ angular.module('MoneyNetwork')
                 var pgm = service + '.add_message: ' ;
                 var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id, auth_address,
                     like_index_p, k, parent, js_parent_messages_row ;
-                if (message.local_msg_seq == 5947) console.log(pgm + 'message = ' + JSON.stringify(message)) ;
                 if (!contact && !z_cache.user_info.block_public) contact = get_public_contact(true) ;
                 if (!contact.messages) contact.messages = [] ;
                 if (!load_contacts) contact.messages.push(message) ;
@@ -3346,6 +3240,7 @@ angular.module('MoneyNetwork')
 
         // export MoneyNetworkHubService
         return {
+            detected_client_log_out:  detected_client_log_out,
             get_user_seq: get_user_seq,
             get_data_json: get_data_json,
             write_data_json: write_data_json,

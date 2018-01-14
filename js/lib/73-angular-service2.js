@@ -413,7 +413,20 @@ angular.module('MoneyNetwork')
             MoneyNetworkAPILib.config({debug: z_cache.user_setup.debug && z_cache.user_setup.debug.money_network_api}) ;
         }
         function save_user_setup () {
+            var pgm = service + '.save_user_setup: ';
             var i ;
+            if (!ZeroFrame.site_info) {
+                console.log(pgm + 'error. Ignore save_user_setup call. ZeroFrame is not yet loaded') ;
+                return ;
+            }
+            if (!ZeroFrame.site_info.cert_user_id) {
+                console.log(pgm + 'Warning. Ignore save_user_setup call. No ZeroNet cert select and localStorage is not available') ;
+                return ;
+            }
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Warning. Ignore save_user_setup call. Not logged in') ;
+                return ;
+            }
             if (z_cache.user_setup.reactions) {
                 for (i=0 ; i<z_cache.user_setup.length ; i++) {
                     delete z_cache.user_setup[i].src ;

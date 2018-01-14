@@ -632,12 +632,17 @@ angular.module('MoneyNetwork')
         // end findMessageGlyphicon
     }])
 
-    .filter('messageGlyphiconTitle', ['contactGlyphiconTitleFilter', function (contactGlyphiconTitle) {
+    .filter('messageGlyphiconTitle', ['MoneyNetworkService', 'contactGlyphiconTitleFilter', function (moneyNetworkService, contactGlyphiconTitle) {
         // inbox glyphicon title - mouse over text for glyphicon class for message type
-        var my_jsencrypt_key = MoneyNetworkHelper.getItem('pubkey') ;
-        var pubkey_lng_to_bits = {"271": 1024, "450": 2048, "799": 4096, "1490": 8192} ;
-        var bits = pubkey_lng_to_bits[my_jsencrypt_key.length] ;
-        var my_enc_text1 =  'Encrypted personal chat using JSEncrypt' ;
+        var user_id, my_jsencrypt_key, pubkey_lng_to_bits, bits, my_enc_text1 ;
+        user_id = moneyNetworkService.get_user_id() ;
+        if (!user_id) {
+            // No localStorage available. Only seeing public chat
+            my_jsencrypt_key = MoneyNetworkHelper.getItem('pubkey') ;
+            pubkey_lng_to_bits = {"271": 1024, "450": 2048, "799": 4096, "1490": 8192} ;
+            bits = pubkey_lng_to_bits[my_jsencrypt_key.length] ;
+        }
+        my_enc_text1 =  'Encrypted personal chat using JSEncrypt' ;
         if (bits) my_enc_text1 += ' and ' + bits + ' key' ;
         return function (message) {
             if (message.message.z_filename) return 'Public and unencrypted chat. Everyone can see this!' ;
@@ -1202,6 +1207,19 @@ angular.module('MoneyNetwork')
             else return cert_user_id.substr(0,index);
         } ;
         // end formatSearchTitle filter
+    }])
+
+    .filter('selectCertTitle', [ '$location', function ($location) {
+        // mouseover title for cert select. todo: not working.
+        return function (cert_user_id) {
+            var path ;
+            path = $location.path() ;
+            console.log('selectCertTitle: path = ' + path) ;
+            if (!cert_user_id) return 'Select ZeroNet certificate' ;
+            else if (path == '/auth') return 'Change ZeroNet certificate' ;
+            else return 'Go to auth page' ;
+        } ;
+        // end selectCertTitle
     }])
 
     .filter('formatNotifications', [ function () {

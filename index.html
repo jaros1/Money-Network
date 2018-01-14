@@ -1979,7 +1979,6 @@
                    ng-click="a.select_zeronet_cert()"
                    title="{{a.site_info.cert_user_id}}">select ...
                 </a>
-                <a href="" id="zeronet_cert_changed_link" ng-click="a.zeronet_cert_changed()" style="display: none"></a>
                 is used for communication with other ZeroNet users.
                 Use an anonymous @moneynetwork.bit ZeroNet ID or use your preferred ZeroNet ID provider.
                 Click on ZeroNet ID link to change ZeroNet certificate.
@@ -1988,6 +1987,8 @@
             </p>
 
             <p>
+                <span ng-hide="a.site_info.cert_user_id">You cannot post data on ZeroNet and data are not saved in your browser. ZeroNet certificate is required for this.<br></span>
+                <span ng-show="a.site_info.cert_user_id">
                 <span title="Uncheck 'Private data' if you don't want any data saved in your browser. Everything except any ZeroNet posts are lost when you leave this site">
                     Private data <input type="checkbox" ng-model="a.use_private_data" ng-change="a.use_private_data_changed()"> are
                     <span ng-hide="a.use_private_data">not</span>
@@ -1995,20 +1996,25 @@
                 </span>
                 <span title="Uncheck 'encrypted' if you don't want password protection for this site. Not recommended but OK if you are the only one with access to this computer/browser">
                     <span ng-show="a.use_private_data">
-                        <input type="checkbox" ng-model="a.use_login" ng-change="a.use_login_changed()">
-                        <span ng-hide="a.use_login">un</span>encrypted
+                        <input type="checkbox" ng-model="a.use_login.bol" ng-change="a.use_login_changed()">
+                        <span ng-hide="a.use_login.bol">un</span>encrypted
                     </span>
                     in your browser (localStorage).
                 </span>
-                <span ng-hide="a.use_private_data && a.use_login">Recommend that you save private data encrypted in your browser.</span>
+                <span ng-hide="a.use_private_data && a.use_login.bol">Recommend that you save private data encrypted in your browser.</span>
+
+                </span>
             </p>
 
-            <span ng-hide="a.use_private_data && a.use_login">
+            <span ng-show="a.site_info.cert_user_id">
+
+            <span ng-hide="a.use_private_data && a.use_login.bol">
                 <input ng-hide="a.is_logged_in()" type="submit" value="Log in" ng-click="a.login_or_register()">
                 <input ng-show="a.is_logged_in()" type="submit" value="Log out" ng-click="a.logout()">
             </span>
 
-            <div ng-show="a.use_private_data && a.use_login" style="width: 100%">
+            <div ng-show="a.use_private_data && a.use_login.bol" style="width: 100%">
+                <input ng-show="a.is_logged_in()" type="submit" value="Log out" ng-click="a.logout()">
 
                 <form ng-hide="a.is_logged_in()" name="device_login_form" ng-submit="a.login_or_register()">
                     <table>
@@ -2025,16 +2031,16 @@
                         <tbody>
                         <tr>
                             <td colspan="5" style="text-align: center">
-                                <span>Log in</span> <input type="radio" ng-model="a.register" value="N"> &nbsp;&nbsp;
-                                <span>Register</span> <input type="radio" ng-model="a.register" value="Y" ng-change="a.set_keysize()"> &nbsp;&nbsp;
-                                <span>Guest</span> <input type="radio" ng-model="a.register" value="G" ng-change="a.set_keysize()">
+                                <span>Log in</span> <input type="radio" ng-model="a.register.yn" value="N"> &nbsp;&nbsp;
+                                <span>Register</span> <input type="radio" ng-model="a.register.yn" value="Y" ng-change="a.set_keysize()"> &nbsp;&nbsp;
+                                <span>Guest</span> <input type="radio" ng-model="a.register.yn" value="G" ng-change="a.set_keysize()">
                             </td>
                         </tr>
                         <tr>
                             <td colspan="5">&nbsp;</td>
                         </tr>
                         </tbody>
-                        <tbody ng-hide="a.register == 'G'">
+                        <tbody ng-hide="a.register.yn == 'G'">
                         <tr>
                             <td>Password</td>
                             <td colspan="3">
@@ -2043,7 +2049,7 @@
                                        required ng-minlength="10" placeholder="Enter password"
                                        style="width: 120px">
                             </td>
-                            <td><input ng-show="a.register == 'N'" type="submit" value="Log in" ng-hide="ctrl.register"
+                            <td><input ng-show="a.register.yn == 'N'" type="submit" value="Log in" ng-hide="ctrl.register"
                                        ng-disabled="a.login_disabled()">
                             </td>
                         </tr>
@@ -2055,7 +2061,7 @@
                         </tr>
                         </tbody>
 
-                        <tbody ng-show="a.register == 'Y'">
+                        <tbody ng-show="a.register.yn == 'Y'">
                         <tr>
                             <td>Confirm<br>password</td>
                             <td colspan="3">
@@ -2064,7 +2070,7 @@
                                        on-key-enter="a.login_or_register()" placeholder="Confirm password"
                                        style="width: 120px">
                             </td>
-                            <td><input ng-show="a.register" type="submit" value="Register"
+                            <td><input ng-show="a.register.yn" type="submit" value="Register"
                                        ng-disabled="a.register_disabled()">
                             </td>
                         </tr>
@@ -2072,7 +2078,7 @@
                             <td colspan="5">Passwords do not match</td>
                         </tr>
                         </tbody>
-                        <tbody ng-show="a.register == 'G'">
+                        <tbody ng-show="a.register.yn == 'G'">
                         <tr>
                             <td colspan="5" style="text-align: center" title="Create guest account">
                                 <input type="button" value="Create" ng-click="a.login_or_register()">
@@ -2083,14 +2089,14 @@
 
                 </form>
 
-                <p ng-show="a.register == 'Y'">
+                <p ng-show="a.register.yn == 'Y'">
                     Please choose a secure password (minimum 10 characters) and do <b style="font-size: 150%">NOT</b> forget or lose it.
                     Remember your password. There is <b style="font-size: 150%">NO</b> help if you forget your password.
                     Use "Register" after forgotten password to create a new empty account.
                     Register takes a few seconds while generating private and public key for encrypted communication.
                 </p>
 
-            <span ng-hide="a.register == 'N'"
+            <span ng-hide="a.site_info.cert_user_id && (a.register.yn == 'N')"
                   title="Select encryption method for your ingoing messages. CryptMessage private key is saved in your user.json file on your computer (or proxy server). JSEncrypt private key is saved encrypted in your browser (localStorage). Recommend using 2048 bits keys (JSEncrypt). ">
                 <span>Preferred public key encryption:</span>
             <table>
@@ -2120,7 +2126,7 @@
             <br>
             </span>
 
-                <p ng-show="a.register == 'G'">
+                <p ng-show="a.site_info.cert_user_id && (a.register.yn == 'G')">
                     Click "Create" if you wish to visit Money Network as a guest.
                     A temporary guest account with a random password and a dummy setup will be created for you.<br>
                     Please note that there can only be one guest account in a browser.
@@ -2132,7 +2138,7 @@
                 </p>
 
             </div>
-
+            </span>
         </div>
 
         <!-- end auth.html -->
@@ -2167,8 +2173,10 @@
                                 </a></li>
                                 <li><a href="#/wallet">Wallet</a></li>
                                 <li><a href="#/user">Account</a></li>
-                                <li ng-hide="n.is_logged_in()"><a href="#/auth">Log in</a></li>
-                                <li ng-show="n.is_logged_in()"><a href="" ng-click="n.logout()">Log out</a></li>
+                                <li>
+                                    <a href="#/auth" ng-bind="n.site_info.cert_user_id|shortCertId" ng-click="n.select_zeronet_cert()" title="{{n.cert_title}}" ng-mouseover="n.update_cert_title()">select ...</a>
+                                    <a href="" id="zeronet_cert_changed_link" ng-click="n.zeronet_cert_changed()" style="display: none"></a>
+                                </li>
                             </ul>
                         </td>
                     </tr>
@@ -2193,8 +2201,7 @@
                             <ul class="nav">
                                 <li><a href="#/wallet">Wallet</a></li>
                                 <li><a href="#/user">Account</a></li>
-                                <li ng-hide="n.is_logged_in()"><a href="#/auth">Log in</a></li>
-                                <li ng-show="n.is_logged_in()"><a href="#/logout">Log out</a></li>
+                                <li><a href="#/auth" ng-bind="n.site_info.cert_user_id|shortCertId" ng-click="n.select_zeronet_cert()" title="{{n.cert_title}}" ng-mouseover="n.update_cert_title()">select ...</a></li>
                             </ul>
                         </td>
                     </tr>
@@ -2252,9 +2259,9 @@
   all.js ~= 1.3 Mb and distribution is slow on zeronet
   js/all.js.zip is small and distributed fast (~= 200 Kb)
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->

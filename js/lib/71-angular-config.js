@@ -76,17 +76,17 @@ angular.module('MoneyNetwork')
             .when('/chat', {
                 templateUrl: 'chat.html',
                 controller: 'ChatCtrl as c',
-                resolve: {check_auth: check_auth_resolve}
+                resolve: {check_auth: set_z_path}
             })
             .when('/chat2/:unique_id', {
                 templateUrl: 'chat2.html',
                 controller: 'ChatCtrl as c',
-                resolve: {check_auth: check_auth_resolve}
+                resolve: {check_auth: set_z_path}
             })
             .when('/chat2', {
                 templateUrl: 'chat2.html',
                 controller: 'ChatCtrl as c',
-                resolve: {check_auth: check_auth_resolve}
+                resolve: {check_auth: set_z_path}
             })
             .when('/wallet', {
                 templateUrl: 'wallet.html',

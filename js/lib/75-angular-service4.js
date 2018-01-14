@@ -15,10 +15,8 @@ angular.module('MoneyNetwork')
         // - files_optional: from content.json file. loaded at startup and updated after every sign and publish
         var z_cache = moneyNetworkHubService.get_z_cache() ;
 
-        function detected_client_log_out (pgm) {
-            if (z_cache.user_id) return false ;
-            console.log(pgm + 'stop. client log out. stopping ' + pgm + ' process') ;
-            return true ;
+        function detected_client_log_out (pgm, userid) {
+            return moneyNetworkHubService.detected_client_log_out(pgm, userid);
         }
 
         function get_merged_type () {
@@ -279,6 +277,7 @@ angular.module('MoneyNetwork')
                 // find old outgoing files. delete old outgoing files except offline transactions
                 step_3_find_old_outgoing_files = function(){
                     var pgm = service + '.create_sessions.step_3_find_old_outgoing_files: ';
+                    console.log(pgm + 'calling get_my_user_hub');
                     get_my_user_hub(function (hub) {
                         var pgm = service + '.create_sessions.step_3_find_old_outgoing_files get_my_user_hub callback 1: ';
                         var mn_query_20, debug_seq;
@@ -568,11 +567,12 @@ angular.module('MoneyNetwork')
         function process_incoming_message(filename, encrypt, encrypted_json_str, request, extra) {
             var pgm = service + '.process_incoming_message: ';
             var pos, sessionid, session_info, file_timestamp, response_timestamp, request_timestamp, request_timeout_at,
-                error, response, i, key, value, encryptions, done_and_send, group_debug_seq, now;
+                error, response, i, key, value, encryptions, done_and_send, group_debug_seq, now, old_userid;
 
             try {
                 // skip wallet to wallet messages. can only process status_mt messages. encrypted with money_transactionid only
                 // console.log(pgm + 'encrypt.extra = ' + JSON.stringify(encrypt.extra)) ;
+                old_userid = z_cache.user_id ;
                 if (!request && encrypt.extra && encrypt.extra.hasOwnProperty('array') && encrypt.extra.hasOwnProperty('index')) {
                     console.log(pgm + 'ignoring wallet to wallet message ' + filename) ;
                     return ;
@@ -585,7 +585,7 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'Using group_debug_seq ' + group_debug_seq + ' for this ' + (request && request.msgtype ? 'receive ' + request.msgtype + ' message' : 'process_incoming_message') + ' operation');
                 if (request && request.msgtype) MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {msgtype: request.msgtype});
 
-                if (detected_client_log_out(pgm)) return;
+                if (detected_client_log_out(pgm, old_userid)) return;
                 if (encrypt.destroyed) {
                     // MoneyNetworkAPI instance has been destroyed. Maybe deleted session. Maybe too many invalid get_password requests?
                     console.log(pgm + 'ignoring incoming message ' + filename + '. session has been destroyed. reason = ' + encrypt.destroyed);
@@ -918,6 +918,7 @@ angular.module('MoneyNetwork')
             console.log(pgm + 'getting sessions ...') ;
             ls_sessions = ls_get_sessions() ; // sessionid => hash with saved wallet data
             //console.log(pgm + 'ls_sessions = ' + JSON.stringify(ls_sessions)) ;
+            console.log(pgm + 'calling get_my_user_hub');
 
             get_my_user_hub(function (hub) {
                 var user_path ;

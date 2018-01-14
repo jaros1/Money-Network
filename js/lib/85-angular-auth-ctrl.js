@@ -8,28 +8,15 @@ angular.module('MoneyNetwork')
         console.log(controller + ' loaded');
 
         self.is_logged_in = function () {
+            if (!ZeroFrame.site_info) return false ;
+            if (!ZeroFrame.site_info.cert_user_id) return false ;
             return MoneyNetworkHelper.getUserId();
         };
 
-        // startup. set register
-        // Y is users in localStorage. N if users in localStorage.
-        self.register = 'Y' ;
-        function set_register_yn() {
-            var pgm = controller + '.set_register_yn: ' ;
-            var passwords, no_users ;
-            passwords = MoneyNetworkHelper.getItem('passwords') ;
-            if (!passwords) no_users = 0 ;
-            else {
-                try {
-                    no_users = JSON.parse(passwords).length ;
-                }
-                catch (e) {
-                    console.log(pgm + 'error. password is invalid. error = ' + e.message) ;
-                    no_users = 0 ;
-                }
-            }
-            self.register = (no_users == 0) ? 'Y' : 'N';
-        }
+        // used in auth page. set register = Y/N
+        // Y if no users in localStorage. N if users in localStorage.
+        // var register = { yn: 'Y' } ;
+        self.register = moneyNetworkService.get_register() ;
 
         // startup. Set use_private_data
         self.use_private_data = MoneyNetworkHelper.ls_get_private_data() ;
@@ -37,47 +24,8 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.ls_set_private_data(self.use_private_data) ;
         };
         // startup. Set use_login
-        self.use_login = true ;
-        function set_use_login() {
-            var pgm = controller + '.set_use_login: ' ;
-            var login ;
-            login = MoneyNetworkHelper.getItem('login') ;
-            if (!login) {
-                // still waiting for moneyNetworkService to be initialized ...
-                $timeout(set_use_login, 100) ;
-                return ;
-            }
-            try {
-                login = JSON.parse(login) ;
-            }
-            catch (e) {
-                console.log(pgm + 'login was invalid. error = ' + e.message) ;
-                login = true ;
-            }
-            self.use_login = login ;
-            // console.log(pgm + 'login = ' + login + ', self.use_login = ' + self.use_login) ;
-        }
-        self.use_login_changed = function () {
-            var pgm = controller + '.use_login_changed: ' ;
-            // console.log(pgm + 'click. use_login = ' + self.use_login) ;
-            moneyNetworkService.client_logout(true) ; // true: disable notification and redirect
-            MoneyNetworkHelper.setItem('login', JSON.stringify(self.use_login)) ;
-            MoneyNetworkHelper.ls_save() ;
-            MoneyNetworkHelper.use_login_changed() ;
-            // warning
-            if (self.use_login) {
-                ZeroFrame.cmd("wrapperNotification", ['done',
-                    'Password log in was enabled. No data was moved.<br>' +
-                    'Note that private data from the unprotected<br>' +
-                    'account still is in localStorage', 10000]);
-            }
-            else {
-                ZeroFrame.cmd("wrapperNotification", ['done',
-                    'Password log in was disabled. No data was moved.<br>' +
-                    'Note that private data from password protected<br>' +
-                    'account(s) still is in localStorage', 10000]);
-            }
-        } ;
+        self.use_login = moneyNetworkService.get_use_login() ;
+        self.use_login_changed = moneyNetworkService.use_login_changed ;
 
         // check merger site permission + one user hub before log in
         // todo: what about auto log in?
@@ -121,8 +69,6 @@ angular.module('MoneyNetwork')
         // callback when localStorage is ready (ZeroFrame's localStorage API is a little slow)
         var ls_was_loading = MoneyNetworkHelper.ls_is_loading();
         MoneyNetworkHelper.ls_bind(function() {
-            set_register_yn() ;
-            set_use_login() ;
             check_merger_permission() ;
             moneyNetworkService.load_server_info() ;
             if (ls_was_loading) $rootScope.$apply() ; // workaround. Only needed after page start/reload
@@ -140,13 +86,13 @@ angular.module('MoneyNetwork')
         }
 
         self.login_disabled = function () {
-            if (self.register != 'N') return true;
+            if (self.register.yn != 'N') return true;
             if (!self.device_password) return true;
             if (self.device_password.length < 10) return true;
             return false;
         };
         self.register_disabled = function () {
-            if (self.register != 'Y') return true;
+            if (self.register.yn != 'Y') return true;
             if (!self.device_password) return true;
             if (self.device_password.length < 10) return true;
             if (!self.confirm_device_password) return true;
@@ -155,6 +101,7 @@ angular.module('MoneyNetwork')
         self.login_or_register = function () {
             var pgm = controller + '.login_or_register: ';
             var create_new_account, create_guest_account, verb, msg ;
+            console.log(pgm + 'click') ;
 
             // check ZeroFrame status before client log in
             if (!ZeroFrame.site_info) {
@@ -171,20 +118,20 @@ angular.module('MoneyNetwork')
             }
             if (!self.use_private_data) {
                 // login/register without saving any data in localStorage as Guest and using cryptMessage
-                self.register = 'G' ;
+                self.register.yn = 'G' ;
                 self.device_password = '';
                 self.confirm_device_password = '';
                 self.keysize = '256' ;
             }
-            else if (!self.use_login) {
+            else if (!self.use_login.bol) {
                 // login/register without a password and minimum keysize
-                self.register = 'Y' ;
+                self.register.yn = 'Y' ;
                 self.device_password = '';
                 self.confirm_device_password = '';
                 self.keysize = moneyNetworkService.is_proxy_server() ? '1024' : '256' ;
             }
-            create_new_account = (self.register != 'N');
-            create_guest_account = (self.register == 'G');
+            create_new_account = (self.register.yn != 'N');
+            create_guest_account = (self.register.yn == 'G');
 
             // callback. warning if user has selected a long key
             var login_or_register_cb = function () {
@@ -198,11 +145,11 @@ angular.module('MoneyNetwork')
                 // login or register
                 if (moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize))) {
                     // log in OK - clear login form and redirect
-                    register = self.register ;
+                    register = self.register.yn ;
                     ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
                     self.device_password = '';
                     self.confirm_device_password = '';
-                    self.register = 'N';
+                    self.register.yn = 'N';
 
                     // register new account? Ignore deep link
                     if (register == 'Y') {
@@ -212,7 +159,7 @@ angular.module('MoneyNetwork')
                         $location.path(a_path);
                         $location.replace() ;
                         ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]) ;
-                        if (self.use_login) ZeroFrame.cmd("wrapperNotification", ["info", "Welcome to Money Network. Please update your user info", 10000]);
+                        if (self.use_login.bol) ZeroFrame.cmd("wrapperNotification", ["info", "Welcome to Money Network. Please update your user info", 10000]);
                         return ;
                     }
 
@@ -261,14 +208,14 @@ angular.module('MoneyNetwork')
                 }
 
                 // login
-                if ((self.register != 'N') && (self.keysize >= '4096')) {
+                if ((self.register.yn != 'N') && (self.keysize >= '4096')) {
                     // warning before login user has selected a long key for a new account
                     verb = self.keysize == '4096' ? 'some' : 'long' ;
                     ZeroFrame.cmd("wrapperConfirm", ["Generating a " + self.keysize + " bits key will take " + verb + " time.<br>Continue?", "OK"], function (confirm) {
                         if (confirm) login_or_register_cb() ;
                     })
                 }
-                else if ((self.register != 'N') && (self.keysize == '256') && moneyNetworkService.is_proxy_server()) {
+                else if ((self.register.yn != 'N') && (self.keysize == '256') && moneyNetworkService.is_proxy_server()) {
                     // warning using cryptMessage on proxy servers
                     msg = 'Warning. Using CryptMessage 256 bits encryption on a proxy server' +
                         '<br>Certificate is saved on proxy server (not secure),' +
@@ -295,19 +242,12 @@ angular.module('MoneyNetwork')
         // private key keysize. It takes long time to generate keys > 2048 bits
         self.keysize = "2048" ;
         self.set_keysize = function () {
-            if (self.register == 'Y') self.keysize = "2048" ;
-            else if (self.register == 'G') self.keysize = "1024" ;
+            if (self.register.yn == 'Y') self.keysize = "2048" ;
+            else if (self.register.yn == 'G') self.keysize = "1024" ;
         };
 
         // check site info and get current cert_user_id
-        self.site_info = {} ;
-        function get_site_info() {
-            ZeroFrame.cmd("siteInfo", {}, function (site_info) {
-                self.site_info = site_info ;
-                $rootScope.$apply() ;
-            }) ;
-        }
-        get_site_info() ;
+        self.site_info = moneyNetworkService.get_site_info() ;
 
         //// watch changes in site_info & cert_user_id
         //function zero_frame_events () {
@@ -323,15 +263,10 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.select_zeronet_cert: ' ;
             console.log(pgm + 'click');
             ZeroFrame.cmd("certSelect", [["moneynetwork.bit", "nanasi", "zeroid.bit", "kaffie.bit", "moneynetwork"]], function() {
-                get_site_info() ;
+                moneyNetworkService.update_site_info() ;
             });
         };
 
-        // callback from ZeroFrame. ZeroFrame.prototype.route
-        // update Current ZeroNet ID user id
-        self.zeronet_cert_changed = function () {
-            get_site_info() ;
-        };
 
 
         // end AuthCtrl

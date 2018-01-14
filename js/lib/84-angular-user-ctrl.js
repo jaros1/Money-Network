@@ -29,7 +29,7 @@ angular.module('MoneyNetwork')
             return res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res) ;
         }
         function format_q_res (res) {
-            return (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK' ;
+            return (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK. ' +  + res.length + ' rows returned' ;
         }
 
         // file get/write wrappers
@@ -305,7 +305,7 @@ angular.module('MoneyNetwork')
 
             copy_setup() ;
             moneyNetworkService.save_user_setup() ;
-            MoneyNetworkHelper.load_user_setup() ;
+            MoneyNetworkHelper.load_user_setup(self.setup) ;
         };
 
         if (self.setup.guest) self.guest_password = MoneyNetworkHelper.getItem('password') ;
@@ -906,8 +906,8 @@ angular.module('MoneyNetwork')
         // import from txt file
         self.import = function(event) {
             var pgm = controller + '.import_ls: ' ;
-            var files, file, step_1_read_file, step_2_decrypt_data, step_3_confirm_import, step_4_write_z_file,
-                step_5_publish, step_6_ls_write, step_7_notification_and_redirect, user_path ;
+            var files, file, step_1_read_file, step_2_decrypt_data, step_3_confirm_import, step_4_get_user_path,
+                step_5_write_z_file, step_6_publish, step_7_ls_write, step_8_notification_and_redirect, user_path ;
             // console.log(pgm + 'event = ' + JSON.stringify(event));
             files = event.target.files;
             file = files[0] ;
@@ -916,16 +916,15 @@ angular.module('MoneyNetwork')
             // 1 - FileReader. read file, parse json and check json structure
             // 2 - decrypt data if encrypted
             // 3 - confirm import
-            // 4 - write ZeroNet files
-            // 5 - publish
-            // 6 - overwrite localStorage
-            // 7 - notification, log out and redirect
-            user_path = "data/users/" + ZeroFrame.site_info.auth_address;
+            // 4 - get user path
+            // 5 - write ZeroNet files
+            // 6 - publish
+            // 7 - overwrite localStorage
+            // 8 - notification, log out and redirect
 
             // callbacks:
-
-            step_7_notification_and_redirect = function () {
-                var pgm = controller + '.import.step_7_notification_and_redirect: ' ;
+            step_8_notification_and_redirect = function () {
+                var pgm = controller + '.import.step_8_notification_and_redirect: ' ;
                 var text, a_path, z_path ;
                 text = 'MoneyNetwork data has been imported from file. Please log in';
                 ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
@@ -939,8 +938,8 @@ angular.module('MoneyNetwork')
                 $scope.$apply();
             };
 
-            step_6_ls_write = function (data) {
-                var pgm = controller + '.import.step_6_ls_write: ' ;
+            step_7_ls_write = function (data) {
+                var pgm = controller + '.import.step_7_ls_write: ' ;
                 var ls, key ;
                 console.log(pgm + 'client_logout') ;
                 moneyNetworkService.client_logout() ;
@@ -949,35 +948,35 @@ angular.module('MoneyNetwork')
                 for (key in data.ls) ls[key] = data.ls[key] ;
                 MoneyNetworkHelper.ls_save() ;
                 console.log(pgm + 'ls overwritten and saved') ;
-                step_7_notification_and_redirect() ;
-            }; // step_6_ls_write
+                step_8_notification_and_redirect() ;
+            }; // step_7_ls_write
 
 
-            step_5_publish = function (data) {
-                var pgm = controller + '.import.step_5_publish: ' ;
+            step_6_publish = function (data) {
+                var pgm = controller + '.import.step_6_publish: ' ;
                 MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: 'import'}, function (res) {
                 // ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
-                    if (res == "ok") return step_6_ls_write(data) ;
+                    if (res == "ok") return step_7_ls_write(data) ;
 
                     error = 'Import error. Publish failed. error = ' + res ;
                     console.log(pgm + error)
 
                     ZeroFrame.cmd("wrapperConfirm", [error + '<br>Continue?', "Yes"], function (confirm) {
                         if (!confirm) return ;
-                        step_6_ls_write(data) ;
+                        step_7_ls_write(data) ;
                     }) ;
 
                 });
-            };
+            }; // step_6_publish
 
-            step_4_write_z_file = function (data) {
-                var pgm = controller + '.import.step_4_write_z_file: ' ;
+            step_5_write_z_file = function (data) {
+                var pgm = controller + '.import.step_5_write_z_file: ' ;
                 var key, filename, json_raw, image_base64uri, post_data, debug_seq ;
                 for (key in data.z_files) {
                     filename = key ;
                     break ;
                 }
-                if (!filename) return step_5_publish(data) ;
+                if (!filename) return step_6_publish(data) ;
 
                 if (['avatar.jpg','avatar.png'].indexOf(filename) != -1) {
                     // image (avatar)
@@ -1001,7 +1000,7 @@ angular.module('MoneyNetwork')
                     debug_z_api_operation_end(debug_seq, format_res(res)) ;
                     if (res == "ok") {
                         console.log(pgm + 'uploaded ZeroNet file ' + filename) ;
-                        return step_4_write_z_file(data)
+                        return step_5_write_z_file(data)
                     }
                     //
                     error = 'Import error. Failed to write ' + filename + '. error = ' + res ;
@@ -1009,12 +1008,19 @@ angular.module('MoneyNetwork')
 
                     ZeroFrame.cmd("wrapperConfirm", [error + '<br>Continue?', "Yes"], function (confirm) {
                         if (!confirm) return ;
-                        step_4_write_z_file(data) ;
+                        step_5_write_z_file(data) ;
                     }) ;
 
                 }); // fileWrite
 
-            }; // step_4_write_z_file
+            }; // step_5_write_z_file
+
+            step_4_get_user_path = function (data) {
+                moneyNetworkService.get_my_user_hub(function (hub, random_hub) {
+                    user_path = 'merged-' + MoneyNetworkAPILib.get_merged_type() + '/' + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                    step_5_write_z_file(data) ;
+                }) ;
+            } ; // step_4_get_user_path
 
             step_3_confirm_import = function (data) {
                 var pgm = controller + '.import.step_3_confirm_import: ' ;
@@ -1037,7 +1043,7 @@ angular.module('MoneyNetwork')
 
                 ZeroFrame.cmd("wrapperConfirm", [msg, "Import"], function (confirm) {
                     if (!confirm) return ;
-                    step_4_write_z_file(data) ;
+                    step_4_get_user_path(data) ;
                 }) ;
 
             }; // step_3_confirm_import
@@ -1213,7 +1219,7 @@ angular.module('MoneyNetwork')
                     }) ;
                 }
                 moneyNetworkService.save_user_setup() ;
-                MoneyNetworkHelper.load_user_setup() ;
+                MoneyNetworkHelper.load_user_setup(self.setup) ;
             }
         };
         function find_reaction (reaction) {

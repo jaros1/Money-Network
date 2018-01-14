@@ -8,10 +8,10 @@ angular.module('MoneyNetwork')
             
             var self = this;
             var controller = 'ChatCtrl';
-            if (!MoneyNetworkHelper.getItem('userid')) {
-                // not logged in - skip initialization of controller
-                return;
-            }
+            //if (!MoneyNetworkHelper.getItem('userid')) {
+            //    // not logged in - skip initialization of controller
+            //    return;
+            //}
             console.log(controller + ' loaded');
             $window.scrollTo(0, 0);
 
@@ -19,6 +19,17 @@ angular.module('MoneyNetwork')
 
             // get user setup.
             self.setup = moneyNetworkService.get_user_setup() ;
+            if (!self.setup.contact_filters) {
+                // not logged in. Show all contacts
+                self.setup.contact_filters = {
+                    all: 'green',
+                    new: 'green',
+                    unverified: 'green',
+                    verified: 'green',
+                    ignore: 'green'
+                } ;
+            }
+            if (!self.setup.hasOwnProperty('public_chat')) self.setup.public_chat = true ; // not logged in
 
             // two panel chat?
             (function(){
@@ -1060,6 +1071,7 @@ angular.module('MoneyNetwork')
 
             // contacts sort options - typeahead auto complete functionality
             self.contact_sort_options = moneyNetworkService.get_contact_sort_options();
+            if (!self.setup.contact_sort) self.setup.contact_sort = self.contact_sort_options[0] ; // not logged in
             self.contact_sort_title = moneyNetworkService.get_contact_sort_title();
             self.contact_sort_changed = function () {
                 var pgm = controller + '.sort_changed: ' ;
@@ -1071,7 +1083,8 @@ angular.module('MoneyNetwork')
             }; // contact_order_by
 
             // chat sort options - typeahead auto complete functionality
-            self.chat_sort_options = moneyNetworkService.get_chat_sort_options() ; 
+            self.chat_sort_options = moneyNetworkService.get_chat_sort_options() ;
+            if (!self.setup.chat_sort) self.setup.chat_sort = self.chat_sort_options[0] ; // not logged in
             self.chat_sort_title = moneyNetworkService.get_chat_sort_title() ;
             self.chat_sort_changed = function () {
                 var pgm = controller + '.sort_changed: ' ;
@@ -3207,7 +3220,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.public_chat_changed: ' ;
                 var i, contact, message, js_message_row, j ;
                 moneyNetworkService.save_user_setup() ;
-                MoneyNetworkHelper.load_user_setup() ;
+                MoneyNetworkHelper.load_user_setup(self.setup) ;
                 if (!self.setup.public_chat) {
                     // public chat changed from true or false. remove already loaded public chat messages
                     for (i=0 ; i<self.contacts.length ; i++) {
