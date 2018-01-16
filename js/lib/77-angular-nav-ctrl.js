@@ -1,6 +1,6 @@
 angular.module('MoneyNetwork')
 
-    .controller('NavCtrl', ['MoneyNetworkService', '$location', '$rootScope', 'selectCertTitleFilter', function (moneyNetworkService, $location, $rootScope, selectCertTitle) {
+    .controller('NavCtrl', ['MoneyNetworkService', '$location', '$rootScope', 'shortCertTitleFilter', function (moneyNetworkService, $location, $rootScope, shortCertTitle) {
         var self = this;
         var controller = 'NavCtrl';
         console.log(controller + ' loaded');
@@ -24,8 +24,8 @@ angular.module('MoneyNetwork')
         };
         self.chat_notifications = moneyNetworkService.get_chat_notifications ;
 
-        // check site info and get current cert_user_id
-        self.site_info = moneyNetworkService.get_site_info() ;
+        // get site info and current cert_user_id
+        self.z = ZeroFrame ;
 
         // click on ZeroNet user id or "select ..." in menu line
         // already on auth page. display cert select dialog
@@ -38,7 +38,7 @@ angular.module('MoneyNetwork')
             if (old_path != '/auth') return ; // route provider will redirect to auth page and start cert select dialog
             // already in auth page. start cert select dialog
             ZeroFrame.cmd("certSelect", [["moneynetwork.bit", "nanasi", "zeroid.bit", "kaffie.bit", "moneynetwork"]], function() {
-                moneyNetworkService.update_site_info() ;
+                // moneyNetworkService.update_site_info() ;
                 $rootScope.$apply() ;
             });
         };
@@ -46,16 +46,18 @@ angular.module('MoneyNetwork')
         // callback from ZeroFrame. ZeroFrame.prototype.route
         // update Current ZeroNet ID user id
         self.zeronet_cert_changed = function () {
-            moneyNetworkService.update_site_info() ;
+            // moneyNetworkService.update_site_info() ;
         };
 
         // menu: cert title mouseover text
-        self.cert_title = selectCertTitle(ZeroFrame.site_info && ZeroFrame.site_info.cert_user_id) ;
+        self.cert_title = shortCertTitle(ZeroFrame.site_info && ZeroFrame.site_info.cert_user_id) ;
         self.update_cert_title = function () {
             var pgm = controller + '.update_cert_title: ' ;
-            self.cert_title = selectCertTitle(ZeroFrame.site_info && ZeroFrame.site_info.cert_user_id) ;
+            self.cert_title = shortCertTitle(ZeroFrame.site_info && ZeroFrame.site_info.cert_user_id) ;
             // console.log(pgm + 'cert_title = ' + self.cert_title) ;
         } ;
+
+        self.z_cache = moneyNetworkService.get_z_cache() ;
 
         // end NavCtrl
     }])

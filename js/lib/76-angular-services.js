@@ -4551,48 +4551,47 @@ angular.module('MoneyNetwork')
         // todo: cert not selected. disable ls updates = not logged in
 
         var site_info = {} ;
-        function update_site_info(new_site_info) {
-            var key, old_cert_user_id ;
-            old_cert_user_id = site_info.cert_user_id ;
-
-            if (new_site_info) {
-                for (key in site_info) delete site_info[key] ;
-                for (key in new_site_info) site_info[key] = new_site_info[key] ;
-                if (old_cert_user_id && !site_info.cert_user_id) client_logout() ;
-                return ;
-            }
-            if (!ZeroFrame) {
-                $timeout(update_site_info, 100) ;
-                return ;
-            }
-            ZeroFrame.cmd("siteInfo", {}, function (new_site_info) {
-                var key, old_cert_user_id ;
-                old_cert_user_id = site_info.cert_user_id ;
-                for (key in site_info) delete site_info[key] ;
-                for (key in new_site_info) site_info[key] = new_site_info[key] ;
-                if (old_cert_user_id && (!site_info.cert_user_id || (old_cert_user_id != site_info.cert_user_id))) client_logout() ;
-                if (old_cert_user_id) {
-                    if (!site_info.cert_user_id) client_logout() ;
-                    else if (site_info.cert_user_id != old_cert_user_id) {
-                        client_logout() ;
-                        // ls_load may or maybe not start a new client log in
-                        MoneyNetworkHelper.ls_load() ;
-                    }
-                }
-                else {
-                    // no old cert_user_id
-                    if (site_info.cert_user_id) {
-                        // ls_load may or maybe not start a new client log in
-                        MoneyNetworkHelper.ls_load() ;
-                    }
-                }
-                $rootScope.$apply() ;
-            }) ;
-        }
-        function get_site_info () {
-            if (Object.keys(site_info).length == 0) $timeout(update_site_info, 100) ;
-            return site_info ;
-        }
+        //function update_site_info(new_site_info) {
+        //    var pgm = service + '.update_site_info: ' ;
+        //    var key, old_cert_user_id ;
+        //    old_cert_user_id = site_info.cert_user_id ;
+        //
+        //    if (new_site_info) {
+        //        for (key in site_info) delete site_info[key] ;
+        //        for (key in new_site_info) site_info[key] = new_site_info[key] ;
+        //        if (old_cert_user_id && !site_info.cert_user_id) client_logout() ;
+        //        return ;
+        //    }
+        //    if (!ZeroFrame) {
+        //        $timeout(update_site_info, 100) ;
+        //        return ;
+        //    }
+        //    ZeroFrame.cmd("siteInfo", {}, function (new_site_info) {
+        //        var key, old_cert_user_id ;
+        //        old_cert_user_id = site_info.cert_user_id ;
+        //        for (key in site_info) delete site_info[key] ;
+        //        for (key in new_site_info) site_info[key] = new_site_info[key] ;
+        //        if (old_cert_user_id && (!site_info.cert_user_id || (old_cert_user_id != site_info.cert_user_id))) client_logout() ;
+        //        if (old_cert_user_id) {
+        //            if (!site_info.cert_user_id) client_logout() ;
+        //            else if (site_info.cert_user_id != old_cert_user_id) {
+        //                console.log(pgm + 'calling ls_load (1)') ;
+        //                client_logout() ;
+        //                // ls_load may or maybe not start a new client log in
+        //                MoneyNetworkHelper.ls_load() ;
+        //            }
+        //        }
+        //        else {
+        //            // no old cert_user_id
+        //            if (site_info.cert_user_id) {
+        //                // ls_load may or maybe not start a new client log in
+        //                console.log(pgm + 'calling ls_load (2)') ;
+        //                MoneyNetworkHelper.ls_load() ;
+        //            }
+        //        }
+        //        $rootScope.$apply() ;
+        //    }) ;
+        //}
 
         // wait for setSiteInfo events (new files)
         function event_file_done (hub, event, filename) {
@@ -7181,11 +7180,10 @@ angular.module('MoneyNetwork')
             get_session_info_key: moneyNetworkWService.get_session_info_key,
             is_monitoring_money_transaction: moneyNetworkWService.is_monitoring_money_transaction,
             monitor_money_transaction: moneyNetworkWService.monitor_money_transaction,
-            update_site_info:  update_site_info,
-            get_site_info: get_site_info,
             get_register: get_register,
             get_use_login: get_use_login,
-            use_login_changed: use_login_changed
+            use_login_changed: use_login_changed,
+            get_z_cache: moneyNetworkHubService.get_z_cache
         };
 
         // end MoneyNetworkService

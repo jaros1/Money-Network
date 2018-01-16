@@ -112,6 +112,7 @@ angular.module('MoneyNetwork')
         var pgm = 'messageReact: ' ;
         var no_reaction = { src: "public/images/react.png", title: "Add reaction", selected: true} ;
         var user_reactions = moneyNetworkService.get_user_reactions() ;
+        // console.log(pgm + 'user_reactions = ' + JSON.stringify(user_reactions)) ;
         var i, content_html ;
         content_html = '<table><tbody><tr>' ;
         for (i=0; i<user_reactions.length ; i++) {
@@ -120,6 +121,7 @@ angular.module('MoneyNetwork')
                 '</td>' ;
         } // for i
         content_html += '</tr></tbody></table>' ;
+        // console.log(pgm + 'content_html = ' + content_html) ;
 
         var user_setup = moneyNetworkService.get_user_setup() ;
         var emoji_folders = moneyNetworkService.get_emoji_folders() ;
@@ -539,10 +541,14 @@ angular.module('MoneyNetwork')
         // end contactGlyphiconTitle filter
     }])
 
-    .filter('contactPlaceholderText', [function () {
+    .filter('contactPlaceholderText', ['MoneyNetworkService', 'shortCertIdFilter', function (moneyNetworkService, shortCertId) {
         // return placeholder text for contact type. a warning when using public chat.
-        return function (contact) {
-            var bit_lng ;
+        return function (params) {
+            var contact, cert_user_id ;
+            contact = params[0] ;
+            cert_user_id = params[1] ;
+            if (!cert_user_id) return 'Cannot chat. Please click on select... in menu to select ZeroNet certificate' ;
+            if (!moneyNetworkService.get_user_id()) return 'Cannot chat. Please click on ' + shortCertId(cert_user_id) + ' in menu to log in' ;
             if (!contact || (contact.type == 'public')) return 'PUBLIC CHAT. Image drag&drop, markdown-it and markdown-it emojis light support' ;
             else return 'Private chat. Image drag&drop, markdown-it and markdown-it emojis light support' ;
         } ;
@@ -636,8 +642,7 @@ angular.module('MoneyNetwork')
         // inbox glyphicon title - mouse over text for glyphicon class for message type
         var user_id, my_jsencrypt_key, pubkey_lng_to_bits, bits, my_enc_text1 ;
         user_id = moneyNetworkService.get_user_id() ;
-        if (!user_id) {
-            // No localStorage available. Only seeing public chat
+        if (user_id) {
             my_jsencrypt_key = MoneyNetworkHelper.getItem('pubkey') ;
             pubkey_lng_to_bits = {"271": 1024, "450": 2048, "799": 4096, "1490": 8192} ;
             bits = pubkey_lng_to_bits[my_jsencrypt_key.length] ;
@@ -1198,7 +1203,7 @@ angular.module('MoneyNetwork')
     }])
 
     .filter('shortCertId', [ function () {
-        // short format for unix timestamp used in chat
+        // show short ZeroNet cert id
         return function (cert_user_id) {
             var index ;
             if (!cert_user_id) return 'select ...' ;
@@ -1206,21 +1211,39 @@ angular.module('MoneyNetwork')
             if (index == -1) return cert_user_id ;
             else return cert_user_id.substr(0,index);
         } ;
-        // end formatSearchTitle filter
+        // end shortCertId filter
     }])
 
-    .filter('selectCertTitle', [ '$location', function ($location) {
-        // mouseover title for cert select. todo: not working.
+    .filter('shortCertTitle', [ '$location', 'MoneyNetworkService', function ($location, moneyNetworkService) {
+        // mouseover title for cert select.
         return function (cert_user_id) {
-            var path ;
+            var path, user_id, prefix ;
             path = $location.path() ;
-            console.log('selectCertTitle: path = ' + path) ;
+            user_id = moneyNetworkService.get_user_id() ;
+            prefix = user_id ? 'Logged in. ' : 'Not logged in. ' ;
             if (!cert_user_id) return 'Select ZeroNet certificate' ;
-            else if (path == '/auth') return 'Change ZeroNet certificate' ;
-            else return 'Go to auth page' ;
+            else if (path == '/auth') return prefix + 'Change ZeroNet certificate' ;
+            else return prefix + 'Go to auth page' ;
         } ;
-        // end selectCertTitle
+        // end shortCertTitle
     }])
+
+    .filter('shortCertColor', [ function () {
+        // select cert link color
+        return function (params) {
+            var cert_user_id, user_id ;
+            cert_user_id = params[0] ;
+            user_id = params[1] ;
+            if (!cert_user_id) return {'color':'red'} ;
+            else if (!user_id) return {'color':'#FFDC00'} ;
+            else {
+                console.log('shortCertColor is green') ;
+                return { 'color': 'green'} ;
+            }
+        } ;
+        // end shortCertTitle
+    }])
+
 
     .filter('formatNotifications', [ function () {
         // short format for unix timestamp used in chat
@@ -1275,8 +1298,16 @@ angular.module('MoneyNetwork')
         // show my wallet transaction status for chat msg with money transaction(s)
         // one or more transactionids = one or more wallet transaction statuses
         return function (message) {
+            var pgm = 'myTransactionStatus: ' ;
             if (!message.message.message) return null ; // not a chat msg
-            if (moneyNetworkService.is_monitoring_money_transaction(message)) return message.message.message.this_money_transaction_status.join('. ') ;
+            try {
+                if (moneyNetworkService.is_monitoring_money_transaction(message)) return message.message.message.this_money_transaction_status.join('. ') ;
+            }
+            catch (e) {
+                console.log(pgm + 'this_money_transaction_status. error = ' + e.message) ;
+                console.log(pgm + 'message.message.message = ' + JSON.stringify(message.message.message)) ;
+                return '' ;
+            }
             if (!message.message.message.money_transactions) return null ;
             if (!message.message.message.money_transactions.length) return null ;
             moneyNetworkService.monitor_money_transaction(message) ;
@@ -1289,8 +1320,16 @@ angular.module('MoneyNetwork')
         // show contact wallet transaction status for chat msg with money transaction(s)
         // one or more transactionids = one or more wallet transaction statuses
         return function (message) {
+            var pgm = 'contactTransactionStatus: ' ;
             if (!message.message.message) return null ; // not a chat msg
-            if (moneyNetworkService.is_monitoring_money_transaction(message)) return message.message.message.other_money_transaction_status.join('. ') ;
+            try {
+                if (moneyNetworkService.is_monitoring_money_transaction(message)) return message.message.message.other_money_transaction_status.join('. ') ;
+            }
+            catch (e) {
+                console.log(pgm + 'other_money_transaction_status. error = ' + e.message) ;
+                console.log(pgm + 'message.message.message = ' + JSON.stringify(message.message.message)) ;
+                return '' ;
+            }
             if (!message.message.message.money_transactions) return null ;
             if (!message.message.message.money_transactions.length) return null ;
             moneyNetworkService.monitor_money_transaction(message) ;

@@ -1657,7 +1657,7 @@ angular.module('MoneyNetwork')
 
         // showing chat msg with money transaction in chat
         // monitor money transaction status for transactionid(s) for this message
-        // one or more money_transactionid(s) for each massage'
+        // one or more money_transactionid(s) for each message'
         // one money transaction status for each wallet (my wallet and contact wallet)
         // fileGet operations in wallet session. no optional file download in MN sesion
         // just display latest wallet transaction status for my and contact wallet in UI

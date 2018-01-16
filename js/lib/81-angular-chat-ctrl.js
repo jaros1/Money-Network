@@ -1,9 +1,11 @@
 angular.module('MoneyNetwork')
     
     .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location', 'safeApply',
-        'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', 'shortChatTimeFilter', '$window', 'dateFilter', '$sce', '$sanitize',
+        'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', 'shortChatTimeFilter', '$window', 'dateFilter', '$sce',
+        'shortCertIdFilter', '$sanitize',
         function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location, safeApply,
-                  chatEditTextAreaId, chatEditImgId, formatChatMessage, shortChatTime, $window, date, $sce, $sanitize)
+                  chatEditTextAreaId, chatEditImgId, formatChatMessage, shortChatTime, $window, date, $sce,
+                  shortCertId, $sanitize)
         {
             
             var self = this;
@@ -16,6 +18,8 @@ angular.module('MoneyNetwork')
             $window.scrollTo(0, 0);
 
             function debug (key, text) { MoneyNetworkHelper.debug(key, text) }
+
+            self.z = ZeroFrame ;
 
             // get user setup.
             self.setup = moneyNetworkService.get_user_setup() ;
@@ -504,6 +508,8 @@ angular.module('MoneyNetwork')
                 // start up hints - user is not chatting
                 if (chat_hint_account_page()) return 'No contacts were found. Please go to "Account" page and enter/update search tags.' ;
                 if (chat_hint_network_page()) return 'Click on "Network page" or enable "Two panel chat" to see contacts' ;
+                if (!ZeroFrame.site_info && !ZeroFrame.site_info.cert_user_id) return 'No ZeroNet certificate. Select certificate to chat' ;
+                if (!moneyNetworkService.get_user_id()) return 'Not logged in. Cannot chat. Click ' +  shortCertId(ZeroFrame.site_info.cert_user_id) + ' in menu to log in' ;
                 if (self.chat_hint_start_chat()) return 'Click on an avatar to start PRIVATE CHAT';
 
                 // user is chatting - concatenate hints
@@ -870,6 +876,11 @@ angular.module('MoneyNetwork')
             function check_public_chat () {
                 var pgm = controller + '.check_public_chat: ' ;
                 var no_msg, i, end_of_page ;
+                if (!ZeroFrame.site_info) {
+                    // wait for ZeroFrame to finish loading
+                    $timeout(check_public_chat, 100) ;
+                    return ;
+                }
                 if (!self.setup.public_chat) return ;
                 if (startup_public_chat_check && (self.setup.chat_sort != 'Last message')) {
                     // warning. public chat selected and sort is NOT Last message. Any public chat messages will be in bottom of page
@@ -1249,6 +1260,12 @@ angular.module('MoneyNetwork')
                 // disable form elements while checking and sending message
                 self.new_chat_msg_disabled = true ;
 
+                if (!ZeroFrame.site_info || !ZeroFrame.site_info.cert_user_id || !moneyNetworkService.get_user_id()) {
+                    // cannot chat
+                    self.new_chat_msg_disabled = false ;
+                    return ;
+                }
+
                 // check image attachment
                 if (self.new_chat_src && !moneyNetworkService.get_image_ext_from_base64uri(self.new_chat_src)) {
                     ZeroFrame.cmd(
@@ -1314,19 +1331,6 @@ angular.module('MoneyNetwork')
                         }
                     }
                     if (!money_transactions) self.show_money = false ;
-                }
-
-                if (self.show_money) {
-                    // non empty money transaction(s)
-                    console.log(pgm + 'todo: 1) ping with permissions response? Or permissions check after wallet ping');
-                    console.log(pgm + 'todo: 2) make money transactions table responsive? Not nice on small devices');
-                    console.log(pgm + 'todo: 3) receive money transaction. receiver must approve, reject or edit (approve, reject, reverse transaction and send). Maybe as a nested comment?');
-                    console.log(pgm + 'todo: 4) allow edit money transaction. very nice when communication about a deal. Maybe not OK in a payment context') ;
-                    console.log(pgm + 'todo: 5) basic money transaction status in MN chat (not approved, approved, rejected, processing, failed, completed)') ;
-                    console.log(pgm + 'todo: 6) money transaction status from W2W communication for an approved but not yet processed money transaction');
-                    console.log(pgm + 'todo: 7) money transaction status from external API. BitCoins: block deep of money transaction');
-                    console.log(pgm + 'todo: 6) allow cancel after approval and before money transaction has been completed by wallets?');
-                    console.log(pgm + 'todo: 7) how to save completed money transaction result? best as optional files to prevent ');
                 }
 
                 // unique_texts hash. money transactions only. used in step_2_ping_wallets and step_3_check_transactions
@@ -2234,6 +2238,11 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.new_chat_add_money: ' ;
                 var contact, currencies ;
 
+                if (!ZeroFrame.site_info.cert_user_id || !moneyNetworkService.get_user_id()) {
+                    ZeroFrame.cmd("wrapperNotification", ['info', 'Cannot chat. Cannot send a money transaction', 5000]) ;
+                    return ;
+                }
+
                 // money transactions are only allowed from private chat.
                 // check group chat? find/create pseudo contact for this chat group.
                 self.editing_grp_chat = false ;
@@ -2251,9 +2260,6 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("wrapperNotification", ['info', 'Money transactions are only available in private chat<br>Click on an avatar to start a private chat', 5000]) ;
                     return ;
                 }
-                console.log(pgm + 'todo: Send, receive or donate money. Pay or receive payment. Not yet implemented') ;
-
-                console.log(pgm + 'todo: currencies. must have a distributed currency list. Symbol 2-5 characters, name and description');
 
                 // get list of currencies from connected wallets
                 moneyNetworkService.get_currencies({}, function (currencies, refresh_angular_ui) {

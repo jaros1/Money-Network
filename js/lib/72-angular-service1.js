@@ -2968,14 +2968,16 @@ angular.module('MoneyNetwork')
             get_like_json(function (like, like_index, empty) {
                 var pgm = service + '.add_message: ' ;
                 var js_messages_row, i, unicode, index, title, reactions_index, reaction_info, unique_id, auth_address,
-                    like_index_p, k, parent, js_parent_messages_row ;
+                    like_index_p, k, parent, js_parent_messages_row, user_reactions ;
                 if (!contact && !z_cache.user_info.block_public) contact = get_public_contact(true) ;
                 if (!contact.messages) contact.messages = [] ;
                 if (!load_contacts) contact.messages.push(message) ;
+                user_reactions = get_user_reactions() ;
+                // console.log(pgm + 'user_reactions = ', user_reactions) ;
                 js_messages_row = {
                     contact: contact,
                     message: message,
-                    reactions: JSON.parse(JSON.stringify(get_user_reactions()))
+                    reactions: JSON.parse(JSON.stringify(user_reactions))
                 } ;
                 if (message.z_filename) {
                     // public chat. not saved in localStorage.

@@ -748,6 +748,7 @@ var MoneyNetworkAPILib = (function () {
     function wait_for_file(response_filename, options) {
         var pgm = module + '.wait_for_file: ';
         var pgm2, error, session_filename, timeout_at, cb_fileget, cb_decrypt, countdown_cb ;
+        if (!options) options = {} ;
         pgm2 = get_group_debug_seq_pgm(pgm, options.group_debug_seq) ;
         error = function (error) {
             console.log(pgm2 + error) ;
@@ -4129,7 +4130,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (options, cb) {
         // 2: write content.json
         inner_path = self.this_user_path + 'content.json';
         json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
-        MoneyNetworkAPILib.z_file_write(pgm, inner_path, btoa(json_raw), function(res) {
+        MoneyNetworkAPILib.z_file_write(pgm, inner_path, btoa(json_raw), {group_debug_seq: group_debug_seq}, function(res) {
             var pgm = self.module + '.add_optional_files_support fileWrite callback 2: ';
             var debug_seq2 ;
             self.log(pgm, 'res = ' + JSON.stringify(res), group_debug_seq);

@@ -33,13 +33,25 @@ angular.module('MoneyNetwork')
 
         function get_standard_reactions () {
             var pgm = service + '.get_standard_reactions: ' ;
+            var emoji_folder, i ;
+            // console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions)) ;
+            emoji_folder = get_emoji_folder() ;
+            for (i=0 ; i<standard_reactions.length ; i++) {
+                if (!standard_reactions[i].src) standard_reactions[i].src = emoji_folder + '/' + standard_reactions[i].unicode + '.png' ;
+            }
             // console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions)) ;
             return standard_reactions ;
         }
         function get_user_reactions () {
             var pgm = service + '.get_user_reactions: ' ;
-            if (!z_cache.user_setup.reactions) return standard_reactions ;
-            // console.log(pgm + 'user_setup.reactions = ' + JSON.stringify(user_setup.reactions)) ;
+            if (!z_cache.user_setup || !z_cache.user_setup.reactions) return get_standard_reactions() ;
+            var emoji_folder, i ;
+            // console.log(pgm + 'user_setup.reactions = ' + JSON.stringify(z_cache.user_setup.reactions)) ;
+            emoji_folder = get_emoji_folder() ;
+            for (i=0 ; i<z_cache.user_setup.reactions.length ; i++) {
+                if (!z_cache.user_setup.reactions[i].src) z_cache.user_setup.reactions[i].src = emoji_folder + '/' + z_cache.user_setup.reactions[i].unicode + '.png' ;
+            }
+            // console.log(pgm + 'user_reactions = ' + JSON.stringify(z_cache.user_setup.reactions)) ;
             return z_cache.user_setup.reactions ;
         } // get_user_reactions
 
@@ -56,7 +68,8 @@ angular.module('MoneyNetwork')
             return emoji_folders ;
         }
         function get_emoji_folder() {
-            return z_cache.user_setup.emoji_folder || emoji_folders[0] ;
+            if (!z_cache.user_setup) return emoji_folders[0] ;
+            else return z_cache.user_setup.emoji_folder || emoji_folders[0] ;
         }
 
         // fuld emoji list - from content.files_optional
@@ -107,7 +120,7 @@ angular.module('MoneyNetwork')
             for (i=0 ; i<standard_reactions.length ; i++) {
                 standard_reactions[i].src = emoji_folder + standard_reactions[i].unicode + '.png' ;
             }
-            // console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions));
+            console.log(pgm + 'standard_reactions = ' + JSON.stringify(standard_reactions));
             if (z_cache.user_setup.reactions) {
                 for (i=0 ; i<z_cache.user_setup.reactions.length ; i++) {
                     z_cache.user_setup.reactions[i].src = emoji_folder + z_cache.user_setup.reactions[i].unicode + '.png' ;

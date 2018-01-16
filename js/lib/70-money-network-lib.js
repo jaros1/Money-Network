@@ -95,11 +95,13 @@ var MoneyNetworkHelper = (function () {
         return ls_use_private_data ;
     }
     function ls_set_private_data (private_data) {
+        var pgm = module + '.ls_set_private_data: ' ;
         if (ls_use_private_data && private_data) return ;
         if (!ls_use_private_data && !private_data) return ;
         ls_use_private_data = private_data ;
         if (ls_use_private_data) {
             // private data enabled. load localStorage data with ZeroNet API (again)
+            console.log(pgm + 'calling ls_load') ;
             ls_load() ;
         }
         else {

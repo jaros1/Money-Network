@@ -246,8 +246,9 @@ angular.module('MoneyNetwork')
             else if (self.register.yn == 'G') self.keysize = "1024" ;
         };
 
-        // check site info and get current cert_user_id
-        self.site_info = moneyNetworkService.get_site_info() ;
+        // get site info and current cert_user_id
+        // self.site_info = moneyNetworkService.get_site_info() ;
+        self.z = ZeroFrame ;
 
         //// watch changes in site_info & cert_user_id
         //function zero_frame_events () {
@@ -263,7 +264,7 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.select_zeronet_cert: ' ;
             console.log(pgm + 'click');
             ZeroFrame.cmd("certSelect", [["moneynetwork.bit", "nanasi", "zeroid.bit", "kaffie.bit", "moneynetwork"]], function() {
-                moneyNetworkService.update_site_info() ;
+                // moneyNetworkService.update_site_info() ;
             });
         };
 
