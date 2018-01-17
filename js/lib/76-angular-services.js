@@ -6621,6 +6621,10 @@ angular.module('MoneyNetwork')
         function contact_add (contact) {
             var pgm = service + '.contact_add: ' ;
             // console.log(pgm + 'click');
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Not logged in. Ignoring add contact request') ;
+                return ;
+            }
             // move contact to unverified contacts
             if (!contact.pubkey) {
                 // cleanup user or temp user from a proxy server
@@ -6654,6 +6658,10 @@ angular.module('MoneyNetwork')
         function contact_remove (contact) {
             var pgm = service + '.contact_remove: ' ;
             var zeronet_updated ;
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Not logged in. Ignoring remove contact request') ;
+                return ;
+            }
             contact.type = 'new' ;
             if (!contact.pubkey) {
                 // deleted contact? maybe cleanup or temporary user from a proxy server
@@ -6677,6 +6685,10 @@ angular.module('MoneyNetwork')
         function contact_ignore (contact) {
             var pgm = service + '.contact_ignore: ' ;
             var i, contact2 ;
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Not logged in. Ignoring ignore contact request') ;
+                return ;
+            }
             for (i=0 ; i<ls_contacts.length ; i++) {
                 contact2 = ls_contacts[i] ;
                 if ((contact2.type == 'new')&&
@@ -6687,6 +6699,11 @@ angular.module('MoneyNetwork')
         } // contact_ignore
 
         function contact_unplonk (contact) {
+            var pgm = service + '.contact_unplonk: ' ;
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Not logged in. Ignoring unplonk contact request') ;
+                return ;
+            }
             contact.type = 'new' ;
             ls_save_contacts(false);
         } // contact_unplonk
@@ -6694,6 +6711,10 @@ angular.module('MoneyNetwork')
         function contact_verify (contact) {
             var pgm = service + '.contact_verify: ' ;
             // send verify message
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Not logged in. Ignoring verify contact request') ;
+                return ;
+            }
             if (!contact.pubkey) {
                 // cleanup user or temp user from a proxy server
                 console.log(pgm + 'Not allowed. No pubkey was found. Maybe a deleted contact') ;
@@ -6726,7 +6747,12 @@ angular.module('MoneyNetwork')
 
         // delete contact. note: 2 steps. first messages, then contact
         function contact_delete (contact, callback) {
+            var pgm = service + '.contact_delete: ' ;
             var no_msg, i, message, update_zeronet, now, index, j, contact_type, js_message_row ;
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Not logged in. Ignoring delete contact request') ;
+                return ;
+            }
             contact_type = contact.type == 'group' ? 'group chat' : 'contact' ;
             no_msg = 0 ;
             for (i=0 ; i<contact.messages.length ; i++) {
@@ -6772,6 +6798,10 @@ angular.module('MoneyNetwork')
 
         function contact_mute_add (contact) {
             var pgm = service + '.contact_mute_add: ';
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Not logged in. Ignoring mute contact request') ;
+                return ;
+            }
             ZeroFrame.cmd("muteAdd", [contact.auth_address, contact.cert_user_id,'Spammer'], function (res) {
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                 if (res == 'ok') {
@@ -6782,6 +6812,10 @@ angular.module('MoneyNetwork')
         } // contact_mute_add
         function contact_mute_remove (contact) {
             var pgm = service + '.contact_mute_remove: ';
+            if (!z_cache.user_id) {
+                console.log(pgm + 'Not logged in. Ignoring unmute contact request') ;
+                return ;
+            }
             ZeroFrame.cmd("muteRemove", [contact.auth_address], function (res) {
                 // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                 if (res == 'ok') {

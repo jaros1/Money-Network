@@ -5,8 +5,13 @@ angular.module('MoneyNetwork')
     {
         var self = this;
         var controller = 'NetworkCtrl';
-        if (!MoneyNetworkHelper.getItem('userid')) return ; // not logged in - skip initialization of controller
         console.log(controller + ' loaded');
+
+        self.is_logged_in = function () {
+            if (!ZeroFrame.site_info) return false ;
+            if (!ZeroFrame.site_info.cert_user_id) return false ;
+            return MoneyNetworkHelper.getUserId();
+        };
 
         // get contacts. two different types of contacts:
         // a) contacts stored in localStorage
@@ -66,6 +71,16 @@ angular.module('MoneyNetwork')
 
         // get user setup. contact_filters and contact_sort are used in this controller
         self.setup = moneyNetworkService.get_user_setup() ;
+        if (!self.setup.contact_filters) {
+            // not logged in. Show all contacts
+            self.setup.contact_filters = {
+                all: 'green',
+                new: 'green',
+                unverified: 'green',
+                verified: 'green',
+                ignore: 'green'
+            } ;
+        }
 
         // toggle contact filter. red <=> green
         self.toggle_filter = function (filter) {
@@ -98,6 +113,7 @@ angular.module('MoneyNetwork')
         // contacts sort options - typeahead auto complete functionality
         // todo: refactor - also used in chat controller
         self.contact_sort_options = moneyNetworkService.get_contact_sort_options() ;
+        if (!self.setup.contact_sort) self.setup.contact_sort = self.contact_sort_options[0] ; // not logged in
         self.contact_sort_title = moneyNetworkService.get_contact_sort_title() ;
         self.contact_sort_changed = function () {
             var pgm = controller + '.sort_changed: ' ;

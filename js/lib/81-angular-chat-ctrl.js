@@ -21,6 +21,12 @@ angular.module('MoneyNetwork')
 
             self.z = ZeroFrame ;
 
+            self.is_logged_in = function () {
+                if (!ZeroFrame.site_info) return false ;
+                if (!ZeroFrame.site_info.cert_user_id) return false ;
+                return MoneyNetworkHelper.getUserId();
+            };
+
             // get user setup.
             self.setup = moneyNetworkService.get_user_setup() ;
             if (!self.setup.contact_filters) {

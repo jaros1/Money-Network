@@ -61,17 +61,17 @@ angular.module('MoneyNetwork')
             .when('/money', {
                 templateUrl: 'money.html',
                 controller: 'MoneyCtrl as m',
-                resolve: {check_auth: set_z_path} // todo: enable log in authorization
+                resolve: {check_auth: set_z_path}
             })
             .when('/network', {
                 templateUrl: 'network.html',
                 controller: 'NetworkCtrl as c',
-                resolve: {check_auth: check_auth_resolve}
+                resolve: {check_auth: set_z_path}
             })
             .when('/chat/:unique_id', {
                 templateUrl: 'chat.html',
                 controller: 'ChatCtrl as c',
-                resolve: {check_auth: check_auth_resolve}
+                resolve: {check_auth: set_z_path}
             })
             .when('/chat', {
                 templateUrl: 'chat.html',
