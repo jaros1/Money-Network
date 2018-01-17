@@ -6994,7 +6994,7 @@ angular.module('MoneyNetwork')
         }
 
         // startup or after changed ZeroNet cert. Set use_login
-        var use_login = { bol: false } ;
+        var use_login = { bol: true } ;
         function set_use_login() {
             var pgm = service + '.set_use_login: ' ;
             var login ;
@@ -7005,7 +7005,7 @@ angular.module('MoneyNetwork')
             }
             login = MoneyNetworkHelper.getItem('login') ;
             if (!login) {
-                use_login.bol = false ;
+                use_login.bol = true ;
                 MoneyNetworkHelper.setItem('login', JSON.stringify(use_login.bol)) ;
                 MoneyNetworkHelper.ls_save() ;
             }
@@ -7015,7 +7015,7 @@ angular.module('MoneyNetwork')
                 }
                 catch (e) {
                     console.log(pgm + 'error. login was invalid. error = ' + e.message) ;
-                    use_login.bol = false ;
+                    use_login.bol = true ;
                     MoneyNetworkHelper.setItem('login', JSON.stringify(use_login.bol)) ;
                     MoneyNetworkHelper.ls_save() ;
                 }

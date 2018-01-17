@@ -98,6 +98,17 @@ angular.module('MoneyNetwork')
             if (!self.confirm_device_password) return true;
             return (self.device_password != self.confirm_device_password);
         };
+
+        function get_no_passwords() {
+            var passwords ;
+            passwords = MoneyNetworkHelper.getItem('passwords') ;
+            if (!passwords) return 0 ;
+            try { passwords = JSON.parse(passwords)}
+            catch (e) { return 0 }
+            if (!Array.isArray(passwords)) return 0 ;
+            else return passwords.length ;
+        }
+
         self.login_or_register = function () {
             var pgm = controller + '.login_or_register: ';
             var create_new_account, create_guest_account, verb, msg ;
@@ -136,17 +147,20 @@ angular.module('MoneyNetwork')
             // callback. warning if user has selected a long key
             var login_or_register_cb = function () {
                 var pgm = controller + '.login_or_register_cb: ' ;
-                var register, redirect, setup, a_path, z_path, z_title, verb ;
+                var register, redirect, setup, a_path, z_path, z_title, old_no_accounts ;
                 if (create_guest_account) {
                     self.device_password = MoneyNetworkHelper.generate_random_password(10) ;
                     MoneyNetworkHelper.delete_guest_account() ;
                 }
+                old_no_accounts = get_no_passwords() ;
 
                 // login or register
                 if (moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize))) {
                     // log in OK - clear login form and redirect
                     register = self.register.yn ;
-                    ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+                    if (get_no_passwords() == old_no_accounts) ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+                    else ZeroFrame.cmd("wrapperNotification", ['done', 'Log in with new account OK', 3000]);
+
                     self.device_password = '';
                     self.confirm_device_password = '';
                     self.register.yn = 'N';
