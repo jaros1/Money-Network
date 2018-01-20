@@ -137,11 +137,12 @@ angular.module('MoneyNetwork')
             user_contents_max_size = null
         }
         function load_user_contents_max_size (lock_pgm) {
+            var pgm = service + '.load_user_contents_max_size: ' ;
             console.log(lock_pgm + 'calling get_my_user_hub');
-            get_my_user_hub(function (hub) {
+            get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = service + ".load_user_contents_max_size get_my_user_hub callback 1: " ;
                 var inner_path, debug_seq ;
-                inner_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/content.json' ;
+                inner_path = 'merged-' + get_merged_type() + '/' + my_user_data_hub + '/data/users/content.json' ;
                 z_file_get(pgm, {inner_path: inner_path, required: false}, function (data) {
                     var pgm = service + ".load_user_contents_max_size z_file_get callback 2: " ;
                     if (!data) {
@@ -521,18 +522,18 @@ angular.module('MoneyNetwork')
             }
             console.log(pgm + 'calling get_my_user_hub');
 
-            get_my_user_hub(function(hub) {
+            get_my_user_hub(function(my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = service + '.load_avatar get_my_user_hub callback 1: ';
                 var user_path, inner_path ;
 
                 if (z_cache.user_setup.avatar && (['jpg','png'].indexOf(z_cache.user_setup.avatar) != -1)) {
                     // uploaded avatar found in user setup
-                    avatar.src = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/avatar.' + z_cache.user_setup.avatar ;
+                    avatar.src = 'merged-' + get_merged_type() + '/' + my_user_data_hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/avatar.' + z_cache.user_setup.avatar ;
                     // console.log(pgm + 'from user setup. temporary setting user avatar to ' + avatar.src);
                 }
 
                 // 1) get content.json - check if user already has uploaded an avatar
-                user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
+                user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
                 inner_path = user_path + "/content.json"
                 z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
                     var pgm = service + '.load_avatar z_file_get callback 2: ';
@@ -662,10 +663,10 @@ angular.module('MoneyNetwork')
 
             // find current user data hub
             console.log(pgm + 'calling get_my_user_hub');
-            get_my_user_hub(function (hub, random_other_hub) {
+            get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = service + '.z_update_1_data_json get_my_user_hub callback 1: ';
                 if (detected_client_log_out(pgm, old_userid)) return ;
-                console.log(pgm + 'hub = ' + hub + ', random_other_hub = ' + random_other_hub) ;
+                console.log(pgm + 'hub = ' + my_user_data_hub + ', other_user_hub = ' + other_user_hub) ;
 
                 // cache like.json file. Check for old public reactions
                 get_like_json(function (like, like_index, empty) {
@@ -677,7 +678,7 @@ angular.module('MoneyNetwork')
                     mn_query_1 =
                         "select files.filename, files.size " +
                         "from json, files " +
-                        "where json.directory = '" + hub + "/" + ZeroFrame.site_info.auth_address + "' " +
+                        "where json.directory = '" + my_user_data_hub + "/" + ZeroFrame.site_info.auth_address + "' " +
                         "and json.file_name = 'content.json' " +
                         "and files.json_id = json.json_id" ;
                     debug('select', pgm + 'mn query 1 = ' + mn_query_1);
@@ -710,8 +711,11 @@ angular.module('MoneyNetwork')
                             local_storage_updated = false ; // write localStorage?
                             data_str = JSON.stringify(data) ; // write data.json?
 
-                            // for list of user hubs
-                            if (!data.hub || (data.hub == "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk")) data.hub = random_other_hub ;
+                            // for list of user hubs (add all hubs function)
+                            if (!data.hub || (data.hub == "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk")) {
+                                data.hub = other_user_hub ;
+                                data.hub_title = other_user_hub_title ;
+                            }
                             console.log(pgm + 'data.hub = ' + data.hub) ;
 
                             // check avatar. Full path in avatar.src. short path in data.users array in ZeroNet
@@ -1363,7 +1367,7 @@ angular.module('MoneyNetwork')
             if (detected_client_log_out(pgm, old_userid)) return ;
             console.log(pgm + 'calling get_my_user_hub');
 
-            get_my_user_hub(function (hub) {
+            get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
 
                 var i, contact, encrypt, j, message_with_envelope, message, local_msg_seq, sent_at, key, password,
                     receiver_sha256, k, sender_sha256, image, encrypted_message_str, seq, js_messages_row, resend,
@@ -1371,7 +1375,7 @@ angular.module('MoneyNetwork')
                     last_online, debug_seq ;
                 if (detected_client_log_out(pgm, old_userid)) return ;
 
-                user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
+                user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
 
                 for (i=0 ; i<ls_contacts.length ; i++) {
                     contact = ls_contacts[i] ;
@@ -1698,7 +1702,7 @@ angular.module('MoneyNetwork')
             }
             console.log(pgm + 'calling get_my_user_hub');
 
-            get_my_user_hub(function (hub) {
+            get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = service + '.z_update_2b_data_json_encrypt get_my_user_hub callback 1: ';
                 var debug_seq1 ;
                 if (detected_client_log_out(pgm, old_userid)) return ;
@@ -1786,7 +1790,7 @@ angular.module('MoneyNetwork')
                                     iv = image_res[1] ;
                                     encrypted_image_str = image_res[2];
                                     debug('outbox && encrypted', pgm + 'iv = ' + iv + ', encrypted_image_str = ' + encrypted_image_str);
-                                    user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
+                                    user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
                                     image_path = user_path + '/' + message_with_envelope.sent_at + '-' + z_cache.user_seq + '-image.json';
                                     // optional compress encrypted image
                                     if (z_cache.user_setup.test && z_cache.user_setup.test.image_compress_disabled) {
@@ -2202,11 +2206,11 @@ angular.module('MoneyNetwork')
 
             var pgm = service + '.cleanup_my_image_json: ' ;
 
-            get_my_user_hub (function (hub) {
+            get_my_user_hub (function (my_user_data_hub, other_user_hub, other_user_hub_title) {
 
                 var image_path, mn_query_2, debug_seq ;
                 // overwrite with empty json as a delete marked optional file.
-                image_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + '/' + sent_at + '-image.json' ;
+                image_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address + '/' + sent_at + '-image.json' ;
                 mn_query_2 =
                     "select json.directory, files_optional.filename, files_optional.size " +
                     "from files_optional, json " +
@@ -2268,7 +2272,7 @@ angular.module('MoneyNetwork')
         function z_update_5_public_chat (publish) {
             var pgm = service + '.z_update_5_public_chat: ' ;
 
-            get_my_user_hub (function (hub) {
+            get_my_user_hub (function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = service + '.z_update_5_public_chat get_my_user_hub callback 1: ' ;
 
                 var contact, user_path, now, i, message_with_envelope, file_path, j, z_filename, first_timestamp, last_timestamp,
@@ -2276,7 +2280,7 @@ angular.module('MoneyNetwork')
                     user_seq, cache_status, debug_seq ;
 
                 contact = get_public_contact(false) ;
-                user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 now = new Date().getTime() ;
                 user_seq = z_cache.user_seq ;
 

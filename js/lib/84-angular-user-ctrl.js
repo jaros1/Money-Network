@@ -377,10 +377,10 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.delete_user2 wrapperConfirm callback 1: ' ;
                 if (!confirm) return ;
 
-                moneyNetworkService.get_my_user_hub(function (hub) {
+                moneyNetworkService.get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                     var user_path ;
 
-                    user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                    user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                     var my_auth_address = ZeroFrame.site_info.auth_address ;
 
                     // create callbacks for cleanup operation
@@ -663,10 +663,10 @@ angular.module('MoneyNetwork')
             for (i=0 ; i<passwords.length ; i++) if (passwords[i]) no_users++ ;
             self.export_info.ls = no_users + ' account' + (no_users > 1 ? 's' : '') + ', ' + ls_size + ' bytes' ;
             // zeroNet info
-            moneyNetworkService.get_my_user_hub(function (hub) {
+            moneyNetworkService.get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = controller + ' get_my_user_hub callback 1: ' ;
                 var inner_path ;
-                user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 inner_path = user_path + '/content.json' ;
                 z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
                     var pgm = controller + ' z_file_get callback 2: ' ;
@@ -736,9 +736,9 @@ angular.module('MoneyNetwork')
             // 2 - read content.json - get list of files and files_optional
             // 3 - loop for each file and add to data
             // 4-6 - add localStorage, encrypt and export
-            moneyNetworkService.get_my_user_hub(function (hub) {
+            moneyNetworkService.get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
 
-                user_path = "merged-" + get_merged_type() + "/" + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
 
                 // callbacks:
                 step_6_export = function () {
@@ -1016,8 +1016,8 @@ angular.module('MoneyNetwork')
             }; // step_5_write_z_file
 
             step_4_get_user_path = function (data) {
-                moneyNetworkService.get_my_user_hub(function (hub, random_hub) {
-                    user_path = 'merged-' + MoneyNetworkAPILib.get_merged_type() + '/' + hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                moneyNetworkService.get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
+                    user_path = 'merged-' + MoneyNetworkAPILib.get_merged_type() + '/' + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                     step_5_write_z_file(data) ;
                 }) ;
             } ; // step_4_get_user_path

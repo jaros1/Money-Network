@@ -1391,7 +1391,8 @@ var MoneyNetworkAPILib = (function () {
                     },
                     "api_url": {"type": 'string'},
                     "wallet_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
-                    "hub": {"type": 'string'},
+                    "hub": {"type": 'string', "description": 'Random other wallet data hub. For list of hubs, add all hubs etc'},
+                    "hub_title": {"type": 'string'},
                     "json_schemas": {
                         "type": 'object',
                         "description": 'Extra json schema definitions used in wallet to wallet communication. Used in compatibility check between different wallet sites (different wallet sites supporting identical currencies)'

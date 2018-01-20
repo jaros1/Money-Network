@@ -2141,6 +2141,29 @@
 
                 </span>
             </p>
+            <br>
+
+            <p>
+                Add hubs. Get content from more MoneyNetwork hubs and help distribute MoneyNetwork content.
+                User Data Hub: user data (user info and chat) used by MoneyNetwork.
+                Wallet Data Hub: wallet data (wallet info and money transactions) used by MoneyNetwork wallets.<br>
+                Use checkbox to add/remove hubs. Use url to see info about hub (will also add site).
+                <div style="width: 100%">
+                    <div ng-repeat="h in a.all_hubs|orderBy:h.hub_title" style="float: left">
+                        <input type="checkbox" ng-model="h.hub_added" ng-change="a.add_remove_hub(h)" ng-disabled="h.disabled">
+                        <a href="" ng-click="a.open_hub_url(h)">
+                            <span ng-bind="h.hub_title || h.hub"></span>
+                            <span ng-show="h.hasOwnProperty('no_users')">
+                                - <span ng-bind="h.no_users"></span> users
+                            </span>
+                            <span ng-show="h.hasOwnProperty('peers')">
+                                - <span ng-bind="h.peers"></span> peers
+                            </span>
+                        </a>
+                        &nbsp;&nbsp;&nbsp;
+                    </div>
+                </div>
+            </p>
 
         </div>
 

@@ -8,7 +8,7 @@
         { "node": "search", "table": "search" },
         { "node": "users",  "table": "users" },
         { "node": "msg",    "table": "messages" } ],
-      "to_keyvalue": [ "hub" ]
+      "to_keyvalue": [ "hub", "hub_title" ]
     },
     ".+/data/users/.+/content.json": {
       "to_keyvalue": [ "cert_user_id", "modified", "optional" ],
@@ -31,7 +31,7 @@
       "to_table": [
         { "node": "currencies", "table": "currencies"}
       ],
-      "to_keyvalue": [ "wallet_address", "wallet_title", "wallet_description", "wallet_sha256" ]
+      "to_keyvalue": [ "wallet_address", "wallet_title", "wallet_description", "wallet_sha256", "hub" ]
     }
   },
   "tables": {

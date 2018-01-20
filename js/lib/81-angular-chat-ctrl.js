@@ -512,9 +512,10 @@ angular.module('MoneyNetwork')
             } ;
             self.chat_hint = function () {
                 // start up hints - user is not chatting
+                if (!ZeroFrame.site_info) return 'Please wait. ZeroFrame is loading' ;
                 if (chat_hint_account_page()) return 'No contacts were found. Please go to "Account" page and enter/update search tags.' ;
                 if (chat_hint_network_page()) return 'Click on "Network page" or enable "Two panel chat" to see contacts' ;
-                if (!ZeroFrame.site_info && !ZeroFrame.site_info.cert_user_id) return 'No ZeroNet certificate. Select certificate to chat' ;
+                if (!ZeroFrame.site_info.cert_user_id) return 'No ZeroNet certificate. Select certificate to chat' ;
                 if (!moneyNetworkService.get_user_id()) return 'Not logged in. Cannot chat. Click ' +  shortCertId(ZeroFrame.site_info.cert_user_id) + ' in menu to log in' ;
                 if (self.chat_hint_start_chat()) return 'Click on an avatar to start PRIVATE CHAT';
 

@@ -278,7 +278,7 @@ angular.module('MoneyNetwork')
                 step_3_find_old_outgoing_files = function(){
                     var pgm = service + '.create_sessions.step_3_find_old_outgoing_files: ';
                     console.log(pgm + 'calling get_my_user_hub');
-                    get_my_user_hub(function (hub) {
+                    get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                         var pgm = service + '.create_sessions.step_3_find_old_outgoing_files get_my_user_hub callback 1: ';
                         var mn_query_20, debug_seq;
 
@@ -286,7 +286,7 @@ angular.module('MoneyNetwork')
                         // todo: optional files and actual files on file system can be out of sync. Should delete files_optional + sign to be sure that optional files and file system matches
                         mn_query_20 =
                             "select files_optional.filename from json, files_optional " +
-                            "where directory like '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' " +
+                            "where directory like '" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' " +
                             "and file_name = 'content.json' " +
                             "and files_optional.json_id = json.json_id";
                         console.log(pgm + 'mn query 20 = ' + mn_query_20);
@@ -406,7 +406,7 @@ angular.module('MoneyNetwork')
                                             MoneyNetworkAPILib.end_transaction(transaction_timestamp) ;
                                             return ;
                                         }
-                                        inner_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
+                                        inner_path = 'merged-' + get_merged_type() + '/' + my_user_data_hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/content.json' ;
                                         // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + 'sign') ;
                                         debug_seq = debug_z_api_operation_start(pgm, inner_path, 'siteSign', show_debug('z_site_publish')) ;
                                         ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
@@ -421,7 +421,7 @@ angular.module('MoneyNetwork')
                                     }
                                     // delete next file
                                     filename = delete_files.shift() ;
-                                    inner_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
+                                    inner_path = 'merged-' + get_merged_type() + '/' + my_user_data_hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/' + filename ;
                                     // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_delete', pgm + inner_path + ' fileDelete') ;
                                     debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileDelete', show_debug('z_file_delete')) ;
                                     ZeroFrame.cmd("fileDelete", inner_path, function (res) {
@@ -920,9 +920,9 @@ angular.module('MoneyNetwork')
             //console.log(pgm + 'ls_sessions = ' + JSON.stringify(ls_sessions)) ;
             console.log(pgm + 'calling get_my_user_hub');
 
-            get_my_user_hub(function (hub) {
+            get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var user_path ;
-                user_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
+                user_path = 'merged-' + get_merged_type() + '/' + my_user_data_hub + '/data/users/' + ZeroFrame.site_info.auth_address + '/';
                 MoneyNetworkAPILib.config({this_user_path: user_path});
                 // setup session instances and listen for incoming messages
                 create_sessions() ;

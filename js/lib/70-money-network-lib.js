@@ -1356,7 +1356,8 @@ var MoneyNetworkHelper = (function () {
         "title": 'User data.json file. User info, user search tags and user private messages',
         "properties": {
             "version": { "type": 'integer' },
-            "hub": { "type": 'string'},
+            "hub": { "type": 'string', "description": 'Random other user data hub. For list of hubs, add all hubs etc'},
+            "hub_title": { "type": 'string'},
             "users": {
                 "type": 'array',
                 "description": 'Array with localStorage users. Unique user user_seq used in data.json, status.json and in filenames for optional files',

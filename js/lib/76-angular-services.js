@@ -1711,7 +1711,7 @@ angular.module('MoneyNetwork')
 
             // get user data hub (last content.modified timestamp)
             console.log(pgm + 'calling get_my_user_hub');
-            get_my_user_hub(function (hub) {
+            get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = service + '.z_contact_search get_my_user_hub callback 1: ' ;
                 var debug_seq, mn_query_5 ;
                 if (detected_client_log_out(pgm, old_userid)) return ;
@@ -1719,10 +1719,9 @@ angular.module('MoneyNetwork')
                 // find json_id and user_seq for current user.
                 // must use search words for current user
                 // must not return search hits for current user
-                if (z_cache.user_id) pubkey = MoneyNetworkHelper.getItem('pubkey') ;
-                else pubkey = 'n/a' ;
+                pubkey = z_cache.user_id ? MoneyNetworkHelper.getItem('pubkey') : 'n/a' ;
                 mn_query_5 = "select json.json_id, users.user_seq from json, users " +
-                    "where json.directory = '" + hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' " +
+                    "where json.directory = '" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address + "' " +
                     "and users.json_id = json.json_id " +
                     "and users.pubkey = '" + pubkey + "'";
                 debug('select', pgm + 'mn query 5 = ' + mn_query_5) ;
@@ -2478,7 +2477,7 @@ angular.module('MoneyNetwork')
             if (!res.encryption) delete message.encryption ;
 
             // check receiver_sha256. sha256(pubkey) or a previous sender_sha256 address sent to contact
-            var my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
+            var my_pubkey = z_cache.user_id ? MoneyNetworkHelper.getItem('pubkey') : 'n/a' ;
             var my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
             if ((message.receiver_sha256 == my_pubkey_sha256) || !res.key) delete message.receiver_sha256 ;
             // if (message.receiver_sha256 && !res.key) debug('inbox && unencrypted', pgm + 'error. expected receiver_sha256 to be null (1)');
@@ -3472,7 +3471,7 @@ angular.module('MoneyNetwork')
 
                     // check if user has been using other ZeroNet certificates
                     debug('lost_message', pgm + 'maybe user has switched zeronet certificate. checking if current user has more than one certificate') ;
-                    pubkey = MoneyNetworkHelper.getItem('pubkey') ;
+                    pubkey = z_cache.user_id ? MoneyNetworkHelper.getItem('pubkey') : 'n/a' ;
                     mn_query_10 =
                         "select keyvalue.value as cert_user_id, status.timestamp, users.encryption, users.guest " +
                         "from users, json as data_json, json as content_json, keyvalue, json as status_json, status " +
@@ -4021,7 +4020,7 @@ angular.module('MoneyNetwork')
             var my_pubkey, my_pubkey_sha256, my_prvkey, i, j, contact, auth_address, reason, message, key ;
             var participant_unique_id, participant, now, debug_seq, old_userid ;
             old_userid = z_cache.user_id ;
-            my_pubkey = MoneyNetworkHelper.getItem('pubkey') ;
+            my_pubkey = old_userid ? MoneyNetworkHelper.getItem('pubkey') : 'n/a' ;
             my_pubkey_sha256 = CryptoJS.SHA256(my_pubkey).toString();
             // my_auth_address = ZeroFrame.site_info.auth_address ;
             now = new Date().getTime() ;
@@ -4544,66 +4543,20 @@ angular.module('MoneyNetwork')
 
         var user_data_hubs = moneyNetworkHubService.get_user_data_hubs() ;
 
-        // get/update site info. used for cert_user_id in UI (menu line + auth page)
-
-        // todo: cert selected (null => not null). start ls load. see MoneyNetworkHelper.ls_load + other startup functions
-        // todo: cert deselected. log out
-        // todo: cert not selected. disable ls updates = not logged in
-
-        var site_info = {} ;
-        //function update_site_info(new_site_info) {
-        //    var pgm = service + '.update_site_info: ' ;
-        //    var key, old_cert_user_id ;
-        //    old_cert_user_id = site_info.cert_user_id ;
-        //
-        //    if (new_site_info) {
-        //        for (key in site_info) delete site_info[key] ;
-        //        for (key in new_site_info) site_info[key] = new_site_info[key] ;
-        //        if (old_cert_user_id && !site_info.cert_user_id) client_logout() ;
-        //        return ;
-        //    }
-        //    if (!ZeroFrame) {
-        //        $timeout(update_site_info, 100) ;
-        //        return ;
-        //    }
-        //    ZeroFrame.cmd("siteInfo", {}, function (new_site_info) {
-        //        var key, old_cert_user_id ;
-        //        old_cert_user_id = site_info.cert_user_id ;
-        //        for (key in site_info) delete site_info[key] ;
-        //        for (key in new_site_info) site_info[key] = new_site_info[key] ;
-        //        if (old_cert_user_id && (!site_info.cert_user_id || (old_cert_user_id != site_info.cert_user_id))) client_logout() ;
-        //        if (old_cert_user_id) {
-        //            if (!site_info.cert_user_id) client_logout() ;
-        //            else if (site_info.cert_user_id != old_cert_user_id) {
-        //                console.log(pgm + 'calling ls_load (1)') ;
-        //                client_logout() ;
-        //                // ls_load may or maybe not start a new client log in
-        //                MoneyNetworkHelper.ls_load() ;
-        //            }
-        //        }
-        //        else {
-        //            // no old cert_user_id
-        //            if (site_info.cert_user_id) {
-        //                // ls_load may or maybe not start a new client log in
-        //                console.log(pgm + 'calling ls_load (2)') ;
-        //                MoneyNetworkHelper.ls_load() ;
-        //            }
-        //        }
-        //        $rootScope.$apply() ;
-        //    }) ;
-        //}
-
         // wait for setSiteInfo events (new files)
         function event_file_done (hub, event, filename) {
             var pgm = service + '.event_file_done: ' ;
-            var debug_seq, merged_filename ;
+            var debug_seq, merged_filename, user_data_hub, i ;
             if (event != 'file_done') return ;
             if (hub == '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk') {
                 // before merger site. cannot delete data/users array without any bad files
                 // console.log(pgm + 'ignoring file_done event for ' + hub) ;
                 return ;
             }
-            if (user_data_hubs.indexOf(hub) == -1) {
+            // ignore files from wallet data hubs
+            user_data_hub = false ;
+            for (i=0 ; i<user_data_hubs.length ; i++) if (user_data_hubs[i].hub == hub) { user_data_hub = true ; break }
+            if (!user_data_hub) {
                 // not a MoneyNetwork user data hub
                 console.log(pgm + 'ignoring ' + filename + ' from ' + hub + '. maybe status.json from w2?') ;
                 return ;
@@ -5455,8 +5408,9 @@ angular.module('MoneyNetwork')
 
 
             // callback 1 - get my user data hub. Ignore my chat files on other user data hubs
+            // todo: my_user_data_hub is never used!!!
             console.log(pgm + 'calling get_my_user_hub');
-            get_my_user_hub(function (my_user_hub) {
+            get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = service + '.get_public_chat get_my_user_hub callback 1: ';
 
                 // callback 2 - get my auth_address and user_seq. my chat files = outbox. other chat files = inbox
@@ -6500,7 +6454,7 @@ angular.module('MoneyNetwork')
                 recheck_old_decrypt_errors() ;
                 check_image_download_failed() ;
                 i_am_online() ;
-                load_user_contents_max_size() ;
+                load_user_contents_max_size(pgm) ;
                 // load_my_public_chat() ;
                 update_chat_notifications() ;
                 cleanup_inactive_users() ;
@@ -6542,6 +6496,7 @@ angular.module('MoneyNetwork')
             for (key in watch_like_msg_id) delete watch_like_msg_id[key] ;
             // clear any session data in MoneyNetworkAPI
             MoneyNetworkAPILib.delete_all_sessions() ;
+            moneyNetworkHubService.all_hubs_clear_disabled() ;
             if (login_setting_changed) return ;
             // redirect
             a_path = '/auth' ;
@@ -7081,8 +7036,7 @@ angular.module('MoneyNetwork')
                     'Note that private data from password protected<br>' +
                     'account(s) still is in localStorage', 10000]);
             }
-        } ;
-
+        }
 
         // moneyNetworkService ready.
         // using ls_bind (interface to ZeroNet API localStorage functions may still be loading)
@@ -7093,6 +7047,8 @@ angular.module('MoneyNetwork')
             // set register = Y/N. used in auth page (login or register as default option)
             set_register_yn() ;
             set_use_login() ;
+            // get list of all user data hubs and wallet data hubs
+            moneyNetworkHubService.get_all_hubs() ;
 
             if (!ZeroFrame.site_info.cert_user_id || use_login.bol) return ;
 
@@ -7217,7 +7173,8 @@ angular.module('MoneyNetwork')
             get_register: get_register,
             get_use_login: get_use_login,
             use_login_changed: use_login_changed,
-            get_z_cache: moneyNetworkHubService.get_z_cache
+            get_z_cache: moneyNetworkHubService.get_z_cache,
+            get_all_hubs: moneyNetworkHubService.get_all_hubs
         };
 
         // end MoneyNetworkService
