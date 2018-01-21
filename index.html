@@ -248,7 +248,7 @@
     </script>
 
     <script type="text/ng-template" id="addHubs">
-        Add hubs. Get content from more MoneyNetwork hubs and help distribute MoneyNetwork content.
+        Add more hubs. Get content from more MoneyNetwork hubs and help distribute MoneyNetwork content.
         User Data Hub: user data (user info and chat) used by MoneyNetwork.
         Wallet Data Hub: wallet data (wallet info and money transactions) used by MoneyNetwork wallets.<br>
         Use checkbox to add/remove hubs. Use url to see info about hub (will also add site).
@@ -1335,6 +1335,8 @@
                 </table>
             </p>
 
+            <br>
+            <p ng-include="'addHubs'"></p>
 
         </div>
 
@@ -1753,6 +1755,17 @@
                             </tr>
                             </tbody>
                         </table>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <br>
+
+            <table>
+                <tbody>
+                <tr>
+                    <td>
+                        <p ng-include="'addHubs'"></p>
                     </td>
                 </tr>
                 </tbody>
@@ -2289,9 +2302,9 @@
   all.js ~= 1.3 Mb and distribution is slow on zeronet
   js/all.js.zip is small and distributed fast (~= 200 Kb)
  -->
-<script type="text/javascript" src="js/all.js"></script>
+<!--script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->

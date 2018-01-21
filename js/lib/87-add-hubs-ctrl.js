@@ -2,8 +2,8 @@ angular.module('MoneyNetwork')
 
     // AddHubsCtrl. Used in addHubs template. add/remove user and wallet data hubs to/from MoneyNetwork merger site
 
-    .controller('AddHubsCtrl', ['$scope', 'safeApply',   'MoneyNetworkService',
-        function ($scope, safeApply,   moneyNetworkService) {
+    .controller('AddHubsCtrl', ['$scope', 'safeApply', 'MoneyNetworkService',
+        function ($scope, safeApply,  moneyNetworkService) {
 
         var self = this;
         var controller = 'AddHubsCtrl';
@@ -12,8 +12,16 @@ angular.module('MoneyNetwork')
         // get a list of all user and wallet data hubs. For add hub site(s) UI
         self.all_hubs = [] ;
         moneyNetworkService.get_all_hubs(false, function (all_hubs) {
+            var pgm = controller + ' get_all_hubs callback: ' ;
+            var retry ;
             self.all_hubs = all_hubs ;
-            safeApply($scope) ;
+            try {
+                safeApply($scope) ;
+            }
+            catch (e) {
+                console.log(pgm + 'safeApply failed. error = ' + e.message) ;
+                console.log(e.stack);
+            }
         }) ;
 
         // add/remove data hubs.
