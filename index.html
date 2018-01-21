@@ -247,6 +247,29 @@
        <!-- end fullReactInfo -->
     </script>
 
+    <script type="text/ng-template" id="addHubs">
+        Add hubs. Get content from more MoneyNetwork hubs and help distribute MoneyNetwork content.
+        User Data Hub: user data (user info and chat) used by MoneyNetwork.
+        Wallet Data Hub: wallet data (wallet info and money transactions) used by MoneyNetwork wallets.<br>
+        Use checkbox to add/remove hubs. Use url to see info about hub (will also add site).
+        <div style="width: 100%" ng-controller="AddHubsCtrl as c">
+            <div ng-repeat="h in c.all_hubs|orderBy:h.hub_title" style="float: left">
+                <input type="checkbox" ng-model="h.hub_added" ng-change="c.add_remove_hub(h)" ng-disabled="h.disabled">
+                <a href="" ng-click="c.open_hub_url(h)">
+                    <span ng-bind="h.hub_title || h.hub"></span>
+                            <span ng-show="h.hasOwnProperty('no_users')">
+                                - <span ng-bind="h.no_users"></span> users
+                            </span>
+                            <span ng-show="h.hasOwnProperty('peers')">
+                                - <span ng-bind="h.peers"></span> peers
+                            </span>
+                </a>
+                &nbsp;&nbsp;&nbsp;
+            </div>
+        </div>
+        <!-- end addHubs -->
+    </script>
+
     <script type="text/ng-template" id="messageTree">
 
         <span ng-show="c.set_first_and_last_chat($first,$last,m)"></span>
@@ -2143,27 +2166,7 @@
             </p>
             <br>
 
-            <p>
-                Add hubs. Get content from more MoneyNetwork hubs and help distribute MoneyNetwork content.
-                User Data Hub: user data (user info and chat) used by MoneyNetwork.
-                Wallet Data Hub: wallet data (wallet info and money transactions) used by MoneyNetwork wallets.<br>
-                Use checkbox to add/remove hubs. Use url to see info about hub (will also add site).
-                <div style="width: 100%">
-                    <div ng-repeat="h in a.all_hubs|orderBy:h.hub_title" style="float: left">
-                        <input type="checkbox" ng-model="h.hub_added" ng-change="a.add_remove_hub(h)" ng-disabled="h.disabled">
-                        <a href="" ng-click="a.open_hub_url(h)">
-                            <span ng-bind="h.hub_title || h.hub"></span>
-                            <span ng-show="h.hasOwnProperty('no_users')">
-                                - <span ng-bind="h.no_users"></span> users
-                            </span>
-                            <span ng-show="h.hasOwnProperty('peers')">
-                                - <span ng-bind="h.peers"></span> peers
-                            </span>
-                        </a>
-                        &nbsp;&nbsp;&nbsp;
-                    </div>
-                </div>
-            </p>
+            <p ng-include="'addHubs'"></p>
 
         </div>
 
@@ -2286,9 +2289,9 @@
   all.js ~= 1.3 Mb and distribution is slow on zeronet
   js/all.js.zip is small and distributed fast (~= 200 Kb)
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->
