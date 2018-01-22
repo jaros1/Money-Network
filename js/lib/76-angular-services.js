@@ -940,6 +940,7 @@ angular.module('MoneyNetwork')
             else new_contacts = [] ;
             clear_contacts() ;
             clear_messages() ;
+            clear_files_optional_cache() ;
             var i, j, contacts_updated = false, receiver_sha256 ;
             var old_contact ;
             var ls_msg_size_total = 0 ;
@@ -6052,6 +6053,9 @@ angular.module('MoneyNetwork')
             if (!z_cache.user_setup.public_chat && !read_timestamp) {
                 console.log(pgm + 'error. ignoring get_and_load_chat_file call for ' + cache_filename + '. public chat is disabled');
                 return cb('done') ;
+            }
+            if (cache_filename == 'merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/1516611263486-1516348492322-1-chat.json') {
+                console.log(pgm + 'debug this') ;
             }
 
             check_merger_permission(pgm, function() {
