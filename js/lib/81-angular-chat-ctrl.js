@@ -883,8 +883,8 @@ angular.module('MoneyNetwork')
             function check_public_chat () {
                 var pgm = controller + '.check_public_chat: ' ;
                 var no_msg, i, end_of_page ;
-                if (!ZeroFrame.site_info) {
-                    // wait for ZeroFrame to finish loading
+                if (!ZeroFrame.site_info || !self.contacts.length) {
+                    // wait for ZeroFrame to finish loading. wait for first contact search to finish
                     $timeout(check_public_chat, 100) ;
                     return ;
                 }
