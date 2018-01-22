@@ -6496,7 +6496,7 @@ angular.module('MoneyNetwork')
             for (key in watch_like_msg_id) delete watch_like_msg_id[key] ;
             // clear any session data in MoneyNetworkAPI
             MoneyNetworkAPILib.delete_all_sessions() ;
-            moneyNetworkHubService.all_hubs_clear_disabled() ;
+            MoneyNetworkAPILib.all_hubs_clear_disabled() ;
             if (login_setting_changed) return ;
             // redirect
             a_path = '/auth' ;
@@ -7048,7 +7048,7 @@ angular.module('MoneyNetwork')
             set_register_yn() ;
             set_use_login() ;
             // get list of all user data hubs and wallet data hubs
-            moneyNetworkHubService.get_all_hubs() ;
+            MoneyNetworkAPILib.get_all_hubs() ;
 
             if (!ZeroFrame.site_info.cert_user_id || use_login.bol) return ;
 
@@ -7173,8 +7173,7 @@ angular.module('MoneyNetwork')
             get_register: get_register,
             get_use_login: get_use_login,
             use_login_changed: use_login_changed,
-            get_z_cache: moneyNetworkHubService.get_z_cache,
-            get_all_hubs: moneyNetworkHubService.get_all_hubs
+            get_z_cache: moneyNetworkHubService.get_z_cache
         };
 
         // end MoneyNetworkService
