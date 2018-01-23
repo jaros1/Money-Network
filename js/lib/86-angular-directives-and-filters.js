@@ -774,13 +774,25 @@ angular.module('MoneyNetwork')
         // end findMessageGlyphicon
     }])
 
+    // insert soft hypens in text. Prevent long texts breaking responsive
+    .filter('shy', [function () {
+        return function (text, lng) {
+            var pgm = 'shy: ' ;
+            if (!text) return text ;
+            if (typeof text != 'string') text = JSON.stringify(text) ;
+            if ((typeof lng == 'number') && (text.length <= lng)) return text ;
+            return text.split('').join('&shy;') ;
+        } ;
+        // end shy
+    }])
+
     // format special tag values. Last Updated
-    .filter('formatSearchValue', ['shortChatTimeFilter', 'formatNotificationsFilter', 'MoneyNetworkService', function (shortChatTime, formatNotifications, moneyNetworkService) {
+    .filter('formatSearchValue', ['shortChatTimeFilter', 'formatNotificationsFilter', 'shyFilter', 'MoneyNetworkService', function (shortChatTime, formatNotifications, shy, moneyNetworkService) {
         // short format for unix timestamp used in chat
         return function (row) {
             var pgm = 'formatSearchValue: ' ;
             var contact, notifications ;
-            if (typeof row.value != 'number') return row.value ;
+            if (typeof row.value != 'number') return shy(row.value, 25) ;
             contact = moneyNetworkService.get_contact_by_unique_id(row.unique_id) ;
             notifications = contact ? formatNotifications(contact.notifications) : '' ;
             return shortChatTime(row.value*1000) + ' ' + notifications;
