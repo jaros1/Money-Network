@@ -2,10 +2,10 @@ angular.module('MoneyNetwork')
     
     .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location', 'safeApply',
         'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', 'shortChatTimeFilter', '$window', 'dateFilter', '$sce',
-        'shortCertIdFilter', '$sanitize',
+        'shortCertIdFilter', '$sanitize', 'brFilter',
         function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location, safeApply,
                   chatEditTextAreaId, chatEditImgId, formatChatMessage, shortChatTime, $window, date, $sce,
-                  shortCertId, $sanitize)
+                  shortCertId, $sanitize, br)
         {
             
             var self = this;
@@ -1473,7 +1473,7 @@ angular.module('MoneyNetwork')
                     if (error) {
                         self.new_chat_msg_disabled = false ;
                         console.log(pgm + error) ;
-                        ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                        ZeroFrame.cmd("wrapperNotification", ["Error", br(error)]);
                         return;
                     }
 

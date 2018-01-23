@@ -318,16 +318,18 @@ var MoneyNetworkHelper = (function () {
                 if (ZeroFrame.site_info.cert_user_id == 'jro@zeroid.bit') return cb3('money developer') ;
 
                 // is proxy server?
-                // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_server_info', pgm + 'serverInfo') ;
                 // not logged in: show_debug('z_server_info') is always returning false
                 debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, null, 'serverInfo', show_debug('z_server_info')) ;
                 ZeroFrame.cmd("serverInfo", {}, function (server_info) {
                     var pgm = module + '.load_public_avatars.step_2_check_context serverInfo callback: ';
-                    // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                     MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, server_info ? 'OK' : 'Failed');
                     // console.log(pgm + 'server_info = '+ JSON.stringify(server_info));
                     if (!server_info.ip_external) return ; // not a proxy server
                     if (server_info.plugins.indexOf('Multiuser') == -1) return  ; // not a proxy server
+
+                    // todo: zerogate.tk: This function is disabled on this proxy! maybe optional files plugin is disabled?
+                    console.log(pgm + 'proxy server. plugins = ' + JSON.stringify(server_info.plugins)) ;
+
                     // external ip and Multiuser plugin. Must be a proxy server. download emojis
                     cb3('proxy server') ;
                 }) ; // serverInfo
