@@ -2,10 +2,10 @@ angular.module('MoneyNetwork')
     
     .controller('ChatCtrl', ['MoneyNetworkService', '$scope', '$rootScope', '$timeout', '$routeParams', '$location', 'safeApply',
         'chatEditTextAreaIdFilter', 'chatEditImgIdFilter', 'formatChatMessageFilter', 'shortChatTimeFilter', '$window', 'dateFilter', '$sce',
-        'shortCertIdFilter', '$sanitize', 'brFilter',
+        'shortCertIdFilter', 'brFilter', 'shyFilter',
         function (moneyNetworkService, $scope, $rootScope, $timeout, $routeParams, $location, safeApply,
                   chatEditTextAreaId, chatEditImgId, formatChatMessage, shortChatTime, $window, date, $sce,
-                  shortCertId, $sanitize, br)
+                  shortCertId, br, shy)
         {
             
             var self = this;
@@ -18,6 +18,10 @@ angular.module('MoneyNetwork')
             $window.scrollTo(0, 0);
 
             function debug (key, text) { MoneyNetworkHelper.debug(key, text) }
+
+            function sanitize (text) {
+                return moneyNetworkService.sanitize(text) ;
+            }
 
             // insert <br> into long notifications. For example JSON.stringify
             function z_wrapper_notification (array) {
@@ -315,7 +319,7 @@ angular.module('MoneyNetwork')
                             self.contact = self.contacts[i];
                             if (!self.contact.messages) self.contact.messages = [];
                             // console.log(pgm + 'contact = ' + JSON.stringify(self.contact));
-                            if (self.contact.type == 'group') init_group_chat_contacts(self.contact) ; // xxx
+                            if (self.contact.type == 'group') init_group_chat_contacts(self.contact) ;
                             else {
                                 moneyNetworkService.is_old_contact(self.contact);
                                 self.group_chat = false ;
@@ -1657,6 +1661,11 @@ angular.module('MoneyNetwork')
                             self.money_transactions_countdown = countdown ;
                             $scope.$apply() ;
                         } ;
+
+                        // https://github.com/jaros1/Money-Network/issues/193
+                        // force error message with stringify
+                        request.this_is_an_error = 'x' ;
+
                         // send validate money transactions request to wallet (wait max 60 seconds. wallet may call external API in validation process)
                         session.encrypt.send_message(request, {response: 60000, timeout_msg: timeout_msg, countdown_cb: countdown_cb}, function (response) {
                             var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction send_message callback: ';
@@ -1674,7 +1683,9 @@ angular.module('MoneyNetwork')
                             }
                             if (!response || response.error) {
                                 // empty or error.
-                                if (response.error) error = $sanitize(response.error) ;
+                                if (response.error) {
+                                    error = moneyNetworkService.sanitize(response.error) ;
+                                }
                                 else {
                                     console.log(pgm + 'wallet validation error. response = ' + JSON.stringify(response)) ;
                                     error = 'Wallet validating error' ;
@@ -1852,7 +1863,7 @@ angular.module('MoneyNetwork')
                                     // Unexpected error.
                                     error = 'error. ping sessionid ' + session_info.sessionid + ' returned ' + JSON.stringify(response) ;
                                     console.log(pgm + error) ;
-                                    error = 'Wallet ping error' + (response.error ? ' ' + $sanitize(response.error) : '') ;
+                                    error = 'Wallet ping error' + (response.error ? ' ' + sanitize(response.error) : '') ;
                                     set_ping_error(session_info.wallet_name, error, true) ;
                                     return ping_wallet(); // next session (if any)
                                 }
@@ -2470,10 +2481,12 @@ angular.module('MoneyNetwork')
             } ; // validate_money_transaction
 
             function format_money_transaction_message (money_transaction) {
+                var pgm = controller + '.format_money_transaction_message: ' ;
                 var messages = [] ;
-                if (money_transaction.message.balance) messages.push(money_transaction.message.balance) ;
-                if (money_transaction.message.ping) messages.push(red(money_transaction.message.ping)) ; // wallet ping error (timeout or error)
-                if (money_transaction.message.check) messages.push(red(money_transaction.message.check)) ; // wallet check money transaction request error
+                if (money_transaction.message.balance) messages.push(shy(money_transaction.message.balance)) ;
+                if (money_transaction.message.ping) messages.push(red(shy(money_transaction.message.ping))) ;
+                // wallet ping error (timeout or error)
+                if (money_transaction.message.check) messages.push(red(shy(money_transaction.message.check))) ; // wallet check money transaction request error
                 if (messages.length) money_transaction.message.html = $sce.trustAsHtml(messages.join('. ') + '.') ;
                 else money_transaction.message.html = null ;
             } // format_money_transaction_message
@@ -2636,7 +2649,7 @@ angular.module('MoneyNetwork')
                             }
                             if (!response || response.error) {
                                 // empty or error.
-                                if (response.error) error = $sanitize(response.error) ;
+                                if (response.error) error = sanitize(response.error) ;
                                 else {
                                     console.log(pgm + 'start money transaction error. response = ' + JSON.stringify(response)) ;
                                     error = 'Start money tranaction error' ;
@@ -2775,7 +2788,7 @@ angular.module('MoneyNetwork')
                             }
                             if (!response || response.error) {
                                 // empty or error.
-                                if (response.error) error = $sanitize(response.error) ;
+                                if (response.error) error = sanitize(response.error) ;
                                 else {
                                     console.log(pgm + 'wallet validation error. response = ' + JSON.stringify(response)) ;
                                     error = 'Wallet validating error' ;
@@ -2929,7 +2942,7 @@ angular.module('MoneyNetwork')
                                     // Unexpected error.
                                     error = 'error. ping sessionid ' + session_info.sessionid + ' returned ' + JSON.stringify(response) ;
                                     console.log(pgm + error) ;
-                                    error = 'Wallet ping error' + (response.error ? ' ' + $sanitize(response.error) : '') ;
+                                    error = 'Wallet ping error' + (response.error ? ' ' + sanitize(response.error) : '') ;
                                     set_ping_error(session_info.wallet_name, error) ;
                                     return ping_wallet(); // next session (if any)
                                 }

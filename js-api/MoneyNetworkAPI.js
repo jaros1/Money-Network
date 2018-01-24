@@ -1853,6 +1853,7 @@ var MoneyNetworkAPILib = (function () {
             if (!wallet_info_cache[sha256]) continue ; // not in cache
             // found in cache
             results[sha256] = JSON.parse(JSON.stringify(wallet_info_cache[sha256])) ;
+            console.log(pgm + 'OK. wallet_sha256 ' + sha256 + ' was in cache. wallet_info = ' + JSON.stringify(results[sha256])) ;
             wallet_sha256.splice(i,1) ;
         }
         if (!wallet_sha256.length) return cb(results, refresh_angular_ui) ; // all sha256 values were found in cache

@@ -3,8 +3,8 @@ angular.module('MoneyNetwork')
     // MoneyNetworkWService:
     // - wallet functions
 
-    .factory('MoneyNetworkWService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService', '$sanitize',
-                             function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService, $sanitize)
+    .factory('MoneyNetworkWService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService',
+                             function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService)
     {
         var service = 'MoneyNetworkWService' ;
         console.log(service + ' loaded') ;
@@ -39,6 +39,10 @@ angular.module('MoneyNetwork')
         function format_res (res) {
             return res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res) ;
         }
+        function sanitize (text) {
+            return moneyNetworkHubService.sanitize(text) ;
+        }
+
 
         // insert <br> into long notifications. For example JSON.stringify
         function z_wrapper_notification (array) {
@@ -831,7 +835,7 @@ angular.module('MoneyNetwork')
                             // normally no wait for response for notification messages
                             return done_and_send(response, encryptions);
                         }
-                        message = $sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + $sanitize(request.message);
+                        message = sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + sanitize(request.message);
                         // console.log(pgm + 'message = ' + message) ;
                         notification = [request.type, message] ;
                         if (request.timeout) notification.push(request.timeout) ;
@@ -855,8 +859,8 @@ angular.module('MoneyNetwork')
                             console.log(pgm + 'ignoring confirm request = ' + JSON.stringify(request));
                             return done_and_send(response, encryptions);
                         }
-                        message = $sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + $sanitize(request.message);
-                        button_caption = $sanitize(request.button_caption || 'OK') ;
+                        message = sanitize(wallet_info[session_info.wallet_sha256].wallet_title) + ':<br>' + sanitize(request.message);
+                        button_caption = sanitize(request.button_caption || 'OK') ;
                         confirm = [message, button_caption] ;
                         // console.log(pgm + 'notification = ' + JSON.stringify(notification)) ;
                         ZeroFrame.cmd("wrapperConfirm", confirm, function (confirm) {
@@ -963,8 +967,8 @@ angular.module('MoneyNetwork')
             for (sessionid in ls_sessions) {
                 session_info = ls_sessions[sessionid][SESSION_INFO_KEY];
                 if (!session_info) continue;
-                //if (!session_info.currencies) continue;
                 if (!session_info.balance) continue;
+                if (!session_info.wallet_sha256) continue ;
                 console.log(pgm + 'sessionid = ' + sessionid + ', session_info = ' + JSON.stringify(session_info)) ;
                 for (i=0 ; i<session_info.balance.length ; i++) {
                     balance = JSON.parse(JSON.stringify(session_info.balance[i])) ;
@@ -1010,9 +1014,10 @@ angular.module('MoneyNetwork')
                     step_3_other_user_path, step_n_done, doublet_wallet_address, non_unique_text, doublet_wallets,
                     error_count, wallet_address;
                 if (pending_refresh_angular_ui) refresh_angular_ui = true ; // fixing problem with changed wallet_sha256 values
-                // console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
+                console.log(pgm + 'wallet_info = ' + JSON.stringify(wallet_info)) ;
                 doublet_wallet_address = {} ;
                 doublet_wallets = false ;
+                console.log(pgm + 'temp_currencies before wallet_info merge = ' + JSON.stringify(temp_currencies)) ;
                 if (!wallet_info || (typeof wallet_info != 'object') || wallet_info.error) {
                     console.log(pgm + 'could not find wallet_info for sha256 values ' + JSON.stringify(wallet_sha256_values) + '. wallet_info = ' + JSON.stringify(wallet_info)) ;
                 }
@@ -1033,6 +1038,7 @@ angular.module('MoneyNetwork')
                         doublet_wallet_address[wallet_address].count++ ;
                     } // for i
                 } // for wallet_sha256
+                console.log(pgm + 'temp_currencies after wallet_info merge = ' + JSON.stringify(temp_currencies)) ;
 
                 // same wallet_sha256 info for more than one session. keep session with last_request_at timestamp
                 // console.log(pgm + 'temp_currencies = ' + JSON.stringify(temp_currencies)) ;

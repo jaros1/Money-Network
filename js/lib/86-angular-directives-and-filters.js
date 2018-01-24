@@ -786,8 +786,8 @@ angular.module('MoneyNetwork')
         // end shy
     }])
 
+    // https://github.com/jaros1/Money-Network/issues/222
     // insert <br> in text. Prevent long texts breaking responsive. for example in ZeroNet notifications
-    // todo: works only for texts. Not for string with html elements!
     .filter('br', [function () {
         // https://stackoverflow.com/questions/15458876/check-if-a-string-is-html-or-not
         var is_html = function isHTML(str) {
@@ -927,7 +927,7 @@ angular.module('MoneyNetwork')
     }])
 
 
-    .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', '$sanitize', function (moneyNetworkService, formatChatMessageAlias, $sanitize) {
+    .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', function (moneyNetworkService, formatChatMessageAlias) {
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
 
@@ -1007,7 +1007,7 @@ angular.module('MoneyNetwork')
                     } // for i
                 }
                 // console.log('str = ' + str) ;
-                message.message.formatted_message = $sanitize(str) ;
+                message.message.formatted_message = moneyNetworkService.sanitize(str) ;
                 return str ;
             }
             if (msgtype == 'contact removed') return 'I removed you as contact' ;
@@ -1019,7 +1019,7 @@ angular.module('MoneyNetwork')
                 str = md.render(str) ;
                 str = moneyNetworkService.replace_emojis(str) ;
                 if (str.substr(0,3) == '<p>') str = str.substr(3,str.length-8);
-                str = $sanitize(str) ;
+                str = moneyNetworkService.sanitize(str) ;
                 message.formatted_message = str ;
                 return str ;
 
@@ -1140,7 +1140,7 @@ angular.module('MoneyNetwork')
             }
 
             // other "unknown" messages. Just return JSON dump
-            str = $sanitize(JSON.stringify(message.message)) ;
+            str = moneyNetworkService.sanitize(JSON.stringify(message.message)) ;
             str = str.split('":"').join('": "');
             str = str.split('","').join('", "');
             return str ;

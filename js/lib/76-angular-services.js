@@ -7182,7 +7182,8 @@ angular.module('MoneyNetwork')
             get_use_login: get_use_login,
             use_login_changed: use_login_changed,
             get_z_cache: moneyNetworkHubService.get_z_cache,
-            z_wrapper_notification: moneyNetworkHubService.z_wrapper_notification
+            z_wrapper_notification: moneyNetworkHubService.z_wrapper_notification,
+            sanitize: moneyNetworkHubService.sanitize
         };
 
         // end MoneyNetworkService

@@ -24,7 +24,7 @@ angular.module('MoneyNetwork')
     // - get/write wrappers for data.json, status.json and like.json
     // - get user data hub
     // - merge user data hubs operation
-    .factory('MoneyNetworkHubService', ['$timeout', 'safeApply', 'brFilter', function($timeout, safeApply, br) {
+    .factory('MoneyNetworkHubService', ['$timeout', 'safeApply', 'brFilter', '$sanitize', function($timeout, safeApply, br, $sanitize) {
         var service = 'MoneyNetworkHubService' ;
         console.log(service + ' loaded') ;
 
@@ -3272,6 +3272,14 @@ angular.module('MoneyNetwork')
             return update_zeronet ;
         } // recursive_delete_message
 
+        function sanitize (text) {
+            if (!text) return text ;
+            if (typeof text != 'string') text = JSON.stringify(text) ;
+            text = $sanitize(text) ;
+            text = text.replace(/&#34;/g, '"'); // keep "
+            return text ;
+        }
+
 
         // export MoneyNetworkHubService
         return {
@@ -3332,7 +3340,8 @@ angular.module('MoneyNetwork')
             inject_functions: inject_functions,
             z_file_get: z_file_get,
             get_user_data_hubs: get_user_data_hubs,
-            z_wrapper_notification: z_wrapper_notification
+            z_wrapper_notification: z_wrapper_notification,
+            sanitize: sanitize
         };
 
         // end MoneyNetworkHubService
