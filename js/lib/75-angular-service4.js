@@ -40,6 +40,11 @@ angular.module('MoneyNetwork')
             return res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res) ;
         }
 
+        // insert <br> into long notifications. For example JSON.stringify
+        function z_wrapper_notification (array) {
+            moneyNetworkHubService.z_wrapper_notification(array) ;
+        } // z_wrapper_notification
+
         // import functions from other services
         function z_file_get (pgm, options, cb) {
             moneyNetworkHubService.z_file_get(pgm, options, cb) ;
@@ -831,7 +836,7 @@ angular.module('MoneyNetwork')
                         notification = [request.type, message] ;
                         if (request.timeout) notification.push(request.timeout) ;
                         // console.log(pgm + 'notification = ' + JSON.stringify(notification)) ;
-                        ZeroFrame.cmd("wrapperNotification", notification);
+                        z_wrapper_notification(notification);
                         done_and_send(response, encryptions);
                     });
                     return;
@@ -1551,7 +1556,7 @@ angular.module('MoneyNetwork')
                                     now = new Date().getTime() ;
                                     console.log(pgm + 'confirmed. open wallet ' + session_info.url + ', wait from wallet ping / wait max 30 seconds, and refresh currency information. ') ;
                                     open_window(pgm, session_info.url);
-                                    ZeroFrame.cmd("wrapperNotification", ['info', 'Opened wallet ' + session_info.url + '<br>in a new browser tab', 5000]);
+                                    z_wrapper_notification(['info', 'Opened wallet ' + session_info.url + '<br>in a new browser tab', 5000]);
 
                                     // wait for wallet session restore and incoming get_password and ping requests - wait max 30 seconds
                                     refresh_job = function(k) {
@@ -1582,7 +1587,7 @@ angular.module('MoneyNetwork')
                                         // timeout or ping received from wallet session
                                         var message = 'Updating wallet info for<br>wallet ' + session_info.url ;
                                         console.log(pgm + message) ;
-                                        ZeroFrame.cmd("wrapperNotification", ['info', message, 5000]);
+                                        z_wrapper_notification(['info', message, 5000]);
                                         get_currencies({}, function() {}) ;
                                     };
                                     submit_refresh_job = function () { refresh_job(30)} ;

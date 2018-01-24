@@ -13,6 +13,12 @@ angular.module('MoneyNetwork')
 
         var BITCOIN_ADDRESS_PATTERN = '1[a-km-zA-HJ-NP-Z1-9]{25,34}' ;
 
+        // insert <br> into long notifications. For example JSON.stringify
+        function z_wrapper_notification (array) {
+            moneyNetworkService.z_wrapper_notification(array) ;
+        } // z_wrapper_notification
+
+
         // cache some important informations from zeronet files
         // - user_seq: from users array in data.json file. using "pubkey" as index to users array
         // - user_seqs: from users array in data.json file.
@@ -105,7 +111,7 @@ angular.module('MoneyNetwork')
         self.test_new_wallet = function() {
             var pgm = controller + '.test_new_wallet: ' ;
             if (!self.new_wallet_url) {
-                ZeroFrame.cmd("wrapperNotification", ['error', 'Please enter new wallet URL', 5000]);
+                z_wrapper_notification(['error', 'Please enter new wallet URL', 5000]);
                 return ;
             }
             tested_wallet_url = self.new_wallet_url ;
@@ -357,7 +363,7 @@ angular.module('MoneyNetwork')
                 else {
                     // start test 3
                     info.status = 'Running' ;
-                    ZeroFrame.cmd('wrapperNotification', ['info', 'Please check that "ZeroId" is selected in wallet and click Test OK', 5000]);
+                    z_wrapper_notification(['info', 'Please check that "ZeroId" is selected in wallet and click Test OK', 5000]);
                 }
             }
             return {
@@ -383,7 +389,7 @@ angular.module('MoneyNetwork')
                 else {
                     // start test 5
                     info.status = 'Running' ;
-                    ZeroFrame.cmd('wrapperNotification', ['info', 'Please check that "Merger:MoneyNetwork permission" is granted in wallet and click Test OK', 5000]);
+                    z_wrapper_notification( ['info', 'Please check that "Merger:MoneyNetwork permission" is granted in wallet and click Test OK', 5000]);
                 }
             }
             return {

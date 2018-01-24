@@ -32,6 +32,11 @@ angular.module('MoneyNetwork')
             return (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK. ' +  + res.length + ' rows returned' ;
         }
 
+        // insert <br> into long notifications. For example JSON.stringify
+        function z_wrapper_notification (array) {
+            moneyNetworkService.z_wrapper_notification(array) ;
+        } // z_wrapper_notification
+
         // file get/write wrappers
         function z_file_get (pgm, options, cb) {
             moneyNetworkService.z_file_get(pgm, options, cb) ;
@@ -127,7 +132,7 @@ angular.module('MoneyNetwork')
             user_path = "data/users/" + ZeroFrame.site_info.auth_address ;
             ext = moneyNetworkService.get_image_ext_from_base64uri(image_base64uri);
             if (['png','jpg'].indexOf(ext) == -1) {
-                ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Only png, jpg and jpeg images can be used as avatar", 5000]);
+                z_wrapper_notification(["error", "Sorry. Only png, jpg and jpeg images can be used as avatar", 5000]);
                 return ;
             }
             console.log(pgm + 'todo: move the 3 ZeroFrame calls into a callback chain');
@@ -181,7 +186,7 @@ angular.module('MoneyNetwork')
         self.edit_alias = function () {
             self.editing_alias = true;
             if (edit_alias_notifications > 0) {
-                ZeroFrame.cmd("wrapperNotification", ["info", "Edit alias. Press ENTER to save. Press ESC to cancel", 5000]);
+                z_wrapper_notification(["info", "Edit alias. Press ENTER to save. Press ESC to cancel", 5000]);
                 edit_alias_notifications--;
             }
             var set_focus = function () {
@@ -240,7 +245,7 @@ angular.module('MoneyNetwork')
                 }
             }
             if (!last_contact) {
-                ZeroFrame.cmd('wrapperNotification', ['error', 'No last outbox message was found. cannot create message lost in cyberspace testcase', 5000]) ;
+                z_wrapper_notification(['error', 'No last outbox message was found. cannot create message lost in cyberspace testcase', 5000]) ;
                 return ;
             }
             // create test data. status sent, no zeronet_msg_id and status cleanup
@@ -261,7 +266,7 @@ angular.module('MoneyNetwork')
             // add message
             moneyNetworkService.add_message(last_contact, lost_message_with_envelope, false) ;
             moneyNetworkService.ls_save_contacts(false) ;
-            ZeroFrame.cmd('wrapperNotification', ['info', 'created new outbox msg ' + local_msg_seq + '. Not sent, not on ZeroNet, no feedback info and marked as cleanup', 5000]);
+            z_wrapper_notification(['info', 'created new outbox msg ' + local_msg_seq + '. Not sent, not on ZeroNet, no feedback info and marked as cleanup', 5000]);
         } // testcase_message_lost_in_cyberspace
 
         function testcase_image_file_done () {
@@ -299,7 +304,7 @@ angular.module('MoneyNetwork')
             if (!old_image_file_done && new_image_file_done) testcase_image_file_done() ;
 
             if (self.setup.encryption != self.setup_copy.encryption) {
-                ZeroFrame.cmd('wrapperNotification', ['info', 'Preferred encryption was changed.<br>Save user information or send a new message to publish change to peers', 5000]);
+                z_wrapper_notification(['info', 'Preferred encryption was changed.<br>Save user information or send a new message to publish change to peers', 5000]);
             }
             MoneyNetworkAPILib.config({debug: self.setup.debug && self.setup.debug.money_network_api}) ;
 
@@ -395,7 +400,7 @@ angular.module('MoneyNetwork')
                         if (no_local_accounts > 1) text += '<br>There is ' + no_local_accounts + ' other local accounts in this browser';
                         if (cert_user_ids.length == 1) text += '<br>Data on ZeroNet account ' + cert_user_ids[0] + ' has not been deleted';
                         if (cert_user_ids.length > 1) text += '<br>Data on ZeroNet accounts ' + cert_user_ids.join(', ') + ' has not been deleted';
-                        ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
+                        z_wrapper_notification( ['info', text, 10000]);
                         // redirect
                         a_path = '/auth';
                         z_path = "?path=" + a_path;
@@ -710,11 +715,11 @@ angular.module('MoneyNetwork')
             // check encrypt password
             if (self.export_encrypt) {
                 if (!self.export_password) {
-                    ZeroFrame.cmd("wrapperNotification", ['error', 'export file password is missing', 5000]);
+                    z_wrapper_notification(['error', 'export file password is missing', 5000]);
                     return ;
                 }
                 if (!self.export_confirm_password || (self.export_password != self.export_confirm_password)) {
-                    ZeroFrame.cmd("wrapperNotification", ['error', 'export file password is not confirmed', 5000]);
+                    z_wrapper_notification( ['error', 'export file password is not confirmed', 5000]);
                     return ;
                 }
             }
@@ -758,7 +763,7 @@ angular.module('MoneyNetwork')
                     if (self.export_encrypt) msg += 'encrypted ' ;
                     msg += ' file ' + filename ;
                     if (self.export_encrypt) msg += '<br>Please remember export file password. Required for import' ;
-                    ZeroFrame.cmd("wrapperNotification", ['done', msg]);
+                    z_wrapper_notification( ['done', msg]);
                 }; // step_6_export
 
                 step_5_encrypt_data = function () {
@@ -828,7 +833,7 @@ angular.module('MoneyNetwork')
                             if (!content) {
                                 error = 'Cannot export zeronet data. file ' + filename + ' was not found' ;
                                 console.log(pgm + error) ;
-                                ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                                z_wrapper_notification( ['error', error]);
                                 return ;
                             }
                             try {
@@ -837,7 +842,7 @@ angular.module('MoneyNetwork')
                             catch (e) {
                                 error = ['Cannot export zeronet data. ', 'file ' + filename + ' was invalid', 'error = ' + e.message] ;
                                 console.log(pgm + error.join('. ')) ;
-                                ZeroFrame.cmd("wrapperNotification", ['error', error.join('<br>')]);
+                                z_wrapper_notification(['error', error.join('<br>')]);
                                 return ;
                             }
                             step_3_read_zeronet_file() ;
@@ -854,7 +859,7 @@ angular.module('MoneyNetwork')
                         if (!content) {
                             error = 'Cannot export zeronet data. content.json file was not found' ;
                             console.log(pgm + error) ;
-                            ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                            z_wrapper_notification( ['error', error]);
                             return ;
                         }
                         try {
@@ -863,7 +868,7 @@ angular.module('MoneyNetwork')
                         catch (e) {
                             error = ['Cannot export zeronet data', 'content.json was invalid', 'error = ' + e.message] ;
                             console.log(pgm + error.join('. ')) ;
-                            ZeroFrame.cmd("wrapperNotification", ['error', error.join('<br>')]);
+                            z_wrapper_notification( ['error', error.join('<br>')]);
                             return ;
                         }
                         data.z_files = {} ;
@@ -927,7 +932,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.import.step_8_notification_and_redirect: ' ;
                 var text, a_path, z_path ;
                 text = 'MoneyNetwork data has been imported from file. Please log in';
-                ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
+                z_wrapper_notification(['info', text, 10000]);
                 // redirect
                 a_path = '/auth';
                 z_path = "?path=" + a_path;
@@ -1063,7 +1068,7 @@ angular.module('MoneyNetwork')
                 if (error) {
                     error = 'Import failed. ' + error ;
                     console.log(pgm + error) ;
-                    ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                    z_wrapper_notification(['error', error]);
                     return false ;
                 }
                 else return true ;
@@ -1076,7 +1081,7 @@ angular.module('MoneyNetwork')
                 // request password
                 ZeroFrame.cmd("wrapperPrompt", ["Import a password protected file<br>Enter password"], function (password) {
                     if (!password) {
-                        ZeroFrame.cmd("wrapperNotification", ['info', 'Import cancelled. No password', 5000]);
+                        z_wrapper_notification( ['info', 'Import cancelled. No password', 5000]);
                         return;
                     }
                     enc_data_str = data.enc_data ;
@@ -1084,14 +1089,14 @@ angular.module('MoneyNetwork')
                         data_str = MoneyNetworkHelper.decrypt(enc_data_str, password) ;
                     }
                     catch (e) {
-                        ZeroFrame.cmd("wrapperNotification", ['info', 'Import cancelled. Invalid password or file<br>error = ' + e.message, 5000]);
+                        z_wrapper_notification(['info', 'Import cancelled. Invalid password or file<br>error = ' + e.message, 5000]);
                         return;
                     }
                     try {
                         data2 = JSON.parse(data_str) ;
                     }
                     catch (e) {
-                        ZeroFrame.cmd("wrapperNotification", ['info', 'Import cancelled. Invalid password or file<br>error = ' + e.message, 5000]);
+                        z_wrapper_notification(['info', 'Import cancelled. Invalid password or file<br>error = ' + e.message, 5000]);
                         return;
                     }
                     if (!is_data_ok(data2)) return ;
@@ -1117,7 +1122,7 @@ angular.module('MoneyNetwork')
                         data = JSON.parse (data_str) ;
                     }
                     catch (e) {
-                        ZeroFrame.cmd("wrapperNotification", ['info', 'Import cancelled. Invalid file<br>error = ' + e.message, 5000]);
+                        z_wrapper_notification( ['info', 'Import cancelled. Invalid file<br>error = ' + e.message, 5000]);
                         return;
                     }
                     // check json structure
@@ -1131,7 +1136,7 @@ angular.module('MoneyNetwork')
                 catch (err) {
                     error = 'import failed: ' + err.message ;
                     console.log(pgm + error) ;
-                    ZeroFrame.cmd("wrapperNotification", ['error', error]);
+                    z_wrapper_notification( ['error', error]);
                     return ;
                 }
 
@@ -1170,21 +1175,21 @@ angular.module('MoneyNetwork')
             //    ', confirm new password = ' + self.change_password.confirm_new_password) ;
             if (self.change_password.new_password != self.change_password.confirm_new_password) {
                 error = 'Password not changed. New password and confirm password does not match' ;
-                ZeroFrame.cmd("wrapperNotification", ['error', error, 10000]);
+                z_wrapper_notification( ['error', error, 10000]);
                 return ;
             }
             if (self.change_password.old_password == self.change_password.new_password) {
                 error = 'Password not changed. Old password and new password are identical' ;
-                ZeroFrame.cmd("wrapperNotification", ['error', error, 10000]);
+                z_wrapper_notification( ['error', error, 10000]);
                 return ;
             }
             error = MoneyNetworkHelper.change_password(self.change_password.old_password, self.change_password.new_password) ;
             if (error) {
                 error = 'Password not changed. ' + error ;
-                ZeroFrame.cmd("wrapperNotification", ['error', error, 10000]);
+                z_wrapper_notification( ['error', error, 10000]);
                 return ;
             }
-            ZeroFrame.cmd("wrapperNotification", ['done', 'Password was changed. Please remember your new password', 10000]);
+            z_wrapper_notification( ['done', 'Password was changed. Please remember your new password', 10000]);
             delete self.change_password.old_password ;
             delete self.change_password.new_password ;
             delete self.change_password.confirm_new_password ;

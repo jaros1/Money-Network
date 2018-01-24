@@ -45,6 +45,12 @@ angular.module('MoneyNetwork')
             return res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res) ;
         }
 
+        // insert <br> into long notifications. For example JSON.stringify
+        function z_wrapper_notification (array) {
+            moneyNetworkHubService.z_wrapper_notification(array) ;
+        } // z_wrapper_notification
+
+
         // administrator helpers.
         function is_admin () {
             return moneyNetworkHubService.is_admin() ;
@@ -642,12 +648,12 @@ angular.module('MoneyNetwork')
 
             // check login status - client and ZeroNet
             if (!z_cache.user_id) {
-                ZeroFrame.cmd("wrapperNotification", ["error", "Ups. Something is wrong. Not logged in Money Network. Cannot post search words in Zeronet. User_id is null", 10000]);
+                z_wrapper_notification(["error", "Ups. Something is wrong. Not logged in Money Network. Cannot post search words in Zeronet. User_id is null", 10000]);
                 return ;
             }
             old_userid = z_cache.user_id ;
             if (!ZeroFrame.site_info.cert_user_id) {
-                ZeroFrame.cmd("wrapperNotification", ["error", "Ups. Something is wrong. Not logged in on ZeroNet. Cannot post search words in Zeronet. siteInfo.cert_user_id is null", 10000]);
+                z_wrapper_notification(["error", "Ups. Something is wrong. Not logged in on ZeroNet. Cannot post search words in Zeronet. siteInfo.cert_user_id is null", 10000]);
                 console.log(pgm + 'site_info = ' + JSON.stringify(ZeroFrame.site_info));
                 return ;
             }
@@ -864,7 +870,7 @@ angular.module('MoneyNetwork')
                                                 console.log(pgm + 'user_seq = ' + my_user_seq) ;
                                                 console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
                                                 // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
-                                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                                z_wrapper_notification(["error", error, 5000]);
                                             }
                                         }
                                         if (message_with_envelope.message.image && (message_with_envelope.message.image != true)) {
@@ -904,7 +910,7 @@ angular.module('MoneyNetwork')
                                                 console.log(pgm + 'user_seq = ' + my_user_seq) ;
                                                 console.log(pgm + 'zeronet_msg_id = ' + contact.messages[j].zeronet_msg_id) ;
                                                 // console.log(pgm + 'data.msg = ' + JSON.stringify(data.msg));
-                                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                                z_wrapper_notification(["error", error, 5000]);
                                             }
                                             continue ;
                                         }
@@ -1394,11 +1400,11 @@ angular.module('MoneyNetwork')
                                 if (!contact.pubkey || (('' + contact.encryption == '2') && !contact.pubkey2)) {
                                     if (('' + contact.encryption == '2') && !contact.pubkey2) {
                                         console.log(pgm + 'Cannot send message. contact does not have a public key (cryptMessage)');
-                                        ZeroFrame.cmd("wrapperNotification", ['error', 'Cannot send message<br>contact does not have a public key<br>(cryptMessage encryption)'])
+                                        z_wrapper_notification(['error', 'Cannot send message<br>contact does not have a public key<br>(cryptMessage encryption)'])
                                     }
                                     else {
                                         console.log(pgm + 'Cannot send message. contact does not have a public key (JSEncrypt)');
-                                        ZeroFrame.cmd("wrapperNotification", ['error', 'Cannot send message<br>contact does not have a public key<br>(JSEncrypt encryption)'])
+                                        z_wrapper_notification(['error', 'Cannot send message<br>contact does not have a public key<br>(JSEncrypt encryption)'])
                                     }
                                     console.log(pgm + 'contact.pubkey = ' + contact.pubkey) ;
                                     console.log(pgm + 'contact.pubkey2 = ' + contact.pubkey2) ;
@@ -2119,7 +2125,7 @@ angular.module('MoneyNetwork')
                     "Sorry. Cannot send message(s). No more disk space. Missing " + (0 - available) + " bytes.<br>" +
                     "Please delete some outgoing messages or remove some images from outgoing chat messages";
                 console.log(pgm + error);
-                ZeroFrame.cmd("wrapperNotification", ["error", error]);
+                z_wrapper_notification(["error", error]);
                 return false; // stop
             }
             else {
@@ -2175,7 +2181,7 @@ angular.module('MoneyNetwork')
                 //        "timestamp": 1484413938793
                 //    }]
                 //};
-                ZeroFrame.cmd("wrapperNotification", ["error", error]);
+                z_wrapper_notification(["error", error]);
                 return ;
             }
             // write data.json and publish
@@ -2189,7 +2195,7 @@ angular.module('MoneyNetwork')
                     z_update_5_public_chat(true) ;
                 }
                 else {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
+                    z_wrapper_notification(["error", "Failed to post: " + JSON.stringify(res), 5000]);
                     console.log(pgm + 'Error. Failed to post: ' + JSON.stringify(res)) ;
                 }
             }); // fileWrite
@@ -2457,7 +2463,7 @@ angular.module('MoneyNetwork')
                                         if (error) {
                                             error = 'cannot write file ' + new_z_filename + ', error = ' + error ;
                                             debug('public_chat', pgm + error) ;
-                                            ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                            z_wrapper_notification(["error", error, 5000]);
                                             // stop. changes were not published
                                             return ;
                                         }
@@ -2481,7 +2487,7 @@ angular.module('MoneyNetwork')
                                             else {
                                                 error = 'failed to write file ' + new_z_filename + ', res = ' + res ;
                                                 debug('public_chat', pgm + error) ;
-                                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                                z_wrapper_notification(["error", error, 5000]);
                                                 // stop. changes were not published
                                             }
                                         }); // fileWrite callback 2a
@@ -2638,7 +2644,7 @@ angular.module('MoneyNetwork')
                                     if (error) {
                                         error = 'cannot write file ' + new_z_filename + ', error = ' + error ;
                                         debug('public_chat', pgm + error) ;
-                                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                        z_wrapper_notification(["error", error, 5000]);
                                         // stop. changes were not published
                                         return ;
                                     }
@@ -2680,7 +2686,7 @@ angular.module('MoneyNetwork')
                                         else {
                                             error = 'failed to write file ' + file_path + ', res = ' + res ;
                                             console.log(pgm + error) ;
-                                            ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                            z_wrapper_notification(["error", error, 5000]);
                                             // stop. changes were not published
                                         }
                                     }); // fileWrite callback 2b
@@ -2776,7 +2782,7 @@ angular.module('MoneyNetwork')
                 if (error) {
                     console.log(pgm + 'System error. failed to public reaction. like.json is invalid. ' + error) ;
                     console.log(pgm + 'like = ' + JSON.stringify(like)) ;
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish reaction<br>like.json file is invalid<br>"]);
+                    z_wrapper_notification(["error", "Failed to publish reaction<br>like.json file is invalid<br>"]);
                     return done(publish);
                 }
                 like_updated = false ;
@@ -2974,7 +2980,7 @@ angular.module('MoneyNetwork')
                 if (error) {
                     console.log(pgm + 'System error. failed to public reaction. Cannot write invalid like.json file. ' + error) ;
                     console.log(pgm + 'like = ' + JSON.stringify(like)) ;
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish reaction<br>like.json file is invalid<br>"]);
+                    z_wrapper_notification(["error", "Failed to publish reaction<br>like.json file is invalid<br>"]);
                     return done(publish);
                 }
                 write_like_json(function(res) {
@@ -2986,7 +2992,7 @@ angular.module('MoneyNetwork')
                         done(true, refresh_reactions_job)  ;
                     }
                     else {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
+                        z_wrapper_notification(["error", "Failed to post: " + JSON.stringify(res), 5000]);
                         console.log(pgm + 'Error. Failed to post: ' + JSON.stringify(res)) ;
                     }
 

@@ -41,6 +41,11 @@ angular.module('MoneyNetwork')
             return (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK. ' + res.length + ' rows returned' ;
         }
 
+        // insert <br> into long notifications. For example JSON.stringify
+        function z_wrapper_notification (array) {
+            moneyNetworkHubService.z_wrapper_notification(array) ;
+        } // z_wrapper_notification
+
         // lost Merger:MoneyNetwork permission after fileGet operation to a "bad" file
         // https://github.com/HelloZeroNet/ZeroNet/issues/944 & https://github.com/HelloZeroNet/ZeroNet/issues/965
         var bad_files = [
@@ -1148,7 +1153,7 @@ angular.module('MoneyNetwork')
                 debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                 // console.log(pgm + 'res.length = ' + res.length);
                 if (res.error) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for public keys: " + res.error, 5000]);
+                    z_wrapper_notification(["error", "Search for public keys: " + res.error, 5000]);
                     console.log(pgm + "Search for pubkeys failed: " + res.error);
                     console.log(pgm + 'query = ' + mn_query_3);
                     console.log(pgm + '2) avatar check skipped and 3) data.json check skipped');
@@ -1286,7 +1291,7 @@ angular.module('MoneyNetwork')
 
                     // console.log(pgm + 'res.length = ' + res.length);
                     if (res.error) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Search for avatars: " + res.error, 5000]);
+                        z_wrapper_notification(["error", "Search for avatars: " + res.error, 5000]);
                         console.log(pgm + "Search for avatars failed: " + res.error);
                         console.log(pgm + 'query = ' + mn_query_4);
                         console.log(pgm + '3) data.json check skipped');
@@ -1734,7 +1739,7 @@ angular.module('MoneyNetwork')
                     if (detected_client_log_out(pgm, old_userid)) return ;
                     // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     if (res.error) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error]);
+                        z_wrapper_notification(["error", "Search for new contacts failed: " + res.error]);
                         console.log(pgm + "Search for new contacts failed: " + res.error) ;
                         console.log(pgm + 'mn query 5 = ' + mn_query_5) ;
                         if (fnc_when_ready) fnc_when_ready(no_contacts);
@@ -1841,7 +1846,7 @@ angular.module('MoneyNetwork')
                         if (detected_client_log_out(pgm, old_userid)) return ;
                         // console.log(pgm + 'res = ' + JSON.stringify(res));
                         if (res.error) {
-                            ZeroFrame.cmd("wrapperNotification", ["error", "Search for new contacts failed: " + res.error, 5000]);
+                            z_wrapper_notification(["error", "Search for new contacts failed: " + res.error, 5000]);
                             console.log(pgm + "Search for new contacts failed: " + res.error) ;
                             console.log(pgm + 'mn query 7 = ' + mn_query_7) ;
                             if (fnc_when_ready) fnc_when_ready(no_contacts);
@@ -1849,7 +1854,7 @@ angular.module('MoneyNetwork')
                         }
                         if (res.length == 0) {
                             // current user not in data.users array. must be an user without any search words in user_info
-                            ZeroFrame.cmd("wrapperNotification", ["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
+                            z_wrapper_notification(["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
                             if (fnc_when_ready) fnc_when_ready(no_contacts);
                             return;
                         }
@@ -3734,7 +3739,7 @@ angular.module('MoneyNetwork')
                 if (detected_client_log_out(pgm, old_userid)) return ;
                 // console.log(pgm + 'res = ' + JSON.stringify(res));
                 if (res.error) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for new unknown contacts failed: " + res.error, 5000]);
+                    z_wrapper_notification(["error", "Search for new unknown contacts failed: " + res.error, 5000]);
                     console.log(pgm + "Search for new contacts failed: " + res.error) ;
                     console.log(pgm + 'mn query 11 = ' + mn_query_11) ;
                     new_unknown_contacts.splice(0,new_unknown_contacts.length);
@@ -3746,7 +3751,7 @@ angular.module('MoneyNetwork')
                     if (expected_unique_ids.indexOf(unique_id) == -1) res.splice(i,1);
                 }
                 if (res.length == 0) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for new unknown contacts failed. No contacts were found", 5000]);
+                    z_wrapper_notification(["error", "Search for new unknown contacts failed. No contacts were found", 5000]);
                     new_unknown_contacts.splice(0,new_unknown_contacts.length);
                     console.log(pgm + "Search for new unknown contacts failed. No contacts were found") ;
                     console.log(pgm + 'contacts_query = ' + mn_query_11) ;
@@ -3798,7 +3803,7 @@ angular.module('MoneyNetwork')
                 new_unknown_contacts.splice(0, new_unknown_contacts.length);
 
                 if (found_auth_addresses.length != expected_auth_addresses.length) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for new unknown contacts failed. Expected " + expected_auth_addresses.length + " contacts. Found " + res.length + " contacts", 5000]);
+                    z_wrapper_notification(["error", "Search for new unknown contacts failed. Expected " + expected_auth_addresses.length + " contacts. Found " + res.length + " contacts", 5000]);
                     console.log(pgm + "Search for new unknown contacts failed. Expected " + expected_auth_addresses.length + " contacts. Found " + res.length + " contacts");
                     console.log(pgm + 'contacts_query = ' + mn_query_11) ;
                 }
@@ -4159,7 +4164,7 @@ angular.module('MoneyNetwork')
                 //    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjVluDxwL7zcL16AaeLcW\nHWIMcMra0Al/7TNnJqtoRNoJJXc+RPV7r0YKyNHY5d9k31gNxYWNA4aLqrc4cevN\namnk6qIKqK0HHT8kXIkxn7qm62/zn1uu4PQhWqab38GT70PaICC0XBJ+vHGiaxcZ\n5njwm3HMxcKigCUheHS7Qpg61mbs4LPfdXKdOw1zUI3mKNSfJmDu6gxtpbQzC0hJ\ncTym7V6RRUWCQJsLWNHcesVZLZbeECAjzRWZR62A1PDnJsuB8vYt5GV5pgrIDAYx\n1cD961mgOghkD2OZMdhp9RyWQ0mMxYqG7Gyp/HCnase8ND8+9GsQtS1YBM+FBN8E\nwQIDAQAB\n-----END PUBLIC KEY-----"
                 //}];
                 if (res.error) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for new messages failed: " + res.error, 5000]);
+                    z_wrapper_notification(["error", "Search for new messages failed: " + res.error, 5000]);
                     console.log(pgm + "Search for new messages failed: " + res.error);
                     console.log(pgm + 'mn query 13 = ' + mn_query_13);
                     return;
@@ -4411,7 +4416,7 @@ angular.module('MoneyNetwork')
                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                 debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                 if (res.error) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for image json files: " + res.error, 5000]);
+                    z_wrapper_notification(["error", "Search for image json files: " + res.error, 5000]);
                     console.log(pgm + "Search for image json files failed: " + res.error);
                     console.log(pgm + 'mn query 14 = ' + mn_query_14);
                     return ;
@@ -5467,7 +5472,7 @@ angular.module('MoneyNetwork')
                         }
 
                         if (res.error) {
-                            ZeroFrame.cmd("wrapperNotification", ["error", "Search for public chat: " + res.error]);
+                            z_wrapper_notification(["error", "Search for public chat: " + res.error]);
                             console.log(pgm + "Search for public chat failed: " + res.error);
                             console.log(pgm + 'query 15 = ' + mn_query_15);
                             return cb('done') ;
@@ -6405,7 +6410,7 @@ angular.module('MoneyNetwork')
                 if (!files.length) return ;
 
                 text = 'MoneyNetwork is now a merger site.<br>Please delete folder:<br>' + ZeroFrame.site_info.address + '/data<br>folder';
-                ZeroFrame.cmd("wrapperNotification", ['info', text, 10000]);
+                z_wrapper_notification(['info', text, 10000]);
 
             }) ; // fileList callback 1
 
@@ -6473,7 +6478,7 @@ angular.module('MoneyNetwork')
         function client_logout(login_setting_changed) {
             // notification
             var key, a_path, z_path ;
-            if (!login_setting_changed) ZeroFrame.cmd("wrapperNotification", ['done', 'Log out OK', 3000]);
+            if (!login_setting_changed) z_wrapper_notification(['done', 'Log out OK', 3000]);
             // clear sessionStorage
             MoneyNetworkHelper.client_logout();
             // clear all JS work data in MoneyNetworkService
@@ -6606,7 +6611,7 @@ angular.module('MoneyNetwork')
             var error = MoneyNetworkHelper.validate_json (pgm, message, message.msgtype, 'Contact added but no message was sent to contact') ;
             if (error) {
                 ls_save_contacts(false);
-                ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                z_wrapper_notification(["Error", error]);
                 return ;
             }
             // send message
@@ -6633,7 +6638,7 @@ angular.module('MoneyNetwork')
             var error = MoneyNetworkHelper.validate_json (pgm, message, message.msgtype, 'Contact removed but no message was send to contact') ;
             if (error) {
                 ls_save_contacts(false);
-                ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                z_wrapper_notification(["Error", error]);
                 return ;
             }
             // send message
@@ -6685,7 +6690,7 @@ angular.module('MoneyNetwork')
             var error = MoneyNetworkHelper.validate_json (pgm, message, message.msgtype, 'Verification request was not sent to contact') ;
             if (error) {
                 ls_save_contacts(false);
-                ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                z_wrapper_notification(["Error", error]);
                 return ;
             }
             // send message
@@ -6695,12 +6700,11 @@ angular.module('MoneyNetwork')
             console.log(pgm + 'message_envelope = ' + JSON.stringify(message_envelope));
             ls_save_contacts(true) ;
             // notification
-            ZeroFrame.cmd(
-                "wrapperNotification",
-                ["info",
-                    'Verify request send to contact. Waiting for verification.<br>' +
-                    'Please send password "' + password + '" to contact in an other<br>' +
-                    'trusted communication channel (mail, socialnetwork or whatever)']);
+            z_wrapper_notification([
+                "info",
+                'Verify request send to contact. Waiting for verification.<br>' +
+                'Please send password "' + password + '" to contact in an other<br>' +
+                'trusted communication channel (mail, socialnetwork or whatever)']);
 
         } // contact_verify
 
@@ -6851,7 +6855,7 @@ angular.module('MoneyNetwork')
             }
 
             // notification (chat - click on avatar) or confirm dialog (chatCtrl.send_chat_msg)
-            if (!confirm) ZeroFrame.cmd("wrapperNotification", ["info", msg, 5000]);
+            if (!confirm) z_wrapper_notification(["info", msg, 5000]);
             return msg ;
         } // is_old_contact
 
@@ -7029,13 +7033,13 @@ angular.module('MoneyNetwork')
             MoneyNetworkHelper.use_login_changed() ;
             // warning
             if (use_login.bol) {
-                ZeroFrame.cmd("wrapperNotification", ['done',
+                z_wrapper_notification(['done',
                     'Password log in was enabled. No data was moved.<br>' +
                     'Note that private data from the unprotected<br>' +
                     'account still is in localStorage', 10000]);
             }
             else {
-                ZeroFrame.cmd("wrapperNotification", ['done',
+                z_wrapper_notification(['done',
                     'Password log in was disabled. No data was moved.<br>' +
                     'Note that private data from password protected<br>' +
                     'account(s) still is in localStorage', 10000]);
@@ -7059,7 +7063,7 @@ angular.module('MoneyNetwork')
             // auto log in
             console.log(pgm + 'login in with blank password') ;
             client_login('') ;
-            ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
+            z_wrapper_notification(['done', 'Log in OK', 3000]);
             console.log(pgm + 'check deeplink and redirect') ;
 
             // auto log + deep link?
@@ -7177,7 +7181,8 @@ angular.module('MoneyNetwork')
             get_register: get_register,
             get_use_login: get_use_login,
             use_login_changed: use_login_changed,
-            get_z_cache: moneyNetworkHubService.get_z_cache
+            get_z_cache: moneyNetworkHubService.get_z_cache,
+            z_wrapper_notification: moneyNetworkHubService.z_wrapper_notification
         };
 
         // end MoneyNetworkService

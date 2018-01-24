@@ -7,6 +7,11 @@ angular.module('MoneyNetwork')
         var controller = 'AuthCtrl';
         console.log(controller + ' loaded');
 
+        // insert <br> into long notifications. For example JSON.stringify
+        function z_wrapper_notification (array) {
+            moneyNetworkService.z_wrapper_notification(array) ;
+        } // z_wrapper_notification
+
         self.is_logged_in = function () {
             if (!ZeroFrame.site_info) return false ;
             if (!ZeroFrame.site_info.cert_user_id) return false ;
@@ -116,15 +121,15 @@ angular.module('MoneyNetwork')
 
             // check ZeroFrame status before client log in
             if (!ZeroFrame.site_info) {
-                ZeroFrame.cmd("wrapperNotification", ['info', 'Please wait. ZeroFrame is loading', 5000]);
+                z_wrapper_notification(['info', 'Please wait. ZeroFrame is loading', 5000]);
                 return ;
             }
             if (!ZeroFrame.site_info.cert_user_id) {
-                ZeroFrame.cmd("wrapperNotification", ['info', 'Please select ZeroNet ID before log in', 5000]);
+                z_wrapper_notification(['info', 'Please select ZeroNet ID before log in', 5000]);
                 return ;
             }
             if (self.use_private_data && MoneyNetworkHelper.ls_is_loading()) {
-                ZeroFrame.cmd("wrapperNotification", ['info', 'Please wait. Loading localStorage data', 5000]);
+                z_wrapper_notification(['info', 'Please wait. Loading localStorage data', 5000]);
                 return ;
             }
             if (!self.use_private_data) {
@@ -158,8 +163,8 @@ angular.module('MoneyNetwork')
                 if (moneyNetworkService.client_login(self.device_password, create_new_account, create_guest_account, parseInt(self.keysize))) {
                     // log in OK - clear login form and redirect
                     register = self.register.yn ;
-                    if (get_no_passwords() == old_no_accounts) ZeroFrame.cmd("wrapperNotification", ['done', 'Log in OK', 3000]);
-                    else ZeroFrame.cmd("wrapperNotification", ['done', 'Log in with new account OK', 3000]);
+                    if (get_no_passwords() == old_no_accounts) z_wrapper_notification( ['done', 'Log in OK', 3000]);
+                    else z_wrapper_notification(['done', 'Log in with new account OK', 3000]);
 
                     self.device_password = '';
                     self.confirm_device_password = '';
@@ -173,7 +178,7 @@ angular.module('MoneyNetwork')
                         $location.path(a_path);
                         $location.replace() ;
                         ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]) ;
-                        if (self.use_login.bol) ZeroFrame.cmd("wrapperNotification", ["info", "Welcome to Money Network. Please update your user info", 10000]);
+                        if (self.use_login.bol) z_wrapper_notification(["info", "Welcome to Money Network. Please update your user info", 10000]);
                         return ;
                     }
 
@@ -211,13 +216,13 @@ angular.module('MoneyNetwork')
                     ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, z_title, z_path]) ;
                     // console.log(pgm + 'login without a deep link: a_path = ' + a_path + ', z_path = ' + z_path + ', z_title = ' + z_title) ;
                 }
-                else ZeroFrame.cmd("wrapperNotification", ['error', 'Invalid password', 3000]);
+                else z_wrapper_notification(['error', 'Invalid password', 3000]);
             } ; // login_or_register_cb
 
             // check merger site permission before login
             check_merger_permission(function (ok) {
                 if (!ok) {
-                    ZeroFrame.cmd("wrapperNotification", ['info', 'Please grant Merger:MoneyNetwork permission', 5000]);
+                    z_wrapper_notification( ['info', 'Please grant Merger:MoneyNetwork permission', 5000]);
                     return ;
                 }
 

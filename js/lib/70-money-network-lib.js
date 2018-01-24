@@ -329,8 +329,11 @@ var MoneyNetworkHelper = (function () {
 
                     // todo: zerogate.tk: This function is disabled on this proxy! maybe optional files plugin is disabled?
                     console.log(pgm + 'proxy server. plugins = ' + JSON.stringify(server_info.plugins)) ;
-
-                    // external ip and Multiuser plugin. Must be a proxy server. download emojis
+// zerogate.tk. plugins =
+//plugins = [
+//    "AnnounceZero", "Bigfile", "Cors", "CryptMessage", "FilePack", "MergerSite", "Multiuser", "Mute",
+//    "Newsfeed", "OptionalManager", "PeerDb", "Sidebar", "Stats", "TranslateSite", "Trayicon", "Zeroname"];
+// external ip and Multiuser plugin. Must be a proxy server. download emojis
                     cb3('proxy server') ;
                 }) ; // serverInfo
 

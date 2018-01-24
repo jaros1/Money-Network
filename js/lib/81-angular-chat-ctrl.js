@@ -19,6 +19,12 @@ angular.module('MoneyNetwork')
 
             function debug (key, text) { MoneyNetworkHelper.debug(key, text) }
 
+            // insert <br> into long notifications. For example JSON.stringify
+            function z_wrapper_notification (array) {
+                moneyNetworkService.z_wrapper_notification(array) ;
+            } // z_wrapper_notification
+
+
             self.z = ZeroFrame ;
 
             self.is_logged_in = function () {
@@ -175,14 +181,14 @@ angular.module('MoneyNetwork')
                     // start, stop, start editing group chat. just continue already group
                     // console.log(pgm + 'start, stop, start editing group chat. just continue already group') ;
                     self.editing_grp_chat = true ;
-                    ZeroFrame.cmd("wrapperNotification", ["info", info , 5000]);
+                    z_wrapper_notification(["info", info , 5000]);
                     return ;
                 }
                 if (!self.contact.pubkey) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Cannot start group chat with this contact. Public key is missing", 5000]);
+                    z_wrapper_notification(["error", "Cannot start group chat with this contact. Public key is missing", 5000]);
                     return ;
                 }
-                ZeroFrame.cmd("wrapperNotification", ["info", info , 5000]);
+                z_wrapper_notification(["info", info , 5000]);
                 self.group_chat = true ;
                 self.editing_grp_chat = true ;
                 for (var i=0 ; i<self.contacts.length ; i++) {
@@ -198,7 +204,7 @@ angular.module('MoneyNetwork')
                 var contact, path1, path2, a_path, z_path ;
                 clear_chat_filter_cache() ;
                 if (self.group_chat_contacts.length == 0) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Please some participants to chat first", 5000]);
+                    z_wrapper_notification(["error", "Please some participants to chat first", 5000]);
                     return ;
                 }
                 else if (self.group_chat_contacts.length == 1) {
@@ -245,7 +251,7 @@ angular.module('MoneyNetwork')
                 if (index == -1) {
                     // console.log(pgm + 'adding contact with hashkey ' + contact["$$hashKey"] + ' to this group chat') ;
                     if (!contact.pubkey) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Cannot add this contact to group chat. Public key is missing", 5000]);
+                        z_wrapper_notification(["error", "Cannot add this contact to group chat. Public key is missing", 5000]);
                         return ;
                     }
                     self.group_chat_contacts.push(contact) ;
@@ -564,7 +570,7 @@ angular.module('MoneyNetwork')
                 contact.new_alias = moneyNetworkService.get_contact_name(contact);
                 contact.edit_alias = true ;
                 if (edit_alias_notifications > 0) {
-                    ZeroFrame.cmd("wrapperNotification", ["info", self.edit_alias_title, 5000]);
+                    z_wrapper_notification(["info", self.edit_alias_title, 5000]);
                     edit_alias_notifications-- ;
                 }
                 // set focus - in a timeout - wait for angularJS
@@ -737,7 +743,7 @@ angular.module('MoneyNetwork')
                     var expected_sha256 = message.message.message.password_sha256 ;
                     var found_sha256 = CryptoJS.SHA256(password).toString() ;
                     if (expected_sha256 != found_sha256) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", 'Invalid verification password. Try again', 3000]);
+                        z_wrapper_notification(["error", 'Invalid verification password. Try again', 3000]);
                         self.enter_password(message);
                         return ;
                     }
@@ -747,7 +753,7 @@ angular.module('MoneyNetwork')
                     var error = MoneyNetworkHelper.validate_json (pgm, verified_message, verified_message.msgtype, 'Password was correct but verification response was not sent to contact') ;
                     if (error) {
                         moneyNetworkService.ls_save_contacts(false);
-                        ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                        z_wrapper_notification(["Error", error]);
                         return ;
                     }
                     // send message
@@ -755,7 +761,7 @@ angular.module('MoneyNetwork')
                     moneyNetworkService.ls_save_contacts(true) ;
                     // notification
                     delete message.message.message.password_sha256 ;
-                    ZeroFrame.cmd("wrapperNotification", ["info", "Verification OK", 3000]);
+                    z_wrapper_notification(["info", "Verification OK", 3000]);
                 });
             }; // enter_password
             self.contact_remove = function () {
@@ -781,7 +787,7 @@ angular.module('MoneyNetwork')
                     if (!content) {
                         error = 'system error. content.json file was not found for auth_address ' + contact.auth_address ;
                         console.log(pgm + error) ;
-                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                        z_wrapper_notification(["error", error, 5000]);
                         return ;
                     }
                     try {
@@ -790,7 +796,7 @@ angular.module('MoneyNetwork')
                     catch (e) {
                         error = 'system error. invalid content.json file for auth_address ' + contact.auth_address ;
                         console.log(pgm + error) ;
-                        ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                        z_wrapper_notification(["error", error, 5000]);
                         return ;
                     }
                     files = content.files ;
@@ -814,7 +820,7 @@ angular.module('MoneyNetwork')
                         else if (file_names_lng2 - file_names_lng1 > 1) file_texts.push((file_names_lng2 - file_names_lng1) + ' optional files.') ;
                     }
                     if (file_names.length == 0) {
-                        ZeroFrame.cmd("wrapperNotification", ["info", "User has already been deleted. No files were found", 5000]);
+                        z_wrapper_notification(["info", "User has already been deleted. No files were found", 5000]);
                         return ;
                     }
 
@@ -859,7 +865,7 @@ angular.module('MoneyNetwork')
                             if (res != "ok") {
                                 error = "Failed to publish " + file_name + " : " + res.error;
                                 console.log(pgm + error);
-                                ZeroFrame.cmd("wrapperNotification", ["error", error, 3000]);
+                                z_wrapper_notification(["error", error, 3000]);
                                 return ;
                             }
 
@@ -895,8 +901,7 @@ angular.module('MoneyNetwork')
                     for (i=0 ; i<self.messages.length ; i++) if (self.messages[i].chat_filter) no_msg = no_msg + 1 ;
                     end_of_page = (self.chat_page_context.infinite_scroll_limit >= no_msg) ;
                     if (!end_of_page) {
-                        ZeroFrame.cmd("wrapperNotification",
-                            ["info", "Public chat is enabled and messages are sorted by " + self.setup.chat_sort +
+                        z_wrapper_notification(["info", "Public chat is enabled and messages are sorted by " + self.setup.chat_sort +
                             "<br>Scroll down to see public chat", 10000]);
                     }
                 }
@@ -1183,7 +1188,7 @@ angular.module('MoneyNetwork')
                     if (!balance) {
                         error = 'error. could not find ' + unique_text + ' wallet' ;
                         console.log(pgm + error) ;
-                        ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                        z_wrapper_notification(['error', error]) ;
                         return ;
                     }
                     // open wallet
@@ -1231,7 +1236,7 @@ angular.module('MoneyNetwork')
                         }
 
                         // send ping. timeout max 5 seconds. Expects Timeout or OK response
-                        ZeroFrame.cmd("wrapperNotification", ['info', 'Checking if wallet is already<br>open in an other browser tab', 3000]) ;
+                        z_wrapper_notification(['info', 'Checking if wallet is already<br>open in an other browser tab', 3000]) ;
                         request = { msgtype: 'ping' };
                         session.encrypt.send_message(request, {response: 5000}, function (response) {
                             var pgm = controller + '.open_wallet send_message callback 3: ' ;
@@ -1247,7 +1252,7 @@ angular.module('MoneyNetwork')
                             }
                             // ping OK. wallet session. notification instead of open window command
                             console.log(pgm + 'wallet session ping OK. notify user. do not open extra wallet session') ;
-                            ZeroFrame.cmd("wrapperNotification", ['info', 'Wallet is already open in an other browser tab', 5000]) ;
+                            z_wrapper_notification( ['info', 'Wallet is already open in an other browser tab', 5000]) ;
 
                         }) ; // send_message callback 3
 
@@ -1275,8 +1280,7 @@ angular.module('MoneyNetwork')
 
                 // check image attachment
                 if (self.new_chat_src && !moneyNetworkService.get_image_ext_from_base64uri(self.new_chat_src)) {
-                    ZeroFrame.cmd(
-                        "wrapperNotification", ["error", "Ups. Something is wrong here.<br>" +
+                    z_wrapper_notification(["error", "Ups. Something is wrong here.<br>" +
                         "Only png, jpg, jpeg, gif and tif images can be used in chat<br>" +
                         "Sending chat message without image", 5000]);
                     self.new_chat_src='';
@@ -1309,7 +1313,7 @@ angular.module('MoneyNetwork')
                             // validate json
                             error = MoneyNetworkHelper.validate_json(pgm, message, message.msgtype, 'Could not send chat message');
                             if (error) {
-                                ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                                z_wrapper_notification( ["Error", error]);
                                 self.new_chat_msg_disabled = false ;
                                 return;
                             }
@@ -1473,7 +1477,7 @@ angular.module('MoneyNetwork')
                     if (error) {
                         self.new_chat_msg_disabled = false ;
                         console.log(pgm + error) ;
-                        ZeroFrame.cmd("wrapperNotification", ["Error", br(error)]);
+                        z_wrapper_notification( ["Error", error]);
                         return;
                     }
 
@@ -1554,7 +1558,7 @@ angular.module('MoneyNetwork')
                                     '<br>See red error message' + (errors > 1 ? 's' : '') + ' in chat.' ;
                                 console.log(pgm + error) ;
                                 console.log(pgm + 'self.new_chat_msg_disabled = ' + self.new_chat_msg_disabled);
-                                ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                                z_wrapper_notification(['error', error]) ;
                                 return ;
                             }
 
@@ -1806,7 +1810,7 @@ angular.module('MoneyNetwork')
                                     'Sorry. Wallet ping error' + (errors > 1 ? 's' : '') + '.' +
                                     '<br>Cannot validate money transaction.' +
                                     '<br>Please open and/or check wallet in other browser tab.' ;
-                                ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                                z_wrapper_notification(['error', error]) ;
                                 return ;
                             }
                             // no wallet ping errors. continue
@@ -2040,7 +2044,7 @@ angular.module('MoneyNetwork')
                     // validate json
                     error = MoneyNetworkHelper.validate_json(pgm, new_message, new_message.msgtype, 'Could not send chat message');
                     if (error) {
-                        ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                        z_wrapper_notification( ["Error", error]);
                         return;
                     }
                     // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
@@ -2064,7 +2068,7 @@ angular.module('MoneyNetwork')
                 // validate json
                 var error = MoneyNetworkHelper.validate_json(pgm, changed_message, changed_message.msgtype, 'Could not send changed chat message');
                 if (error) {
-                    ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                    z_wrapper_notification( ["Error", error]);
                     return;
                 }
                 if (new_image && (old_image == new_image)) changed_message.replace_unchanged_image_with_x = true ;
@@ -2148,7 +2152,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'reader.result = ' + image_base64uri);
                     var ext = moneyNetworkService.get_image_ext_from_base64uri(image_base64uri);
                     if (!ext) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
+                        z_wrapper_notification(["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
                         return;
                     }
                     //var max_image_size = moneyNetworkService.get_max_image_size() ;
@@ -2183,7 +2187,7 @@ angular.module('MoneyNetwork')
                     // console.log(pgm + 'reader.result = ' + image_base64uri);
                     var ext = moneyNetworkService.get_image_ext_from_base64uri(image_base64uri);
                     if (!ext) {
-                        ZeroFrame.cmd("wrapperNotification", ["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
+                        z_wrapper_notification(["error", "Sorry. Only png, jpg, jpeg, gif and tif images can be used in chat", 5000]);
                         return;
                     }
                     //var max_image_size = moneyNetworkService.get_max_image_size() ;
@@ -2246,7 +2250,7 @@ angular.module('MoneyNetwork')
                 var contact, currencies ;
 
                 if (!ZeroFrame.site_info.cert_user_id || !moneyNetworkService.get_user_id()) {
-                    ZeroFrame.cmd("wrapperNotification", ['info', 'Cannot chat. Cannot send a money transaction', 5000]) ;
+                    z_wrapper_notification(['info', 'Cannot chat. Cannot send a money transaction', 5000]) ;
                     return ;
                 }
 
@@ -2264,7 +2268,7 @@ angular.module('MoneyNetwork')
                     }
                 }
                 if (!self.contact || self.group_chat) {
-                    ZeroFrame.cmd("wrapperNotification", ['info', 'Money transactions are only available in private chat<br>Click on an avatar to start a private chat', 5000]) ;
+                    z_wrapper_notification( ['info', 'Money transactions are only available in private chat<br>Click on an avatar to start a private chat', 5000]) ;
                     return ;
                 }
 
@@ -2276,7 +2280,7 @@ angular.module('MoneyNetwork')
 
                     if (!self.currencies) self.currencies = currencies ; // initialize currencies array used in UI
                     if (!self.currencies.length) {
-                        ZeroFrame.cmd("wrapperNotification", ['info', 'Cannot start money transaction<br>No wallets/currencies were found', 5000]) ;
+                        z_wrapper_notification(['info', 'Cannot start money transaction<br>No wallets/currencies were found', 5000]) ;
                         return ;
                     }
 
@@ -2683,7 +2687,7 @@ angular.module('MoneyNetwork')
                                 // one or more wallet ping errors. stop approve money transactions
                                 plural = errors > 1 ? 's' : '' ;
                                 error = 'Sorry. Cannot approve money transaction' ;
-                                ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                                z_wrapper_notification( ['error', error]) ;
                                 m.message.message.money_transactions_status.html = 'Transaction check failed. See red error message' + plural ;
                                 console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
                                 m.message.message.money_transactions_status.spinner = false ;
@@ -2873,7 +2877,7 @@ angular.module('MoneyNetwork')
                                     'Sorry. Wallet ping error' + plural + '.' +
                                     '<br>Cannot validate money transaction.' +
                                     '<br>Please open and/or check wallet' + plural + ' in other browser tab.' ;
-                                ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                                z_wrapper_notification(['error', error]) ;
                                 m.message.message.money_transactions_status.html = 'Wallet ping failed. See red error message' + plural ;
                                 console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
                                 m.message.message.money_transactions_status.spinner = false ;
@@ -2957,7 +2961,7 @@ angular.module('MoneyNetwork')
                                 'Cannot approve money transaction<br>' +
                                 'Unknown wallet' + plural + ' ' + unknown_wallets.join(', ') + '<br>' +
                                 'Please add missing wallet' + plural + ' to MoneyNetwork' ;
-                            ZeroFrame.cmd("wrapperNotification", ['error', msg, 5000]) ;
+                            z_wrapper_notification( ['error', msg, 5000]) ;
                             m.message.message.money_transactions_status.html = 'Unknown wallet' + plural;
                             console.log(pgm + '_status.html = ' + m.message.message.money_transactions_status.html) ;
                             m.message.message.money_transactions_status.spinner = false ;
@@ -3012,7 +3016,7 @@ angular.module('MoneyNetwork')
                             plural = (m.message.message.money_transactions.length > 1 ? 's' : '') ;
                             error = 'Currency code was not found in ' + wallet_name + '<br>Please reject or edit money transaction' + plural ;
                             console.log(pgm + error) ;
-                            ZeroFrame.cmd("wrapperNotification", ['error', error]) ;
+                            z_wrapper_notification(['error', error]) ;
                             return ;
                         }
                         console.log(pgm + 'wallet ' + wallet_name + ', balance = ' + JSON.stringify(balance)) ;
@@ -3367,8 +3371,7 @@ angular.module('MoneyNetwork')
 
                 // check image attachment
                 if (message.comment_src && !moneyNetworkService.get_image_ext_from_base64uri(message.comment_src)) {
-                    ZeroFrame.cmd(
-                        "wrapperNotification", ["error", "Ups. Something is wrong here.<br>" +
+                    z_wrapper_notification( ["error", "Ups. Something is wrong here.<br>" +
                         "Only png, jpg, jpeg, gif and tif images can be used in chat<br>" +
                         "Sending chat comment without image", 5000]);
                     message.comment_src='';
@@ -3403,7 +3406,7 @@ angular.module('MoneyNetwork')
                 // validate json
                 error = MoneyNetworkHelper.validate_json(pgm, comment, comment.msgtype, 'Could not send chat message');
                 if (error) {
-                    ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                    z_wrapper_notification(["Error", error]);
                     console.log(pgm + 'comment = ' + JSON.stringify(comment)) ;
                     return;
                 }

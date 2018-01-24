@@ -24,7 +24,7 @@ angular.module('MoneyNetwork')
     // - get/write wrappers for data.json, status.json and like.json
     // - get user data hub
     // - merge user data hubs operation
-    .factory('MoneyNetworkHubService', ['$timeout', 'safeApply', function($timeout, safeApply) {
+    .factory('MoneyNetworkHubService', ['$timeout', 'safeApply', 'brFilter', function($timeout, safeApply, br) {
         var service = 'MoneyNetworkHubService' ;
         console.log(service + ' loaded') ;
 
@@ -72,6 +72,12 @@ angular.module('MoneyNetwork')
         function format_res (res) {
             return res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res) ;
         }
+
+        // insert <br> into long notifications. For example JSON.stringify
+        function z_wrapper_notification (array) {
+            array[1] = br(array[1]) ;
+            ZeroFrame.cmd("wrapperNotification", array) ;
+        } // z_wrapper_notification
 
 
         // inject functions from calling services
@@ -1826,7 +1832,7 @@ angular.module('MoneyNetwork')
                             error = 'Cannot write invalid status.json file: ' + error;
                             console.log(pgm + error);
                             console.log(pgm + 'status = ' + JSON.stringify(status));
-                            ZeroFrame.cmd("wrapperNotification", ["error", error]);
+                            z_wrapper_notification(["error", error]);
                             return ;
                         }
 
@@ -1838,7 +1844,7 @@ angular.module('MoneyNetwork')
                             if (res != "ok") {
                                 error = "Update was not published. fileWrite failed for status.json: " + res;
                                 console.log(pgm + error);
-                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                z_wrapper_notification(["error", error, 5000]);
                                 return ;
                             }
                             // sitePublish
@@ -1847,7 +1853,7 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'res = ' + JSON.stringify(res) + ' (' + debug_seq + ')');
                                 if (detected_client_log_out(pgm, old_userid)) return;
                                 if (res != "ok") {
-                                    ZeroFrame.cmd("wrapperNotification", ["error", "Failed to publish: " + res.error, 5000]);
+                                    z_wrapper_notification(["error", "Failed to publish: " + res.error, 5000]);
                                     // error - repeat sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
                                     if (!zeronet_site_publish_interval) zeronet_site_publish_interval = 30;
                                     else zeronet_site_publish_interval = zeronet_site_publish_interval * 2;
@@ -1997,7 +2003,7 @@ angular.module('MoneyNetwork')
                                             if (res != "ok") {
                                                 error = "Could not add optional file support to content.json: " + res;
                                                 console.log(pgm + error);
-                                                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                                                z_wrapper_notification(["error", error, 5000]);
                                                 return;
                                             }
                                             // sign and publish in next zeronet_site_publish call
@@ -2119,7 +2125,7 @@ angular.module('MoneyNetwork')
                             zeronet_site_publish({reason: 'check_sha256_addresses'}) ;
                         }
                         else {
-                            ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
+                            z_wrapper_notification(["error", "Failed to post: " + JSON.stringify(res), 5000]);
                             console.log(pgm + 'Error. Failed to post: ' + JSON.stringify(res)) ;
                         }
                     }); // write_data_json
@@ -2247,7 +2253,7 @@ angular.module('MoneyNetwork')
                 }
                 error = 'failed to write file ' + file_path + ', res = ' + res ;
                 debug('public_chat', pgm + error) ;
-                ZeroFrame.cmd("wrapperNotification", ["error", error, 5000]);
+                z_wrapper_notification(["error", error, 5000]);
                 if (cb) cb(false) ;
             }) ; // fileWrite callback
         } // write_empty_chat_file
@@ -2516,7 +2522,7 @@ angular.module('MoneyNetwork')
                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                 debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
                 if (res.error) {
-                    ZeroFrame.cmd("wrapperNotification", ["error", "Search for inactive users: " + res.error, 5000]);
+                    z_wrapper_notification(["error", "Search for inactive users: " + res.error, 5000]);
                     console.log(pgm + "Search for inactive users failed: " + res.error);
                     console.log(pgm + 'query = ' + mn_query_16);
                     return;
@@ -2558,7 +2564,7 @@ angular.module('MoneyNetwork')
                             if (res != "ok") {
                                 error = "Failed to publish " + filename + " : " + res.error;
                                 console.log(pgm + error);
-                                ZeroFrame.cmd("wrapperNotification", ["error", error, 3000]);
+                                z_wrapper_notification(["error", error, 3000]);
                             }
                         }); // sitePublish
                     }; // sign_and_publish
@@ -2795,7 +2801,7 @@ angular.module('MoneyNetwork')
                             error = 'Cannot write invalid status.json file: ' + error;
                             console.log(pgm + error);
                             console.log(pgm + 'status = ' + JSON.stringify(status));
-                            ZeroFrame.cmd("wrapperNotification", ["error", error]);
+                            z_wrapper_notification(["error", error]);
                             return ;
                         }
                         // write status.json
@@ -2809,7 +2815,7 @@ angular.module('MoneyNetwork')
                                 zeronet_site_publish({reason: 'I am online'}, check_pubkey2_cb) ;
                             }
                             else {
-                                ZeroFrame.cmd("wrapperNotification", ["error", "Failed to post: " + JSON.stringify(res), 5000]);
+                                z_wrapper_notification(["error", "Failed to post: " + JSON.stringify(res), 5000]);
                                 console.log(pgm + 'Error. Failed to post: ' + JSON.stringify(res)) ;
                             }
 
@@ -3229,7 +3235,7 @@ angular.module('MoneyNetwork')
                     // validate json
                     error = MoneyNetworkHelper.validate_json(pgm, delete_message, delete_message.msgtype, 'Could not send delete chat message');
                     if (error) {
-                        ZeroFrame.cmd("wrapperNotification", ["Error", error]);
+                        z_wrapper_notification(["Error", error]);
                         return update_zeronet;
                     }
                     // console.log(pgm + 'last_sender_sha256 = ' + last_sender_sha256);
@@ -3325,7 +3331,8 @@ angular.module('MoneyNetwork')
             get_merger_error: get_merger_error,
             inject_functions: inject_functions,
             z_file_get: z_file_get,
-            get_user_data_hubs: get_user_data_hubs
+            get_user_data_hubs: get_user_data_hubs,
+            z_wrapper_notification: z_wrapper_notification
         };
 
         // end MoneyNetworkHubService

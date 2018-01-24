@@ -44,7 +44,7 @@ angular.module('MoneyNetwork')
             contact.new_alias = moneyNetworkService.get_contact_name(contact);
             contact.edit_alias = true ;
             if (edit_alias_notifications > 0) {
-                ZeroFrame.cmd("wrapperNotification", ["info", self.edit_alias_title, 5000]);
+                moneyNetworkService.z_wrapper_notification(["info", self.edit_alias_title, 5000]);
                 edit_alias_notifications-- ;
             }
             // set focus - in a timeout - wait for angularJS
