@@ -927,7 +927,7 @@ angular.module('MoneyNetwork')
     }])
 
 
-    .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', function (moneyNetworkService, formatChatMessageAlias) {
+    .filter('formatChatMessage', ['MoneyNetworkService', 'formatChatMessageAliasFilter', 'shyFilter', function (moneyNetworkService, formatChatMessageAlias, shy) {
         // format ingoing or outgoing chat message
         var contacts = moneyNetworkService.get_contacts() ; // array with contacts from localStorage
 
@@ -1140,10 +1140,7 @@ angular.module('MoneyNetwork')
             }
 
             // other "unknown" messages. Just return JSON dump
-            str = moneyNetworkService.sanitize(JSON.stringify(message.message)) ;
-            str = str.split('":"').join('": "');
-            str = str.split('","').join('", "');
-            return str ;
+            return shy(moneyNetworkService.sanitize(JSON.stringify(message.message))) ;
         } ;
         // end formatChatMessage filter
     }])
