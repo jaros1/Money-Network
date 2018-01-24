@@ -1662,10 +1662,6 @@ angular.module('MoneyNetwork')
                             $scope.$apply() ;
                         } ;
 
-                        // https://github.com/jaros1/Money-Network/issues/193
-                        // force error message with stringify
-                        request.this_is_an_error = 'x' ;
-
                         // send validate money transactions request to wallet (wait max 60 seconds. wallet may call external API in validation process)
                         session.encrypt.send_message(request, {response: 60000, timeout_msg: timeout_msg, countdown_cb: countdown_cb}, function (response) {
                             var pgm = controller + '.send_chat_msg.step_3_check_transactions.check_transaction send_message callback: ';
