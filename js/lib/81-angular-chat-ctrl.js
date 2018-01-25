@@ -939,6 +939,25 @@ angular.module('MoneyNetwork')
                 moneyNetworkService.set_first_and_last_chat(first, last, message, self.contact) ;
             }; // set_first_and_last_chat
 
+            // include parent rows in chat_filter chat (filter by contact only)
+            function get_unique_id_for_parents (js_messages_row) {
+                var pgm = controller + '.get_unique_id_for_parents: ' ;
+                var parent_js_messages_row, unique_ids ;
+                if (!js_messages_row.message.message || !js_messages_row.message.message.parent) return [] ; // not a chat msg or no parent chat msg
+                // console.log(pgm + 'message.message.message = ' + JSON.stringify(js_messages_row.message.message)) ;
+                // console.log(pgm + 'js_messages_row.message.message = ' + JSON.stringify(js_messages_row.message.message)) ;
+                // console.log(pgm + 'js_messages_row.contact.unique_id = ' + js_messages_row.contact.unique_id) ;
+                parent_js_messages_row = moneyNetworkService.get_message_by_parent(js_messages_row.message.message.parent) ;
+                if (!parent_js_messages_row) return [] ; // error. parent was not found
+                // console.log(pgm + 'parent_js_messages_row.contact.unique_id = ' + parent_js_messages_row.contact.unique_id) ;
+                // recursive call. get unique_ids for grant parent etc
+                unique_ids = get_unique_id_for_parents(parent_js_messages_row) ; // get unique_ids for parent rows
+                unique_ids.push(parent_js_messages_row.contact.unique_id) ;
+                // console.log(pgm + 'unique_ids = ' + JSON.stringify(unique_ids)) ;
+                if (self.contact) console.log(pgm + 'self.contact.unique_id = ' + self.contact.unique_id) ;
+                return unique_ids ;
+            } // get_unique_id_for_parents
+
             self.chat_filter = function (message, index, messages) {
                 var pgm = controller + '.chat_filter: ';
                 // check cache
@@ -1012,6 +1031,11 @@ angular.module('MoneyNetwork')
                     // show chat for one contact or one group chat contact
                     match = true ;
                     reason = 3 ;
+                }
+                else if (get_unique_id_for_parents(message).indexOf(self.contact.unique_id) != -1) {
+                    // nested comment. parent matches contact filter
+                    match = true ;
+                    reason = 3.5 ;
                 }
                 else if (self.contact.type == 'group') {
                     // group chat contact: show "Started group chat" messages to participants in group chat

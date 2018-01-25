@@ -3203,6 +3203,12 @@ angular.module('MoneyNetwork')
             return js_messages_row ;
         }
 
+        function get_message_by_parent (parent) {
+            var pgm = service + '.get_message_by_parent: ' ;
+            var js_messages_row = js_messages_index.parent[parent] ;
+            return js_messages_row ;
+        }
+
         // recursive delete message and any child messages (comments)
         function recursive_delete_message (message) {
             var pgm = service + '.recursive_delete_message: ' ;
@@ -3333,6 +3339,7 @@ angular.module('MoneyNetwork')
             get_message_by_seq: get_message_by_seq,
             get_message_by_sender_sha256: get_message_by_sender_sha256,
             get_message_by_local_msg_seq: get_message_by_local_msg_seq,
+            get_message_by_parent: get_message_by_parent,
             add_msg: add_msg,
             remove_message: remove_message,
             recursive_delete_message: recursive_delete_message,

@@ -1397,6 +1397,17 @@ angular.module('MoneyNetwork')
             var i, contact, j, message_with_envelope, auth_address, local_msg_seq, key, sender_sha256, reactions_index,
                 save_reactions, local_storage_contacts_clone, k, message, money_transaction ;
 
+            // seen this problem on zerogate.tk proxy server with a deep chat url
+            // https://www.zerogate.tk/moneynetwork.bit/?path=/chat2/jro@zeroid.bit
+            if (!ZeroFrame.site_info) {
+                console.log(pgm + 'ignoring save contacts call. ZeroFrame is loading') ;
+                return ;
+            }
+            if (!ZeroFrame.site_info.cert_user_id) {
+                console.log(pgm + 'ignoring save contacts call. No certificate') ;
+                return ;
+            }
+
             // any logical deleted inbox messages to be physical deleted?
             save_reactions = false ;
             for (i=0 ; i<ls_contacts.length ; i++)  {
@@ -5752,6 +5763,7 @@ angular.module('MoneyNetwork')
                         for (i=res.length-1 ; i >= 0 ; i--) {
                             cache_filename = 'merged-' + get_merged_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename ;
                             if (!file_within_chat_page_context(cache_filename)) {
+                                console.log(pgm + 'issue #305: remove search results no longer within page context. cache_filename = ' + cache_filename) ;
                                 res.splice(i,1) ;
                                 // continue ;
                             }
@@ -5987,15 +5999,22 @@ angular.module('MoneyNetwork')
         function file_within_chat_page_context(filename) {
             var pgm = service + '.file_within_chat_page_context: ' ;
             if (!z_cache.user_setup.public_chat) return false ; // public chat disabled. Ignore all optional files
-            // filename = data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
-            if (chat_page_context.contact) {
-                auth_address = filename.split('/')[2] ;
-                user_seq = parseInt(filename.split('-')[2]) ;
-                if ((auth_address != chat_page_context.contact) || (user_seq != chat_page_context.contact.user_seq)) {
-                    // debug('public_chat', pgm + 'ignoring chat file from other contacts ' + filename) ;
-                    return false ;
-                }
-            }
+
+            //// issue #305 - dropped this check - not working correct for nested comments
+            //// filename = merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/195z3T7ZBNo5Z3aYFzaokb4HZMJhnp14Bd/1508143193583-1508142296464-1-chat.json
+            //if (chat_page_context.contact) {
+            //    auth_address = filename.split('/')[4] ;
+            //    user_seq = parseInt(filename.split('-')[3]) ;
+            //    if ((auth_address != chat_page_context.contact.auth_address) || (user_seq != chat_page_context.contact.user_seq)) {
+            //        // debug('public_chat', pgm + 'ignoring chat file from other contacts ' + filename) ;
+            //        console.log(pgm + 'issue #305: ignoring chat file from other contacts ' + filename) ;
+            //        console.log(pgm + 'issue #305: auth_address = ' + auth_address + ', user_seq = ' + user_seq) ;
+            //        console.log(pgm + 'issue #305: chat_page_context.contact = ' + JSON.stringify(chat_page_context.contact)) ;
+            //        return false ;
+            //    }
+            //}
+
+
             if (chat_page_is_empty()) return true ;
             if (!chat_page_context.end_of_page && !chat_page_context.last_bottom_timestamp) {
                 debug('public_chat', pgm + 'page not ready. bottom_timestamp is null. ignoring chat file ' + filename) ;
@@ -6204,6 +6223,7 @@ angular.module('MoneyNetwork')
                         }
                         if (!read_timestamp && !file_within_chat_page_context(cache_filename)) {
                             debug('public_chat', pgm + 'file ' + cache_filename + ' is no longer within page context');
+                            console.log(pgm + 'issue #305: file ' + cache_filename + ' is no longer within page context');
                             return cb2();
                         }
                         // find contact
@@ -7113,6 +7133,7 @@ angular.module('MoneyNetwork')
             remove_message: remove_message,
             add_msg: add_msg,
             remove_msg: remove_msg,
+            get_message_by_parent: moneyNetworkHubService.get_message_by_parent,
             recursive_delete_message: recursive_delete_message,
             load_avatar: load_avatar,
             get_avatar: moneyNetworkZService.get_avatar,
