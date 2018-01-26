@@ -2853,6 +2853,7 @@ angular.module('MoneyNetwork')
                                 money_transactions: [],
                                 money_transactionid: money_transaction.money_transactionid
                             } ;
+                            sessions.push({wallet_name: wallet_name, sessionid: balance.sessionid}) ;
                         }
                         else {
                             // control. multiple money transaction for same wallet.
@@ -2873,7 +2874,6 @@ angular.module('MoneyNetwork')
                             }
                         }
                         wallets_hash[wallet_name].money_transactions.push(i) ;
-                        sessions.push({wallet_name: wallet_name, sessionid: balance.sessionid}) ;
                     } // for i
                     console.log(pgm + 'wallets_hash = ' + JSON.stringify(wallets_hash)) ;
                     console.log(pgm + 'sessions = ' + JSON.stringify(sessions)) ;
