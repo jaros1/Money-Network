@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
     
-    .controller('UserCtrl', ['$scope', '$rootScope', '$timeout', 'MoneyNetworkService', '$location', 'dateFilter',
-                     function($scope, $rootScope, $timeout, moneyNetworkService, $location, date)
+    .controller('UserCtrl', ['$scope', '$rootScope', '$timeout', 'MoneyNetworkService', '$location', 'dateFilter', '$sce',
+                     function($scope, $rootScope, $timeout, moneyNetworkService, $location, date, $sce)
     {
         var self = this;
         var controller = 'UserCtrl';
@@ -650,6 +650,61 @@ angular.module('MoneyNetwork')
         self.export_confirm_password = null ;
         self.export_import_test = null ; // testcase: import file = export file
         self.export_info = {} ; // object with export informations
+        self.wallets = [] ; // show info about wallets in export.
+
+        function red (html) {
+            return '<span style="color:red;">' + html + '</span>' ;
+        }
+        var ls_sessions = moneyNetworkService.ls_get_sessions() ;
+        var SESSION_INFO_KEY = moneyNetworkService.get_session_info_key() ;
+
+        function update_wallet_export_info () {
+            var no_ok, no_error, i, msg ;
+            // count no OK wallets. count no wallet with errors
+            no_ok = 0 ; no_error = 0 ;
+            for (i=0 ; i<self.wallets.length ; i++) {
+                if (self.wallets[i].ping_error) no_error++ ;
+                else no_ok++ ;
+            }
+            msg = [] ;
+            if (no_ok) msg.push(no_ok + ' connected wallet' + (no_ok == 1 ? '' : 's')) ;
+            if (no_error) msg.push(red(no_error + ' not connected wallet' + (no_error == 1 ? '' : 's'))) ;
+            self.export_info.wallets = $sce.trustAsHtml(msg.join(', ')) ;
+        } // update_wallet_export_info
+
+        self.export_open_wallet = function (wallet) {
+            var pgm = controller + '.open_wallet: ' ;
+            var refresh_job, now, submit_refresh_job ;
+            now = new Date().getTime() ;
+            moneyNetworkService.open_window(pgm, wallet.wallet_url);
+
+            // wait for wallet session and incoming get_password and ping requests - wait max 30 seconds
+            // update self.export_info.wallets after incoming request from new wallet session
+            refresh_job = function(k) {
+                var sessionid2, session_info2 ;
+                for (sessionid2 in ls_sessions) {
+                    session_info2 = ls_sessions[sessionid2][SESSION_INFO_KEY] ;
+                    if (session_info2.url != wallet.wallet_url) continue ;
+                    if (!session_info2.last_request_at || (session_info2.last_request_at < now)) continue ;
+                    console.log(pgm + 'received ping from ' + sessionid2 + '. refresh wallets now') ;
+                    wallet.ping_error = null ;
+                    update_wallet_export_info() ;
+                    $rootScope.$apply() ;
+                    return ;
+                }
+                if (k > 0) {
+                    // wait for ping
+                    submit_refresh_job = function () { refresh_job(k-1)} ;
+                    $timeout(submit_refresh_job, 1000) ;
+                    return ;
+                }
+                wallet.ping_error = 'Timeout' ;
+                $rootScope.$apply() ;
+            };
+            submit_refresh_job = function () { refresh_job(30)} ;
+            $timeout(submit_refresh_job, 1000) ;
+
+        }; // open_wallet
 
         // get export info. show in export options section
         (function() {
@@ -699,6 +754,99 @@ angular.module('MoneyNetwork')
                         chat_bytes += content.files_optional[filename].size ;
                     }
                     self.export_info.chat = chat_files + ' file' + (chat_files > 1 ? 's' : '') + ', ' + chat_bytes + ' bytes' ;
+
+                    console.log(pgm + 'todo: initialize self.export_info.wallets. information about # connected and not connected wallets') ;
+                    console.log(pgm + 'todo: initialize list of all known wallets. ping wallets. update info about connected wallets') ;
+                    moneyNetworkService.get_currencies({}, function (currencies, refresh_angular_ui) {
+                        var pgm = controller + ' get_my_user_hub get_currencies callback 2: ' ;
+                        var wallet_names, i, wallet_name, ping_wallet ;
+                        console.log(pgm + 'currencies = ' + JSON.stringify(currencies)) ;
+                        //currencies = [{
+                        //    "code": "tBTC",
+                        //    "amount": 3.69162808,
+                        //    "last_request_at": 1516957627446,
+                        //    "balance_at": 1516541483800,
+                        //    "sessionid": "gxap1qz72thfwinhp7m6b9lnox4zqx99hx6jmqwlcfttpsln81vyhzythhwl",
+                        //    "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
+                        //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                        //    "wallet_title": "MoneyNetworkW2",
+                        //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                        //    "api_url": "https://www.blocktrail.com/api/docs",
+                        //    "unique_id": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c/tBTC",
+                        //    "name": "Test Bitcoin",
+                        //    "url": "https://en.bitcoin.it/wiki/Testnet",
+                        //    "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
+                        //    "units": [{"unit": "BitCoin", "factor": 1, "decimals": 8}, {
+                        //        "unit": "Satoshi",
+                        //        "factor": 1e-8,
+                        //        "decimals": 0
+                        //    }],
+                        //    "wallet_name": "MoneyNetworkW2",
+                        //    "unique_text": "tBTC Test Bitcoin from MoneyNetworkW2"
+                        //}];
+
+                        // wallet_name is unique for each wallet. is either wallet_domain or wallet_address.
+                        // initialize array with unique wallet names.
+                        wallet_names = {} ;
+                        self.wallets.splice(0,self.wallets.length) ;
+                        for (i=0 ; i<currencies.length ; i++) {
+                            wallet_name = currencies[i].wallet_name ;
+                            if (wallet_names[wallet_name]) continue ;
+                            wallet_names[wallet_name] = true ;
+                            self.wallets.push({
+                                wallet_name: wallet_name,
+                                sessionid: currencies[i].sessionid,
+                                last_request_at: currencies[i].last_request_at,
+                                wallet_url: '/' + (currencies[i].wallet_domain || currencies[i].wallet_address)
+                            }) ;
+                        }
+                        console.log(pgm + 'wallets = ' + JSON.stringify(wallet_names)) ;
+                        self.export_info.wallets = self.wallets.length + ' wallet' + (self.wallets.length == 1 ? '' : 's') ;
+                        if (!self.wallets.length) return ;
+
+                        // ping wallets to count # connected and # not connected wallets
+                        ping_wallet = function (index) {
+                            var pgm = controller + ' get_my_user_hub get_currencies ping_wallet: ' ;
+                            var sessionid, timeout_msg, no_ok, no_error, i, msg ;
+                            if (index >= self.wallets.length) {
+                                console.log(pgm + 'done pinging wallets. wallets = ' + JSON.stringify(self.wallets)) ;
+                                update_wallet_export_info() ;
+                                $rootScope.$apply() ;
+                                return ;
+                            }
+                            sessionid = self.wallets[index].sessionid ;
+                            MoneyNetworkAPILib.get_session(sessionid, function (session_info) {
+                                var request ;
+                                if (!session_info) {
+                                    self.wallets[index].ping_error = 'No session info was found for sessionid ' + sessionid ;
+                                    return ping_wallet(index+1) ;
+                                }
+                                request = { msgtype: 'ping'} ;
+                                timeout_msg = ['info', 'Issue with wallet ping may have been solved<br>Please try again (export data)', 10000] ;
+                                session_info.encrypt.send_message(request, {response: 5000, timeout_msg: timeout_msg}, function (response) {
+
+                                    if (response && response.error && response.error.match(/^Timeout /)) {
+                                        self.wallets[index].ping_error = 'Timeout' ;
+                                        return ping_wallet(index+1) ;
+                                    }
+                                    if (!response || response.error) {
+                                        self.wallets[index].ping_error = 'Wallet ping error ' + (response ? response.error : '') ;
+                                        return ping_wallet(index+1) ;
+                                    }
+                                    // OK wallet ping
+                                    self.wallets[index].ping_error = null ;
+                                    ping_wallet(index+1) ;
+                                }) ; // send_message
+
+                            }) ; // get_session callback
+
+
+                        } ; // ping_wallet
+                        ping_wallet(0) ;
+
+
+                    }) ; // get_currencies callback 2
+
                     // console.log(controller + ': self.export_info = ' + JSON.stringify(self.export_info)) ;
                 }) ; // z_file_get callback 2
 
@@ -709,8 +857,9 @@ angular.module('MoneyNetwork')
         // export to txt file
         self.export = function() {
             var pgm = controller + '.export: ' ;
-            var filename, now, data, user_path, step_1_get_password, step_2_read_content_json, step_3_read_zeronet_file,
-                step_3_image_to_base64, step_4_get_ls, step_5_encrypt_data, step_6_export;
+            var filename, now, data, user_path, step_1_check_wallets, step_2_get_password, step_3_read_content_json,
+                step_4_read_zeronet_file, step_5_image_to_base64, step_6_get_ls, step_7_get_wallet_ls, step_8_encrypt_data,
+                step_9_export;
 
             // check encrypt password
             if (self.export_encrypt) {
@@ -724,6 +873,7 @@ angular.module('MoneyNetwork')
                 }
             }
 
+            // check for wallets export
             now = new Date().getTime() ;
             filename = 'moneynetwork-' + date(now, 'yyyyMMdd-HHmmss') + '.txt' ;
             data = {
@@ -746,7 +896,7 @@ angular.module('MoneyNetwork')
                 user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
 
                 // callbacks:
-                step_6_export = function () {
+                step_9_export = function () {
                     var data_str, data_str64, blob, msg ;
                     data_str = JSON.stringify(data) ;
                     self.export_import_test = data_str ;
@@ -764,27 +914,62 @@ angular.module('MoneyNetwork')
                     msg += ' file ' + filename ;
                     if (self.export_encrypt) msg += '<br>Please remember export file password. Required for import' ;
                     z_wrapper_notification( ['done', msg]);
-                }; // step_6_export
+                }; // step_9_export
 
-                step_5_encrypt_data = function () {
+                step_8_encrypt_data = function () {
                     var options, timestamp, password, data_str, enc_data_str, key ;
-                    if (!data.options.encrypt) return step_6_export() ;
+                    if (!data.options.encrypt) return step_9_export() ;
                     password = data.password ;
                     delete data.password ;
                     data_str = JSON.stringify(data) ;
                     enc_data_str = MoneyNetworkHelper.encrypt(data_str, password);
                     for (key in data) delete data[key] ;
                     data.enc_data = enc_data_str ;
-                    step_6_export() ;
-                }; // step_5_encrypt_data
+                    step_9_export() ;
+                }; // step_8_encrypt_data
 
-                step_4_get_ls = function() {
+                step_7_get_wallet_ls = function(index) {
+                    var pgm = controller + '.export.step_7_get_wallet_ls: ' ;
+                    var sessionid ;
+                    if (index >= self.wallets.length) return step_8_encrypt_data() ; // done
+                    sessionid = self.wallets[index].sessionid ;
+                    MoneyNetworkAPILib.get_session(sessionid, function(session_info) {
+                        var request, error ;
+                        if (!session_info) {
+                            // abort export
+                            error = 'Export failed. Could not find session info for:<br>wallet: ' + self.wallets[index].wallet_name ;
+                            z_wrapper_notification(['error', error, 10000]) ;
+                            return ;
+                        }
+                        request = { msgtype: 'request_wallet_ls'} ;
+                        session_info.encrypt.send_message(request, {response: 30000}, function (response) {
+                            if (!response || response.error || (response.msgtype != 'wallet_ls')) {
+                                error =
+                                    'Export failed. Could not get localStorage data for:<br>' +
+                                    'wallet: ' + self.wallets[index].wallet_name + '<br>' +
+                                    JSON.stringify(response) ;
+                                z_wrapper_notification(['error', error, 10000]) ;
+                                return ;
+                            }
+                            // OK.
+                            // todo: add wallet ls data to data object
+                            // next wallet
+                            step_7_get_wallet_ls(index+1) ;
+
+                        }) ; // send_message callback 2
+
+                    }) ; // get_session callback 1
+
+                }; // step_7_get_wallet_ls
+
+                step_6_get_ls = function() {
                     data.ls = MoneyNetworkHelper.ls_get() ;
-                    step_5_encrypt_data() ;
-                }; // step_4_get_ls
+                    if (self.export_wallets) step_7_get_wallet_ls(0) ;
+                    else step_8_encrypt_data() ;
+                }; // step_6_get_ls
 
                 // http://stackoverflow.com/questions/6150289/how-to-convert-image-into-base64-string-using-javascript
-                step_3_image_to_base64 = function (src, outputFormat, callback) {
+                step_5_image_to_base64 = function (src, outputFormat, callback) {
                     var img = new Image();
                     img.crossOrigin = 'Anonymous';
                     img.onload = function() {
@@ -802,11 +987,11 @@ angular.module('MoneyNetwork')
                         img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
                         img.src = src;
                     }
-                };
+                }; // step_5_image_to_base64
 
-                step_3_read_zeronet_file = function () {
-                    var pgm = controller + '.export.3_read_zeronet_file: ' ;
-                    var filename, key, image_format, debug_seq ;
+                step_4_read_zeronet_file = function () {
+                    var pgm = controller + '.export.step_4_read_zeronet_file: ' ;
+                    var filename, key, image_format, debug_seq, format ;
 
                     // find next file to download
                     for (key in data.z_files) {
@@ -815,20 +1000,22 @@ angular.module('MoneyNetwork')
                             break ;
                         }
                     }
-                    if (!filename) return step_4_get_ls() ; // done with zeronet files. continue with localStorage
+                    if (!filename) return step_6_get_ls() ; // done with zeronet files. continue with localStorage
 
-                    if (['avatar.jpg', 'avatar.png'].indexOf(filename) != -1) {
-                        // image file. fileGet cannot be used.
-                        image_format = filename == 'avatar.jpg' ? 'image/jpg' : 'image/png' ;
-                        step_3_image_to_base64(user_path + '/' + filename, image_format, function(content) {
-                            data.z_files[filename] = content ;
-                            // console.log(pgm + 'filename = ' + filename + ', content = ' + content) ;
-                            step_3_read_zeronet_file() ;
-                        })
-                    }
-                    else {
+                    format = ['avatar.jpg', 'avatar.png'].indexOf(filename) != -1 ? 'base64' : 'text' ;
+
+                    //if (['avatar.jpg', 'avatar.png'].indexOf(filename) != -1) {
+                    //    // image file. fileGet cannot be used.
+                    //    image_format = filename == 'avatar.jpg' ? 'image/jpg' : 'image/png' ;
+                    //    step_5_image_to_base64(user_path + '/' + filename, image_format, function(content) {
+                    //        data.z_files[filename] = content ;
+                    //        // console.log(pgm + 'filename = ' + filename + ', content = ' + content) ;
+                    //        step_4_read_zeronet_file() ;
+                    //    })
+                    //}
+                    //else {
                         // json file. normal fileGet
-                        z_file_get(pgm, {inner_path: user_path + '/' + filename, required: false}, function (content) {
+                        z_file_get(pgm, {inner_path: user_path + '/' + filename, required: false, format: format}, function (content) {
                             var error ;
                             if (!content) {
                                 error = 'Cannot export zeronet data. file ' + filename + ' was not found' ;
@@ -836,25 +1023,32 @@ angular.module('MoneyNetwork')
                                 z_wrapper_notification( ['error', error]);
                                 return ;
                             }
-                            try {
-                                data.z_files[filename] = JSON.parse(content) ;
+                            if (format == 'text') {
+                                // json
+                                try {
+                                    data.z_files[filename] = JSON.parse(content) ;
+                                }
+                                catch (e) {
+                                    error = ['Cannot export zeronet data. ', 'file ' + filename + ' was invalid', 'error = ' + e.message] ;
+                                    console.log(pgm + error.join('. ')) ;
+                                    z_wrapper_notification(['error', error.join('<br>')]);
+                                    return ;
+                                }
                             }
-                            catch (e) {
-                                error = ['Cannot export zeronet data. ', 'file ' + filename + ' was invalid', 'error = ' + e.message] ;
-                                console.log(pgm + error.join('. ')) ;
-                                z_wrapper_notification(['error', error.join('<br>')]);
-                                return ;
+                            else {
+                                // avatar image
+                                data.z_files[filename] = content ;
                             }
-                            step_3_read_zeronet_file() ;
+                            step_4_read_zeronet_file() ;
                         }) ; // z_file_get cb
-                    }
-                }; // step_3_read_zeronet_file
+                    //}
+                }; // step_4_read_zeronet_file
 
-                step_2_read_content_json = function () {
-                    var pgm = controller + '.export.step_2_read_content_json: ' ;
+                step_3_read_content_json = function () {
+                    var pgm = controller + '.export.step_3_read_content_json: ' ;
                     var debug_seq ;
-                    moneyNetworkService.z_get_file(pgm, {inner_path: user_path + '/' + 'content.json', required: false}, function (content) {
-                        var pgm = controller + '.export.step_2_read_content_json z_file_get callback: ' ;
+                    z_file_get(pgm, {inner_path: user_path + '/' + 'content.json', required: false}, function (content) {
+                        var pgm = controller + '.export.step_3_read_content_json z_file_get callback: ' ;
                         var error, filename ;
                         if (!content) {
                             error = 'Cannot export zeronet data. content.json file was not found' ;
@@ -886,22 +1080,39 @@ angular.module('MoneyNetwork')
                             }
                         }
                         // console.log(pgm + 'data.z_files = ' + JSON.stringify(data.z_files)) ;
-                        step_3_read_zeronet_file() ;
+                        step_4_read_zeronet_file() ;
                     }) ; // z_file_get cb
-                }; // step_2_read_content_json cb
+                }; // step_3_read_content_json cb
 
-                step_1_get_password = function () {
+                step_2_get_password = function () {
                     if (data.options.encrypt) {
                         data.password = self.export_password ;
                         self.export_password = null ;
                         self.export_confirm_password = null ;
                     }
-                    if (data.options.z || data.options.chat) step_2_read_content_json() ;
-                    else step_4_get_ls() ;
-                }; // step_1_get_password
+                    if (data.options.z || data.options.chat) step_3_read_content_json() ;
+                    else step_6_get_ls() ;
+                }; // step_2_get_password
+
+                step_1_check_wallets = function() {
+                    var i, error ;
+                    if (!self.export_wallets) return step_2_get_password() ;
+                    for (i=0 ; i<self.wallets.length ; i++) {
+                        if (self.wallets[i].ping_error) {
+                            // abort export
+                            error =
+                                'Cannot start export with wallet data<br>' +
+                                'Wallet ' + self.wallets[i].wallet_name + ' error:<br>' +
+                                self.wallets[i].ping_error ;
+                            z_wrapper_notification(['error', error, 10000]) ;
+                            return ;
+                        }
+                    } // for i
+                    step_2_get_password() ;
+                }; // step_1_check_wallets
 
                 // start export callback sequence
-                step_1_get_password();
+                step_1_check_wallets();
 
             }) ; // get_my_user_hub callback 1
 

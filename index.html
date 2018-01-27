@@ -1574,7 +1574,7 @@
                     <td>
                         <table ng-show="u.export_show_options">
                             <tbody>
-                            <tr title="localStorage data is already included in export/import.">
+                            <tr title="localStorage data is always included in export/import.">
                                 <td><input type="checkbox" ng-model="u.export_ls" disabled></td>
                                 <td>localStorage</td>
                                 <td>&nbsp;&nbsp;</td>
@@ -1591,6 +1591,19 @@
                                 <td>ZeroNet optional files</td>
                                 <td></td>
                                 <td ng-bind="u.export_info.chat"></td>
+                            </tr>
+                            <tr title="Check to included wallets in export. This is localStorage from wallets">
+                                <td><input type="checkbox" ng-model="u.export_wallets"></td>
+                                <td>Wallets localStorage</td>
+                                <td></td>
+                                <td ng-bind-html="u.export_info.wallets"></td>
+                            </tr>
+                            <tr ng-show="u.export_wallets" ng-repeat="w in u.wallets">
+                                <td></td>
+                                <td colspan="3">
+                                    <a href="" ng-click="u.export_open_wallet(w)" ng-bind="w.wallet_name"></a>
+                                    <span ng-bind="w.ping_error" style="color:red;"></span>
+                                </td>
                             </tr>
                             <tr title="Check to create a password protected export file. Data in localStorage and data.json file are already encrypted. Optional files with public unencrypted chat are not">
                                 <td style="vertical-align: top"><input type="checkbox" ng-model="u.export_encrypt"></td>
