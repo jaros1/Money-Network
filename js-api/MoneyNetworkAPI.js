@@ -1684,26 +1684,27 @@ var MoneyNetworkAPILib = (function () {
             "wallet_ls": {
                 "type": 'object',
                 "title": 'Wallet: return string with full localStorage copy to MN session',
-                "description": 'Used for full MN and wallets localStorage backup/restore. data: JSON.stringify',
+                "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage data',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^wallet_ls$'},
-                    "data": {"type": 'string'}
+                    "ls": {"type": 'string'}
                 },
-                "required": ['msgtype', 'data'],
+                "required": ['msgtype', 'ls'],
                 "additionalProperties": false
             },
 
             "restore_wallet_ls": {
                 "type": 'object',
                 "title": 'MN: ask wallet to restore previous localStorage backup',
-                "description": 'Used for full MN and wallets localStorage backup/restore. data: JSON.stringify. timestamp and filename: backup timestamp and filename',
+                "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage. wallet: JSON.stringify wallet.json file. timestamp and filename: backup timestamp and filename',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^restore_wallet_ls$'},
-                    "data": {"type": 'string'},
+                    "ls": {"type": 'string'},
+                    "wallet": {"type": 'string'},
                     "timestamp": {"type": 'number', "multipleOf": 1.0},
                     "filename": {"type": 'string'}
                 },
-                "required": ['msgtype', 'data'],
+                "required": ['msgtype', 'ls', 'wallet', 'timestamp'],
                 "additionalProperties": false
             }
 
@@ -1770,6 +1771,7 @@ var MoneyNetworkAPILib = (function () {
             else if ((request_msgtype == 'prepare_mt_request') && (json.msgtype == 'prepare_mt_response')) null; // OK combination
             else if ((request_msgtype == 'get_published') && (json.msgtype == 'published')) null; // OK combination
             else if ((request_msgtype == 'queue_publish') && (json.msgtype == 'start_publish')) null; // OK combination
+            else if ((request_msgtype == 'request_wallet_ls') && (json.msgtype == 'wallet_ls')) null; // OK combination
             else return 'Invalid ' + request_msgtype + ' request ' + json.msgtype + ' response combination';
         }
         if (typeof tv4 === 'undefined') {

@@ -1566,6 +1566,7 @@
                         </table>
                     </td>
                 </tr>
+
                 <tr>
                     <td style="text-align: center; vertical-align: top">
                         <input type="checkbox" ng-model="u.export_show_options">Export options<span ng-show="u.export_show_options">:<br>include</span>
@@ -1580,7 +1581,7 @@
                                 <td>&nbsp;&nbsp;</td>
                                 <td ng-bind="u.export_info.ls"></td>
                             </tr>
-                            <tr title="ZeroNet user files. data.json, status.json and uploaded avatar icon. Used in encrypted communication with other ZeroNet users. Recommend that the two files are included in export. data.json contains data that should be in sync with data in localStorage. uploaded avatar is not included in export">
+                            <tr title="ZeroNet user files. data.json, like.json, status.json and uploaded avatar icon. Used in encrypted communication with other ZeroNet users. Recommend that the ZeroNet user data files are included in export">
                                 <td><input type="checkbox" ng-model="u.export_z"></td>
                                 <td>ZeroNet user files</td>
                                 <td></td>
@@ -1598,10 +1599,11 @@
                                 <td></td>
                                 <td ng-bind-html="u.export_info.wallets"></td>
                             </tr>
-                            <tr ng-show="u.export_wallets" ng-repeat="w in u.wallets">
+                            <tr ng-show="u.export_wallets" ng-repeat="w in u.wallets" title="Click on wallet name to open wallet session in a new browser tab. Click on checkbox to include/exclude wallet in export">
                                 <td></td>
                                 <td colspan="3">
-                                    <a href="" ng-click="u.export_open_wallet(w)" ng-bind="w.wallet_name"></a>
+                                    <input type="checkbox" ng-model="w.export">
+                                    <a href="" ng-click="u.open_wallet(w)" ng-bind="w.wallet_name"></a>
                                     <span ng-bind="w.ping_error" style="color:red;"></span>
                                 </td>
                             </tr>
@@ -1637,6 +1639,52 @@
                         </table>
                     </td>
                 </tr>
+
+                <tr ng-show="u.import_info">
+                    <td style="text-align: center; vertical-align: top">
+                        <input type="checkbox" ng-model="u.import_show_options">Import options<span ng-show="u.import_show_options">:<br>include</span>
+                    </td>
+                    <td></td>
+                    <td>
+                        <table ng-show="u.import_show_options">
+                            <tbody>
+                            <tr title="localStorage data is always included in export/import.">
+                                <td><input type="checkbox" ng-model="u.import_ls" disabled></td>
+                                <td>localStorage</td>
+                                <td>&nbsp;&nbsp;</td>
+                                <td ng-bind="u.import_info.ls"></td>
+                            </tr>
+                            <tr title="ZeroNet user files. data.json, like.json, status.json and uploaded avatar icon. Used in encrypted communication with other ZeroNet users. Recommend that the ZeroNet user data files are included in import">
+                                <td><input type="checkbox" ng-model="u.import_z"></td>
+                                <td>ZeroNet user files</td>
+                                <td></td>
+                                <td ng-bind="u.import_info.z"></td>
+                            </tr>
+                            <tr title="Check to included optional files in export. This is your unencrypted public chat and encrypted images from private chat">
+                                <td><input type="checkbox" ng-model="u.import_chat"></td>
+                                <td>ZeroNet optional files</td>
+                                <td></td>
+                                <td ng-bind="u.import_info.chat"></td>
+                            </tr>
+                            <tr title="Check to included wallets in export. This is localStorage from wallets">
+                                <td><input type="checkbox" ng-model="u.import_wallets"></td>
+                                <td>Wallets localStorage</td>
+                                <td></td>
+                                <td ng-bind-html="u.import_info.wallets"></td>
+                            </tr>
+                            <tr ng-show="u.import_wallets" ng-repeat="w in u.wallets|filter:{import_file_index:'!-1'}" title="Click on wallet name to open wallet session in a new browser tab. Click on checkbox to include/exclude wallet in import">
+                                <td></td>
+                                <td colspan="3">
+                                    <input type="checkbox" ng-model="w.import">
+                                    <a href="" ng-click="u.open_wallet(w)" ng-bind="w.wallet_name"></a>
+                                    <span ng-bind="w.ping_error" style="color:red;"></span>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+
                 <tr><td colspan="3">&nbsp;</td></tr>
                 <tr title="Click link to change password. Enter old and new password. Minimum password length 10 characters">
                     <td style="vertical-align: top">Password:</td>
@@ -2313,9 +2361,9 @@
   MoneyNetwork angularjs app - dynamic part - changed almost every day
   all.js ~= 1.3 Mb. js/all.js.zip ~= 200 Kb. Best to use .zip
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->
