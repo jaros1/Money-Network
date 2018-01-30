@@ -51,19 +51,21 @@ var MoneyNetworkAPILib = (function () {
     // merged_type used in all inner_paths merged-<merge_type>/<hub>/data/users/<auth_address>/....
     // default is MoneyNetwork. used for user data hubs (MN) and wallet data hubs (wallets)
     var merged_type = 'MoneyNetwork' ;
-    function set_merged_type (text) {
-        merged_type = text ;
-    }
     function get_merged_type () {
         return merged_type ;
     }
-
-    // validate user_path format: merged-MoneyNetwork/<hub>/data/users/<auth_address>/
     var user_path_regexp ;
-    (function(){
+    function init_user_path_regexp() {
         var bitcoin_adr = '1[a-km-zA-HJ-NP-Z1-9]{25,34}' ;
         user_path_regexp = new RegExp('^merged-' + get_merged_type() + '\/' + bitcoin_adr + '\/data\/users\/' + bitcoin_adr + '\/$') ;
-    })() ;
+    }
+    init_user_path_regexp();
+    function set_merged_type (text) {
+        merged_type = text ;
+        init_user_path_regexp() ;
+    }
+
+    // validate user_path format: merged-MoneyNetwork/<hub>/data/users/<auth_address>/
     function is_user_path (user_path) {
         if (typeof user_path != 'string') return false ;
         return user_path.match(user_path_regexp) ;
@@ -549,7 +551,7 @@ var MoneyNetworkAPILib = (function () {
     var demon_id;
     var sessions = {}; // other session filename => session info
     var done = {}; // filename => cb or true. cb: callback waiting for file. true: processed
-    var offline = {}; // other session filename => true (loading) or array with offline transactions
+
     // options:
     // - cb: session level callback function to handle incoming messages for this sessionid
     // - encrypt: MoneyNetworkAPI instance for this sessionid. Used for encrypt and decrypt. injected into callback function
@@ -677,7 +679,7 @@ var MoneyNetworkAPILib = (function () {
             session_info2 = { other_session_filename: other_session_filename} ;
             for (key in session_info1) {
                 if (!session_info1.hasOwnProperty(key)) continue ;
-                if (key == 'encrypt') continue ; // Blocked a frame with origin "null" from accessing a cross-origin frame error for returned encrypt object?!
+                // if (key == 'encrypt') continue ; // Blocked a frame with origin "null" from accessing a cross-origin frame error for returned encrypt object?!
                 session_info2[key] = session_info1[key] ;
             } // for key
             array.push(session_info2) ;
@@ -703,14 +705,22 @@ var MoneyNetworkAPILib = (function () {
     } // delete_session
 
     // delete all sessions and stop demon process. for example after client log out
-    function delete_all_sessions() {
-        var other_session_filename, count ;
+    function delete_all_sessions(reason) {
+        var pgm = module + '.delete_all_sessions: ' ;
+        var other_session_filename, count, session_info ;
+        if (!reason) reason = true ;
         if (Object.keys(sessions).length) {
             window.clearTimeout(demon_id) ;
             demon_id = null ;
         }
         count = 0 ;
         for (other_session_filename in sessions) {
+            session_info = other_session_filename[other_session_filename] ;
+            if (!session_info) {
+                console.log(pgm + 'no session_info was found for other_session_filename ' + other_session_filename) ;
+                continue ;
+            }
+            if (session_info.encrypt && !session_info.encrypt.destroyed) session_info.encrypt.destroy(reason);
             delete sessions[other_session_filename] ;
             count++ ;
         }
@@ -719,13 +729,45 @@ var MoneyNetworkAPILib = (function () {
 
     // delete all sessions and reset all data in this lib
     function clear_all_data() {
+        var key, subsystem ;
         delete_all_sessions() ;
-        debug = null ;
-        ZeroFrame = null ;
+        merged_type = 'MoneyNetwork' ;
+        init_user_path_regexp() ;
+        debug = false ;
+        debug_seq = 0 ;
+        for (key in z_debug_operations) delete z_debug_operations[key] ;
+        // ZeroFrame = null ;
         global_demon_cb = null ;
+        global_demon_cb_fileget = null ;
+        global_demon_cb_decrypt = null ;
         interval = null ;
         optional = null ;
+        for (key in group_debug_operations) delete group_debug_operations[key] ;
+        waiting_for_file_publish = null ;
         this_user_path = null ;
+        for (key in transactions) delete transactions[key] ;
+        client = null ;
+        server = null ;
+        is_client_cbs.splice(0,is_client_cbs.length) ;
+        for (key in done) delete done[key] ;
+        for (key in waiting_for_files) delete waiting_for_files[key] ;
+        for (subsystem in json_schemas) {
+            if (subsystem == 'api') continue ;
+            for (key in json_schemas[subsystem]) delete json_schemas[subsystem][key] ;
+        }
+        for (key in wallet_info_cache) delete wallet_info_cache[key] ;
+        for (key in new_hub_file_get_cbs) delete new_hub_file_get_cbs[key] ;
+        z_file_write_cbs.splice(0,z_file_write_cbs.length) ;
+        z_file_write_running = false ;
+        for (key in transactions) delete transactions[key] ;
+        last_published = 0 ;
+        for (key in last_published_hash) delete last_published_hash[key] ;
+        publish_queue.splice(publish_queue.length) ;
+        next_cb_id = 0 ;
+        stop_publish_queue_demon() ;
+        all_hubs.splice(0,all_hubs.length) ;
+        get_all_hubs_cbs.splice(get_all_hubs_cbs.length) ;
+        get_all_hubs_running = false ;
     } // clear_all_data
 
     // return true if demon is monitoring incoming messages for sessionid
@@ -1670,41 +1712,60 @@ var MoneyNetworkAPILib = (function () {
             },
 
             // backup/restore wallet ls. for full MN ls backup including wallet localStorage data
-            "request_wallet_ls": {
+            "request_wallet_backup": {
                 "type": 'object',
                 "title": 'MN: request full localStorage copy from wallet session',
                 "description": 'Used for full MN and wallets localStorage backup/restore',
                 "properties": {
-                    "msgtype": {"type": 'string', "pattern": '^request_wallet_ls$'}
+                    "msgtype": {"type": 'string', "pattern": '^request_wallet_backup$'}
                 },
                 "required": ['msgtype'],
                 "additionalProperties": false
             },
 
-            "wallet_ls": {
+            "wallet_backup": {
                 "type": 'object',
                 "title": 'Wallet: return string with full localStorage copy to MN session',
                 "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage data',
                 "properties": {
-                    "msgtype": {"type": 'string', "pattern": '^wallet_ls$'},
-                    "ls": {"type": 'string'}
+                    "msgtype": {"type": 'string', "pattern": '^wallet_backup$'},
+                    "ls": {"type": 'string'},
+                    "filenames": {
+                        "type": 'array',
+                        "description": 'optional list of files to be included in backup',
+                        "items": { "type": 'string' },
+                        "minItems": 1
+                    }
                 },
                 "required": ['msgtype', 'ls'],
                 "additionalProperties": false
             },
 
-            "restore_wallet_ls": {
+            "restore_wallet_backup": {
                 "type": 'object',
                 "title": 'MN: ask wallet to restore previous localStorage backup',
                 "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage. wallet: JSON.stringify wallet.json file. timestamp and filename: backup timestamp and filename',
                 "properties": {
-                    "msgtype": {"type": 'string', "pattern": '^restore_wallet_ls$'},
+                    "msgtype": {"type": 'string', "pattern": '^restore_wallet_backup$'},
                     "ls": {"type": 'string'},
-                    "wallet": {"type": 'string'},
+                    "files": {
+                        "type": 'array',
+                        "description": 'List with files to be restored in W2 session. From wallet_backup message',
+                        "items": {
+                            "type": 'object',
+                            "properties": {
+                                "filename": { "type": 'string'},
+                                "content": { "type": 'string'}
+                            },
+                            "required": ['filename', 'content'],
+                            "additionalProperties": false
+                        },
+                        "minItems": 1
+                    },
                     "timestamp": {"type": 'number', "multipleOf": 1.0},
                     "filename": {"type": 'string'}
                 },
-                "required": ['msgtype', 'ls', 'wallet', 'timestamp'],
+                "required": ['msgtype', 'ls', 'timestamp'],
                 "additionalProperties": false
             }
 
@@ -1771,7 +1832,7 @@ var MoneyNetworkAPILib = (function () {
             else if ((request_msgtype == 'prepare_mt_request') && (json.msgtype == 'prepare_mt_response')) null; // OK combination
             else if ((request_msgtype == 'get_published') && (json.msgtype == 'published')) null; // OK combination
             else if ((request_msgtype == 'queue_publish') && (json.msgtype == 'start_publish')) null; // OK combination
-            else if ((request_msgtype == 'request_wallet_ls') && (json.msgtype == 'wallet_ls')) null; // OK combination
+            else if ((request_msgtype == 'request_wallet_backup') && (json.msgtype == 'wallet_backup')) null; // OK combination
             else return 'Invalid ' + request_msgtype + ' request ' + json.msgtype + ' response combination';
         }
         if (typeof tv4 === 'undefined') {
@@ -3251,6 +3312,7 @@ var MoneyNetworkAPILib = (function () {
     } // publish_queue_demon
 
     // start publish_queue_demon
+    var publish_queue_demon_id = null;
     function start_publish_queue_demon () {
         var pgm = module + '.start_publish_queue_demon: ' ;
         if (!ZeroFrame) return setTimeout(start_publish_queue_demon, 1000) ;
@@ -3258,10 +3320,16 @@ var MoneyNetworkAPILib = (function () {
             var pgm = module + '.start_publish_queue_demon is_client callback: ' ;
             // start publish queue. Only in MN session
             console.log(pgm + 'client = ' + client) ;
-            if (!client) setInterval(publish_demon, 1000) ;
+            if (!client) publish_queue_demon_id = setInterval(publish_demon, 1000) ;
         }) ;
     }
     setTimeout(start_publish_queue_demon, 1000) ;
+
+    function stop_publish_queue_demon () {
+        if (publish_queue_demon_id == null) return ;
+        clearInterval(publish_queue_demon_id);
+        publish_queue_demon_id = null ;
+    }
 
 
     // sitePublish

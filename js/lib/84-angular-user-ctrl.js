@@ -644,12 +644,13 @@ angular.module('MoneyNetwork')
         // export/import options
         self.export_ls = true ; // localStorage data always included in export
         self.export_z = true ; // export user files? data.json, status.json and any uploaded avatar
-        self.export_chat = false ; // export uploaded optional files?
+        self.export_chat = true ; // export uploaded optional files?
+        self.export_wallets = true ; // export connected moneynetwork wallets?
         self.export_encrypt = false ; // create a password protected export file?
         self.export_password = null ;
         self.export_confirm_password = null ;
         self.export_import_test = null ; // testcase: import file = export file
-        self.export_info = {} ; // object with export informations
+        self.export_info = {} ; // object with export information
         self.wallets = [] ; // show info about wallets in export.
 
         function red (html) {
@@ -872,7 +873,7 @@ angular.module('MoneyNetwork')
         self.export = function() {
             var pgm = controller + '.export: ' ;
             var filename, now, data, user_path, step_1_check_wallets, step_2_get_password, step_3_read_content_json,
-                step_4_read_zeronet_file, step_5_image_to_base64, step_6_get_ls, step_7_get_wallet_ls, step_8_encrypt_data,
+                step_4_read_zeronet_file, step_5_image_to_base64, step_6_get_ls, step_7_get_wallet_backup, step_8_encrypt_data,
                 step_9_export;
 
             // check encrypt password
@@ -944,8 +945,8 @@ angular.module('MoneyNetwork')
                     step_9_export() ;
                 }; // step_8_encrypt_data
 
-                step_7_get_wallet_ls = function (index) {
-                    var pgm = controller + '.export.step_7_get_wallet_ls: ';
+                step_7_get_wallet_backup = function (index) {
+                    var pgm = controller + '.export.step_7_get_wallet_backup: ';
                     var session_info, error, request1 ;
                     if (index >= self.wallets.length) return step_8_encrypt_data(); // done
                     session_info = self.wallets[index].session_info;
@@ -957,16 +958,26 @@ angular.module('MoneyNetwork')
                     }
 
                     // get wallet localStorage data
-                    request1 = {msgtype: 'request_wallet_ls'};
+                    request1 = {msgtype: 'request_wallet_backup'};
                     session_info.encrypt.send_message(request1, {response: 60000}, function (response1) {
-                        var pgm = controller + '.export.step_7_get_wallet_ls send_message callback 1: ';
-                        var inner_path, error;
-                        if (!response1 || response1.error || (response1.msgtype != 'wallet_ls')) {
+                        var pgm = controller + '.export.step_7_get_wallet_backup send_message callback 1: ';
+                        var inner_path, error, filenames, files, read_file, re, m;
+
+                        if (response1 && response1.error && response1.error.match(/^Timeout /)) {
                             error =
-                                'Export failed. Could not get localStorage data for<br>' +
+                                'Export failed. Timeout in wallet backup request<br>' +
+                                'wallet: ' + self.wallets[index].wallet_name + '<br>' +
+                                'Please check console log in wallet session' ;
+                            z_wrapper_notification(['error', error]) ;
+                            return ;
+                        }
+
+                        if (!response1 || response1.error || (response1.msgtype != 'wallet_backup')) {
+                            error =
+                                'Export failed. Could not get localStorage data for<br>' + // xxx
                                 'wallet: ' + self.wallets[index].wallet_name + '<br>' +
                                 JSON.stringify(response1);
-                            z_wrapper_notification(['error', error, 10000]);
+                            z_wrapper_notification(['error', error]);
                             return;
                         }
                         // response1.data must be a stringify object (wallet localStorage data)
@@ -979,67 +990,75 @@ angular.module('MoneyNetwork')
                                 'wallet: ' + self.wallets[index].wallet_name + '<br>' +
                                 'is not a JSON.stringify object<br>' +
                                 'error: ' + e.message;
-                            z_wrapper_notification(['error', error, 10000]);
+                            z_wrapper_notification(['error', error]);
                             return;
                         }
 
-                        // get wallet.json file.
-                        inner_path = session_info.encrypt.other_user_path + 'wallet.json';
-                        // console.log(pgm + 'inner_path = ' + inner_path) ;
-                        z_file_get(pgm, {inner_path: inner_path}, function (wallet_str, extra) {
-                            var pgm = controller + '.export.step_7_get_wallet_ls z_file_get callback 2: ';
-                            var error, wallet;
+                        // check optional list of files to be included in wallet backup
+                        filenames = [] ;
+                        if (response1.filenames) {
+                            filenames = response1.filenames ;
+                            console.log(pgm + 'reading wallet files to be included in wallet backup. filenames = ' + JSON.stringify(filenames)) ;
+                        }
+                        console.log(pgm + 'filenames = ' + JSON.stringify(filenames)) ;
+                        re = new RegExp('^[0-9a-f]{10}(-i|-e|-o|-io|-p)\.[0-9]{13}$'); // pattern for MoneyNetworkAPI files.
 
-                            if (!wallet_str) {
-                                error =
-                                    'Export failed. Could not read wallet.json<br>' +
-                                    'wallet: ' + self.wallets[index].wallet_name;
-                                z_wrapper_notification(['error', error, 10000]);
-                                return;
+                        // read file loop:
+                        read_file = function () {
+                            var filename ;
+                            filename = filenames.shift() ;
+                            if (!filename) {
+                                // done.
+                                // OK.
+                                if (!index) {
+                                    data.options.wallets_ls = true;
+                                    data.wallets_ls = [];
+                                }
+                                data.wallets_ls.push({
+                                    wallet_url: self.wallets[index].wallet_url,
+                                    wallet_name: self.wallets[index].wallet_name,
+                                    wallet_sha256: self.wallets[index].wallet_sha256,
+                                    wallet_ls: response1.ls,
+                                    wallet_files: files ? files : null
+                                });
+
+                                // next wallet
+                                return step_7_get_wallet_backup(index + 1);
                             }
-                            // console.log(pgm + 'wallet_str = ' + wallet_str) ;
-                            try {
-                                wallet = JSON.parse(wallet_str);
+                            // ignore temporary MoneyNetworkAPI communication files
+                            m = filename.match(re) ;
+                            if (m && (['-i', '-e', '-p'].indexOf(m[1]) != -1)) {
+                                console.log(pgm + 'ignoring temporary MoneyNetworkAPI file ' + filename + '. not included in wallet backup') ;
+                                return read_file() ;
                             }
-                            catch (e) {
-                                error =
-                                    'Export failed. Invalid wallet.json file<br>' +
-                                    'wallet: ' + self.wallets[index].wallet_name + '<br>' +
-                                    'error: ' + e.message;
-                                z_wrapper_notification(['error', error, 10000]);
-                                return;
-                            }
+                            // read file
+                            inner_path = session_info.encrypt.other_user_path + filename ;
+                            // console.log(pgm + 'inner_path = ' + inner_path) ;
+                            z_file_get(pgm, {inner_path: inner_path, required: false}, function (content, extra) {
+                                var pgm = controller + '.export.step_7_get_wallet_backup z_file_get callback 2: ';
+                                var error, wallet;
 
-                            // todo: validate wallet?
-                            // maybe valid in wallet session and invalid in mn session (different MoneyNetworkAPI versions)
-                            // maybe valid at export time and invalid at import time
-                            // best not to validate too much. Will anyway be validated in first wallet page reload after import
+                                if (!content) {
+                                    z_wrapper_notification(['info', 'file ' + filename + ' was not backup<br>wallet: ' + self.wallets[index].wallet_name]) ;
+                                    return read_file() ;
+                                }
 
-                            // OK.
-                            if (!index) {
-                                data.options.wallets_ls = true;
-                                data.wallets_ls = [];
-                            }
-                            data.wallets_ls.push({
-                                wallet_url: self.wallets[index].wallet_url,
-                                wallet_name: self.wallets[index].wallet_name,
-                                wallet_sha256: self.wallets[index].wallet_sha256,
-                                wallet_ls: response1.ls,
-                                wallet_file: wallet_str
-                            });
+                                if (!files) files = [] ;
+                                files.push({filename: filename, content: content}) ;
+                                read_file() ;
 
-                            // next wallet
-                            step_7_get_wallet_ls(index + 1);
+                            }); // z_file_get callback 2
 
-                        }); // z_file_get callback 2
+                        } ; // read_file
+                        read_file() ;
 
                     }); // send_message callback 1
 
-                }; // step_7_get_wallet_ls
+                }; // step_7_get_wallet_backup
 
                 step_6_get_ls = function() {
                     data.ls = MoneyNetworkHelper.ls_get() ;
-                    if (self.export_wallets) step_7_get_wallet_ls(0) ;
+                    if (self.export_wallets) step_7_get_wallet_backup(0) ;
                     else step_8_encrypt_data() ;
                 }; // step_6_get_ls
 
@@ -1178,8 +1197,10 @@ angular.module('MoneyNetwork')
                             error =
                                 'Cannot start export with wallet data<br>' +
                                 'Wallet ' + self.wallets[i].wallet_name + ' error:<br>' +
-                                self.wallets[i].ping_error ;
-                            z_wrapper_notification(['error', error, 10000]) ;
+                                self.wallets[i].ping_error + '<br>' +
+                                'See "Export options" checkbox';
+                            z_wrapper_notification(['error', error]) ;
+                            self.export_show_options = true ;
                             return ;
                         }
                     } // for i
@@ -1216,6 +1237,8 @@ angular.module('MoneyNetwork')
             // 8 - notification, log out and redirect
 
             // callbacks:
+
+            // step 11. redirect. maybe better with a page reload?
             step_11_done = function () {
                 var pgm = controller + '.import.step_11_done: ' ;
                 var text, a_path, z_path ;
@@ -1246,7 +1269,7 @@ angular.module('MoneyNetwork')
 
             step_9_publish = function (data) {
                 var pgm = controller + '.import.step_9_publish: ' ;
-                MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: 'import'}, function (res) {
+                MoneyNetworkAPILib.z_site_publish({inner_path: user_path + 'content.json', reason: 'import'}, function (res) {
                     var pgm = controller + '.import.step_9_publish z_site_publish callback 1: ' ;
                     var error ;
                     if (res == "ok") return step_10_ls_write(data) ;
@@ -1284,7 +1307,7 @@ angular.module('MoneyNetwork')
                 }
                 delete data.z_files[filename] ;
 
-                z_file_write(pgm, user_path + '/' + filename, post_data, function (res) {
+                z_file_write(pgm, user_path + filename, post_data, function (res) {
                     // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     var error ;
                     if (res == "ok") {
@@ -1304,16 +1327,42 @@ angular.module('MoneyNetwork')
 
             }; // step_8_write_z_file
 
-            // todo: step 7. delete old user directory files before writing new files
+            // step 7. delete old user directory files before writing new files
             step_7_delete_z_file = function (data) {
                 var pgm = controller + '.import.step_7_delete_z_file: ' ;
-                console.log(pgm + 'test. abort processing') ;
-                return ;
-                step_8_write_z_file(data)
+                var inner_path ;
+
+                inner_path = user_path + 'content.json' ;
+                z_file_get(pgm, {inner_path: inner_path}, function (content_str) {
+                    var content, delete_files, filename, delete_file ;
+                    if (!content_str) {
+                        console.log(pgm + 'error. ' + inner_path + ' was not found') ;
+                        return step_8_write_z_file(data) ;
+                    }
+                    content = JSON.parse(content_str) ;
+                    delete_files = [] ;
+                    for (filename in content.files) delete_files.push(filename) ;
+                    if (content.files_optional) for (filename in content.files_optional) delete_files.push(filename) ;
+
+                    // delete file loop
+                    delete_file = function() {
+                        var filename, inner_path ;
+                        filename = delete_files.shift() ;
+                        if (!filename) return step_8_write_z_file(data) ; // done deleting files
+                        inner_path = user_path + filename ;
+                        ZeroFrame.cmd("fileDelete", [inner_path], function (res) {
+                            if (!res || (res != 'ok')) console.log(pgm + inner_path + ' fileDelete failed. error = ' + JSON.stringify(res)) ;
+                            delete_file() ;
+                        })
+                    } ; // delete_file
+                    delete_file() ;
+
+                }) ; // z_file_get callback
+
             } ; // step_7_delete_z_file
 
             // todo: must send restore wallet requests to wallet sessions before overwriting MN session data.
-            // cannot receive restore_wallet_ls response.
+            // cannot receive restore_wallet_backup response.
             // - 1) wallet localStorage data does no longer matches MN localStorage data
             // - 2) MN session must log out +log in after MN localStorage restore
             // - 3) Wallet page must be reloaded after MN log in
@@ -1336,16 +1385,18 @@ angular.module('MoneyNetwork')
                     return ;
                 }
 
-                // send restore_wallet_ls message to wallet session
-                // wallet will respond with a OK response and restore wallet session after 15 seconds
+                // send restore_wallet_backup message to wallet session
+                // wallet will respond with a OK response and restore wallet after 10 seconds
                 import_file_index = self.wallets[index].import_file_index ;
                 request = {
-                    msgtype: 'restore_wallet_ls',
+                    msgtype: 'restore_wallet_backup',
                     ls: data.wallets_ls[import_file_index].wallet_ls,
-                    wallet: data.wallets_ls[import_file_index].wallet_file,
                     timestamp: data.timestamp,
                     filename: file.name || 'n/a'
                 } ;
+                if (data.wallets_ls[import_file_index].wallet_files && data.wallets_ls[import_file_index].wallet_files.length) {
+                    request.files = data.wallets_ls[import_file_index].wallet_files
+                }
                 console.log(pgm + 'request = ' + JSON.stringify(request)) ;
                 session_info.encrypt.send_message(request, {response: 60000}, function (response) {
                     var pgm = controller + '.import.step_6_restore_wallet send_message callback 1: ' ;
@@ -1367,30 +1418,18 @@ angular.module('MoneyNetwork')
                         z_wrapper_notification(['error', error]) ;
                         return ;
                     }
-                    // OK response to wallet restore request. wallet restore will begin within 60 seconds
+                    // OK response to wallet restore request. wallet restore will begin within 10 seconds
                     console.log(pgm + 'response = ' + JSON.stringify(response)) ;
-
-                    console.log(pgm + 'test. abort processing') ;
-                    return ;
 
                     step_7_delete_z_file(data) ;
 
-
                 }) ; // send_message callback 1
-
-
-
-
-
-
-
-
 
             } ; // step_6_import_wallet
 
             step_5_get_user_path = function (data) {
                 moneyNetworkService.get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
-                    user_path = 'merged-' + MoneyNetworkAPILib.get_merged_type() + '/' + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                    user_path = 'merged-' + MoneyNetworkAPILib.get_merged_type() + '/' + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address + '/';
                     step_6_restore_wallet(data, 0) ;
                 }) ;
             } ; // step_5_get_user_path
