@@ -40,7 +40,11 @@ angular.module('MoneyNetwork')
             var request1 = function (cb) {
                 var pgm = controller + '.check_merger_permission.request1: ' ;
                 ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
-                    if (res == "Granted") request2(cb) ;
+                    if (res == "Granted") {
+                        MoneyNetworkAPILib.get_all_hubs(true, function() {
+                            request2(cb) ;
+                        }) ;
+                    }
                     else {
                         console.log(pgm + 'res = ', JSON.stringify(res)) ;
                         cb(false) ;
@@ -49,13 +53,9 @@ angular.module('MoneyNetwork')
             } ; // request1
             var request2 = function (cb) {
                 var pgm = controller + '.check_merger_permission.request2: ' ;
-                return cb(true);
-                ZeroFrame.cmd("mergerSiteAdd", ["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"], function (res) {
-                    if (res == 'ok') cb(true) ;
-                    else {
-                        console.log(pgm + 'res = ', JSON.stringify(res)) ;
-                        cb(false);
-                    }
+                MoneyNetworkAPILib.z_merger_site_add("1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh", function (res) {
+                    console.log(pgm + 'mergerSiteAdd: ' + JSON.stringify(res)) ;
+                    return cb(true);
                 }) ;
             }; // request2
             ZeroFrame.cmd("siteInfo", {}, function (site_info) {
@@ -64,9 +64,11 @@ angular.module('MoneyNetwork')
                 if (site_info.settings.permissions.indexOf("Merger:MoneyNetwork") == -1) return request1(cb);
                 ZeroFrame.cmd("mergerSiteList", {}, function (merger_sites) {
                     var pgm = controller + '.check_merger_permission mergerSiteList callback 2: ' ;
-                    // console.log(pgm + 'merger_sites = ', JSON.stringify(merger_sites)) ;
                     if (merger_sites["1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"] == "MoneyNetwork") cb(true) ;
-                    else request2(cb) ;
+                    else {
+                        console.log(pgm + 'merger_sites = ', JSON.stringify(merger_sites)) ;
+                        request2(cb) ;
+                    }
                 }) ; // mergerSiteList callback 2
             }) ; // siteInfo callback 1
         } // check_merger_permission

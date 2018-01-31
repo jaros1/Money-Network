@@ -25,7 +25,7 @@ angular.module('MoneyNetwork')
                 $location.path(new_a_path).search('redirect', old_a_path);
                 $location.replace();
                 ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]);
-                // console.log(pgm + 'old angularjs path = ' + old_a_path + ', new angularjs path = ' + new_a_path + ', z_path = ' + z_path + ', info = ' + info) ;
+                console.log(pgm + 'old angularjs path = ' + old_a_path + ', new angularjs path = ' + new_a_path + ', z_path = ' + z_path + ', info = ' + info) ;
             }
             else {
                 var a_path, a_search, key;
@@ -33,7 +33,7 @@ angular.module('MoneyNetwork')
                 a_search = $location.search();
                 z_path = "?path=" + a_path;
                 for (key in a_search) z_path += '&' + key + '=' + a_search[key];
-                // console.log(pgm + 'z_path = ' + z_path) ;
+                console.log(pgm + 'z_path = ' + z_path) ;
                 ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]);
                 return z_path;
             }
@@ -46,7 +46,7 @@ angular.module('MoneyNetwork')
             a_search = $location.search();
             z_path = "?path=" + a_path;
             for (key in a_search) z_path += '&' + key + '=' + a_search[key];
-            // console.log(pgm + 'z_path = ' + z_path) ;
+            console.log(pgm + 'z_path = ' + z_path) ;
             ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]);
             return z_path;
         }];
@@ -133,7 +133,7 @@ angular.module('MoneyNetwork')
                     if (new_wallet_site) a_path +='?new_wallet_site=' + new_wallet_site ;
                     z_path = "?path=" + a_path;
                     // check for new_wallet_site
-                    // console.log(pgm + 'window.location.search = ' + search + ', angularjs_path = ' + a_path + ', z_path = ' + z_path) ;
+                    console.log(pgm + 'window.location.search = ' + search + ', angularjs_path = ' + a_path + ', z_path = ' + z_path) ;
                     ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
                     return a_path;
                 }

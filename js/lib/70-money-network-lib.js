@@ -471,7 +471,7 @@ var MoneyNetworkHelper = (function () {
 
     var storage_rules = {
         // user authorization - see client_login
-        login: {session: false, userid: false, compress: false, encrypt: false}, // enable/disable local log in. disabled: use password = ''
+        login: {session: false, userid: false, compress: false, encrypt: false}, // enable/disable local log in. disabled: use password = '' in client_login
         key: {session: false, userid: true, compress: true, encrypt: true}, // random password - used for localStorage encryption
         salt: {session: false, userid: false, compress: false, encrypt: false}, // salt for sha256 hashed passwords
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text
@@ -630,15 +630,15 @@ var MoneyNetworkHelper = (function () {
         // console.log(pgm + 'debug 1: key = ' + key) ;
         var pseudo_key = key; // .match(/^gift_[0-9]+$/) ? 'gifts' : key ; // use gifts rule for gift_1, gift_1 etc
         var rule = get_local_storage_rule(pseudo_key);
-        if (rule.encrypt) var password_type = (key == 'key' ? 'password' : 'key'); // key is as only variable encrypted with human password
+        var password_type = (key == 'key' ? 'password' : 'key'); // key is as only variable encrypted with human password
         // userid prefix?
         if (rule.userid) {
             var userid = getItem('userid');
             if ((typeof userid == 'undefined') || (userid == null) || (userid == '')) userid = 0;
             else userid = parseInt(userid);
             if (userid == 0) {
-                throw pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found (not logged in)' ;
                 console.log(pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found (not logged in)') ;
+                throw pgm + 'Error. key ' + key + ' is stored with userid prefix but userid was not found (not logged in)' ;
                 return null;
             }
             key = userid + '_' + key;
@@ -673,9 +673,15 @@ var MoneyNetworkHelper = (function () {
         // decrypt
         if (storage_options.encrypt) {
             // console.log(pgm + key + ' before decrypt = ' + value) ;
+            if (['key','password'].indexOf(password_type) == -1) {
+                console.log(pgm + 'systemerror in getItem. expected password_type key or password. ' +
+                    'found password_type ' + JSON.stringify(password_type) +
+                    '. pseudo_key = ' + JSON.stringify(pseudo_key) + ', rule = ' + JSON.stringify(rule)) ;
+            }
             var password = getItem(password_type); // use key or password
-            if ((typeof password == 'undefined') || (password == null) || (password == '')) {
+            if ((typeof password == 'undefined') || (password == null) || ((password == '') && (password_type == 'key'))) {
                 console.log(pgm + 'Error. key ' + key + ' is stored encrypted but ' + password_type + ' was not found');
+                throw pgm + 'Error. key ' + key + ' is stored encrypted but ' + password_type + ' was not found' ;
                 return null;
             }
             value = decrypt(value, password);
@@ -701,7 +707,7 @@ var MoneyNetworkHelper = (function () {
         // console.log(pgm + 'debug 1: key = ' + key) ;
         var pseudo_key = key; // .match(/^gift_[0-9]+$/) ? 'gifts' : key ; // use gifts rule for gift_1, gift_1 etc
         var rule = get_local_storage_rule(pseudo_key);
-        if (rule.encrypt) var password_type = (key == 'key' ? 'password' : 'key'); // key is as only variable encrypted with human password
+        var password_type = (key == 'key' ? 'password' : 'key'); // key is as only variable encrypted with human password
         // userid prefix?
         if (rule.userid) {
             var userid = getItem('userid');
@@ -748,8 +754,10 @@ var MoneyNetworkHelper = (function () {
         var password;
         if (rule.encrypt) {
             password = getItem(password_type); // use key or password
-            if ((typeof password == 'undefined') || (password == null) || (password == '')) {
+            // note: blank password is allowed (guest/anonymous log in)
+            if ((typeof password == 'undefined') || (password == null) || ((password == '') && (password_type == 'key'))) {
                 console.log(pgm + 'Error. key ' + key + ' is stored encrypted but ' + password_type + ' was not found');
+                throw pgm + 'Error. key ' + key + ' is stored encrypted but ' + password_type + ' was not found' ;
                 return;
             }
         }

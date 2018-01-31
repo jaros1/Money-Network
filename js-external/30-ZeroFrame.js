@@ -40,7 +40,7 @@ ZeroFrame = (function() {
         if (cmd === "response") {
             if (this.waiting_cb[message.to] != null) {
                 cb = this.waiting_cb[message.to] ;
-                delete this.waiting_cb[message.to] ;
+                // delete this.waiting_cb[message.to] ;
                 cb(message.result);
             } else {
                 this.log("Websocket callback not found:", message);

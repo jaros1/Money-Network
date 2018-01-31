@@ -1407,6 +1407,10 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'ignoring save contacts call. No certificate') ;
                 return ;
             }
+            if (!z_cache.user_id) {
+                console.log(pgm + 'ignoring save contacts call. Not logged in') ;
+                return ;
+            }
 
             // any logical deleted inbox messages to be physical deleted?
             save_reactions = false ;
@@ -1859,12 +1863,17 @@ angular.module('MoneyNetwork')
                         if (res.error) {
                             z_wrapper_notification(["error", "Search for new contacts failed: " + res.error, 5000]);
                             console.log(pgm + "Search for new contacts failed: " + res.error) ;
-                            console.log(pgm + 'mn query 7 = ' + mn_query_7) ;
+                            console.log(pgm + 'mn query 7      = ' + mn_query_7) ;
                             if (fnc_when_ready) fnc_when_ready(no_contacts);
                             return;
                         }
                         if (res.length == 0) {
                             // current user not in data.users array. must be an user without any search words in user_info
+                            console.log(pgm +  'error. mn_query_7 returned 0 rows') ;
+                            console.log(pgm + 'my_search_query = ' + my_search_query) ;
+                            console.log(pgm + 'contacts_query  = ' + contacts_query) ;
+                            console.log(pgm + 'mn query 7      = ' + mn_query_7) ;
+
                             z_wrapper_notification(["info", "No new contacts were found. Please add/edit search/hidden words and try again", 3000]);
                             if (fnc_when_ready) fnc_when_ready(no_contacts);
                             return;
@@ -4558,7 +4567,7 @@ angular.module('MoneyNetwork')
         var avatar = moneyNetworkZService.get_avatar() ;
         function load_avatar () { moneyNetworkZService.load_avatar() }
 
-        var user_data_hubs = moneyNetworkHubService.get_user_data_hubs() ;
+        var all_hubs ;
 
         // wait for setSiteInfo events (new files)
         function event_file_done (hub, event, filename) {
@@ -4571,12 +4580,14 @@ angular.module('MoneyNetwork')
                 return ;
             }
             // ignore files from wallet data hubs
-            user_data_hub = false ;
-            for (i=0 ; i<user_data_hubs.length ; i++) if (user_data_hubs[i].hub == hub) { user_data_hub = true ; break }
-            if (!user_data_hub) {
-                // not a MoneyNetwork user data hub
-                console.log(pgm + 'ignoring ' + filename + ' from ' + hub + '. maybe status.json from w2?') ;
-                return ;
+            if (all_hubs) {
+                user_data_hub = false ;
+                for (i=0 ; i<all_hubs.length ; i++) if ((all_hubs[i].wallet_type == 'user') && (all_hubs[i].hub == hub)) { user_data_hub = true ; break }
+                if (!user_data_hub) {
+                    // not a MoneyNetwork user data hub
+                    console.log(pgm + 'ignoring ' + filename + ' from ' + hub + '. user_data_hubs = ' + JSON.stringify(user_data_hubs)) ;
+                    return ;
+                }
             }
             // console.log(pgm + 'hub = ' + JSON.stringify(hub) + ', event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
             if (!z_cache.user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
@@ -6047,8 +6058,10 @@ angular.module('MoneyNetwork')
         function request_merger_permission (calling_pgm, cb) {
             console.log(calling_pgm + 'Error: Merger:MoneyNetwork permission was lost. Please check console.log and UI server log') ;
             ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
-                // continue anyway
-                cb() ;
+                MoneyNetworkAPILib.get_all_hubs(true, function(all_hubs) {
+                    // continue anyway
+                    cb() ;
+                }) ;
             }) ; // wrapperPermissionAdd callback
         } // request_merger_permission
         function check_merger_permission (calling_pgm, cb) {
@@ -7076,7 +7089,7 @@ angular.module('MoneyNetwork')
             set_register_yn() ;
             set_use_login() ;
             // get list of all user data hubs and wallet data hubs
-            MoneyNetworkAPILib.get_all_hubs() ;
+            MoneyNetworkAPILib.get_all_hubs(all_hubs) ;
 
             if (!ZeroFrame.site_info.cert_user_id || use_login.bol) return ;
 

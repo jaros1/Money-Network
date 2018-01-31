@@ -255,7 +255,7 @@ angular.module('MoneyNetwork')
                 sessions2 = {} ; // from other_session_filename to hash with not deleted files (incoming files from other session)
                 sessions3 = {} ; // from sessionid to hash with not deleted files (incoming files from other session)
 
-                console.log(pgm + 'sessions1 = ' + JSON.stringify(sessions1)) ;
+                // console.log(pgm + 'sessions1 = ' + JSON.stringify(sessions1)) ;
                 //sessions1 = [
                 //    {
                 //        "other_session_filename": "1530742720",

@@ -306,7 +306,7 @@ angular.module('MoneyNetwork')
                 var my_user_hub ;
                 // no user_data_hubs (no merger site hubs were found)
                 my_user_hub = get_default_user_hub() ;
-                console.log(pgm + 'calling mergerSiteAdd with my_user_hub = ' + my_user_hub) ;
+                console.log(pgm + 'calling mergerSiteAdd with my_user_hub = ' + my_user_hub.hub) ;
                 MoneyNetworkAPILib.z_merger_site_add(my_user_hub.hub, function (res) {
                     var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub z_merger_site_add callback: ' ;
                     console.log(pgm + 'res = '+ JSON.stringify(res));
@@ -2194,7 +2194,9 @@ angular.module('MoneyNetwork')
             console.log(calling_pgm + 'Error: Merger:MoneyNetwork permission was lost. ' + MERGER_ERROR) ;
             ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
                 // continue anyway
-                cb() ;
+                MoneyNetworkAPILib.get_all_hubs(true, function() {
+                    cb() ;
+                }) ;
             }) ; // wrapperPermissionAdd callback
         } // request_merger_permission
         function check_merger_permission (calling_pgm, cb) {
