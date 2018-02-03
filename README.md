@@ -3,9 +3,6 @@ Demo with complementary and alternative money. Implemented in ZeroFrame and Angu
 
 Money is the force that permeates everything in our society. MoneyNetwork is a demo about money. With inspiration from Charles Eisenstein, Bernard Lietaer and others.
 
-Our world has one serious error. Our current monetary system. Almost all problems on our planet is caused by this error.
-This is an attempt to make money free. To change our world's operating system. To build a bridge between our present traditional monetary system and an ecosystem of complementary and alternative money systems. A monetary ecosystem will solve many of the problems the world are facing today.
-
 The vision here is one app with easy access to any kind of money.
 Use the money systems you like and not only our outdated dangerous money system.
 Choose your money in the same way you choose clothes, food, housing, work, boyfriend, etc.
