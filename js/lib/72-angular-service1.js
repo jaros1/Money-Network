@@ -307,6 +307,7 @@ angular.module('MoneyNetwork')
                 // no user_data_hubs (no merger site hubs were found)
                 my_user_hub = get_default_user_hub() ;
                 console.log(pgm + 'calling mergerSiteAdd with my_user_hub = ' + my_user_hub.hub) ;
+
                 MoneyNetworkAPILib.z_merger_site_add(my_user_hub.hub, function (res) {
                     var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub z_merger_site_add callback: ' ;
                     console.log(pgm + 'res = '+ JSON.stringify(res));
@@ -357,7 +358,7 @@ angular.module('MoneyNetwork')
                 debug_seq = debug_z_api_operation_start(pgm, 'mn query 17', 'dbQuery', show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [mn_query_17], function (res) {
                     var pgm = service + '.get_my_user_hub.step_3_find_user_hubs dbQuery callback: ' ;
-                    var i, merge_job ;
+                    var i, merge_job, existing_hubs, list_a, list_b, list_c, priorities, priority ;
                     if (detected_client_log_out(pgm, old_userid)) return ;
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
@@ -367,8 +368,8 @@ angular.module('MoneyNetwork')
                         return step_4_get_and_add_default_user_hub() ;
                     }
                     if (res.length) {
-                        // user data hub(s) found
-                        z_cache.my_user_hub = res[0].hub ; // return hub for last updated content.json
+                        // user data hub(s) found. use hub with last updated content.json
+                        z_cache.my_user_hub = res[0].hub ;
                         console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
                         if (res.length > 1) {
                             // user with data on more than one user data hub. merge and delete user data from other user data hubs
@@ -385,19 +386,46 @@ angular.module('MoneyNetwork')
                         }
                         return step_5_user_hub_selected() ;
                     }
-                    // new user. get user data hub from
-                    // 1) list of MoneyNetwork merger sites (mergerSiteList)
-                    // 2) default_hubs from site_info.content.sessions.default_hubs
-                    if (user_data_hubs.length) {
-                        // select random user data hub from mergerSiteList
-                        i = Math.floor(Math.random() * user_data_hubs.length);
-                        z_cache.my_user_hub = user_data_hubs[i].hub ; // = hub in data.json
-                        z_cache.my_user_hub_title = user_data_hubs[i].title ; // = hub_title in data_json
-                        console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
-                        console.log(pgm + 'hub_title = ' + z_cache.my_user_hub_title) ;
-                        step_5_user_hub_selected() ;
+                    if (!user_data_hubs.length) return step_4_get_and_add_default_user_hub() ;
+
+                    // new user. add random user data hub from available hubś
+                    // 1. priority. existing hub with peers. no problems
+                    // 2. priority. new hub. maybe or maybe not a hub with peers
+                    // 3. priority. existing hub without peers.publish user content will fail.
+                    priorities = [ [], [], [], []] ; // arrays for priority 1, 2 and 3
+                    console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs)) ;
+                    // user_data_hubs = [{"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"},{"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"}]
+                    for (i=0 ; i<user_data_hubs.length ; i++) {
+                        if (!user_data_hubs[i].hub_added) priorities[2].push(i) ; // 2. priority. new hubs
+                        else if (user_data_hubs[i].peers) priorities[1].push(i) ; // 1. priority. existing hubs with peers
+                        else priorities[3].push(i) ; // 3. priority. existing hubs without peers. publish user content will fail.
                     }
-                    else step_4_get_and_add_default_user_hub() ;
+                    for (i=1 ; i<= 4; i++) if (priorities[i].length) {
+                        priority = i ;
+                        break ;
+                    }
+                    console.log(pgm + 'using priority ' + priority + ' for hub selecting. found ' + priorities[priority].length + ' hub(s) with priority ' + priority) ;
+                    // using priority 3 for hub selecting. found 2 hub(s) with priority 3
+
+
+                    i = Math.floor(Math.random() * priorities[priority].length);
+                    i = priorities[priority][i] ;
+
+                    z_cache.my_user_hub = user_data_hubs[i].hub ; // = hub in data.json
+                    z_cache.my_user_hub_title = user_data_hubs[i].title ; // = hub_title in data_json
+                    console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
+                    console.log(pgm + 'hub_title = ' + z_cache.my_user_hub_title) ;
+                    // hub = 182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe
+                    // hub_title = undefined
+
+                    if (user_data_hubs[i].hub_added) step_5_user_hub_selected() ;
+                    else {
+                        MoneyNetworkAPILib.z_merger_site_add(z_cache.my_user_hub, function (res) {
+                            if (res != 'ok') console.log(pgm + 'error. mergerSiteAdd ' + z_cache.my_user_hub + ' failed. res = ' + JSON.stringify(res)) ;
+                            step_5_user_hub_selected() ;
+                        })
+                    }
+
                 }) ; // dbQuery callback 2
 
             }; // step_3_find_user_hubs
@@ -638,23 +666,37 @@ angular.module('MoneyNetwork')
             } ; // step_2_compare_tables
 
             // step 1 : get a list of MoneyNetwork User data hubs. title or description matches /user data hub/i. used for new MoneyNetwork users
+            // todo: why not use MoneyNetworkAPI.get_all_hubs hub_type="user"?
             step_1_merger_site_list = function () {
-                ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
-                    var pgm = service + '.get_my_user_hub.step_1_merger_site_list: ';
-                    var hub;
+                var pgm = service + '.get_my_user_hub.step_1_merger_site_list: ';
+                // changed. Now using get_all_hubs instead of mergerSiteList call.
+                MoneyNetworkAPILib.get_all_hubs(false, function (all_hubs)  {
+                    var i ;
                     if (detected_client_log_out(pgm, old_userid)) return ;
-
-                    if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites));
-                    else for (hub in merger_sites) {
-                        if (merger_sites[hub].content.title.match(/user data hub/i) ||
-                            merger_sites[hub].content.description.match(/user data hub/i)) {
-                            user_data_hubs.push({hub: hub, title: merger_sites[hub].content.title});
-                        }
+                    for (i=0 ; i<all_hubs.length ; i++) {
+                        if (all_hubs[i].hub_type == 'user') user_data_hubs.push({hub: all_hubs[i].hub, title: all_hubs[i].title, peers: all_hubs[i].peers, hub_added: all_hubs[i].hub_added});
                     }
                     console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
                     // next step
                     step_2_compare_tables() ;
                 }) ;
+
+                //ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
+                //    var pgm = service + '.get_my_user_hub.step_1_merger_site_list: ';
+                //    var hub;
+                //    if (detected_client_log_out(pgm, old_userid)) return ;
+                //
+                //    if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites));
+                //    else for (hub in merger_sites) {
+                //        if (merger_sites[hub].content.title.match(/user data hub/i) ||
+                //            merger_sites[hub].content.description.match(/user data hub/i)) {
+                //            user_data_hubs.push({hub: hub, title: merger_sites[hub].content.title});
+                //        }
+                //    }
+                //    console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
+                //    // next step
+                //    step_2_compare_tables() ;
+                //}) ;
 
             } ; // step_1_merger_site_list
 

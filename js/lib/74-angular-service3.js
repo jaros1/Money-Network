@@ -149,10 +149,11 @@ angular.module('MoneyNetwork')
                 var pgm = service + ".load_user_contents_max_size get_my_user_hub callback 1: " ;
                 var inner_path, debug_seq ;
                 inner_path = 'merged-' + get_merged_type() + '/' + my_user_data_hub + '/data/users/content.json' ;
-                z_file_get(pgm, {inner_path: inner_path, required: false}, function (data) {
+                z_file_get(pgm, {inner_path: inner_path, required: false}, function (data, extra) {
                     var pgm = service + ".load_user_contents_max_size z_file_get callback 2: " ;
                     if (!data) {
-                        console.log(pgm + 'Error. Cannot find max user directory size. Content.json lookup failed. Path was ' + inner_path) ;
+                        // fatal error. maybe problem with hub?
+                        console.log(pgm + 'Error. Cannot find max user directory size. Content.json lookup failed. Path was ' + inner_path + '. extra = ' + JSON.stringify(extra)) ;
                         user_contents_max_size = -1 ;
                         if (lock_pgm) z_update_1_data_json (lock_pgm) ;
                         return
@@ -541,7 +542,7 @@ angular.module('MoneyNetwork')
                 // 1) get content.json - check if user already has uploaded an avatar
                 user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address ;
                 inner_path = user_path + "/content.json"
-                z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
+                z_file_get(pgm, {inner_path: inner_path, required: false}, function (content, extra) {
                     var pgm = service + '.load_avatar z_file_get callback 2: ';
                     var ls_avatar, public_avatars, index ;
                     if (content) {
@@ -664,8 +665,12 @@ angular.module('MoneyNetwork')
                 load_user_contents_max_size(lock_pgm);
                 return ;
             }
+            if (user_contents_max_size == -1) {
+                // fatal error. hub content.json file was not found.
+                console.log(pgm + 'abort processing. hub content.json file was not found. problem with hub') ;
+                return ;
+            }
             // console.log(pgm + 'user_contents_max_size = ' + user_contents_max_size) ;
-
 
             // find current user data hub
             console.log(pgm + 'calling get_my_user_hub');

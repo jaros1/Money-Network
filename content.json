@@ -30,12 +30,12 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "0bc939797cf0383e0221b8935fe154efc6bc046b537957609873048d378f415c",
-   "size": 146862
+   "sha512": "ad631d759948229a4d42ce30e408911d75177ea890e9320a029a58c6c7753aa3",
+   "size": 146538
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "4b70132e64cf7f19df7c101fe41b607c10552b3e8f6fc7dbd073cb256d8e70e7",
-   "size": 316974
+   "sha512": "84f3ae62cfb2652224d81197d20dd1ce5a950771c83b08451e681826f519310e",
+   "size": 320639
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -66,8 +66,8 @@
    "size": 4814
   },
   "js-external/30-ZeroFrame.js": {
-   "sha512": "802cdd278be465134a662e0026156f76d5258c3ed84741581adc8cfc7884b48c",
-   "size": 9092
+   "sha512": "a85dad9ea151849e599d3c828fe6e12d0f3ae806c3f2ef1faabc062b76ab75bc",
+   "size": 9263
   },
   "js-external/40-angular.js": {
    "sha512": "1609aea738f6b492bfe1d46ed034005db6edbef1f65c1c5610ddb89a613d009e",
@@ -178,8 +178,8 @@
    "size": 53602
   },
   "js/all.js.zip": {
-   "sha512": "e48741b89d84de0c3b9ebf912a28669f339f9c9ac748061f263eebe4249395e0",
-   "size": 270198
+   "sha512": "edebc00efc06a88dd56c9a094f20bfcc81deb71a6a03ffb09daf6076a7ff1b5b",
+   "size": 270680
   },
   "public/css/fonts/glyphicons-halflings-regular.eot": {
    "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
@@ -306,19 +306,27 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1517417060,
+ "modified": 1517667277,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
+   "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe": {
+    "description": "Money Network - U1 - User data hub - runner jro",
+    "title": "U1 User data hub"
+   },
+   "1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc": {
+    "description": "Money Network - U2 - User data hub - runner jro",
+    "title": "U2 User data hub"
+   },
    "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh": {
-    "description": "Money Network - U3 - User hub - runner jro",
-    "title": "U3 - User hub"
+    "description": "Money Network - U3 - User data hub - runner jro",
+    "title": "U3 User data hub"
    }
   }
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G377AhjNwnWmpmrzIN6E7yFuIeJMR3YXis1d04vnfXl9EKfsX/A/mfdAPvu8y0ZXztjKOoMIqAplYGZH5Qqv2XE="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "GxKy2D0xCAKD8Fh8qbVQOmx6vi52MjZqONBWtY0n1fZ1A1UDOxWTWPMgByf88wdQyLD4e0tMmfnQ1e/cTTVR7Yc="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",

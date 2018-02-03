@@ -2091,19 +2091,24 @@ var MoneyNetworkAPILib = (function () {
             console.log(pgm + 'res = '+ JSON.stringify(res));
             if (res == 'ok') {
                 console.log(pgm + 'new hub ' + hub + ' was added. hub must be ready. wait for jsons (dbQuery) before first fileGet request to new hub') ;
-                if (!new_hub_file_get_cbs[hub]) new_hub_file_get_cbs[hub] = [] ; // fileGet callbacks waiting for mergerSiteAdd operation to finish
+                if (!new_hub_file_get_cbs[hub]) new_hub_file_get_cbs[hub] = { timestamp:  new Date().getTime(), cbs: [] } ;
+                // fileGet callbacks waiting for mergerSiteAdd operation to finish
                 // start demon process. waiting for new user data hub to be ready
-                setTimeout(monitor_first_hub_event, 250) ;
+                if (!monitor_first_hub_event_id) monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
             }
             cb(res) ;
         }) ; // mergerSiteAdd callback 3
     } // z_merger_site_add
 
     // demon. dbQuery. check for any json for new user data hub before running any fileGet operations
+    var monitor_first_hub_event_id ;
     function monitor_first_hub_event () {
         var pgm = module + '.monitor_first_hub_event: ' ;
         var api_query_4, debug_seq ;
-        if (!Object.keys(new_hub_file_get_cbs).length) return ; // no new hubs to monitor
+        if (!Object.keys(new_hub_file_get_cbs).length) {
+            monitor_first_hub_event_id = null ;
+            return ;
+        } // no new hubs to monitor
 
         api_query_4 =
             "select substr(directory, 1, instr(directory,'/')-1) as hub, count(*) as rows " +
@@ -2112,38 +2117,59 @@ var MoneyNetworkAPILib = (function () {
         debug_seq = debug_z_api_operation_start(pgm, 'api query 4', 'dbQuery') ;
         ZeroFrame.cmd("dbQuery", [api_query_4], function (res) {
             var pgm = module + '.monitor_first_hub_event dbQuery callback: ';
-            var hub, i, cbs, cb;
+            var hub, i, now, run_cbs;
+
             // if (detected_client_log_out(pgm)) return ;
             debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
+
+            run_cbs = function (hub, text) {
+                var cbs, cb ;
+                console.log(pgm + text + '. running ' + new_hub_file_get_cbs[hub].cbs.length + ' fileGet operations') ;
+                cbs = [] ;
+                while (new_hub_file_get_cbs[hub].cbs.length) {
+                    cb = new_hub_file_get_cbs[hub].cbs.shift() ;
+                    cbs.push(cb) ;
+                }
+                delete new_hub_file_get_cbs[hub] ;
+                while (cbs.length) {
+                    cb = cbs.shift() ;
+                    cb() ;
+                }
+            } ; // text
+
             if (res.error) {
                 console.log(pgm + "first hub lookup failed: " + res.error);
                 console.log(pgm + 'query = ' + api_query_4);
-                for (hub in new_hub_file_get_cbs) console.log(pgm + 'error: ' + new_hub_file_get_cbs[hub].length + ' callbacks are waiting forever for hub ' + hub) ;
+                for (hub in new_hub_file_get_cbs) run_cbs(hub, 'dbQuery failed') ;
+                monitor_first_hub_event_id = null ;
                 return ;
             }
             for (i=0 ; i<res.length ; i++) {
                 hub = res[i].hub ;
                 if (!new_hub_file_get_cbs[hub]) continue ;
-                console.log(pgm + 'new user data hub ' + hub + ' is ready. ' + new_hub_file_get_cbs[hub].length + ' fileGet operations are waiting in callback queue. running callbacks now') ;
-                // update list of hubs
+                // first json files received. hub is ready. run any pending fileGet operations
                 get_all_hubs(true, function() {
-                    var cbs, cb ;
-                    // move to temporary cbs array
-                    cbs = [] ;
-                    while (new_hub_file_get_cbs[hub].length) {
-                        cb = new_hub_file_get_cbs[hub].shift() ;
-                        cbs.push(cb) ;
-                    }
-                    delete new_hub_file_get_cbs[hub] ;
-                    // run cbs
-                    while (cbs.length) {
-                        cb = cbs.shift() ;
-                        cb() ;
-                    }
+                    run_cbs(hub, 'new user data hub ' + hub + ' is ready') ;
                 }) ;
-                break ;
+                monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
+                return ;
             }
-            setTimeout(monitor_first_hub_event, 250) ;
+
+            // timeout while waiting for json files from new hub? Maybe a hub without any peers. Maybe running on a proxy server that has disabled add site
+            now = new Date().getTime() ;
+            for (hub in new_hub_file_get_cbs) {
+                if (now - new_hub_file_get_cbs[hub].timestamp > 60000) {
+                    // refresh all_hubs list before running any fileGet operations waiting for hub
+                    get_all_hubs(true, function() {
+                        // hub was not added / is not ready. fileGet operations will return null. See z_file_get
+                        run_cbs(hub, 'timeout while waiting for new user data hub ' + hub + ' to be ready') ;
+                        monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
+                    }) ;
+                    return ;
+                }
+            }
+            monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
+
         }) ; // dbQuery callback
 
     } // monitor_first_hub_event
@@ -2173,7 +2199,7 @@ var MoneyNetworkAPILib = (function () {
     var inner_path_re3 = new RegExp('^merged-' + get_merged_type() + '\/(.*?)\/data\/users\/content\.json$') ; // extract hub
     var inner_path_re4 = new RegExp('^merged-' + get_merged_type() + '\/(.*?)\/data\/users\/(.*?)\/(.*?)$') ; // extract hub, auth_address and filename
     function z_file_get (pgm, options, cb) {
-        var inner_path, match34, hub, is_optional_file, filename, get_optional_file_info, pgm2 ;
+        var inner_path, match34, hub, is_optional_file, filename, get_optional_file_info, pgm2, i, hub_added ;
 
         // Check ZeroFrame
         if (!ZeroFrame) throw pgm + 'fileGet aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
@@ -2190,8 +2216,21 @@ var MoneyNetworkAPILib = (function () {
                 hub = match34[1] ;
                 if (new_hub_file_get_cbs[hub]) {
                     console.log(pgm + 'new hub ' + hub + '. waiting with fileGet request for ' + inner_path) ;
-                    new_hub_file_get_cbs[hub].push(function() { z_file_get (pgm, options, cb) }) ;
+                    new_hub_file_get_cbs[hub].cbs.push(function() { z_file_get (pgm, options, cb) }) ;
                     return ;
+                }
+                // check hub. must be in all_hubs and with hub_added = true
+                // UI error: Internal error: Exception: Merger site (MoneyNetwork) does not have permission for merged site: 182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe (None)
+                hub_added = false ;
+                for (i=0 ; i<all_hubs.length ; i++) {
+                    if (all_hubs[i].hub != hub) continue ;
+                    hub_added = all_hubs[i].hub_added ;
+                    break ;
+                }
+                if (!hub_added) {
+                    console.log(pgm + 'error. cannot start fileGet ' + inner_path) ;
+                    console.log(pgm + 'hub ' + hub + ' is not in mergerSiteList') ;
+                    return cb(null, {error: hub + ' was not found in mergerSiteList'}) ;
                 }
             }
             else throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
@@ -3536,8 +3575,16 @@ var MoneyNetworkAPILib = (function () {
     } // z_site_publish
 
 
-    // see https://github.com/jaros1/Money-Network/issues/302
-    // todo: add default_hubs to all_hubs list
+    // get a list of all known hubs
+    // input from: a) mergerSiteList call, b) site_info.content.default_hubs and c) "hub" and "hub_title" fields in data.json and wallet.json files
+    // - no_users: number of content.json files
+    // - no_peers: from site_info / mergerSiteList call
+    // - add_hub: boolean: true if hub has already been added
+    // all_hubs = [
+    //    {"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe","hub_type":"user",  "hub_title":"U1 User data hub",  "no_users":134,"add_hub":false,"peers":0},
+    //    {"hub":"1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ","hub_type":"wallet","hub_title":"W2 Wallet data hub","no_users":36, "add_hub":false,"peers":0},
+    //    {"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh","hub_type":"user",  "hub_title":"U3 User data hub",  "no_users":108,"add_hub":false,"peers":8},
+    //    {"hub":"1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc","hub_type":"user",  "hub_title":"U2 User data hub",  "no_users":0,  "add_hub":false,"peers":0}];
     var all_hubs = [] ;
     var get_all_hubs_cbs = [] ;
     var get_all_hubs_running = false ;
@@ -3617,7 +3664,7 @@ var MoneyNetworkAPILib = (function () {
             for (i=0 ; i<res.length ; i++) all_hubs.push({hub: res[i].hub, hub_type: res[i].hub_type, hub_title: res[i].hub_title, no_users: res[i].no_users}) ;
             // console.log(pgm + 'all_hubs (1) = ' + JSON.stringify(all_hubs)) ;
 
-            // 2: add hubs from default_hubs section
+            // 2: add hubs from default_hubs section.
             if (ZeroFrame.site_info && ZeroFrame.site_info.content && ZeroFrame.site_info.content.default_hubs) {
                 //"default_hubs": {
                 //    "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ": {
@@ -3643,7 +3690,7 @@ var MoneyNetworkAPILib = (function () {
             // 3: check existing merger sites
             ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
                 var pgm = module + '.get_all_hubs mergerSiteList callback 2: ';
-                var i, hub, hub_type, done ;
+                var i, hub, hub_type, done, remove_hubs ;
                 console.log(pgm + 'merger_sites (1) = ' + JSON.stringify(merger_sites)) ;
 
                 // return all_hubs and run any pending callbacks
@@ -3666,6 +3713,18 @@ var MoneyNetworkAPILib = (function () {
                     return done() ;
                 }
 
+                // remove any non MoneyNetwork hubs from merger site response. normally only one mergede_type in mergerSiteList response
+                remove_hubs = [] ;
+                for (hub in merger_sites) if (merger_sites[hub].content.merged_type != get_merged_type()) remove_hubs.push(hub) ;
+                if (remove_hubs.length) {
+                    console.log(pgm + 'removing ' + remove_hubs.length + ' non ' + get_merged_type() + ' hubs from merger_sites') ;
+                    for (i=0 ; i<remove_hubs.length ; i++) {
+                        hub = remove_hubs[i] ;
+                        delete merger_sites[hub] ;
+                    }
+                }
+
+                // merge dbQuery result (api query 8) and mergerSiteList list
                 for (i=0 ; i<all_hubs.length ; i++) {
                     hub = all_hubs[i].hub ;
                     if (merger_sites[hub]) {

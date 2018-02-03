@@ -40,7 +40,7 @@ ZeroFrame = (function() {
         if (cmd === "response") {
             if (this.waiting_cb[message.to] != null) {
                 cb = this.waiting_cb[message.to] ;
-                // delete this.waiting_cb[message.to] ;
+                delete this.waiting_cb[message.to] ;
                 cb(message.result);
             } else {
                 this.log("Websocket callback not found:", message);
@@ -66,9 +66,13 @@ ZeroFrame = (function() {
     ZeroFrame.prototype.route = function(cmd, message) {
         // this.log("ZeroFrame.prototype.route: cmd = " + cmd + ', message = ' + JSON.stringify(message));
         if (cmd == "setSiteInfo") {
-            // merger site: only save site_info for front end site & ignore site_info from data hubs
             // this.site_info = message.params;
-            if (!this.site_info || (this.site_info.address == message.params.address)) this.site_info = message.params;
+            if (!this.site_info || (this.site_info.address == message.params.address)) this.site_info = message.params; // main site. MN or Wallet
+            else {
+                // hub. user data hub (MN) or wallet data hub (wallet sites)
+                if (!this.merger_sites) this.merger_sites = {} ;
+                this.merger_sites[message.params.address] = message.params ;
+            }
             // this.log("ZeroFrame.prototype.route: site_info = " + JSON.stringify(this.site_info));
             this.checkCertUserId() ;
             // execute any functions waiting for event
@@ -78,7 +82,7 @@ ZeroFrame = (function() {
                 for (i=0 ; i<message.params.event.length ; i++) event.push(message.params.event[i]) ;
                 for (var i=0 ; i<this.event_callbacks.length ; i++) this.event_callbacks[i].apply(undefined, event);
             }
-            // a little dirty. callback to authCtrl and update ZeroNet ID link in log in page
+            // very dirty. callback to angularJS controller and update ZeroNet ID in view
             var link = document.getElementById('zeronet_cert_changed_link') ;
             if (!link) return ;
             try { link.click()} catch (err) {} ;
