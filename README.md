@@ -265,9 +265,10 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                                         "type": 'object',
                                         "properties": {
                                             "unit": {"type": 'string'},
-                                            "factor": {"type": 'number'}
+                                            "factor": {"type": 'number'},
+                                            "decimals": {"type": 'number', "multipleOf": 1.0}
                                         },
-                                        "required": ['unit', 'factor'],
+                                        "required": ['unit', 'factor', 'decimals'],
                                         "additionalProperties": false
                                     },
                                     "minItems": 1
@@ -280,7 +281,8 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                     },
                     "api_url": {"type": 'string'},
                     "wallet_sha256": {"type": 'string', "pattern": '^[0-9a-f]{64}$'},
-                    "hub": {"type": 'string'},
+                    "hub": {"type": 'string', "description": 'Random other wallet data hub. For list of hubs, add all hubs etc'},
+                    "hub_title": {"type": 'string'},
                     "json_schemas": {
                         "type": 'object',
                         "description": 'Extra json schema definitions used in wallet to wallet communication. Used in compatibility check between different wallet sites (different wallet sites supporting identical currencies)'
@@ -321,7 +323,7 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                             "properties": {
                                 "action": { "type": 'string', "pattern": '^(Send|Request)$'},
                                 "code": {"type": 'string', "minLength": 2, "maxLength": 5},
-                                "amount": {"type": 'number'}
+                                "amount": {"type": ['number', 'string'], "description": 'number or string with a formatted number (number.toFixed)'}
                             },
                             "required": ['action', 'code', 'amount'],
                             "additionalProperties": false
@@ -389,7 +391,7 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                             "properties": {
                                 "action": { "type": 'string', "pattern": '^(Send|Request)$'},
                                 "code": {"type": 'string', "minLength": 2, "maxLength": 5},
-                                "amount": {"type": 'number'},
+                                "amount": {"type": ['number', 'string'], "description": 'number or string with a formatted number (number.toFixed)'},
                                 "json": {}
                             },
                             "required": ['action', 'code', 'amount', 'json'],
@@ -554,6 +556,64 @@ API1 is at present time unstable. Json validation for in- and outgoing messages:
                     "filename": { "type": 'string'}
                 },
                 "required": ['msgtype', 'filename'],
+                "additionalProperties": false
+            },
+
+            // backup/restore wallet ls. for full MN ls backup including wallet localStorage data
+            "request_wallet_backup": {
+                "type": 'object',
+                "title": 'MN: request full localStorage copy from wallet session',
+                "description": 'Used for full MN and wallets localStorage backup/restore',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^request_wallet_backup$'}
+                },
+                "required": ['msgtype'],
+                "additionalProperties": false
+            },
+
+            "wallet_backup": {
+                "type": 'object',
+                "title": 'Wallet: return string with full localStorage copy to MN session',
+                "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage data',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^wallet_backup$'},
+                    "ls": {"type": 'string'},
+                    "filenames": {
+                        "type": 'array',
+                        "description": 'optional list of files to be included in backup',
+                        "items": { "type": 'string' },
+                        "minItems": 1
+                    }
+                },
+                "required": ['msgtype', 'ls'],
+                "additionalProperties": false
+            },
+
+            "restore_wallet_backup": {
+                "type": 'object',
+                "title": 'MN: ask wallet to restore previous localStorage backup',
+                "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage. wallet: JSON.stringify wallet.json file. timestamp and filename: backup timestamp and filename',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^restore_wallet_backup$'},
+                    "ls": {"type": 'string'},
+                    "files": {
+                        "type": 'array',
+                        "description": 'List with files to be restored in W2 session. From wallet_backup message',
+                        "items": {
+                            "type": 'object',
+                            "properties": {
+                                "filename": { "type": 'string'},
+                                "content": { "type": 'string'}
+                            },
+                            "required": ['filename', 'content'],
+                            "additionalProperties": false
+                        },
+                        "minItems": 1
+                    },
+                    "timestamp": {"type": 'number', "multipleOf": 1.0},
+                    "filename": {"type": 'string'}
+                },
+                "required": ['msgtype', 'ls', 'timestamp'],
                 "additionalProperties": false
             }
 
