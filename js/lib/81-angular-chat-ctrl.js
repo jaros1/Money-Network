@@ -15,6 +15,7 @@ angular.module('MoneyNetwork')
             //    return;
             //}
             console.log(controller + ' loaded');
+            // MoneyNetworkHelper.set_debug_all(true);
             $window.scrollTo(0, 0);
 
             function debug (key, text) { MoneyNetworkHelper.debug(key, text) }

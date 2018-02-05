@@ -523,7 +523,7 @@ angular.module('MoneyNetwork')
                 }
                 message += ', unix timestamp = ' + short_date ;
             }
-            debug('contact_order_by', message) ;
+            // debug('contact_order_by', message) ;
             return sort ;
         } // contact_order_by
 

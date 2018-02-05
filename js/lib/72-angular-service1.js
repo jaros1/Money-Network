@@ -3,7 +3,7 @@ angular.module('MoneyNetwork')
     // https://coderwall.com/p/ngisma/safe-apply-in-angular-js
     // fixing problems in chatCtrl.approve_money_transactions
     // no error in first approve call. errors in second approve call
-    .factory('safeApply', [function($rootScope) {
+    .factory('safeApply', [function() {
         return function($scope, fn) {
             var phase = $scope.$root ? $scope.$root.$$phase : null;
             if(phase == '$apply' || phase == '$digest') {
@@ -24,7 +24,7 @@ angular.module('MoneyNetwork')
     // - get/write wrappers for data.json, status.json and like.json
     // - get user data hub
     // - merge user data hubs operation
-    .factory('MoneyNetworkHubService', ['$timeout', 'safeApply', 'brFilter', '$sanitize', function($timeout, safeApply, br, $sanitize) {
+    .factory('MoneyNetworkHubService', ['$timeout', 'safeApply', 'brFilter', '$sanitize', '$rootScope', function($timeout, safeApply, br, $sanitize, $rootScope) {
         var service = 'MoneyNetworkHubService' ;
         console.log(service + ' loaded') ;
 
@@ -81,11 +81,13 @@ angular.module('MoneyNetwork')
 
 
         // inject functions from calling services
-        var get_user_reactions, ls_save_contacts, symbol_to_unicode ;
+        var get_user_reactions, ls_save_contacts, symbol_to_unicode, z_contact_search, check_public_chat ;
         function inject_functions (hash) {
             if (hash.get_user_reactions) get_user_reactions = hash.get_user_reactions ;
             if (hash.ls_save_contacts) ls_save_contacts = hash.ls_save_contacts ;
             if (hash.symbol_to_unicode) symbol_to_unicode = hash.symbol_to_unicode ;
+            if (hash.z_contact_search) z_contact_search = hash.z_contact_search ;
+            if (hash.check_public_chat) check_public_chat = hash.check_public_chat ;
         }
 
         //// convert data.json file to newest version / structure
@@ -222,6 +224,39 @@ angular.module('MoneyNetwork')
             json.version = dbschema_version ;
         } // z_migrate_status
 
+        // keep track of new hubs. there can go up to 3 minutes before optional files from peers are available for download (public chat).
+        // see check_public_chat
+        var merger_site_added = {} ;
+        function z_merger_site_add (hub, cb) {
+            var pgm = service + '.z_merger_site_add: ' ;
+            MoneyNetworkAPILib.z_merger_site_add(hub, function (res) {
+                var inner_path ;
+                console.log(pgm + 'res = ' + res) ;
+                if (res == 'ok') {
+                    // remember timestamp for add hub. takes some time before first public chat files are ready for downloadf
+                    merger_site_added[hub] = new Date().getTime();
+                    // dummy request to fileGet. run when hub is ready. run new contact search when hub is ready
+                    inner_path = 'merged-' + get_merged_type() + '/' + hub + '/data/users/content.json' ;
+                    console.log(pgm + 'running a dummy fileGet request to new hub. will be executed when ' + hub + ' is ready. inner_path = ' + inner_path) ;
+                    z_file_get(pgm, {inner_path: inner_path}, function() {
+                        var job ;
+                        console.log(pgm + 'hub ' + hub + ' is ready. run new contact search in 5 seconds') ;
+                        job = function() {
+                            z_contact_search(function () {
+                                $rootScope.$apply() ;
+                                check_public_chat() ;
+                            }, null, null)
+                        } ;
+                        $timeout(job, 5000) ;
+                    }) ;
+                }
+                cb() ;
+            }) ;
+        }
+        function get_merger_site_added () {
+            return merger_site_added ;
+        }
+
         function z_file_get (pgm, options, cb) {
             MoneyNetworkAPILib.z_file_get(pgm, options, cb) ;
         } // z_file_get
@@ -308,7 +343,7 @@ angular.module('MoneyNetwork')
                 my_user_hub = get_default_user_hub() ;
                 console.log(pgm + 'calling mergerSiteAdd with my_user_hub = ' + my_user_hub.hub) ;
 
-                MoneyNetworkAPILib.z_merger_site_add(my_user_hub.hub, function (res) {
+                z_merger_site_add(my_user_hub.hub, function (res) {
                     var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub z_merger_site_add callback: ' ;
                     console.log(pgm + 'res = '+ JSON.stringify(res));
                     if (detected_client_log_out(pgm, old_userid)) return ;
@@ -420,7 +455,7 @@ angular.module('MoneyNetwork')
 
                     if (user_data_hubs[i].hub_added) step_5_user_hub_selected() ;
                     else {
-                        MoneyNetworkAPILib.z_merger_site_add(z_cache.my_user_hub, function (res) {
+                        z_merger_site_add(z_cache.my_user_hub, function (res) {
                             if (res != 'ok') console.log(pgm + 'error. mergerSiteAdd ' + z_cache.my_user_hub + ' failed. res = ' + JSON.stringify(res)) ;
                             step_5_user_hub_selected() ;
                         })
@@ -3391,6 +3426,8 @@ angular.module('MoneyNetwork')
             inject_functions: inject_functions,
             z_file_get: z_file_get,
             get_user_data_hubs: get_user_data_hubs,
+            z_merger_site_add: z_merger_site_add,
+            get_merger_site_added: get_merger_site_added,
             z_wrapper_notification: z_wrapper_notification,
             sanitize: sanitize
         };

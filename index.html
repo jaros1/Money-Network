@@ -2241,6 +2241,13 @@
 
             <p ng-include="'addHubs'"></p>
 
+
+            <br><br><br>
+            <p ng-hide="a.is_logged_in()" title="Click for full debug information in console">
+                Debug?
+                <input type="checkbox" ng-model="a.debug" ng-change="a.debug_changed()">
+            </p>
+
         </div>
 
         <!-- end auth.html -->

@@ -2086,6 +2086,7 @@ var MoneyNetworkAPILib = (function () {
     var new_hub_file_get_cbs = {} ; // any fileGet callback waiting for hub to be ready?
     function z_merger_site_add (hub, cb) {
         var pgm = module + '.z_merger_site_add: ' ;
+        if (!cb) cb = function() {} ;
         ZeroFrame.cmd("mergerSiteAdd", [hub], function (res) {
             var pgm = module + '.z_merger_site_add mergerSiteAdd callback: ' ;
             console.log(pgm + 'res = '+ JSON.stringify(res));

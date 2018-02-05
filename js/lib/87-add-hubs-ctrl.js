@@ -28,7 +28,7 @@ angular.module('MoneyNetwork')
         self.add_remove_hub = function (hub_row) {
             var pgm = controller + '.add_remove_hub: ' ;
             if (hub_row.hub_added) {
-                MoneyNetworkAPILib.z_merger_site_add(hub_row.hub, function (res) {
+                moneyNetworkService.z_merger_site_add(hub_row.hub, function (res) {
                 // ZeroFrame.cmd("mergerSiteAdd", [hub_row.hub], function (res) {
                     console.log(pgm + 'mergerSiteAdd. res = ', JSON.stringify(res)) ;
                     if (res == 'ok') hub_row.hub_added = true ;

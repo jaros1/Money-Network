@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
     
-    .controller('UserCtrl', ['$scope', '$rootScope', '$timeout', 'MoneyNetworkService', '$location', 'dateFilter', '$sce',
-                     function($scope, $rootScope, $timeout, moneyNetworkService, $location, date, $sce)
+    .controller('UserCtrl', ['$scope', '$rootScope', '$timeout', 'MoneyNetworkService', '$location', 'dateFilter', '$sce', '$window',
+                     function($scope, $rootScope, $timeout, moneyNetworkService, $location, date, $sce, $window)
     {
         var self = this;
         var controller = 'UserCtrl';
@@ -1239,19 +1239,15 @@ angular.module('MoneyNetwork')
             // callbacks:
 
             // step 11. redirect. maybe better with a page reload?
+            // https://github.com/jaros1/Money-Network/issues/318#issuecomment-362576413
             step_11_done = function () {
                 var pgm = controller + '.import.step_11_done: ' ;
-                var text, a_path, z_path ;
-                text = 'MoneyNetwork data has been imported from file. Please log in';
-                z_wrapper_notification(['info', text, 10000]);
-                // redirect
-                a_path = '/auth';
-                z_path = "?path=" + a_path;
-                console.log(pgm + 'redirect') ;
-                $location.path(a_path);
-                $location.replace();
-                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
-                $scope.$apply();
+                var msg, job ;
+                msg = 'MoneyNetwork was restored. Reloading page in 3 seconds' ;
+                console.log(pgm + msg) ;
+                z_wrapper_notification(['done', msg]) ;
+                job = function() { $window.location.reload() } ;
+                $timeout(job, 3000) ;
             }; // step_11_done
 
             step_10_ls_write = function (data) {
@@ -1262,6 +1258,12 @@ angular.module('MoneyNetwork')
                 ls = MoneyNetworkHelper.ls_get() ;
                 for (key in ls) delete ls[key] ;
                 for (key in data.ls) ls[key] = data.ls[key] ;
+                // restored message. displayed after page reload
+                ls.moneynetwork_backup_restored = {
+                    now: new Date().getTime(),
+                    timestamp: data.timestamp,
+                    filename: file.name
+                } ;
                 MoneyNetworkHelper.ls_save() ;
                 console.log(pgm + 'ls overwritten and saved') ;
                 step_11_done() ;

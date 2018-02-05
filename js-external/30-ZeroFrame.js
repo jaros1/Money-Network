@@ -65,13 +65,17 @@ ZeroFrame = (function() {
 
     ZeroFrame.prototype.route = function(cmd, message) {
         // this.log("ZeroFrame.prototype.route: cmd = " + cmd + ', message = ' + JSON.stringify(message));
+        var old_peers, new_peers ;
         if (cmd == "setSiteInfo") {
             // this.site_info = message.params;
             if (!this.site_info || (this.site_info.address == message.params.address)) this.site_info = message.params; // main site. MN or Wallet
             else {
                 // hub. user data hub (MN) or wallet data hub (wallet sites)
                 if (!this.merger_sites) this.merger_sites = {} ;
+                if (this.merger_sites[message.params.address]) old_peers = this.merger_sites[message.params.address].peers ;
                 this.merger_sites[message.params.address] = message.params ;
+                new_peers = this.merger_sites[message.params.address].peers ;
+                if (!old_peers || (old_peers != new_peers)) this.log("ZeroFrame.prototype.route: hub " + message.params.address + ' has ' + message.params.peers + ' peers') ;
             }
             // this.log("ZeroFrame.prototype.route: site_info = " + JSON.stringify(this.site_info));
             this.checkCertUserId() ;

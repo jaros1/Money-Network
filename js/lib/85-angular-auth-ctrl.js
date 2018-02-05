@@ -53,7 +53,8 @@ angular.module('MoneyNetwork')
             } ; // request1
             var request2 = function (cb) {
                 var pgm = controller + '.check_merger_permission.request2: ' ;
-                MoneyNetworkAPILib.z_merger_site_add("1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh", function (res) {
+                console.log(pgm + 'todo: 1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh should not be hardcoded in request2') ;
+                moneyNetworkService.z_merger_site_add("1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh", function (res) {
                     console.log(pgm + 'mergerSiteAdd: ' + JSON.stringify(res)) ;
                     return cb(true);
                 }) ;
@@ -288,6 +289,12 @@ angular.module('MoneyNetwork')
                 // moneyNetworkService.update_site_info() ;
             });
         };
+
+        // debug all option in auth page. for pre log in debug and for easy debug all
+        self.debug = MoneyNetworkHelper.get_debug_all() ;
+        self.debug_changed = function () {
+            MoneyNetworkHelper.set_debug_all(self.debug) ;
+        } ;
 
         // end AuthCtrl
     }])

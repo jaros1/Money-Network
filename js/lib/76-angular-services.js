@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
 
-    .factory('MoneyNetworkService', ['$timeout', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService', 'MoneyNetworkEmojiService', 'MoneyNetworkZService', 'MoneyNetworkWService',
-                             function($timeout, $rootScope, $window, $location, date, moneyNetworkHubService, moneyNetworkEmojiService, moneyNetworkZService, moneyNetworkWService)
+    .factory('MoneyNetworkService', ['$timeout', '$interval', '$rootScope', '$window', '$location', 'dateFilter', 'MoneyNetworkHubService', 'MoneyNetworkEmojiService', 'MoneyNetworkZService', 'MoneyNetworkWService',
+                             function($timeout, $interval, $rootScope, $window, $location, date, moneyNetworkHubService, moneyNetworkEmojiService, moneyNetworkZService, moneyNetworkWService)
     {
         var service = 'MoneyNetworkService' ;
         console.log(service + ' loaded') ;
@@ -1916,7 +1916,7 @@ angular.module('MoneyNetwork')
                             res[i].other_unique_id = unique_id;
                             if (!res[i].other_user_timestamp) {
                                 // must be a new contact received in file done event. data.json file received before status.json file
-                                if (file_auth_address) debug('file_done', pgm + 'file done event. data.json received before status.json. Using now as timestamp') ;
+                                if (file_auth_address) debug('file_done', pgm + 'file done event. data.json received before status.json. Using now as timestamp. file_auth_address = ' + file_auth_address) ;
                                 else {
                                     // console.log(pgm + 'Ignoring contact without timestamp. res[i] = ' + JSON.stringify(res[i])) ;
                                     continue ;
@@ -1955,6 +1955,7 @@ angular.module('MoneyNetwork')
                             }) ;
                         }
                         no_contacts = Object.keys(res_hash).keys.length ;
+                        // console.log(pgm + 'no_contacts = ' + no_contacts) ;
 
                         // insert/update/delete new contacts in local_storage_contacts (type=new)
                         // console.log(pgm + 'issue #10#: user_info = ' + JSON.stringify(user_info));
@@ -2031,6 +2032,7 @@ angular.module('MoneyNetwork')
                                 inbox_last_sender_sha256: null,
                                 inbox_last_sender_sha256_at: 0
                             };
+                            no_contacts++ ;
 
                             if (!new_contact.avatar) {
                                 // assign random avatar
@@ -2067,7 +2069,7 @@ angular.module('MoneyNetwork')
             }) ; // get_my_user_hub callback 1
 
         } // z_contact_search
-
+        moneyNetworkHubService.inject_functions({z_contact_search: z_contact_search}) ;
 
         // return chat friendly message array
         function js_get_messages() {
@@ -4590,7 +4592,8 @@ angular.module('MoneyNetwork')
                 }
             }
             // console.log(pgm + 'hub = ' + JSON.stringify(hub) + ', event = ' + JSON.stringify(event) + ', filename = ' + JSON.stringify(filename));
-            if (!z_cache.user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
+            // if (!z_cache.user_id) return ; // not logged in - just ignore - will be dbQuery checked after client login
+
             // process user files:
             // - data/users/<auth_address>/content.json - check for avatar uploads
             // - data/users/<auth_address>/data.json - check for new messages
@@ -4889,11 +4892,11 @@ angular.module('MoneyNetwork')
                         last_online = timestamp / 1000.0 ;
                         // Update Last online in search array
                         var old_last_online = get_last_online(contact) || 0 ;
-                        if (last_online > old_last_online) {
-                            set_last_online(contact, last_online) ;
-                            contacts_updated = true ;
-                            console.log(pgm + 'status.json: last_online = ' + date(last_online*1000, 'short') + ', search = ' + JSON.stringify(contact.search)) ;
-                        }
+                        //if (last_online > old_last_online) {
+                        set_last_online(contact, last_online) ;
+                        contacts_updated = true ;
+                        console.log(pgm + 'status.json: last_online = ' + date(last_online*1000, 'short') + ', search = ' + JSON.stringify(contact.search)) ;
+                        //}
                     } // for i (contacts)
 
                     if (contacts_updated) {
@@ -5291,15 +5294,23 @@ angular.module('MoneyNetwork')
             var pgm = service + '.check_public_chat: ' ;
             var check ;
 
-            // any change in chat page context since last call?
-            if (old_chat_page_context &&
-                (old_chat_page_context.contact == chat_page_context.contact) &&
-                (old_chat_page_context.first_top_timestamp == chat_page_context.first_top_timestamp) &&
-                (old_chat_page_context.last_bottom_timestamp == chat_page_context.last_bottom_timestamp) &&
-                (old_chat_page_context.end_of_page == chat_page_context.end_of_page) &&
-                (old_chat_page_context.chat_sort == z_cache.user_setup.chat_sort)) {
-                debug('infinite_scroll', pgm + 'stop. unchanged chat page context.') ;
-                return ;
+            if (chat_page_context.contact || chat_page_context.first_top_timestamp || chat_page_context.last_bottom_timestamp) {
+                // check context before starting any new get_public_chat calls
+                // any change in chat page context since last call?
+                if (old_chat_page_context &&
+                    (old_chat_page_context.contact == chat_page_context.contact) &&
+                    (old_chat_page_context.first_top_timestamp == chat_page_context.first_top_timestamp) &&
+                    (old_chat_page_context.last_bottom_timestamp == chat_page_context.last_bottom_timestamp) &&
+                    (old_chat_page_context.end_of_page == chat_page_context.end_of_page) &&
+                    (old_chat_page_context.chat_sort == z_cache.user_setup.chat_sort)) {
+                    debug('infinite_scroll', pgm + 'stop. unchanged chat page context.') ;
+                    return ;
+                }
+            }
+            else {
+                // empty public chat page. there should always exist public chat messages
+                // only exception is empty user data hub or failed mergerSiteAdd requests
+                debug('infinite_scroll', pgm + 'empty chat page. there should always be some public chat to show') ;
             }
 
             // changed chat page context
@@ -5329,6 +5340,10 @@ angular.module('MoneyNetwork')
                         else if (status == 'done') {
                             // no more public chat files
                             chat_page_context.no_processes-- ;
+                            if (!chat_page_context.no_processes && !chat_page_context.contact && !chat_page_context.first_top_timestamp && !chat_page_context.last_bottom_timestamp) {
+                                console.log(pgm + 'Maybe an error. No filters, chat page is empty and no running check public chat processes. Check again in 5 seconds. Maybe failed mergerSiteAdd. Maybe hub without any peers') ;
+                                // $timeout(check_public_chat, 10000) ;
+                            }
                         }
                         else if (status == 'updated') {
                             // chat page updated. update and continue
@@ -5348,6 +5363,7 @@ angular.module('MoneyNetwork')
 
 
         } // check_public_chat
+        moneyNetworkHubService.inject_functions({check_public_chat: check_public_chat})
 
 
         // from chatCtrl. keep track of first and last chat message in chat page
@@ -5412,6 +5428,69 @@ angular.module('MoneyNetwork')
 
         } // set_first_and_last_chat
 
+        // when was user data hub added? there goes some time (2-3 minutes) from mergerSiteAdd to peers are ready to upload optional files
+        var merger_site_added = moneyNetworkHubService.get_merger_site_added() ;
+
+        // monitor chat files without peers.
+        var chat_files_without_peers = {} ;
+
+        // check chat files without peers. maybe other peer is ready to upload file
+        function monitor_files_without_peers () {
+            var pgm = service + '.monitor_files_without_peers: ' ;
+            var inner_path, files, check_file ;
+
+            // public chat not relevant for:
+            if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return ; // not relevant for group chat
+            if (z_cache.user_setup.chat_sort != 'Last message') {
+                // sort by message size. public chat size = 0 always in bottom of page
+                if (!chat_page_context.end_of_page) return ;
+            }
+
+            // any chat files within actual chat page context
+            files = [] ;
+            for (inner_path in chat_files_without_peers) {
+                if (!chat_page_context.first_top_timestamp) files.push(inner_path) ;
+                else if (!chat_page_context.last_bottom_timestamp) files.push(inner_path) ;
+                else if (chat_files_without_peers[inner_path].to_timestamp >= chat_page_context.last_bottom_timestamp) files.push(inner_path) ;
+            }
+            if (!files.length) {
+                if (Object.keys(chat_files_without_peers).length) {
+                    console.log(pgm + 'no files was found') ;
+                    console.log(pgm + 'first_top_timestamp = ' + chat_page_context.first_top_timestamp) ;
+                    console.log(pgm + 'last_bottom_timestamp = ' + chat_page_context.last_bottom_timestamp) ;
+                    console.log(pgm + 'chat_files_without_peers = ' + JSON.stringify(chat_files_without_peers)) ;
+                }
+                return ;
+            }
+            console.log(pgm + 'files = ' + JSON.stringify(files)) ;
+
+            // check file loop. find a chat file with peers
+            check_file = function () {
+                var inner_path ;
+                inner_path = files.shift() ;
+                if (!inner_path) return ;
+                ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
+                    var pgm = service + '.monitor_files_without_peers optionalFileInfo callback: ' ;
+                    if (!file_info) {
+                        // deleted optional file?
+                        console.log(pgm + 'no file_info was found for ' + inner_path) ;
+                        delete chat_files_without_peers[inner_path] ;
+                        return check_file() ;
+                    }
+                    if (!file_info.peer) {
+                        chat_files_without_peers[inner_path].file_info_at = new Date().getTime()  ;
+                        return check_file() ;
+                    }
+                    console.log(pgm + 'found file ' + inner_path + ' with peers. recheck public chat now') ;
+                    delete delete chat_files_without_peers[inner_path] ;
+                    reset_first_and_last_chat() ;
+                }) ; // optionalFileInfo callback
+
+            } ; // check_file
+            check_file() ;
+
+        } // monitor_files_without_peers
+        $interval(monitor_files_without_peers, 1000) ;
 
         // callback from chatCtrl
         // check for any public chat relevant for current chat page context
@@ -5484,7 +5563,8 @@ angular.module('MoneyNetwork')
                         var i, cache_filename, cache_status, j, pending_files, get_no_peers, unique_id,
                             contact, compare_files1, compare_files2, auth_address, filename, interval_obj, user_seq, key,
                             hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
-                            deleted_messages, message, cb_status, js_messages_row, one_hour_ago, k, delete_file ;
+                            deleted_messages, message, cb_status, js_messages_row, one_hour_ago, k, delete_file, old_res_lng,
+                            new_hubs_without_peers, now ;
                         debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                         if (res.error == "'NoneType' object has no attribute 'execute'") {
                             // maybe a problem with deleted optional files. content.db out of sync with file system
@@ -5910,9 +5990,13 @@ angular.module('MoneyNetwork')
                         // callback loop starting with res[0].
                         // check max 10 files. looking for optional files with many peers
                         // prefer files without download failure
+                        old_res_lng = res.length ;
+                        new_hubs_without_peers = {} ;
+
                         get_no_peers = function (cb2) {
                             var pgm = service + '.get_public_chat get_no_peers: ';
-                            var i, j, max_peers, max_peers_i, max_peers_ok, max_peers_ok_i, max_peers_failed, max_peers_failed_i, cache_filename, cache_status ;
+                            var i, j, max_peers, max_peers_i, max_peers_ok, max_peers_ok_i, max_peers_failed,
+                                max_peers_failed_i, cache_filename, cache_status, now, hub, elapsed ;
                             max_peers_ok = -1;
                             max_peers_failed = -1;
                             i = -1 ;
@@ -5943,7 +6027,7 @@ angular.module('MoneyNetwork')
                             } // for j
 
                             if (max_peers_ok == -1) {
-                                // UPS: all download have failed
+                                // UPS: all downloads have failed
                                 max_peers = max_peers_failed ;
                                 max_peers_i = max_peers_failed_i ;
                             }
@@ -5952,7 +6036,7 @@ angular.module('MoneyNetwork')
                                 max_peers_i = max_peers_ok_i ;
                             }
 
-                            // get peer info for next file. check minimum 10 files. looking for file with peer >= 3
+                            // get peer info for next file. check minimum 10 files. looking for chat files with peers
                             if ( (i != -1) &&
                                 ((i <= 10) || ((i > 10) && (max_peers < 3)))) {
                                 // get number of peers for file i
@@ -5970,8 +6054,31 @@ angular.module('MoneyNetwork')
                                     else {
                                         res[i].peer = file_info.peer ;
                                     }
-                                    if (res[i].peer == 0) res.splice(i,1) ;
-                                    if (res.length == 0) return cb2('done') ;
+                                    if (res[i].peer == 0) {
+                                        debug('public_chat', pgm + 'no peers. removing ' + cache_filename + ' from list') ;
+                                        if (merger_site_added[res[i].hub]) {
+                                            // new hub. keep track of optional files without peers. There can go up to 3 minutes before first public chat is downloaded
+                                            if (!new_hubs_without_peers.hasOwnProperty(res[i].hub)) new_hubs_without_peers[res[i].hub] = 0 ;
+                                            new_hubs_without_peers[res[i].hub]++ ;
+                                        }
+                                        if (!chat_files_without_peers[cache_filename]) chat_files_without_peers[cache_filename] = {
+                                            from_timestamp: res[i].from_timestamp,
+                                            to_timestamp: res[i].to_timestamp
+                                        } ;
+                                        chat_files_without_peers[cache_filename].file_info_at = new Date().getTime() ;
+                                        res.splice(i,1) ;
+                                    }
+                                    if (res.length == 0) {
+                                        debug('public_chat', pgm + 'checked ' + old_res_lng + ' files. did not find chat files to download! chat_files_without_peers = ' + JSON.stringify(chat_files_without_peers)) ;
+                                        if (Object.keys(merger_site_added).length) {
+                                            now = new Date().getTime() ;
+                                            for (hub in merger_site_added) {
+                                                elapsed = Math.round((now - merger_site_added[hub])/1000) ;
+                                                console.log(pgm + 'new hub ' + hub + ' was added ' + elapsed + ' seconds ago') ;
+                                            }
+                                        }
+                                        return cb2('done') ;
+                                    }
                                     // continue with next file
                                     get_no_peers(cb2);
                                 }) ; // optionalFileInfo callback 2
@@ -5982,12 +6089,23 @@ angular.module('MoneyNetwork')
                             // done / end loop. found file with peer >= 3 or have downloaded peer info for all files
                             debug('public_chat', pgm + 'max_peers = ' + max_peers_ok + ', max_peers_i = ' + max_peers_ok_i) ;
                             debug('public_chat', pgm + 'res = ' + JSON.stringify(res)) ;
-                            if (res.length == 0) { cb2('done') ; return }
+                            if (res.length == 0) {
+                                debug('public_chat', pgm + 'checked ' + old_res_lng + ' files. did not find chat files to download! chat_files_without_peers = ' + JSON.stringify(chat_files_without_peers)) ;
+                                if (Object.keys(merger_site_added).length) {
+                                    now = new Date().getTime() ;
+                                    for (hub in merger_site_added) {
+                                        elapsed = Math.round((now - merger_site_added[hub])/1000) ;
+                                        console.log(pgm + 'new hub ' + hub + ' was added ' + elapsed + ' seconds ago') ;
+                                    }
+                                }
+                                return cb2('done') ;
+                            }
 
                             // download optional file. file with most peers or random file
                             i = max_peers_i || Math.floor(Math.random() * res.length) ;
                             debug('public_chat', pgm + 'selected res[' + i + '] = ' + JSON.stringify(res[i])) ;
                             cache_filename = 'merged-' + get_merged_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
+                            if (res[i].peers) delete chat_files_without_peers[cache_filename] ;
 
                             debug('public_chat', pgm + 'get and load chat file ' + cache_filename);
                             get_and_load_chat_file(cache_filename, res[i].size, null, cb2) ;
@@ -6268,7 +6386,7 @@ angular.module('MoneyNetwork')
                                 // cannot read messages in data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482768400248-1482768400248-1-chat.json
                                 debug('public_chat', pgm + 'create unknown contact and retry reading chat file ' + cache_filename + '. todo: endless loop if contact is not found. There must also be an other error but should stop reading this chat file instead of endless loop ...') ;
                                 // run contact search for this auth_address only
-                                z_contact_search (function (no_contacts) {
+                                z_contact_search (function (no_contacts) { // xxx
                                     debug('public_chat', pgm + 'z_contact_search returned no_contacts = ' + no_contacts) ;
                                     if (no_contacts == 0) {
                                         debug('public_chat', pgm + 'error. could not find contact with auth_address ' + file_auth_address + ' and user_seq ' + file_user_seq + '. ' +
@@ -7216,6 +7334,7 @@ angular.module('MoneyNetwork')
             get_use_login: get_use_login,
             use_login_changed: use_login_changed,
             get_z_cache: moneyNetworkHubService.get_z_cache,
+            z_merger_site_add: moneyNetworkHubService.z_merger_site_add,
             z_wrapper_notification: moneyNetworkHubService.z_wrapper_notification,
             sanitize: moneyNetworkHubService.sanitize
         };

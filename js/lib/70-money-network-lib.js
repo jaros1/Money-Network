@@ -54,7 +54,7 @@ var MoneyNetworkHelper = (function () {
         // console.log(pgm + 'ZeroFrame=', ZeroFrame) ;
         ZeroFrame.cmd("wrapperGetLocalStorage", [], function (res) {
             var pgm = module + '.ls_load wrapperGetLocalStorage callback: ';
-            var key, wait_for_site_info ;
+            var key, wait_for_site_info, msg ;
             // console.log(pgm + 'typeof res =' + typeof res) ;
             // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
             if (!res) res = [{}] ;
@@ -67,7 +67,16 @@ var MoneyNetworkHelper = (function () {
             delete local_storage.loading ;
             console.log(pgm + 'loaded localStorage') ;
             // console.log(pgm + 'local_storage = ' + JSON.stringify(local_storage));
+
+            // check restore from backup. See userCtrl.import.step_10_ls_write
+            if (local_storage.moneynetwork_backup_restored) {
+                msg = 'OK. MoneyNetwork was restored from backup<br>filename: ' + local_storage.moneynetwork_backup_restored.filename + '<br>Please log in' ;
+                console.log(pgm + msg) ;
+                ZeroFrame.cmd("wrapperNotification", ['done', msg]) ;
+                delete local_storage.moneynetwork_backup_restored ;
+            }
             if (!local_storage_cbs.length) return ;
+
             // check if ZeroFrame.site_info is ready. some functions in ls_bind uses site_info
             wait_for_site_info = function () {
                 var i, cb ;
@@ -1635,6 +1644,7 @@ var MoneyNetworkHelper = (function () {
     // output debug info in log. For key, see user page and setup.debug hash
     // keys: simple expressions are supported. For example inbox && unencrypted
     var debug_cache = {} ;
+    var debug_all = false ;
 
     // keys => true or false
     function show_debug (keys) {
@@ -1676,8 +1686,15 @@ var MoneyNetworkHelper = (function () {
         var pgm = module + '. debug: ' ;
         if (!keys) throw pgm + 'Invalid call. key is missing' ;
         if (!text) throw pgm + 'Invalid call. text is missing' ;
-        if (show_debug(keys)) console.log(shorten_long_strings(text)) ;
+        if (debug_all || show_debug(keys)) console.log(shorten_long_strings(text)) ;
     } // debug
+
+    function set_debug_all (debug) {
+        debug_all = debug ;
+    }
+    function get_debug_all () {
+        return debug_all ;
+    }
 
     // fake user names. dummy user setup for guests and lazy users
     var fake_user_names = ["Annalise Glover", "Hollis Ortiz", "Bertha Schaefer", "Santino Grant", "Elbert Greenfelder",
@@ -1743,6 +1760,8 @@ var MoneyNetworkHelper = (function () {
         load_user_setup: load_user_setup,
         show_debug: show_debug,
         debug: debug,
+        get_debug_all: get_debug_all,
+        set_debug_all: set_debug_all,
         stringify: stringify,
         get_fake_name: get_fake_name,
         sha256: sha256,
