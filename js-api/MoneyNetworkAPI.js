@@ -2163,7 +2163,9 @@ var MoneyNetworkAPILib = (function () {
                     // refresh all_hubs list before running any fileGet operations waiting for hub
                     get_all_hubs(true, function() {
                         // hub was not added / is not ready. fileGet operations will return null. See z_file_get
-                        run_cbs(hub, 'timeout while waiting for new user data hub ' + hub + ' to be ready') ;
+                        run_cbs(hub,
+                            'timeout while waiting for new user data hub ' + hub + ' to be ready. maybe user data hub without peers. maybe running on a proxy server with disabled add site. ' +
+                            (new_hub_file_get_cbs[hub].cbs.length ? new_hub_file_get_cbs[hub].cbs.length + ' fileGet request(s) will fail with Merger site (MoneyNetwork) does not have permission for merged site: ' + hub + ' (None)' : '')) ;
                         monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
                     }) ;
                     return ;
@@ -2228,9 +2230,9 @@ var MoneyNetworkAPILib = (function () {
                     hub_added = all_hubs[i].hub_added ;
                     break ;
                 }
-                if (!hub_added) {
+                if (!hub_added && all_hubs.length) {
                     console.log(pgm + 'error. cannot start fileGet ' + inner_path) ;
-                    console.log(pgm + 'hub ' + hub + ' is not in mergerSiteList') ;
+                    console.log(pgm + 'hub ' + hub + ' is not in mergerSiteList. all_hubs = ' + JSON.stringify(all_hubs)) ;
                     return cb(null, {error: hub + ' was not found in mergerSiteList'}) ;
                 }
             }

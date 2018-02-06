@@ -41,6 +41,7 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.check_merger_permission.request1: ' ;
                 ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
                     if (res == "Granted") {
+                        moneyNetworkService.add_dummy_welcome_msg() ;
                         MoneyNetworkAPILib.get_all_hubs(true, function() {
                             request2(cb) ;
                         }) ;

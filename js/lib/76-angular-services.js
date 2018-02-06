@@ -915,18 +915,35 @@ angular.module('MoneyNetwork')
 
         // add dummy incoming public chat message. should only be displayed to new users while downloading first user data hub
         var dummy_welcome_msg = false ;
-        (function(){
-            var contact, message_with_envelope ;
-            contact = get_public_contact(true) ;
-            message_with_envelope = {
-                folder:"inbox",
-                message:{msgtype:"chat msg",message:"Welcome to MoneyNetwork <3 Downloading chat messages. Please wait :D"},
-                created_at: new Date().getTime(),
-                sent_at: new Date().getTime()
-            };
-            add_message(contact, message_with_envelope, false) ;
-            dummy_welcome_msg = true ;
-        })() ;
+        function add_dummy_welcome_msg () {
+            var pgm = service + '.add_dummy_welcome_msg: ' ;
+
+            if (dummy_welcome_msg) return ; // already added
+
+            // check merger permission. dummy message should only be added after granting merger permission
+            ZeroFrame.cmd("siteInfo", {}, function (site_info) {
+                var pgm = service + '.add_dummy_welcome_msg siteInfo callback: ' ;
+                var contact, message_with_envelope ;
+                // console.log(pgm , 'site_info = ' + JSON.stringify(site_info)) ;
+                if (site_info.settings.permissions.indexOf("Merger:MoneyNetwork") == -1) {
+                    console.log(pgm + 'wait with dum,my welcome message. merger permission has not yet been granted') ;
+                    return ;
+                }
+
+                contact = get_public_contact(true) ;
+                message_with_envelope = {
+                    folder:"inbox",
+                    message:{msgtype:"chat msg",message:"Welcome to MoneyNetwork <3 Downloading chat messages. Please wait :D"},
+                    created_at: new Date().getTime(),
+                    sent_at: new Date().getTime()
+                };
+                add_message(contact, message_with_envelope, false) ;
+                dummy_welcome_msg = true ;
+
+            }) ; // siteInfo callback
+
+        }
+        add_dummy_welcome_msg() ;
 
         // wrappers
         function get_last_online (contact) {
@@ -4682,18 +4699,23 @@ angular.module('MoneyNetwork')
 
                     // content.json - any optional files (public chat) with actual chat page context?
                     (function() {
-                        var key, cache_filename, within_page_context, prefix, prefix_lng ;
+                        var key, cache_filename, within_page_context, prefix, prefix_lng, chat_file_re, m ;
                         if (!z_cache.user_setup.public_chat) return ; // public chat disabled
                         if ($location.path().substr(0,5) != '/chat') return ; // not chat page
                         // check chat page context. is any of the optional files relevant for actual context?
                         within_page_context = false ;
                         if (!res.files_optional) res.files_optional = {} ;
+
+                        // todo: cache_filename is not a merged path!!
+                        chat_file_re = /^([0-9]{13})-([0-9]{13})-[0-9]+-chat\.json$/ ;
                         for (key in res.files_optional) {
-                            cache_filename = 'data/users/' + auth_address + '/' + key;
-                            if (file_within_chat_page_context(cache_filename)) {
-                                within_page_context = true;
-                                break;
-                            }
+                            m = key.match(chat_file_re) ;
+                            if (!m) continue ;
+                            cache_filename = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/' + key;
+                            if (files_optional_cache[cache_filename] || chat_files_without_peers[cache_filename]) continue ;
+                            chat_files_without_peers[cache_filename] = { to_timestamp: m[1]} ;
+                            debug('public_chat', pgm + 'added ' + cache_filename + ' to chat_files_without_peers') ;
+                            if (file_within_chat_page_context(cache_filename)) within_page_context = true;
                         } // for key
                         if (!within_page_context) {
                             // any deleted optional files within page context?
@@ -4716,6 +4738,7 @@ angular.module('MoneyNetwork')
                         if (within_page_context) {
                             // trigger a new chatCtrl.page_is_ready call and a new check for public chat files
                             debug('public_chat', pgm + 'calling reset_first_and_last_chat. should check/update public chat') ;
+
                             old_chat_page_context = null ;
                             reset_first_and_last_chat() ;
                         }
@@ -6085,14 +6108,13 @@ angular.module('MoneyNetwork')
                                         res[i].peer = file_info.peer ;
                                     }
                                     if (res[i].peer == 0) {
-                                        debug('public_chat', pgm + 'no peers. removing ' + cache_filename + ' from list') ;
+                                        debug('public_chat', pgm + 'no peers. removing ' + cache_filename + ' from res and adding to chat_files_without_peers') ;
                                         if (merger_site_added[res[i].hub]) {
                                             // new hub. keep track of optional files without peers. There can go up to 3 minutes before first public chat is downloaded
                                             if (!new_hubs_without_peers.hasOwnProperty(res[i].hub)) new_hubs_without_peers[res[i].hub] = 0 ;
                                             new_hubs_without_peers[res[i].hub]++ ;
                                         }
                                         if (!chat_files_without_peers[cache_filename]) chat_files_without_peers[cache_filename] = {
-                                            from_timestamp: res[i].from_timestamp,
                                             to_timestamp: res[i].to_timestamp
                                         } ;
                                         chat_files_without_peers[cache_filename].file_info_at = new Date().getTime() ;
@@ -6135,7 +6157,10 @@ angular.module('MoneyNetwork')
                             i = max_peers_i || Math.floor(Math.random() * res.length) ;
                             debug('public_chat', pgm + 'selected res[' + i + '] = ' + JSON.stringify(res[i])) ;
                             cache_filename = 'merged-' + get_merged_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
-                            if (res[i].peers) delete chat_files_without_peers[cache_filename] ;
+                            if (res[i].peer && chat_files_without_peers[cache_filename]) {
+                                debug('public_chat', pgm + 'removing ' + cache_filename + ' from chat_files_without_peers') ;
+                                delete chat_files_without_peers[cache_filename] ;
+                            }
 
                             debug('public_chat', pgm + 'get and load chat file ' + cache_filename);
                             get_and_load_chat_file(cache_filename, res[i].size, null, cb2) ;
@@ -6161,6 +6186,8 @@ angular.module('MoneyNetwork')
 
             //// issue #305 - dropped this check - not working correct for nested comments
             //// filename = merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/195z3T7ZBNo5Z3aYFzaokb4HZMJhnp14Bd/1508143193583-1508142296464-1-chat.json
+            // 1508143193583-
+            // 1508142296464-1-chat.json
             //if (chat_page_context.contact) {
             //    auth_address = filename.split('/')[4] ;
             //    user_seq = parseInt(filename.split('-')[3]) ;
@@ -6239,9 +6266,6 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'error. ignoring get_and_load_chat_file call for ' + cache_filename + '. public chat is disabled');
                 return cb('done') ;
             }
-            if (cache_filename == 'merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/1516611263486-1516348492322-1-chat.json') {
-                console.log(pgm + 'debug this') ;
-            }
 
             check_merger_permission(pgm, function() {
                 // get user_seq. used later when setting folder (inbox/outbox) for public chat messages
@@ -6253,7 +6277,6 @@ angular.module('MoneyNetwork')
                     // check cache status for optional file
                     cache_status = files_optional_cache[cache_filename];
                     if (!cache_status) {
-                        // data/users/16R2WrLv3rRrxa8Sdp4L5a1fi7LxADHFaH/1482650949292-1482495755468-1-chat.json
                         cache_status = {
                             is_downloaded: false,
                             is_pending: false
@@ -7404,7 +7427,8 @@ angular.module('MoneyNetwork')
             get_z_cache: moneyNetworkHubService.get_z_cache,
             z_merger_site_add: moneyNetworkHubService.z_merger_site_add,
             z_wrapper_notification: moneyNetworkHubService.z_wrapper_notification,
-            sanitize: moneyNetworkHubService.sanitize
+            sanitize: moneyNetworkHubService.sanitize,
+            add_dummy_welcome_msg: add_dummy_welcome_msg
         };
 
         // end MoneyNetworkService

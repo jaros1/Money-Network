@@ -250,7 +250,7 @@ angular.module('MoneyNetwork')
                         $timeout(job, 5000) ;
                     }) ;
                 }
-                cb() ;
+                cb(res) ;
             }) ;
         }
         function get_merger_site_added () {
