@@ -285,6 +285,10 @@ angular.module('MoneyNetwork')
             var pgm = service + '.get_my_user_hub: ' ;
             var step_1_merger_site_list, step_2_compare_tables, step_3_find_user_hubs, step_4_get_and_add_default_user_hub,
                 step_5_user_hub_selected, step_6_run_callbacks, old_userid ;
+            if (!ZeroFrame.site_info) {
+                console.log(pgm + "ZeroFrame is loading") ;
+                return cb('n/a','n/a', 'n/a') ;
+            }
             if (!ZeroFrame.site_info.cert_user_id) {
                 console.log(pgm + "No cert_user_id. hub = 'n/a'") ;
                 return cb('n/a','n/a', 'n/a') ;
@@ -1734,7 +1738,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.get_like_json: ';
             var old_userid ;
             old_userid = z_cache.user_id ;
-            if (!ZeroFrame.site_info.cert_user_id || !z_cache.user_id) {
+            if (!ZeroFrame.site_info || ZeroFrame.site_info.cert_user_id || !z_cache.user_id) {
                 // No ZeroNet cert selected. Display public chat only. No private like.json file is loaded
                 // Not logged in. Display public chat only. No private like.json file is loaded
                 if (!z_cache.like_json) {
@@ -2388,9 +2392,6 @@ angular.module('MoneyNetwork')
             }
         } // ls_save_reactions
 
-
-
-
         var ls_contacts = [] ; // array with contacts
         function get_ls_contacts () {
             return ls_contacts ;
@@ -2470,6 +2471,7 @@ angular.module('MoneyNetwork')
             contact = {
                 unique_id: unique_id,
                 cert_user_id: unique_id.substr(0,13) + '@moneynetwork',
+                auth_address: '1234567890123456789012345678901234',
                 type: 'public',
                 search: [],
                 messages: [],
@@ -3231,6 +3233,7 @@ angular.module('MoneyNetwork')
             add_message(contact, message_with_envelope, false) ;
             // console.log(pgm + 'contact = ' + JSON.stringify(contact));
         } // add_msg
+
 
         function remove_message (js_messages_row) {
             var pgm = service + '.remove_message' ;

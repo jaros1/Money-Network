@@ -569,7 +569,7 @@ angular.module('MoneyNetwork')
             debug_msg = pgm + z_cache.user_setup.chat_sort + ' = ' + JSON.stringify(sort1) ;
             debug_msg += ' (' + typeof sort1 + ')' ;
             if (unix_timestamp) debug_msg += ', unix timestamp = ' + short_date ;
-            debug('chat_order_by', debug_msg) ;
+            // debug('chat_order_by', debug_msg) ;
             if (unix_timestamp) return sort1 ; // simple unix timestamp sort
             // sort by 1. size and 2. unix timestamp
             padding = '              ' ;

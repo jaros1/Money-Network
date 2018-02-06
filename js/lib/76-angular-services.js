@@ -913,6 +913,21 @@ angular.module('MoneyNetwork')
         function remove_message (js_messages_row) { moneyNetworkHubService.remove_message (js_messages_row) } 
         function recursive_delete_message (message) { return moneyNetworkHubService.recursive_delete_message (message) }
 
+        // add dummy incoming public chat message. should only be displayed to new users while downloading first user data hub
+        var dummy_welcome_msg = false ;
+        (function(){
+            var contact, message_with_envelope ;
+            contact = get_public_contact(true) ;
+            message_with_envelope = {
+                folder:"inbox",
+                message:{msgtype:"chat msg",message:"Welcome to MoneyNetwork <3 Downloading chat messages. Please wait :D"},
+                created_at: new Date().getTime(),
+                sent_at: new Date().getTime()
+            };
+            add_message(contact, message_with_envelope, false) ;
+            dummy_welcome_msg = true ;
+        })() ;
+
         // wrappers
         function get_last_online (contact) {
             return MoneyNetworkHelper.get_last_online(contact) ;
@@ -5271,6 +5286,7 @@ angular.module('MoneyNetwork')
 
         function chat_page_is_empty () {
             var i ;
+            if (dummy_welcome_msg && (js_messages.length == 1)) return true ;
             for (i=0 ; i<js_messages.length ; i++) if (js_messages[i].chat_filter) return false ;
             return true ;
         }
@@ -5363,7 +5379,7 @@ angular.module('MoneyNetwork')
 
 
         } // check_public_chat
-        moneyNetworkHubService.inject_functions({check_public_chat: check_public_chat})
+        moneyNetworkHubService.inject_functions({check_public_chat: check_public_chat});
 
 
         // from chatCtrl. keep track of first and last chat message in chat page
@@ -5372,6 +5388,14 @@ angular.module('MoneyNetwork')
             var pgm = service + '.set_first_and_last_chat: ' ;
             var no_msg, i, cache_filename, cache_status, download_failed_at ;
             if (chat_page_is_ready()) return ;
+            if (dummy_welcome_msg) {
+                // ignore dummy welcome message. is displayed while loading first chat msg.
+                // console.log(pgm + 'message = ' + JSON.stringify(message)) ;
+                if ((message.contact.type == 'public') && (message.message.folder == 'inbox')) {
+                    // console.log(pgm + 'ignoring dummy welcome message') ;
+                    return ;
+                }
+            }
             // chat page is loading.
             if (first && !chat_page_context.first_top_timestamp) chat_page_context.first_top_timestamp = message.message.sent_at ;
             if (last && !chat_page_context.last_bottom_timestamp) chat_page_context.last_bottom_timestamp = message.message.sent_at ;
@@ -5454,15 +5478,15 @@ angular.module('MoneyNetwork')
                 else if (chat_files_without_peers[inner_path].to_timestamp >= chat_page_context.last_bottom_timestamp) files.push(inner_path) ;
             }
             if (!files.length) {
-                if (Object.keys(chat_files_without_peers).length) {
-                    console.log(pgm + 'no files was found') ;
-                    console.log(pgm + 'first_top_timestamp = ' + chat_page_context.first_top_timestamp) ;
-                    console.log(pgm + 'last_bottom_timestamp = ' + chat_page_context.last_bottom_timestamp) ;
-                    console.log(pgm + 'chat_files_without_peers = ' + JSON.stringify(chat_files_without_peers)) ;
-                }
+                //if (Object.keys(chat_files_without_peers).length) {
+                //    console.log(pgm + 'no files was found') ;
+                //    console.log(pgm + 'first_top_timestamp = ' + chat_page_context.first_top_timestamp) ;
+                //    console.log(pgm + 'last_bottom_timestamp = ' + chat_page_context.last_bottom_timestamp) ;
+                //    console.log(pgm + 'chat_files_without_peers = ' + JSON.stringify(chat_files_without_peers)) ;
+                //}
                 return ;
             }
-            console.log(pgm + 'files = ' + JSON.stringify(files)) ;
+            // console.log(pgm + 'files = ' + JSON.stringify(files)) ;
 
             // check file loop. find a chat file with peers
             check_file = function () {
@@ -5481,7 +5505,7 @@ angular.module('MoneyNetwork')
                         chat_files_without_peers[inner_path].file_info_at = new Date().getTime()  ;
                         return check_file() ;
                     }
-                    console.log(pgm + 'found file ' + inner_path + ' with peers. recheck public chat now') ;
+                    console.log(pgm + 'found public chat file ' + inner_path + ' with peers. recheck public chat now') ;
                     delete delete chat_files_without_peers[inner_path] ;
                     reset_first_and_last_chat() ;
                 }) ; // optionalFileInfo callback
@@ -5497,7 +5521,7 @@ angular.module('MoneyNetwork')
         var MERGER_ERROR = moneyNetworkHubService.get_merger_error() ;
         function get_public_chat (cb) {
             var pgm = service + '.get_public_chat: ' ;
-            var my_auth_address ;
+            var my_auth_address, recheck ;
             debug('public_chat', pgm + 'top row timestamp = ' + chat_page_context.first_top_timestamp +
                 ', bottom row timestamp = ' + chat_page_context.last_bottom_timestamp +
                 ', end_of_page = ' + chat_page_context.end_of_page + ', chat_sort = ' + z_cache.user_setup.chat_sort);
@@ -5513,6 +5537,12 @@ angular.module('MoneyNetwork')
                 if (!chat_page_context.end_of_page) return cb('done') ;
             }
 
+            if (!ZeroFrame.site_info) {
+                // wait. ZeroFrame is loading
+                recheck = function () { get_public_chat(cb)} ;
+                $timeout(recheck, 250) ;
+                return ;
+            }
 
             // callback 1 - get my user data hub. Ignore my chat files on other user data hubs
             // todo: my_user_data_hub is never used!!!
@@ -6267,7 +6297,7 @@ angular.module('MoneyNetwork')
                             file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                             new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
                             image, byteAmount, chat_bytes, chat_length, error, auth_address, index, break_point,
-                            reactions_index, reactions_info, file_hub ;
+                            reactions_index, reactions_info, file_hub, js_messages_row ;
                         // update cache_status
                         cache_status.is_pending = false;
                         debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
@@ -6517,6 +6547,44 @@ angular.module('MoneyNetwork')
                             add_message(contact, message_with_envelope, false);
                             cache_status.timestamps.splice(i,1) ;
                             page_updated = 'updated';
+
+                            if (dummy_welcome_msg) {
+                                // remove dummy welcome message. incoming public chat msg displayed until first public chat messages have been downloaded
+                                console.log(pgm + 'todo: remove welcome message') ;
+                                //contact = {
+                                //    "unique_id": "591935b15b1c88e2d5f6be0a054604fcf36f0585a6f51098fa3803826fff278c",
+                                //    "cert_user_id": "591935b15b1c8@moneynetwork",
+                                //    "auth_address": "1234567890123456789012345678901234",
+                                //    "type": "public",
+                                //    "search": [{"tag": "World", "value": "World", "privacy": "Search", "row": 1}],
+                                //    "messages": [{
+                                //        "folder": "inbox",
+                                //        "message": {
+                                //            "msgtype": "chat msg",
+                                //            "message": "Welcome to MoneyNetwork <3 Downloading first user data hub. Please wait :D"
+                                //        },
+                                //        "created_at": 1517898789232,
+                                //        "sent_at": 1517898789232,
+                                //        "seq": 1,
+                                //        "reactions": []
+                                //    }],
+                                //    "avatar": "z.png",
+                                //    "alias": "World"
+                                //};
+
+                                contact = get_public_contact(false) ;
+                                if (contact)  {
+                                    // console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
+                                    for (i=0 ; i<contact.messages.length ; i++) {
+                                        message_with_envelope = contact.messages[i] ;
+                                        if (message_with_envelope.folder != 'inbox') continue ;
+                                        js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
+                                        remove_message(js_messages_row) ;
+                                    }
+                                }
+                                dummy_welcome_msg = false ;
+                            }
+
                         } // for i
                         // callback to chatCtrl, update UI and maybe read more optional files with public chat messages
                         cb2(page_updated);
