@@ -18,8 +18,8 @@
    "size": 33939
   },
   "css/all.css": {
-   "sha512": "d998847816e6f79362dfac17be6e253ffca3185aa0ea670a46d2a57e38a20e2b",
-   "size": 415280
+   "sha512": "c5d2f2776bf024153157b711651e2ca35e63038c54439e4a0053760f7e90d406",
+   "size": 400914
   },
   "dbschema.json": {
    "sha512": "3988f21f48138c1651d3f6ed89db6a34531dc0e0c7c884442ba03590a2b57297",
@@ -30,12 +30,12 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "278dbb1203410bfc932d6ddf657c6df5a2f55935f904846a448793899d27c634",
-   "size": 146789
+   "sha512": "9ef02a5dbe96327fe0eb73b3062321dfb45ab6c2469edd319c86c21140a280b7",
+   "size": 146310
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "6d070284e6f7c8011eeafa627a79cf6e822e5e875dc5219e9f72ed99cce8c7cb",
-   "size": 320736
+   "sha512": "f0b99050e27199beff4db4c885c38bff7616d252db897228cb700a34d289fba2",
+   "size": 321607
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -178,28 +178,72 @@
    "size": 53602
   },
   "js/all.js.zip": {
-   "sha512": "a64a6b8829f72a564ec0ae5b07cd0a74a4d016b90b37ce4b277101304523ebdc",
-   "size": 273829
+   "sha512": "14310f02f641f4383ffdcd697d1a003946a26da7193da9768a3c046f9831bf78",
+   "size": 274119
   },
-  "public/css/fonts/glyphicons-halflings-regular.eot": {
-   "sha512": "efc910c96b9f5c58ea11a84577cf60ae995503b1ee670bb7e7d4a413b7403769",
-   "size": 20127
+  "public/css/fonts/glyphicons-12-camera.png": {
+   "sha512": "94cdc9ad56ddbbfd7f710d4bf864cc7bb73108d6a88a952d82c7990e51ab7e5e",
+   "size": 1322
   },
-  "public/css/fonts/glyphicons-halflings-regular.svg": {
-   "sha512": "c2e77eab327af1469097c31bc0daf820c066b0222059d8ff0ecebca974b62b75",
-   "size": 108738
+  "public/css/fonts/glyphicons-177-forward.png": {
+   "sha512": "4d8959970628b8c422c782b4071fa45685c800e7c9e9644685ff5877f6dbd48f",
+   "size": 1308
   },
-  "public/css/fonts/glyphicons-halflings-regular.ttf": {
-   "sha512": "2b066e06506ef20d69698d37cdec552176ef3f64a1151a99a1d02d72d39ce12c",
-   "size": 45404
+  "public/css/fonts/glyphicons-20-heart-empty.png": {
+   "sha512": "d3911bccacdce0d1ddfa1ccb08ba6292f9931e5840457e08df95cd38f1ce2c14",
+   "size": 1455
   },
-  "public/css/fonts/glyphicons-halflings-regular.woff": {
-   "sha512": "f5366ab255afefe3fe06150e8509e776b5618ff50fe3e0fa8e4d715d645b1e44",
-   "size": 23424
+  "public/css/fonts/glyphicons-207-ok.png": {
+   "sha512": "6a99f28d3f7f87f1c87f1a10f01b99287953e94b32d90f1505baab8051682adc",
+   "size": 1311
   },
-  "public/css/fonts/glyphicons-halflings-regular.woff2": {
-   "sha512": "3811804f56ec3c82f0bef35de0a9250e546a1e357fb59e2784f610d638fec355",
-   "size": 18028
+  "public/css/fonts/glyphicons-208-remove.png": {
+   "sha512": "2d3c553740b90bf5350cd236811f8339482922c53a1ae02bfac231c0dc2385e3",
+   "size": 1264
+  },
+  "public/css/fonts/glyphicons-213-arrow-down.png": {
+   "sha512": "5203096e1e4890cd442c2fadd2330b87855e78373d80aeb26c836ee25e0f0777",
+   "size": 1301
+  },
+  "public/css/fonts/glyphicons-214-arrow-up.png": {
+   "sha512": "5d6c81458c13a5378930da15c910f96a2546efeed7947e28225cde6147e349e7",
+   "size": 1292
+  },
+  "public/css/fonts/glyphicons-31-pencil.png": {
+   "sha512": "383d63b84e72a2b835e0d38787e1e4d08d41efc8a6c9afc08033ca604a2f84af",
+   "size": 1342
+  },
+  "public/css/fonts/glyphicons-336-pushpin.png": {
+   "sha512": "47c91bb0ac59a1f7898b79bccd2f43473f564d89939d3852e3f9437da4c49a7f",
+   "size": 1378
+  },
+  "public/css/fonts/glyphicons-356-bullhorn.png": {
+   "sha512": "3c9b9e2e5fda376611e5af3b7ab93989e1a218fad1d366fc8395c65fbd24e660",
+   "size": 1370
+  },
+  "public/css/fonts/glyphicons-371-globe-af.png": {
+   "sha512": "b6d4270c919f4f5e8bacde0d7bb1ae7d2684ce7b5e3f5dd3e64e8c3af286954c",
+   "size": 1518
+  },
+  "public/css/fonts/glyphicons-4-user.png": {
+   "sha512": "312b0d6795b172492440922317076ea682b120f2b3492894c1ba86a6fc33aee9",
+   "size": 1309
+  },
+  "public/css/fonts/glyphicons-519-option-horizontal.png": {
+   "sha512": "38dd3c8d84fe6a7759163c99bf8fc84105806f01c48b5120d7dcae10393df57f",
+   "size": 1205
+  },
+  "public/css/fonts/glyphicons-548-bitcoin.png": {
+   "sha512": "e56efa56cf42aa9bcf386b61edb82553338006183ed0c6f9a9d8c106b42fd5ac",
+   "size": 1343
+  },
+  "public/css/fonts/glyphicons-82-refresh.png": {
+   "sha512": "eab9b089fc948e9942120c8cd51b9ef6051a034a575843c95dddad17d6c0eed7",
+   "size": 1471
+  },
+  "public/css/fonts/glyphicons-86-repeat.png": {
+   "sha512": "ef0738657f8a821f890a32373504327a5c16e36bb12923c0f044f951e6f8c8e6",
+   "size": 1447
   },
   "public/images/avatar1.png": {
    "sha512": "9145522f1d399f0526d83b1af008f004130ac5e8fb49e15030f0e53df7a3dbbb",
@@ -306,7 +350,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1517935928,
+ "modified": 1518450545,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -326,10 +370,10 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G5G/xVHqVeLh7tS+o5ZuR4kQvaCV1w5wiiB2GJfkzWalEpKMTNJNkapxgJ6YcNF05+gx5otJLBIxJ3iSmvGA1X0="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G1dl7VIqHoeByliJ98IXHhuTGI2EvlV/J8LMrtACKBczcLckUvoqFo/BE06cr1NmWo6Qqb794nVEmpgzmgYxABY="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",
  "viewport": "width=device-width, initial-scale=1.0",
- "zeronet_version": "0.6.1"
+ "zeronet_version": "0.6.2"
 }

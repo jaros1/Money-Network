@@ -6320,7 +6320,7 @@ angular.module('MoneyNetwork')
                             file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                             new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
                             image, byteAmount, chat_bytes, chat_length, error, auth_address, index, break_point,
-                            reactions_index, reactions_info, file_hub, js_messages_row ;
+                            reactions_index, reactions_info, file_hub, js_messages_row, contact2 ;
                         // update cache_status
                         cache_status.is_pending = false;
                         debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
@@ -6457,6 +6457,11 @@ angular.module('MoneyNetwork')
                         renamed_chat_file = false ;
                         for (i = cache_status.timestamps.length - 1; i >= 0; i--) {
                             timestamp = cache_status.timestamps[i];
+                            if (!timestamp) {
+                                console.log(pgm + 'error. ingoring invalid cache_status for ' + cache_filename + '. timestamp is null. cache_status = ' + JSON.stringify(cache_status)) ;
+                                cache_status.timestamps.splice(i, 1);
+                                continue ;
+                            }
                             if (folder == 'inbox') {
                                 // deleted public chat inbox message?
                                 reactions_index = timestamp + ',' + contact.auth_address.substr(0,4) ;
@@ -6595,11 +6600,11 @@ angular.module('MoneyNetwork')
                                 //    "alias": "World"
                                 //};
 
-                                contact = get_public_contact(false) ;
-                                if (contact)  {
+                                contact2 = get_public_contact(false) ;
+                                if (contact2)  {
                                     // console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
-                                    for (i=0 ; i<contact.messages.length ; i++) {
-                                        message_with_envelope = contact.messages[i] ;
+                                    for (i=0 ; i<contact2.messages.length ; i++) {
+                                        message_with_envelope = contact2.messages[i] ;
                                         if (message_with_envelope.folder != 'inbox') continue ;
                                         js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
                                         remove_message(js_messages_row) ;

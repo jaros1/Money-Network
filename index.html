@@ -123,7 +123,9 @@
             <ul style="list-style-type:disc">
                 <li><a href="http://charleseisenstein.net/" target="_blank" rel="noopener noreferrer">Charles Eisenstein</a>'s
                     <a href="http://charleseisenstein.net/project/sacred-economics/" target="_blank" rel="noopener noreferrer">Sacret Economics</a></li>
-                <li><a href="http://www.lietaer.com/" target="_blank" rel="noopener noreferrer">Bernard Lietaer</a></li>
+                <li><a href="http://www.lietaer.com/" target="_blank" rel="noopener noreferrer">Bernard Lietaer</a>'s
+                    <a href="https://www.slideshare.net/LocalMoney/bernard-lietaer-new-money-for-a-new-world-pdf-from-epub" target="_blank" rel="noopener noreferrer">New Money for a New World</a></li>
+                </li>
                 <li><a href="https://chomsky.info/" target="_blank" rel="noopener noreferrer">Noam Chomsky</a></li>
                 <li><a href="http://robertreich.org/" target="_blank" rel="noopener noreferrer">Robert Reich</a>'s
                     <a href="http://inequalityforall.com/" target="_blank" rel="noopener noreferrer">Inequality for All</a></li>
@@ -287,8 +289,7 @@
                         <span ng-click="c.chat_contact(m.contact)" class="media-heading"
                               alt="Click to continue chat" title="Click to continue chat">
                             <span ng-bind-html="c.setup.alias">Me</span>
-                            <span ng-class="m.contact|contactGlyphicon"
-                                  title="{{m|messageGlyphiconTitle}}"></span>
+                            <img ng-src="{{m.contact|contactSrc}}" title="{{m.contact|contactSrcTitle}}">
                         </span>
                     </td>
                     <td style="text-align: right; vertical-align: top">
@@ -298,10 +299,10 @@
                                                       title="Message size in browser and on ZeroNet. Always 0 for public chat (optional files)"> {{m.message|formatMsgSize}}</span>
                                                 <span class="speech-time" title="{{m|messageOutSentTitle}}">
                                                     <i class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                <a class="icon icon-edit" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)" title="Edit message"></a>
-                                                <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message"></span>
-                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Add comment" ng-click="c.show_comment(m)">
+                                <img src="public/css/fonts/glyphicons-31-pencil.png" href="" ng-show="c.show_edit_icon(m)" ng-click="c.edit_chat_msg(m)" title="Edit message">
+                                <img src="public/css/fonts/glyphicons-208-remove.png" ng-show="c.show_remove_icon(m)"
+                                      ng-click="c.edit_chat_msg(m)" title="Click to delete message">
+                                <img src="public/css/fonts/glyphicons-519-option-horizontal.png" title="Add comment" ng-click="c.show_comment(m)">
                                 <message-react message="m" folder="outbox" react="c.react"></message-react>
                             </td></tr>
                             <tr><td><table style="margin-right: 0; margin-left: auto;">
@@ -388,7 +389,7 @@
                 <tr ng-show="m.show_comment">
                     <td colspan="2" style="width: 99%; text-align: right">
                         <div class="image-upload">
-                            <label for="{{m|commentFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
+                            <label for="{{m|commentFileInputId}}"><img src="public/css/fonts/glyphicons-12-camera.png"></label>
                             <input id="{{m|commentFileInputId}}" type="file"
                                    accept=".png, .jpg, .jpeg, .gif, .tif"
                                    custom-on-change="c.uploadImage"/>
@@ -432,9 +433,9 @@
                     <tr ng-show="c.show_image(m)">
                         <td colspan="2">
                             <div style="position: relative; display: inline-block;">
-                                            <span ng-click="c.edit_chat_message_remove_image(m)"
-                                                  class="glyphicon glyphicon-remove"
-                                                  style="position: absolute; right: 0;"></span>
+                                <img ng-click="c.edit_chat_message_remove_image(m)"
+                                      src="public/css/fonts/glyphicons-208-remove.png"
+                                      style="position: absolute; right: 0;">
                                 <img id="{{m|chatEditImgId}}">
                             </div>
                         </td>
@@ -443,7 +444,7 @@
                         <td colspan="2" style="width: 99%; text-align: right">
 
                             <div class="image-upload">
-                                <label for="{{m|chatFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
+                                <label for="{{m|chatFileInputId}}"><img src="public/css/fonts/glyphicons-12-camera.png"></label>
                                 <input id="{{m|chatFileInputId}}" type="file"
                                        accept=".png, .jpg, .jpeg, .gif, .tif"
                                        custom-on-change="c.uploadImage"/>
@@ -474,7 +475,7 @@
                         <span ng-click="c.chat_contact(m.contact)" class="media-heading"
                               alt="Click to chat" title="Click to chat">
                             <span ng-bind-html="m|messageAlias"></span>
-                            <span ng-class="m|messageGlyphicon" title="{{m|messageGlyphiconTitle}}"></span>
+                            <img ng-src="{{m|messageSrc}}" title="{{m|messageSrcTitle}}">
                         </span>
                     </td>
                     <td style="text-align: right; vertical-align: top">
@@ -483,13 +484,13 @@
                                 <span class="speech-time" title="Message size in browser"> {{m.message|formatMsgSize}}</span>
                                                 <span class="speech-time" title="{{m.message.sent_at|date:'short'}}"> <i
                                                         class="fa fa-clock-o fa-fw"></i> {{m|messageShortChatTime}}</span>
-                                                <span class="glyphicon glyphicon-bullhorn" ng-show="c.show_bullhorn_icon(m)"
-                                                      ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts"></span>
-                                                <span class="glyphicon glyphicon-remove glyphicon-remove-msg" ng-show="c.show_remove_icon(m)"
-                                                      ng-click="m.message.message.money_transactions_status.spinner || c.edit_chat_msg(m)" title="Click to delete message"></span>
+                                                <img src="public/css/fonts/glyphicons-356-bullhorn.png" ng-show="c.show_bullhorn_icon(m)"
+                                                     ng-click="c.edit_chat_msg(m, true)" title="Bullhorn. Click for spam. Move contact to list of ignored contacts">
+                                                <img src="public/css/fonts/glyphicons-208-remove.png" ng-show="c.show_remove_icon(m)"
+                                                     ng-click="m.message.message.money_transactions_status.spinner || c.edit_chat_msg(m)" title="Click to delete message">
                                 <a ng-show="c.show_verify_icon(m)" class="icon icon-verify" href=""
                                    ng-click="c.enter_password(m)" title="Click to verify"></a>
-                                <img ng-src="{{'1f4ac'|reactionURL}}" alt="💬"height="20" width="20" title="Add comment" ng-click="c.show_comment(m)">
+                                <img src="public/css/fonts/glyphicons-519-option-horizontal.png" title="Add comment" ng-click="c.show_comment(m)">
                                 <message-react message="m" folder="inbox" react="c.react"></message-react>
                             </td></tr>
                             <tr><td><table style="margin-right: 0; margin-left: auto;">
@@ -570,10 +571,10 @@
                             <tr><td colspan="7">&nbsp;</td></tr>
                             <tr><td colspan="7" style="text-align: left">
                                 Action:
-                                <span ng-click="m.message.message.money_transactions_status.spinner || c.approve_money_transactions(m)" title="Approve money transactions?">Approve <span class="glyphicon glyphicon-ok" ></span></span>&nbsp;
-                                <span ng-click="m.message.message.money_transactions_status.spinner || c.reject_money_transactions(m)"  title="Reject money transactions?"> Reject <span class="glyphicon glyphicon-remove" ></span></span>&nbsp;
-                                <span ng-click="m.message.message.money_transactions_status.spinner || c.edit_money_transactions(m)"    title="Reject, edit and return money transactions?"> Edit <span class="glyphicon glyphicon-pencil" ></span></span>&nbsp;
-                                <span ng-click="m.message.message.money_transactions_status.spinner || c.balance_money_transactions(m)" title="Show/update wallet balance"> Balance <span class="glyphicon glyphicon-repeat" ></span></span>
+                                <span ng-click="m.message.message.money_transactions_status.spinner || c.approve_money_transactions(m)" title="Approve money transactions?">Approve<img src="public/css/fonts/glyphicons-207-ok.png"></span>&nbsp;
+                                <span ng-click="m.message.message.money_transactions_status.spinner || c.reject_money_transactions(m)"  title="Reject money transactions?"> Reject<img src="public/css/fonts/glyphicons-208-remove.png"></span>&nbsp;
+                                <span ng-click="m.message.message.money_transactions_status.spinner || c.edit_money_transactions(m)"    title="Reject, edit and return money transactions?"> Edit<img src="public/css/fonts/glyphicons-31-pencil.png"></span>&nbsp;
+                                <span ng-click="m.message.message.money_transactions_status.spinner || c.balance_money_transactions(m)" title="Show/update wallet balance"> Balance<img src="public/css/fonts/glyphicons-86-repeat.png"></span>
                             </td></tr>
                             </tbody>
                         </table>
@@ -600,7 +601,7 @@
                 <tr ng-show="m.show_comment">
                     <td colspan="2" style="width: 99%; text-align: right">
                         <div class="image-upload">
-                            <label for="{{m|commentFileInputId}}"><span class="glyphicon glyphicon-camera"></span></label>
+                            <label for="{{m|commentFileInputId}}"><img src="public/css/fonts/glyphicons-12-camera.png"></label>
                             <input id="{{m|commentFileInputId}}" type="file"
                                    accept=".png, .jpg, .jpeg, .gif, .tif"
                                    custom-on-change="c.uploadImage"/>
@@ -684,15 +685,14 @@
                                                ng-change="c.public_chat_changed()" ng-disabled="!c.is_logged_in()">
                                     </span>
                                     <span ng-hide="!c.chat_hint_chatting()">
-                                        <span ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
-                                              class="glyphicon glyphicon-pushpin"
-                                              title="Click to update participants in this chat"></span>
-                                        <span ng-show="c.editing_grp_chat" ng-click="c.stop_editing_grp_chat()"
-                                              class="glyphicon glyphicon-ok"
-                                              title="Click when finished updating participants in group chat"></span>
-                                        <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
-                                              title="Click to see all chat messages"></span>
-
+                                        <img ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
+                                              src="public/css/fonts/glyphicons-336-pushpin.png"
+                                              title="Click to update participants in this chat">
+                                        <img ng-show="c.editing_grp_chat" ng-click="c.stop_editing_grp_chat()"
+                                              src="public/css/fonts/glyphicons-207-ok.png"
+                                              title="Click when finished updating participants in group chat">
+                                        <img src="public/css/fonts/glyphicons-208-remove.png" ng-click="c.see_all_chat()"
+                                             title="Click to see all chat messages">
                                     </span>
 
                                 </td>
@@ -819,10 +819,9 @@
                                             <tr>
                                                 <td class="media-heading" style="white-space: nowrap;">
                                                     <span ng-bind-html="c.setup.alias">Me</span>
-                                                    <span class="glyphicon glyphicon-forward"></span>
+                                                    <img src="public/css/fonts/glyphicons-177-forward.png">
                                                     <span ng-bind-html="c.contact|contactAlias"></span>
-                                                    <span ng-class="c.contact|contactGlyphicon"
-                                                          title="{{c.contact|contactGlyphiconTitle}}"></span>
+                                                    <img ng-src="{{c.contact|contactSrc}}" title="{{c.contact|contactSrcTitle}}">
                                                 </td>
 
                                                 <td style="text-align: right; vertical-align: top; width: 99%">
@@ -843,9 +842,9 @@
                                             <tr ng-show="c.new_chat_src">
                                                 <td colspan="2">
                                                     <div style="position: relative; display: inline-block;">
-                                                    <span ng-click="c.new_chat_src_remove()"
-                                                          class="glyphicon glyphicon-remove"
-                                                          style="position: absolute; right: 0;"></span>
+                                                        <img ng-click="c.new_chat_src_remove()"
+                                                             src="public/css/fonts/glyphicons-208-remove.png"
+                                                             style="position: absolute; right: 0;">
                                                         <img ng-src="{{c.new_chat_src}}">
                                                     </div>
                                                 </td>
@@ -854,7 +853,7 @@
                                                 <td colspan="2" style="width: 99%; text-align: right">
 
                                                     <div class="image-upload">
-                                                        <label for="file-input"><span class="glyphicon glyphicon-camera"></span></label>
+                                                        <label for="file-input"><img src="public/css/fonts/glyphicons-12-camera.png"></label>
                                                         <input id="file-input" type="file"
                                                                accept=".png, .jpg, .jpeg, .gif, .tif"/>
                                                     </div>
@@ -992,14 +991,14 @@
                             <span ng-show="c.chat_hint_start_chat()">Public chat?<input type="checkbox" ng-model="c.setup.public_chat"
                                        ng-change="c.public_chat_changed()"  ng-disabled="!c.is_logged_in()"></span>
                             <span ng-hide="!c.chat_hint_chatting()">
-                                <span ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
-                                      class="glyphicon glyphicon-pushpin"
-                                      title="Click to update participants in this chat"></span>
-                                <span ng-show="c.editing_grp_chat" ng-click="c.stop_editing_grp_chat()"
-                                      class="glyphicon glyphicon-ok"
-                                      title="Click when finished updating participants in group chat"></span>
-                                <span class="glyphicon glyphicon-remove" ng-click="c.see_all_chat()"
-                                      title="Click to see all chat messages"></span>
+                                <img ng-show="c.chat_hint_pushpin()" ng-click="c.start_editing_grp_chat()"
+                                      src="public/css/fonts/glyphicons-336-pushpin.png"
+                                      title="Click to update participants in this chat">
+                                <img ng-show="c.editing_grp_chat" ng-click="c.stop_editing_grp_chat()"
+                                      src="public/css/fonts/glyphicons-207-ok.png"
+                                      title="Click when finished updating participants in group chat">
+                                <img src="public/css/fonts/glyphicons-208-remove.png"  ng-click="c.see_all_chat()"
+                                     title="Click to see all chat messages">
 
                             </span>
                             </td>
@@ -1129,10 +1128,9 @@
 
                                             <td class="media-heading" style="white-space: nowrap;">
                                                 <span ng-bind-html="c.setup.alias">Me</span>
-                                                <span class="glyphicon glyphicon-forward"></span>
+                                                <img src="public/css/fonts/glyphicons-177-forward.png">
                                                 <span ng-bind-html="c.contact|contactAlias"></span>
-                                            <span ng-class="c.contact|contactGlyphicon"
-                                                  title="{{c.contact|contactGlyphiconTitle}}"></span>
+                                                <img ng-src="{{c.contact|contactSrc}}" title="{{c.contact|contactSrcTitle}}">
                                             </td>
 
                                             <td style="text-align: right; vertical-align: top; width: 99%">
@@ -1192,9 +1190,8 @@
                                                                    typeahead-editable="false" on-key-enter="c.money_insert_row(mt)">
                                                         </td>
                                                         <td title="Delete row">
-                                                            <span ng-click="c.money_transaction_delete_row(mt)" ng-disabled="c.new_chat_msg_disabled"
-                                                                  class="glyphicon glyphicon-remove" style="color: red; font-size: larger">
-                                                            </span>
+                                                            <img ng-click="c.money_transaction_delete_row(mt)" ng-disabled="c.new_chat_msg_disabled"
+                                                                    src="public/css/fonts/glyphicons-208-remove.png">
                                                         </td>
                                                     </tr>
                                                     <tr ng-repeat-end>
@@ -1216,9 +1213,9 @@
                                         <tr ng-show="c.new_chat_src">
                                             <td colspan="2">
                                                 <div style="position: relative; display: inline-block;">
-                                                <span ng-click="c.new_chat_src_remove()"
-                                                      class="glyphicon glyphicon-remove"
-                                                      style="position: absolute; right: 0;"></span>
+                                                    <img ng-click="c.new_chat_src_remove()"
+                                                         src="public/css/fonts/glyphicons-208-remove.png"
+                                                         style="position: absolute; right: 0;">
                                                     <img ng-src="{{c.new_chat_src}}">
                                                 </div>
                                             </td>
@@ -1226,12 +1223,12 @@
                                         <tr>
                                             <td colspan="2" style="width: 99%; text-align: right">
 
-                                                <span class="glyphicon glyphicon-bitcoin" title="Add/remove money transaction"
-                                                      ng-click="c.new_chat_add_money()" ng-disabled="c.new_chat_msg_disabled"></span>
+                                                <img src="public/css/fonts/glyphicons-548-bitcoin.png" title="Add/remove money transaction"
+                                                      ng-click="c.new_chat_add_money()" ng-disabled="c.new_chat_msg_disabled">
 
                                                 <div class="image-upload" title="Add image">
                                                     <label for="file-input2">
-                                                        <span class="glyphicon glyphicon-camera"></span>
+                                                        <img src="public/css/fonts/glyphicons-12-camera.png">
                                                     </label>
                                                     <input id="file-input2" type="file"
                                                            accept=".png, .jpg, .jpeg, .gif, .tif"
@@ -1334,6 +1331,10 @@
                 </table>
             </p>
 
+            <p>
+                Search known money systems:
+            </p>
+
             <br>
             <p ng-include="'addHubs'"></p>
 
@@ -1375,16 +1376,13 @@
             <p>
                 User identification:
                 <button type="submit" disabled ng-show="user_info_form.$invalid">
-                <span title="Please correct errors" class="glyphicon glyphicon-ok"
-                      style="color: green; font-size: larger"></span>
+                <img title="Please correct errors" src="public/css/fonts/glyphicons-207-ok.png">
                 </button>
                 <button type="submit" ng-click="u.update_user_info()" ng-show="user_info_form.$valid">
-                <span title="Save changes" class="glyphicon glyphicon-ok"
-                      style="color: green; font-size: larger"></span>
+                <img title="Save changes" src="public/css/fonts/glyphicons-207-ok.png">
                 </button>
                 <button type="submit" ng-click="u.revert_user_info()">
-                <span title="Revert changes" class="glyphicon glyphicon-refresh"
-                      style="color: red; font-size: larger"></span>
+                <img title="Revert changes" src="public/css/fonts/glyphicons-82-refresh.png">
                 </button>
                 <img ng-show="u.setup.guest" ng-src="{{u.avatar.src}}"
                      title="Sorry. Guest account cannot change avatar picture">
@@ -1434,8 +1432,7 @@
                         </td>
                         <td ng-show="u.show_privacy_title">{{x.privacy|privacyTitle}}</td>
                         <td title="Delete row">
-                            <span ng-click="u.delete_row(x)"
-                                  class="glyphicon glyphicon-remove" style="color: red; font-size: larger"></span>
+                            <img ng-click="u.delete_row(x)" src="public/css/fonts/glyphicons-208-remove.png">
                         </td>
                     </tr>
                     </tbody>
@@ -1445,16 +1442,13 @@
                 <p>
                     Update user info:
                     <button type="submit" disabled ng-show="user_info_form.$invalid">
-                        <span title="Please correct errors" class="glyphicon glyphicon-ok"
-                              style="color: green; font-size: larger"></span>
+                        <img title="Please correct errors" src="public/css/fonts/glyphicons-207-ok.png">
                     </button>
                     <button type="submit" ng-click="u.update_user_info()" ng-show="user_info_form.$valid">
-                        <span title="Save changes" class="glyphicon glyphicon-ok"
-                              style="color: green; font-size: larger"></span>
+                        <img title="Save changes" src="public/css/fonts/glyphicons-207-ok.png">
                     </button>
                     <button type="submit" ng-click="u.revert_user_info()">
-                        <span title="Revert changes" class="glyphicon glyphicon-refresh"
-                              style="color: red; font-size: larger"></span>
+                        <img title="Revert changes" src="public/css/fonts/glyphicons-82-refresh.png">
                     </button>
                 </p>
             </form>
@@ -1757,10 +1751,9 @@
                                     <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct">
                                 </td>
                                 <td>
-                                    <a ng-hide="u.editing_reactions" class="icon icon-edit" href=""></a>
-                                    <span ng-show="u.editing_reactions" class="glyphicon glyphicon-ok" style="font-size: larger"
+                                    <img ng-hide="u.editing_reactions" src="public/css/fonts/glyphicons-31-pencil.png" href="">
+                                    <img ng-show="u.editing_reactions" src="public/css/fonts/glyphicons-207-ok.png"
                                           title="Save" ng-click="u.edit_reactions(false); $event.stopPropagation();">
-                                    </span>
                                 </td>
                             </tr>
                             </tbody>
@@ -1785,18 +1778,18 @@
                             <tbody>
                             <tr ng-repeat="r in u.user_reactions">
                                 <td ng-bind="r.src|reactionUniCode" class="reaction_td"></td>
-                                <td><span class="glyphicon glyphicon-arrow-up" style="font-size: larger"
-                                          title="Move up" ng-click="u.move_reaction_up(r)"></span></td>
+                                <td><img src="public/css/fonts/glyphicons-214-arrow-up.png"
+                                          title="Move up" ng-click="u.move_reaction_up(r)"></td>
                                 <td class="reaction_td">
                                     <img height="20" width="20" ng-src="{{r.src}}" title="{{r.title}}" class="grow20pct"
                                          fallback-src="public/images/image_failed.gif">
                                 </td>
-                                <td><span class="glyphicon glyphicon-arrow-down" style="font-size: larger"
-                                          title="Move down" ng-click="u.move_reaction_down(r)"></span></td>
+                                <td><img src="public/css/fonts/glyphicons-213-arrow-down.png"
+                                          title="Move down" ng-click="u.move_reaction_down(r)"></td>
                                 <td>
                                     <input type="text" ng-model="r.title" style="width: 160px">
-                                    <span class="glyphicon glyphicon-remove" style="color: red; font-size: larger"
-                                          title="Delete" ng-click="u.delete_reaction(r)"></span>
+                                    <img src="public/css/fonts/glyphicons-208-remove.png"
+                                          title="Delete" ng-click="u.delete_reaction(r)">
                                 </td>
                             </tr>
                             <tr>

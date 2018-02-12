@@ -8,35 +8,49 @@ angular.module('MoneyNetwork')
         var pgm = 'routeProvider: ';
 
         // resolve: check if user is logged. check is used in multiple routes
-        var check_auth_resolve = ['$location', function ($location) {
+        var check_auth_resolve = ['$location', '$q', '$timeout', function ($location, $q, $timeout) {
             var pgm = 'routeProvider.check_auth_resolve: ';
-            if (!MoneyNetworkHelper.getUserId()) {
-                // notification and redirect to auth. remember path for redirect after log in
-                var old_a_path, new_a_path, z_path, info;
-                old_a_path = $location.path();
-                info = 'Not allowed. Please log in ';
-                if (old_a_path == '/money') info += 'to see your wallet';
-                else if (old_a_path == '/network') info += 'to see your contacts';
-                else if (old_a_path.substr(0, 5) == '/chat') info += 'to chat';
-                else if (old_a_path == '/user') info += 'to see you user profile';
-                new_a_path = '/auth';
-                z_path = "?path=/user&redirect=" + old_a_path;
-                ZeroFrame.cmd("wrapperNotification", ['info', info, 3000]);
-                $location.path(new_a_path).search('redirect', old_a_path);
-                $location.replace();
-                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]);
-                console.log(pgm + 'old angularjs path = ' + old_a_path + ', new angularjs path = ' + new_a_path + ', z_path = ' + z_path + ', info = ' + info) ;
-            }
-            else {
-                var a_path, a_search, key;
-                a_path = $location.path();
-                a_search = $location.search();
-                z_path = "?path=" + a_path;
-                for (key in a_search) z_path += '&' + key + '=' + a_search[key];
-                console.log(pgm + 'z_path = ' + z_path) ;
-                ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]);
-                return z_path;
-            }
+            var wait_for_ls, deferred ;
+            // use resolve. localStorage must be ready before checking user_id
+            deferred = $q.defer();
+            wait_for_ls = function() {
+                // is localStorage ready?
+                if (MoneyNetworkHelper.ls_is_loading()) {
+                    $timeout(wait_for_ls, 100) ;
+                    return ;
+                }
+                // localStorage is ready.
+                deferred.resolve();
+                if (!MoneyNetworkHelper.getUserId()) {
+                    // notification and redirect to auth. remember path for redirect after log in
+                    var old_a_path, new_a_path, z_path, info;
+                    old_a_path = $location.path();
+                    info = 'Not allowed. Please log in ';
+                    if (old_a_path == '/money') info += 'to see your wallet';
+                    else if (old_a_path == '/network') info += 'to see your contacts';
+                    else if (old_a_path.substr(0, 5) == '/chat') info += 'to chat';
+                    else if (old_a_path == '/user') info += 'to see you user profile';
+                    new_a_path = '/auth';
+                    z_path = "?path=/user&redirect=" + old_a_path;
+                    ZeroFrame.cmd("wrapperNotification", ['info', info, 3000]);
+                    $location.path(new_a_path).search('redirect', old_a_path);
+                    $location.replace();
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]);
+                    console.log(pgm + 'old angularjs path = ' + old_a_path + ', new angularjs path = ' + new_a_path + ', z_path = ' + z_path + ', info = ' + info) ;
+                }
+                else {
+                    var a_path, a_search, key;
+                    a_path = $location.path();
+                    a_search = $location.search();
+                    z_path = "?path=" + a_path;
+                    for (key in a_search) z_path += '&' + key + '=' + a_search[key];
+                    console.log(pgm + 'z_path = ' + z_path) ;
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]);
+                    return z_path;
+                }
+            } ;
+            $timeout(wait_for_ls, 0) ;
+            return deferred.promise;
         }];
 
         var set_z_path = ['$location', function ($location) {

@@ -624,7 +624,6 @@ body #file-drop {
 }
 .image-upload img
 {
-    width: 80px;
     cursor: pointer;
 }
 

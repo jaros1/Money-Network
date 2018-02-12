@@ -48,9 +48,9 @@
   }
  },
  "inner_path": "screendumps/content.json",
- "modified": 1507216735,
- "optional": ".*.png",
+ "modified": 1518444130,
+ "optional": "(.*.png)",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HLMwwwj0f/Va/tK17ujdCC6zbeefhWAeqZwbbZoy8NfpbSRI5m/eWzuMPrqYnQPyrDFsYbr3Mim6P8ATIdnbhb0="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "HFjaLr5jcCyK01yTMUtBLrtrco4x73zAwzTcCKiCdTbAa30eZXRSYsMLXIWTPwIwbU65bOFdpbKtn8rxo2Cesh0="
  }
 }

@@ -2148,20 +2148,27 @@ var MoneyNetworkAPILib = (function () {
             for (i=0 ; i<res.length ; i++) {
                 hub = res[i].hub ;
                 if (!new_hub_file_get_cbs[hub]) continue ;
+
                 // first json files received. hub is ready. run any pending fileGet operations
                 get_all_hubs(true, function() {
                     run_cbs(hub, 'new user data hub ' + hub + ' is ready') ;
                 }) ;
                 monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
                 return ;
+
             }
 
             // timeout while waiting for json files from new hub? Maybe a hub without any peers. Maybe running on a proxy server that has disabled add site
             now = new Date().getTime() ;
             for (hub in new_hub_file_get_cbs) {
                 if (now - new_hub_file_get_cbs[hub].timestamp > 60000) {
+
                     // refresh all_hubs list before running any fileGet operations waiting for hub
-                    get_all_hubs(true, function() {
+                    get_all_hubs(true, function(all_hubs) {
+
+                        // todo: is hub in all_hubs with hub_added = true?
+                        // - true: must be empty hub. cert selected?
+
                         // hub was not added / is not ready. fileGet operations will return null. See z_file_get
                         run_cbs(hub,
                             'timeout while waiting for new user data hub ' + hub + ' to be ready. maybe user data hub without peers. maybe running on a proxy server with disabled add site. ' +
@@ -2169,6 +2176,7 @@ var MoneyNetworkAPILib = (function () {
                         monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
                     }) ;
                     return ;
+                    
                 }
             }
             monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
@@ -2242,12 +2250,13 @@ var MoneyNetworkAPILib = (function () {
         // check if file is a normal or an optional files.
         // 1) user directory files - use dbQuery, files and files_optional tables
         // 2) outsize user directories - use fileList
-        is_optional_file = function(cb) {
+        is_optional_file = function(cb2) {
             var pgm = module + '.z_file_get.is_optional_file: ' ;
             var match4, directory, filename, api_query_6, debug_seq, pos ;
             pos = inner_path.lastIndexOf('/') ;
             filename = inner_path.substr(pos+1) ;
-            if (filename == 'content.json') return cb(false) ;
+            if (filename == 'content.json') return cb2(false) ;
+
             if (match4=inner_path.match(inner_path_re4)) {
                 // 1: user directory file with hub, auth_address and filename. use files and files_optional tables
                 directory = match4[1] + '/data/users/' + match4[2] ;
@@ -2270,14 +2279,17 @@ var MoneyNetworkAPILib = (function () {
                     MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed' : 'OK');
                     if (res.error) throw pgm + '. dbQuery failed. ' + res.error;
                     if (!res.length) {
-                        console.log(pgm + 'file ' + inner_path + ' has been deleted. Not in files or in files_optional. abort fileGet operation') ;
+                        console.log(pgm + 'file ' + inner_path + ' was not found. Not in files or in files_optional. abort fileGet operation') ;
                         console.log(pgm + 'api_query_6 = ' + api_query_6) ;
-                        return cb(true) ;
+                        // note. skipping is_optional_file callback processing
+                        return cb(null, {optional_file: false}) ;
+                        // return cb2(true) ;
                     }
-                    cb((res[0].filetype == 'o')) ;
+                    cb2((res[0].filetype == 'o')) ;
                 }); // dbQuery callback 1
                 return ;
             }
+
             // not a user directory file. user fileList
             pos = inner_path.lastIndexOf('/') ;
             directory = inner_path.substr(0, pos) ;
@@ -2286,7 +2298,7 @@ var MoneyNetworkAPILib = (function () {
                 var pgm = module + '.z_file_get.is_optional_file fileList callback: ';
                 console.log(pgm + 'inner_path = ' + inner_path + ', directory = ' + directory + ', files.length = ' + files.length + ', files = ' + JSON.stringify(files)) ;
                 // asuming that not existing files are missing optional files (for example screendumps)
-                cb((files.indexOf(filename) == -1)) ;
+                cb2((files.indexOf(filename) == -1)) ;
             }) ;
         } ; // is_optional_file
         is_optional_file(function(optional_file) {
@@ -2328,7 +2340,7 @@ var MoneyNetworkAPILib = (function () {
                 }) ; // optionalFileInfo
             } ; // get_optional_file_info
             get_optional_file_info(function(file_info) {
-                var cb2_done, cb2, cb2_timeout, timeout, process_id, debug_seq, warnings, old_options ;
+                var cb3_done, cb3, cb3_timeout, timeout, process_id, debug_seq, warnings, old_options ;
                 extra.file_info = file_info ;
                 if (extra.optional_file && !file_info) {
                     if (debug) console.log(pgm2 + 'optional fileGet and no optional file info. must be a deleted optional file. abort fileGet operation') ;
@@ -2367,16 +2379,16 @@ var MoneyNetworkAPILib = (function () {
 
                 // extend cb. add ZeroNet API debug messages + timeout processing.
                 // cb2 is run as fileGet callback or is run by setTimeout (sometimes problem with optional fileGet operation running forever)
-                cb2_done = false ;
-                cb2 = function (data, timeout) {
+                cb3_done = false ;
+                cb3 = function (data, timeout) {
                     var options_clone ;
                     if (process_id) {
                         try {clearTimeout(process_id)}
                         catch (e) {}
                         process_id = null ;
                     }
-                    if (cb2_done) return ; // cb2 has already run
-                    cb2_done = true ;
+                    if (cb3_done) return ; // cb2 has already run
+                    cb3_done = true ;
                     if (timeout) extra.timeout = timeout ;
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                     debug_z_api_operation_end(debug_seq, data ? 'OK' : 'Not found');
@@ -2408,15 +2420,15 @@ var MoneyNetworkAPILib = (function () {
                 } ; // fileGet callback
 
                 // force timeout after timeout || 60 seconds
-                cb2_timeout = function () {
-                    cb2(null, true) ;
+                cb3_timeout = function () {
+                    cb3(null, true) ;
                 };
                 timeout = options.timeout || 60 ; // timeout in seconds
-                process_id = setTimeout(cb2_timeout, timeout*1000) ;
+                process_id = setTimeout(cb3_timeout, timeout*1000) ;
 
                 // start fileGet
                 debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet', null, extra.group_debug_seq) ;
-                ZeroFrame.cmd("fileGet", options, cb2) ;
+                ZeroFrame.cmd("fileGet", options, cb3) ;
 
             }) ; // get_optional_file_info callback
 
@@ -2451,7 +2463,7 @@ var MoneyNetworkAPILib = (function () {
 
         if (z_file_write_running) {
             // wait for previous fileWrite process to finish
-            z_file_write_cbs.push({inner_path: inner_path, content: content, cb: cb}) ;
+            z_file_write_cbs.push({inner_path: inner_path, content: content, options: options, cb: cb}) ;
             return ;
         }
         z_file_write_running = true ;
@@ -2466,7 +2478,7 @@ var MoneyNetworkAPILib = (function () {
             // done with this fileWrite. Any other waiting fileWrite operations?
             if (!z_file_write_cbs.length) return ;
             next_file_write_cb = z_file_write_cbs.shift() ;
-            z_file_write(pgm, next_file_write_cb.inner_path, next_file_write_cb.content, {}, next_file_write_cb.cb) ;
+            z_file_write(pgm, next_file_write_cb.inner_path, next_file_write_cb.content, next_file_write_cb.options, next_file_write_cb.cb) ;
         }; // cb2
 
         debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', null, options.group_debug_seq) ;
@@ -4443,33 +4455,39 @@ MoneyNetworkAPI.prototype.get_content_json = function (options, cb) {
         else content = {};
         if (JSON.stringify(content) != JSON.stringify({})) return cb(content) ;
         if (!self.this_optional) return cb(content); // maybe an error but optional files support was not requested
+
         // 2: fileWrite (empty content.json file)
+        // cannot write {} content.json. res = {"error":"Forbidden, you can only modify your own files"}
+        // just sign without writing an empty content.json file
         // new content.json file and optional files support requested. write + sign + get
-        json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
-        MoneyNetworkAPILib.z_file_write(pgm, inner_path, btoa(json_raw), function (res) {
-            var pgm = self.module + '.get_content_json fileWrite callback 2: ';
-            var debug_seq2 ;
+        //json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
+        //MoneyNetworkAPILib.z_file_write(pgm, inner_path, btoa(json_raw), {group_debug_seq: group_debug_seq}, function (res) {
+        //    var pgm = self.module + '.get_content_json fileWrite callback 2: ';
+        //self.log(pgm, 'res = ' + JSON.stringify(res), group_debug_seq);
+        //if (res != 'ok') return cb(); // error: fileWrite failed
+
+        // 3: siteSign
+        var debug_seq2 ;
+        debug_seq2 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'siteSign', null, group_debug_seq);
+        self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
+            var pgm = self.module + '.get_content_json siteSign callback 3: ';
+            var debug_seq3 ;
+            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res)) ;
             self.log(pgm, 'res = ' + JSON.stringify(res), group_debug_seq);
-            if (res != 'ok') return cb(); // error: fileWrite failed
-            // 3: siteSign
-            debug_seq2 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'siteSign', null, group_debug_seq);
-            self.ZeroFrame.cmd("siteSign", {inner_path: inner_path}, function (res) {
-                var pgm = self.module + '.get_content_json siteSign callback 3: ';
-                var debug_seq3 ;
-                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq2, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res)) ;
-                self.log(pgm, 'res = ' + JSON.stringify(res), group_debug_seq);
-                if (res != 'ok') return cb(); // error: siteSign failed
-                // 4: fileGet
-                debug_seq3 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet', null, group_debug_seq) ;
-                MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
-                    var content;
-                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq3, content_str ? 'OK' : 'Not found');
-                    if (!content_str) return cb(); // error. second fileGet failed
-                    content = JSON.parse(content_str); // just signed. content.json should be OK
-                    cb(content);
-                }); // fileGet callback 4
-            }); // siteSign callback 3
-        }); // fileWrite callback 2
+            if (res != 'ok') return cb(); // error: siteSign failed
+            // 4: fileGet
+            debug_seq3 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path, 'fileGet', null, group_debug_seq) ;
+            MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
+                var content;
+                MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq3, content_str ? 'OK' : 'Not found');
+                if (!content_str) return cb(); // error. second fileGet failed
+                content = JSON.parse(content_str); // just signed. content.json should be OK
+                cb(content);
+            }); // fileGet callback 4
+        }); // siteSign callback 3
+
+        // }); // fileWrite callback 2
+
     }); // fileGet callback 1
 }; // get_content_json
 

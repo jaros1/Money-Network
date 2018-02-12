@@ -110,7 +110,7 @@ angular.module('MoneyNetwork')
     // https://github.com/jaros1/Zeronet-Money-Network/issues/127
     .directive('messageReact', ['$compile', '$timeout', '$rootScope', 'MoneyNetworkService', function($compile, $timeout, $rootScope, moneyNetworkService) {
         var pgm = 'messageReact: ' ;
-        var no_reaction = { src: "public/images/react.png", title: "Add reaction", selected: true} ;
+        var no_reaction = { src: "public/css/fonts/glyphicons-20-heart-empty.png", title: "Add reaction", selected: true} ;
         var user_reactions = moneyNetworkService.get_user_reactions() ;
         // console.log(pgm + 'user_reactions = ' + JSON.stringify(user_reactions)) ;
         var i, content_html ;
@@ -513,18 +513,18 @@ angular.module('MoneyNetwork')
         // end contactAlias filter
     }])
 
-    .filter('contactGlyphicon', [function () {
-        // return glyphicon class for contact type
+    .filter('contactSrc', [function () {
+        // return img src for contact type
         return function (contact) {
-            if (!contact || (contact.type == 'public')) return 'glyphicon glyphicon-globe' ;
-            else if (contact.type == 'group') return 'glyphicon glyphicon-pushpin';
-            else return 'glyphicon glyphicon-user';
+            if (!contact || (contact.type == 'public')) return 'public/css/fonts/glyphicons-371-globe-af.png' ;
+            else if (contact.type == 'group') return 'public/css/fonts/glyphicons-336-pushpin.png';
+            else return 'public/css/fonts/glyphicons-4-user.png';
         } ;
-        // end contactGlyphicon filter
+        // end contactSrc filter
     }])
 
-    .filter('contactGlyphiconTitle', [function () {
-        // return glyphicon class for contact type
+    .filter('contactSrcTitle', [function () {
+        // return mouse over title for contact type (encryption info)
         var pubkey_lng_to_bits = {"271": 1024, "450": 2048, "799": 4096, "1490": 8192} ;
         return function (contact, message_encryption) {
             var bit_lng ;
@@ -538,7 +538,7 @@ angular.module('MoneyNetwork')
                 else return 'Encrypted personal chat using JSEncrypt' ;
             }
         } ;
-        // end contactGlyphiconTitle filter
+        // end contactSrcTitle filter
     }])
 
     .filter('contactPlaceholderText', ['MoneyNetworkService', 'shortCertIdFilter', function (moneyNetworkService, shortCertId) {
@@ -629,17 +629,17 @@ angular.module('MoneyNetwork')
         // end findContactAvatar filter
     }])
 
-    .filter('messageGlyphicon', ['contactGlyphiconFilter', function (contactGlyphicon) {
+    .filter('messageSrc', ['contactSrcFilter', function (contactSrc) {
         // inbox glyphicon - glyphicon class for message type
         return function (message) {
-            if (message.message.z_filename) return 'glyphicon glyphicon-globe' ;
-            else return contactGlyphicon(message.contact) ;
+            if (message.message.z_filename) return 'public/css/fonts/glyphicons-371-globe-af.png' ;
+            else return contactSrc(message.contact) ;
         } ;
-        // end findMessageGlyphicon
+        // end MessageSrc
     }])
 
-    .filter('messageGlyphiconTitle', ['MoneyNetworkService', 'contactGlyphiconTitleFilter', function (moneyNetworkService, contactGlyphiconTitle) {
-        // inbox glyphicon title - mouse over text for glyphicon class for message type
+    .filter('messageSrcTitle', ['MoneyNetworkService', 'contactSrcTitleFilter', function (moneyNetworkService, contactSrcTitle) {
+        // inbox messaage contact type title - mouse over text for with encryption info for message type
         var user_id, my_jsencrypt_key, pubkey_lng_to_bits, bits, my_enc_text1 ;
         user_id = moneyNetworkService.get_user_id() ;
         if (user_id) {
@@ -651,12 +651,13 @@ angular.module('MoneyNetwork')
         if (bits) my_enc_text1 += ' and ' + bits + ' key' ;
         return function (message) {
             if (message.message.z_filename) return 'Public and unencrypted chat. Everyone can see this!' ;
-            else if (message.message.folder == 'outbox') return contactGlyphiconTitle(message.contact, message.message.encryption) ;
+            else if (message.message.folder == 'outbox') return contactSrcTitle(message.contact, message.message.encryption) ;
             else if (message.message.encryption == 2) return 'Encrypted personal chat using cryptMessage (bitCoin) and 256 bit key' ;
             else return my_enc_text1 ;
         } ;
-        // end findMessageGlyphicon
+        // end messageSrcTitle
     }])
+
 
     .filter('formatMsgSize', ['MoneyNetworkService', function (moneyNetworkService) {
         // return msg disk usage: format localStorage size [ / ZeroNet size bytes ]
@@ -771,7 +772,7 @@ angular.module('MoneyNetwork')
             }
             return text ;
         } ;
-        // end findMessageGlyphicon
+        // end messageOutSentTitle
     }])
 
     // insert soft hypens in text. Prevent long texts breaking responsive
