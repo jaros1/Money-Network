@@ -168,7 +168,7 @@ ZeroFrame = (function() {
                     // console.log(pgm + 'cert = ' + JSON.stringify(cert)) ;
                     // add cert - no certSelect dialog - continue with just created money network cert
                     // this.log("checkCertUserId: add moneynetwork cert");
-                    
+
                     // create anonymous moneynetwork.bit certificate
                     _this.cmd("certAdd", ["moneynetwork.bit", "web", _this.site_info.auth_address.slice(0, 13), cert], function (res) {
                             var pgm = "checkCertUserId: certAdd callback: ";

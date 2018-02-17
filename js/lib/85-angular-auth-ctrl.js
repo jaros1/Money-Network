@@ -33,7 +33,8 @@ angular.module('MoneyNetwork')
         self.use_login_changed = moneyNetworkService.use_login_changed ;
 
         // check merger site permission + one user hub before log in
-        // todo: what about auto log in?
+        // todo: what about auto log in? todo: what about users starting in other pages. move to moneyNetworkService?
+        //
         function check_merger_permission(cb) {
             var pgm = controller + '.check_merger_permission: ' ;
             if (!cb) cb = function (ok) {} ;
@@ -41,7 +42,8 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.check_merger_permission.request1: ' ;
                 ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
                     if (res == "Granted") {
-                        moneyNetworkService.add_dummy_welcome_msg() ;
+                        moneyNetworkService.add_welcome_msg() ;
+                        safeApply($scope) ;
                         MoneyNetworkAPILib.get_all_hubs(true, function() {
                             request2(cb) ;
                         }) ;
@@ -295,6 +297,7 @@ angular.module('MoneyNetwork')
         self.debug = MoneyNetworkHelper.get_debug_all() ;
         self.debug_changed = function () {
             MoneyNetworkHelper.set_debug_all(self.debug) ;
+            MoneyNetworkAPILib.config({debug: self.debug}) ;
         } ;
 
         // end AuthCtrl

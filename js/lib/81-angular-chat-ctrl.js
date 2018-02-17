@@ -1115,6 +1115,7 @@ angular.module('MoneyNetwork')
                     }
                     return false ;
                 }
+                else if (contact.type == 'public') return true ;
                 else {
                     // simpel contact filter
                     return (self.setup.contact_filters[contact.type] == 'green');

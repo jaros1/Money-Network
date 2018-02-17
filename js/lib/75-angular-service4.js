@@ -583,7 +583,7 @@ angular.module('MoneyNetwork')
                 // console.log(pgm + 'encrypt.extra = ' + JSON.stringify(encrypt.extra)) ;
                 old_userid = z_cache.user_id ;
                 if (!request && encrypt.extra && encrypt.extra.hasOwnProperty('array') && encrypt.extra.hasOwnProperty('index')) {
-                    console.log(pgm + 'ignoring wallet to wallet message ' + filename) ;
+                    console.log(pgm + 'Okay. ignoring wallet to wallet message ' + filename + ' with failed decrypt') ;
                     return ;
                 }
 
@@ -698,7 +698,16 @@ angular.module('MoneyNetwork')
                 // validate and process incoming json message from wallet session and process message
                 response = {msgtype: 'response'};
                 error = MoneyNetworkAPILib.validate_json(pgm, request, null, 'api');
-                if (error) response.error = 'message is invalid. ' + error;
+                if (error) {
+                    if (error.match(/unknown msgtype/i) && extra && (extra.hub_type == 'wallet')) {
+                        // OK. ignore unknown wallet to wallet messages
+                        response_timestamp = null ;
+                    }
+                    else {
+                        response.error = 'message is invalid. ' + error;
+                        console.log(pgm + 'error. ' + response.error + ', extra = ' + JSON.stringify(extra)) ;
+                    }
+                }
                 else if (request.msgtype == 'pubkeys') {
                     // first message from wallet. received public keys from wallet session
                     if (!request.password) response.error = 'Password is required in pubkeys message from wallet';

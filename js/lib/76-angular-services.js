@@ -887,7 +887,7 @@ angular.module('MoneyNetwork')
         function get_contact_name (contact) { return moneyNetworkHubService.get_contact_name (contact) }
         function get_public_contact (create) { return moneyNetworkHubService.get_public_contact (create)}
         function get_public_chat_outbox_msg (timestamp) { return moneyNetworkHubService.get_public_chat_outbox_msg (timestamp) }
-        
+
         var ls_msg_factor = 0.67 ; // factor. from ls_msg_size to "real" size. see formatMsgSize filter. used on chat
         var js_messages = moneyNetworkHubService.get_js_messages() ; // array with { :contact => contact, :message => message } - one row for each message
 
@@ -910,40 +910,58 @@ angular.module('MoneyNetwork')
         function get_message_by_seq (seq) { return moneyNetworkHubService.get_message_by_seq (seq) }
         function get_message_by_sender_sha256 (sender_sha256) { return moneyNetworkHubService.get_message_by_sender_sha256 (sender_sha256) }
         function get_message_by_local_msg_seq (local_msg_seq) { return moneyNetworkHubService.get_message_by_local_msg_seq (local_msg_seq) }
-        function remove_message (js_messages_row) { moneyNetworkHubService.remove_message (js_messages_row) } 
+        function remove_message (js_messages_row) { moneyNetworkHubService.remove_message (js_messages_row) }
         function recursive_delete_message (message) { return moneyNetworkHubService.recursive_delete_message (message) }
 
         // add dummy incoming public chat message. should only be displayed to new users while downloading first user data hub
         var dummy_welcome_msg = false ;
-        function add_dummy_welcome_msg () {
-            var pgm = service + '.add_dummy_welcome_msg: ' ;
+        function add_welcome_msg () {
+            var pgm = service + '.add_welcome_msg: ' ;
 
             if (dummy_welcome_msg) return ; // already added
 
             // check merger permission. dummy message should only be added after granting merger permission
             ZeroFrame.cmd("siteInfo", {}, function (site_info) {
-                var pgm = service + '.add_dummy_welcome_msg siteInfo callback: ' ;
+                var pgm = service + '.add_welcome_msg siteInfo callback: ' ;
                 var contact, message_with_envelope ;
                 // console.log(pgm , 'site_info = ' + JSON.stringify(site_info)) ;
                 if (site_info.settings.permissions.indexOf("Merger:MoneyNetwork") == -1) {
-                    console.log(pgm + 'wait with dum,my welcome message. merger permission has not yet been granted') ;
+                    console.log(pgm + 'wait with dummy welcome message. merger permission has not yet been granted') ;
                     return ;
                 }
 
                 contact = get_public_contact(true) ;
                 message_with_envelope = {
                     folder:"inbox",
-                    message:{msgtype:"chat msg",message:"Welcome to MoneyNetwork <3 Downloading chat messages. Please wait :D"},
+                    message:{msgtype:"chat msg",message:"Welcome to MoneyNetwork <3 Downloading public chat messages (optional files). Searching for peers with ZeroNet port open. Please wait :D"},
                     created_at: new Date().getTime(),
                     sent_at: new Date().getTime()
                 };
                 add_message(contact, message_with_envelope, false) ;
                 dummy_welcome_msg = true ;
-
+                console.log(pgm + 'added dummy welcome message to chat');
+                $rootScope.$apply() ;
+                reset_first_and_last_chat() ;
             }) ; // siteInfo callback
-
         }
-        add_dummy_welcome_msg() ;
+        function remove_welcome_msg() {
+            var pgm = service + '.remove_welcome_msg: ' ;
+            var contact2, i, message_with_envelope, js_messages_row ;
+            // remove dummy welcome message. incoming public chat msg displayed until first public chat messages have been downloaded
+            if (!dummy_welcome_msg) return ;
+            contact2 = get_public_contact(false) ;
+            if (contact2)  {
+                // console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
+                for (i=0 ; i<contact2.messages.length ; i++) {
+                    message_with_envelope = contact2.messages[i] ;
+                    if (message_with_envelope.folder != 'inbox') continue ;
+                    js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
+                    remove_message(js_messages_row) ;
+                }
+            }
+            dummy_welcome_msg = false ;
+            console.log(pgm + 'removed dummy welcome message from chat');
+        } // remove_welcome_msg
 
         // wrappers
         function get_last_online (contact) {
@@ -978,6 +996,9 @@ angular.module('MoneyNetwork')
             clear_contacts() ;
             clear_messages() ;
             clear_files_optional_cache() ;
+            dummy_welcome_msg = false ;
+            // add_welcome_msg() ;
+
             var i, j, contacts_updated = false, receiver_sha256 ;
             var old_contact ;
             var ls_msg_size_total = 0 ;
@@ -1103,6 +1124,7 @@ angular.module('MoneyNetwork')
                     new_contact.messages[j].ls_msg_size = JSON.stringify(new_contact.messages[j]).length ;
                     ls_msg_size_total = ls_msg_size_total + new_contact.messages[j].ls_msg_size ;
                     add_message(new_contact, new_contact.messages[j], true) ;
+                    if (dummy_welcome_msg) remove_welcome_msg() ;
                 } // for j (messages)
             } // for i (contacts)
             if (contacts_updated) ls_save_contacts(false);
@@ -2587,7 +2609,7 @@ angular.module('MoneyNetwork')
                         // OK contact
                         if (contact2.unique_id != contact.unique_id) {
                             debug('lost_message',
-                                pgm + 'received message with receiver_sha256 ' + message.receiver_sha256 + 
+                                pgm + 'received message with receiver_sha256 ' + message.receiver_sha256 +
                                 '. contact ok but must have changed ZeroNet certificate') ;
                         }
 
@@ -4601,7 +4623,7 @@ angular.module('MoneyNetwork')
         var avatar = moneyNetworkZService.get_avatar() ;
         function load_avatar () { moneyNetworkZService.load_avatar() }
 
-        var all_hubs ;
+        var all_hubs ; // will be initialized in MoneyNetworkHelper.ls_bind when ZeroNet is ready
 
         // wait for setSiteInfo events (new files)
         function event_file_done (hub, event, filename) {
@@ -4614,12 +4636,12 @@ angular.module('MoneyNetwork')
                 return ;
             }
             // ignore files from wallet data hubs
-            if (all_hubs) {
+            if (all_hubs && all_hubs.length) {
                 user_data_hub = false ;
-                for (i=0 ; i<all_hubs.length ; i++) if ((all_hubs[i].wallet_type == 'user') && (all_hubs[i].hub == hub)) { user_data_hub = true ; break }
+                for (i=0 ; i<all_hubs.length ; i++) if ((all_hubs[i].hub_type == 'user') && (all_hubs[i].hub == hub) && all_hubs[i].hub_added) { user_data_hub = true ; break }
                 if (!user_data_hub) {
                     // not a MoneyNetwork user data hub
-                    console.log(pgm + 'ignoring ' + filename + ' from ' + hub + '. user_data_hubs = ' + JSON.stringify(user_data_hubs)) ;
+                    console.log(pgm + 'ignoring ' + filename + ' from ' + hub + '. all_hubs = ' + JSON.stringify(all_hubs)) ;
                     return ;
                 }
             }
@@ -4638,11 +4660,14 @@ angular.module('MoneyNetwork')
 
             // read json file (content.json, data.json, status.json, -chat.json or -image.json)
             merged_filename = 'merged-' + get_merged_type() + '/' + hub + '/' + filename ;
-            z_file_get(pgm, {inner_path: merged_filename, required: false}, function (res) {
+            z_file_get(pgm, {inner_path: merged_filename, required: false}, function (res, extra) {
                 var pgm = service + '.event_file_done z_file_get callback 1: ';
                 var i, contact, auth_address, contacts_updated, index, my_pubkey_sha256, using_my_pubkey,
                     cleanup_inbox_messages_lng1, cleanup_inbox_messages_lng2, cleanup_inbox_messages_lng3, timestamp ;
-                if (!res) res = {} ;
+                if (!res) {
+                    console.log(pgm + 'error. ' + merged_filename + ' fileGet failed. extra = ' + JSON.stringify(extra)) ;
+                    res = {} ;
+                }
                 else {
                     try {
                         res = JSON.parse(res) ;
@@ -4656,6 +4681,16 @@ angular.module('MoneyNetwork')
                 auth_address = filename.split('/')[2] ;
 
                 if (filename.match(/content\.json$/)) {
+
+                    if (filename.match(/data\/users\/content\.json$/)) {
+                        // ignore default user content.json file from user data hub
+                        return ;
+                    }
+                    if (!res.files || !res.cert_user_id) {
+                        // error. should never happen
+                        console.log(pgm + 'error. invalid content.json. merged_filename = ' + merged_filename + ', res = ' + JSON.stringify(res)) ;
+                        return ;
+                    }
 
                     // content.json - check avatar in files. null, jpg or pgn
                     (function() {
@@ -4710,7 +4745,8 @@ angular.module('MoneyNetwork')
                         chat_file_re = /^([0-9]{13})-([0-9]{13})-[0-9]+-chat\.json$/ ;
                         for (key in res.files_optional) {
                             m = key.match(chat_file_re) ;
-                            if (!m) continue ;
+                            if (!m) continue ; // not a chat file (money transaction file maybe)
+                            if (res.files_optional[key].size <= 2) continue ; // ignore logical deleted chat files.
                             cache_filename = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/' + key;
                             if (files_optional_cache[cache_filename] || chat_files_without_peers[cache_filename]) continue ;
                             chat_files_without_peers[cache_filename] = { to_timestamp: m[1]} ;
@@ -5350,6 +5386,7 @@ angular.module('MoneyNetwork')
                 // empty public chat page. there should always exist public chat messages
                 // only exception is empty user data hub or failed mergerSiteAdd requests
                 debug('infinite_scroll', pgm + 'empty chat page. there should always be some public chat to show') ;
+                if (!dummy_welcome_msg) add_welcome_msg() ;
             }
 
             // changed chat page context
@@ -5410,7 +5447,7 @@ angular.module('MoneyNetwork')
         function set_first_and_last_chat (first,last,message, contact) {
             var pgm = service + '.set_first_and_last_chat: ' ;
             var no_msg, i, cache_filename, cache_status, download_failed_at ;
-            if (chat_page_is_ready()) return ;
+            if (chat_page_is_ready()) return ; // first and last timestamp on page have already been set
             if (dummy_welcome_msg) {
                 // ignore dummy welcome message. is displayed while loading first chat msg.
                 // console.log(pgm + 'message = ' + JSON.stringify(message)) ;
@@ -5420,8 +5457,14 @@ angular.module('MoneyNetwork')
                 }
             }
             // chat page is loading.
-            if (first && !chat_page_context.first_top_timestamp) chat_page_context.first_top_timestamp = message.message.sent_at ;
-            if (last && !chat_page_context.last_bottom_timestamp) chat_page_context.last_bottom_timestamp = message.message.sent_at ;
+            if (first && !chat_page_context.first_top_timestamp) {
+                chat_page_context.first_top_timestamp = message.message.sent_at ;
+                debug('infinite_scroll', pgm + 'first_top_timestamp = ' + chat_page_context.first_top_timestamp) ;
+            }
+            if (last && !chat_page_context.last_bottom_timestamp) {
+                chat_page_context.last_bottom_timestamp = message.message.sent_at ;
+                debug('infinite_scroll', pgm + 'last_bottom_timestamp = ' + chat_page_context.last_bottom_timestamp) ;
+            }
             if (!chat_page_is_ready()) return;
             // chat page updated with new chat page context
             check_overflow() ;
@@ -5481,10 +5524,11 @@ angular.module('MoneyNetwork')
         // monitor chat files without peers.
         var chat_files_without_peers = {} ;
 
-        // check chat files without peers. maybe other peer is ready to upload file
+
+        // check chat files without peers. waiting for other peer to be ready to upload file
         function monitor_files_without_peers () {
             var pgm = service + '.monitor_files_without_peers: ' ;
-            var inner_path, files, check_file ;
+            var inner_path, files, check_file, no_files, now, files_without_peers ;
 
             // public chat not relevant for:
             if (chat_page_context.contact && (chat_page_context.contact.type == 'group')) return ; // not relevant for group chat
@@ -5496,40 +5540,70 @@ angular.module('MoneyNetwork')
             // any chat files within actual chat page context
             files = [] ;
             for (inner_path in chat_files_without_peers) {
-                if (!chat_page_context.first_top_timestamp) files.push(inner_path) ;
-                else if (!chat_page_context.last_bottom_timestamp) files.push(inner_path) ;
-                else if (chat_files_without_peers[inner_path].to_timestamp >= chat_page_context.last_bottom_timestamp) files.push(inner_path) ;
+                if (!chat_page_context.first_top_timestamp) files.push(inner_path) ; // empty chat page
+                else if (!chat_page_context.last_bottom_timestamp) files.push(inner_path) ; // empty chat page
+                else if (chat_page_context.end_of_page) files.push(inner_path) ; // not filled chat page or user has scrolled to bottom of chat page
+                else if (chat_files_without_peers[inner_path].to_timestamp >= chat_page_context.last_bottom_timestamp) files.push(inner_path) ; // chat file within chat page context
             }
             if (!files.length) {
                 //if (Object.keys(chat_files_without_peers).length) {
                 //    console.log(pgm + 'no files was found') ;
-                //    console.log(pgm + 'first_top_timestamp = ' + chat_page_context.first_top_timestamp) ;
+                //    console.log(pgm + 'first_top_timestamp   = ' + chat_page_context.first_top_timestamp) ;
                 //    console.log(pgm + 'last_bottom_timestamp = ' + chat_page_context.last_bottom_timestamp) ;
+                //    console.log(pgm + 'end_of_page           = ' + chat_page_context.end_of_page) ;
                 //    console.log(pgm + 'chat_files_without_peers = ' + JSON.stringify(chat_files_without_peers)) ;
                 //}
                 return ;
             }
             // console.log(pgm + 'files = ' + JSON.stringify(files)) ;
 
+            no_files = 0 ;
+            files_without_peers = [] ;
+            now = new Date().getTime() ;
+
             // check file loop. find a chat file with peers
             check_file = function () {
-                var inner_path ;
+                var inner_path, elapsed ;
                 inner_path = files.shift() ;
-                if (!inner_path) return ;
+                if (!inner_path) {
+                    if (files_without_peers.length) {
+                        console.log(pgm + 'checked ' + files_without_peers.length + ' chat files without finding peers.  files_without_peers = ' + JSON.stringify(files_without_peers)) ;
+                    }
+                    return ;
+                }
+                if (chat_files_without_peers[inner_path].file_info_at) {
+                    elapsed = now - chat_files_without_peers[inner_path].file_info_at ;
+                    if (elapsed < 5000) {
+                        // wait
+                        // console.log(pgm + 'not checking peer for inner_path. ' + elapsed + ' ms since last check') ;
+                        return check_file() ;
+                    }
+                }
                 ZeroFrame.cmd("optionalFileInfo", [inner_path], function (file_info) {
                     var pgm = service + '.monitor_files_without_peers optionalFileInfo callback: ' ;
+                    no_files++ ;
                     if (!file_info) {
                         // deleted optional file?
-                        console.log(pgm + 'no file_info was found for ' + inner_path) ;
+                        console.log(pgm + 'no file_info was found for ' + inner_path + '. removing from chat_files_without_peers') ;
                         delete chat_files_without_peers[inner_path] ;
                         return check_file() ;
                     }
                     if (!file_info.peer) {
+                        // console.log(pgm + 'no peers for ' + inner_path) ;
+                        chat_files_without_peers[inner_path].file_info = file_info ;
                         chat_files_without_peers[inner_path].file_info_at = new Date().getTime()  ;
+                        files_without_peers.push(inner_path) ;
                         return check_file() ;
                     }
-                    console.log(pgm + 'found public chat file ' + inner_path + ' with peers. recheck public chat now') ;
-                    delete delete chat_files_without_peers[inner_path] ;
+
+                    if (dummy_welcome_msg && (chat_page_context.no_processes < 2)) {
+                        console.log(pgm + 'error. dummy welcome message has not yet been removed. forcing a check_public_chat call') ;
+                        $timeout(check_public_chat) ;
+                    }
+                    else {
+                        console.log(pgm + 'found public chat file ' + inner_path + ' with peers. recheck public chat now') ;
+                    }
+                    delete chat_files_without_peers[inner_path] ;
                     reset_first_and_last_chat() ;
                 }) ; // optionalFileInfo callback
 
@@ -5541,7 +5615,6 @@ angular.module('MoneyNetwork')
 
         // callback from chatCtrl
         // check for any public chat relevant for current chat page context
-        var MERGER_ERROR = moneyNetworkHubService.get_merger_error() ;
         function get_public_chat (cb) {
             var pgm = service + '.get_public_chat: ' ;
             var my_auth_address, recheck ;
@@ -5617,11 +5690,11 @@ angular.module('MoneyNetwork')
                             contact, compare_files1, compare_files2, auth_address, filename, interval_obj, user_seq, key,
                             hash2, timestamp, in_old, in_new, in_deleted_interval, from_timestamp, to_timestamp,
                             deleted_messages, message, cb_status, js_messages_row, one_hour_ago, k, delete_file, old_res_lng,
-                            new_hubs_without_peers, now ;
+                            now ;
                         debug_z_api_operation_end(debug_seq, format_q_res(res)) ;
                         if (res.error == "'NoneType' object has no attribute 'execute'") {
                             // maybe a problem with deleted optional files. content.db out of sync with file system
-                            console.log(pgm + "Search for public chat failed: " + res.error + MERGER_ERROR);
+                            console.log(pgm + "Search for public chat failed: " + res.error);
                             // try again "cb(null) = loop forever. Trying with done
                             return cb('done') ;
                         }
@@ -6039,12 +6112,19 @@ angular.module('MoneyNetwork')
                         res.sort(function(a, b){return 0.5 - Math.random()}) ;
                         debug('public_chat', pgm + 'done with already downloaded public chat files' + '. res = ' + JSON.stringify(res)) ;
 
-                        // get number of peers serving optional files.
-                        // callback loop starting with res[0].
+                        // check number of peers serving optional files. normally 0 or 1.
+
+                        // 1) check chat_files_without_peers. files checked once every 5 seconds in monitor_files_without_peers demon
+                        for (i=res.length-1 ; i>= 0 ; i--) {
+                            cache_filename = 'merged-' + get_merged_type() + '/' + res[i].hub + '/data/users/' + res[i].auth_address + '/' + res[i].filename;
+                            if (chat_files_without_peers[cache_filename]) res.splice(i, 1) ;
+                        }
+                        if (res.length == 0) return cb(cb_status || 'done') ;
+
+                        // 2) callback loop starting with res[0].
                         // check max 10 files. looking for optional files with many peers
                         // prefer files without download failure
                         old_res_lng = res.length ;
-                        new_hubs_without_peers = {} ;
 
                         get_no_peers = function (cb2) {
                             var pgm = service + '.get_public_chat get_no_peers: ';
@@ -6102,23 +6182,20 @@ angular.module('MoneyNetwork')
                                         ', cache_status = ' + JSON.stringify(cache_status) +
                                         ', file_info = ' + JSON.stringify(file_info));
                                     if (!file_info) {
-                                        res[i].peer = 0 ;
+                                        // must be a deleted optional file. remove from res
+                                        res.splice(i,1) ;
+                                        return get_no_peers(cb2);
                                     }
-                                    else {
-                                        res[i].peer = file_info.peer ;
-                                    }
+                                    res[i].peer = file_info.peer ;
                                     if (res[i].peer == 0) {
                                         debug('public_chat', pgm + 'no peers. removing ' + cache_filename + ' from res and adding to chat_files_without_peers') ;
-                                        if (merger_site_added[res[i].hub]) {
-                                            // new hub. keep track of optional files without peers. There can go up to 3 minutes before first public chat is downloaded
-                                            if (!new_hubs_without_peers.hasOwnProperty(res[i].hub)) new_hubs_without_peers[res[i].hub] = 0 ;
-                                            new_hubs_without_peers[res[i].hub]++ ;
-                                        }
                                         if (!chat_files_without_peers[cache_filename]) chat_files_without_peers[cache_filename] = {
-                                            to_timestamp: res[i].to_timestamp
+                                            to_timestamp: res[i].to_timestamp,
+                                            file_info: file_info,
+                                            file_info_at: new Date().getTime()
                                         } ;
-                                        chat_files_without_peers[cache_filename].file_info_at = new Date().getTime() ;
                                         res.splice(i,1) ;
+                                        return get_no_peers(cb2);
                                     }
                                     if (res.length == 0) {
                                         debug('public_chat', pgm + 'checked ' + old_res_lng + ' files. did not find chat files to download! chat_files_without_peers = ' + JSON.stringify(chat_files_without_peers)) ;
@@ -6226,19 +6303,6 @@ angular.module('MoneyNetwork')
         }
 
 
-        // sometimes problem with lost Merger:MoneyNetwork permission
-        // maybe a ZeroNet bug. maybe a problem after migrating MoneyNetwork to a merger site.
-        // check and ensure Merger:MoneyNetwork before file operations
-        // no mergerSiteAdd. assuming lost Merger:MoneyNetwork is the problem
-        function request_merger_permission (calling_pgm, cb) {
-            console.log(calling_pgm + 'Error: Merger:MoneyNetwork permission was lost. Please check console.log and UI server log') ;
-            ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
-                MoneyNetworkAPILib.get_all_hubs(true, function(all_hubs) {
-                    // continue anyway
-                    cb() ;
-                }) ;
-            }) ; // wrapperPermissionAdd callback
-        } // request_merger_permission
         function check_merger_permission (calling_pgm, cb) {
             moneyNetworkHubService.check_merger_permission(calling_pgm, cb) ;
         }
@@ -6578,39 +6642,7 @@ angular.module('MoneyNetwork')
 
                             if (dummy_welcome_msg) {
                                 // remove dummy welcome message. incoming public chat msg displayed until first public chat messages have been downloaded
-                                console.log(pgm + 'todo: remove welcome message') ;
-                                //contact = {
-                                //    "unique_id": "591935b15b1c88e2d5f6be0a054604fcf36f0585a6f51098fa3803826fff278c",
-                                //    "cert_user_id": "591935b15b1c8@moneynetwork",
-                                //    "auth_address": "1234567890123456789012345678901234",
-                                //    "type": "public",
-                                //    "search": [{"tag": "World", "value": "World", "privacy": "Search", "row": 1}],
-                                //    "messages": [{
-                                //        "folder": "inbox",
-                                //        "message": {
-                                //            "msgtype": "chat msg",
-                                //            "message": "Welcome to MoneyNetwork <3 Downloading first user data hub. Please wait :D"
-                                //        },
-                                //        "created_at": 1517898789232,
-                                //        "sent_at": 1517898789232,
-                                //        "seq": 1,
-                                //        "reactions": []
-                                //    }],
-                                //    "avatar": "z.png",
-                                //    "alias": "World"
-                                //};
-
-                                contact2 = get_public_contact(false) ;
-                                if (contact2)  {
-                                    // console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
-                                    for (i=0 ; i<contact2.messages.length ; i++) {
-                                        message_with_envelope = contact2.messages[i] ;
-                                        if (message_with_envelope.folder != 'inbox') continue ;
-                                        js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
-                                        remove_message(js_messages_row) ;
-                                    }
-                                }
-                                dummy_welcome_msg = false ;
+                                remove_welcome_msg() ;
                             }
 
                         } // for i
@@ -7302,38 +7334,48 @@ angular.module('MoneyNetwork')
             // set register = Y/N. used in auth page (login or register as default option)
             set_register_yn() ;
             set_use_login() ;
+
             // get list of all user data hubs and wallet data hubs
-            MoneyNetworkAPILib.get_all_hubs(all_hubs) ;
+            all_hubs = MoneyNetworkAPILib.get_all_hubs(true, function() {}) ;
 
-            if (!ZeroFrame.site_info.cert_user_id || use_login.bol) return ;
+            // check merger:MoneyNetwork permission.
+            check_merger_permission(pgm, function() {
 
-            // auto log in
-            console.log(pgm + 'login in with blank password') ;
-            client_login('') ;
-            z_wrapper_notification(['done', 'Log in OK', 3000]);
-            console.log(pgm + 'check deeplink and redirect') ;
+                if (!ZeroFrame.site_info.cert_user_id || use_login.bol) return ;
 
-            // auto log + deep link?
-            a_path = $location.search()['redirect'] ;
-            if (a_path) {
-                z_path = "?path=" + a_path ;
-                console.log(pgm + 'a_path = ' + a_path + ', z_path = ' + z_path) ;
-                redirect_when_ready = function () {
-                    if (!ZeroFrame.site_info || !ZeroFrame.site_info.auth_address) {
-                        $timeout(redirect_when_ready,1000) ;
-                        return ;
-                    }
+                // auto log in
+                console.log(pgm + 'login in with blank password') ;
+                client_login('') ;
+                z_wrapper_notification(['done', 'Log in OK', 3000]);
+                console.log(pgm + 'check deeplink and redirect') ;
+
+                // auto log + deep link?
+                a_path = $location.search()['redirect'] ;
+                if (a_path) {
+                    z_path = "?path=" + a_path ;
+                    console.log(pgm + 'a_path = ' + a_path + ', z_path = ' + z_path) ;
+
+                    // todo: no need for ZeroFrame check and $timeout. ZeroFrame is ready inside ls_bind
+                    //redirect_when_ready = function () {
+                    //    if (!ZeroFrame.site_info || !ZeroFrame.site_info.auth_address) {
+                    //        $timeout(redirect_when_ready,1000) ;
+                    //        return ;
+                    //    }
+                    //    $location.path(a_path).search({}) ;
+                    //    $location.replace();
+                    //    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
+                    //};
+                    //redirect_when_ready() ;
                     $location.path(a_path).search({}) ;
                     $location.replace();
                     ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Money Network", z_path]) ;
-                };
-                redirect_when_ready() ;
-                // console.log(pgm + 'login with a deep link: a_path = ' + a_path + ', z_path = ' + z_path) ;
-            }
+
+                    // console.log(pgm + 'login with a deep link: a_path = ' + a_path + ', z_path = ' + z_path) ;
+                }
+
+            }) ; // check_merger permission callback
 
         }) ; // ls_bind callback
-
-
 
         // export MoneyNetworkService API
         return {
@@ -7433,7 +7475,7 @@ angular.module('MoneyNetwork')
             z_merger_site_add: moneyNetworkHubService.z_merger_site_add,
             z_wrapper_notification: moneyNetworkHubService.z_wrapper_notification,
             sanitize: moneyNetworkHubService.sanitize,
-            add_dummy_welcome_msg: add_dummy_welcome_msg
+            add_welcome_msg: add_welcome_msg
         };
 
         // end MoneyNetworkService
