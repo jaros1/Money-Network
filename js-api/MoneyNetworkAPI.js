@@ -2152,7 +2152,7 @@ var MoneyNetworkAPILib = (function () {
                     if (new_hub_file_get_cbs[hub].cbs.length) {
                         // pending fileGet operations
                         console.log(pgm + 'files:') ;
-                        for (i=0 ; i<new_hub_file_get_cbs[hub].files.length ; i++) console.log(pgm + '- ' + (i+1) + ' : ' + new_hub_file_get_cbs[hub].files[i]) ;
+                        for (i=0 ; i<new_hub_file_get_cbs[hub].files.length ; i++) console.log(pgm + '- ' + (i+1) + ': ' + new_hub_file_get_cbs[hub].files[i]) ;
                         // extra check. is hub in list of all_hubs with hub_added = true?
                         found_hub = -1 ;
                         for (i=0 ; i<all_hubs.length ; i++) if (all_hubs[i].hub == hub) found_hub = i ;
@@ -2331,7 +2331,7 @@ var MoneyNetworkAPILib = (function () {
                 // 1: user directory file with hub, auth_address and filename. use files and files_optional tables
                 // read content.json and use optional pattern to check if file is an optional file
                 inner_path2 = inner_path.substr(0,pos) + '/content.json' ;
-                console.log(pgm + 'checking if ' + filename + ' is an optional file') ;
+                // console.log(pgm + 'checking if ' + filename + ' is an optional file') ;
                 z_file_get(pgm, {inner_path: inner_path2}, function (content_str, extra) {
                     var content, optional_re, m ;
                     if (!content_str) {
@@ -2348,13 +2348,13 @@ var MoneyNetworkAPILib = (function () {
                         return run_cbs(null, {error: 'invalid content.json file'}) ;
                     }
                     if (content.files && content.files[filename]) {
-                        console.log(pgm + filename + ' is a normale file') ;
+                        // console.log(pgm + filename + ' is a normale file') ;
                         // OK normal file
                         return cb2(false) ;
                     }
                     if (content.files_optional && content.files_optional[filename]) {
                         // OK optional file
-                        console.log(pgm + filename + ' is a optional file') ;
+                        // console.log(pgm + filename + ' is a optional file') ;
                         return cb2(true) ;
                     }
                     console.log(pgm + 'stopped ' + inner_path + ' fileGet request. File is not in content.json file ' + inner_path) ;
@@ -3694,10 +3694,11 @@ var MoneyNetworkAPILib = (function () {
             var api_query_8, debug_seq ;
 
             if (!cb) cb = function() {} ;
-            if (all_hubs.length && !refresh) return cb(all_hubs) ;
+            if (all_hubs.length && !refresh) return cb(all_hubs) ; // refresh not requested
+            // all_hubs is empty or refresh requested.
             if (get_all_hubs_running) {
                 // wait. previous get_all_hubs call is executing
-                get_all_hubs_cbs.push(function() {get_all_hubs (refresh, cb) }) ;
+                get_all_hubs_cbs.push({refresh: refresh, cb: cb}) ;
                 return ;
             }
             get_all_hubs_running = true ;
@@ -3766,187 +3767,258 @@ var MoneyNetworkAPILib = (function () {
                 // console.log(pgm + 'all_hubs (1) = ' + JSON.stringify(all_hubs)) ;
 
                 // 2: add hubs from default_hubs section.
-                if (ZeroFrame.site_info && ZeroFrame.site_info.content && ZeroFrame.site_info.content.default_hubs) {
-                    //"default_hubs": {
-                    //    "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ": {
-                    //        "description": "Money Network - W2 - Wallet hub - runner jro",
-                    //            "title": "W2 - Wallet hub"
-                    //    }
-                    //}
-                    for (hub in ZeroFrame.site_info.content.default_hubs) {
-                        found_i = -1 ;
-                        for (i=0 ; i<temp_all_hubs.length ; i++) if (hub == temp_all_hubs[i].hub) found_i = i ;
-                        if (found_i == -1) {
-                            temp_all_hubs.push({
-                                hub: hub,
-                                hub_type: ZeroFrame.site_info.address == '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk' ? 'user' : 'wallet',
-                                hub_title: ZeroFrame.site_info.content.default_hubs[hub].title,
-                                no_users: 0
-                            });
+                z_file_get(pgm, {inner_path: 'content.json'}, function (content_str) {
+                    var pgm = module + '.get_all_hubs z_file_get callback 2: ';
+                    var content ;
+                    content = JSON.parse(content_str) ;
+                    if (content.settings && content.settings.default_hubs) {
+                        console.log(pgm + 'content.settings.default_hubs = ' + JSON.stringify(content.settings.default_hubs)) ;
+                        //"default_hubs": {
+                        //    "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe": {
+                        //        "description": "Money Network - U1 - User data hub - runner jro",
+                        //            "title": "U1 User data hub"
+                        //    },
+                        //    "1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc": {
+                        //        "description": "Money Network - U2 - User data hub - runner jro",
+                        //            "title": "U2 User data hub"
+                        //    },
+                        //    "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh": {
+                        //        "description": "Money Network - U3 - User data hub - runner jro",
+                        //            "title": "U3 User data hub"
+                        //    }
+                        //}
+                        for (hub in content.settings.default_hubs) {
+                            found_i = -1 ;
+                            for (i=0 ; i<temp_all_hubs.length ; i++) if (hub == temp_all_hubs[i].hub) found_i = i ;
+                            if (found_i == -1) {
+                                temp_all_hubs.push({
+                                    hub: hub,
+                                    hub_type: content.address == '1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk' ? 'user' : 'wallet',
+                                    hub_title: content.settings.default_hubs[hub].title,
+                                    no_users: 0
+                                });
+                            }
+                            else if (!temp_all_hubs[found_i].title) temp_all_hubs[found_i].title =  content.settings.default_hubs[hub].title ;
                         }
-                        else if (!temp_all_hubs[found_i].title) temp_all_hubs[found_i].title =  ZeroFrame.site_info.content.default_hubs[hub].title ;
                     }
-                }
 
-                // 3: check existing merger sites
-                ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
-                    var pgm = module + '.get_all_hubs mergerSiteList callback 2: ';
-                    var i, hub, hub_type, done, remove_hubs, now, elapsed ;
-                    console.log(pgm + 'merger_sites (1) = ' + JSON.stringify(merger_sites)) ;
+                    // 3: check existing merger sites
+                    ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
+                        var pgm = module + '.get_all_hubs mergerSiteList callback 3: ';
+                        var i, hub, hub_type, done, remove_hubs, now, elapsed ;
+                        console.log(pgm + 'merger_sites (1) = ' + JSON.stringify(merger_sites)) ;
 
-                    // return all_hubs and run any pending callbacks
-                    done = function() {
-                        var i, hub, merge, deletes, old_i, new_i, deleted_hub, key ;
+                        //merger_sites (1) = {
+                        //    "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh": {
+                        //        "tasks": 105,
+                        //        "size_limit": 10,
+                        //        "address": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
+                        //        "next_size_limit": 10,
+                        //        "auth_address": "1P95VjET2ReAix8hc6u8uqCdbpkzUEkKwT",
+                        //        "feed_follow_num": null,
+                        //        "content": {
+                        //            "files": 3,
+                        //            "description": "Money Network - U3 - User data hub - runner jro",
+                        //            "cloned_from": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
+                        //            "address": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
+                        //            "clone_root": "",
+                        //            "favicon": "favicon.ico",
+                        //            "cloneable": true,
+                        //            "includes": 1,
+                        //            "viewport": "width=device-width, initial-scale=1.0",
+                        //            "inner_path": "content.json",
+                        //            "merged_type": "MoneyNetwork",
+                        //            "title": "U3 User data hub",
+                        //            "files_optional": 0,
+                        //            "signs_required": 1,
+                        //            "modified": 1497251747,
+                        //            "ignore": "(.idea|.git|data/users/.*/.*)",
+                        //            "zeronet_version": "0.5.5",
+                        //            "postmessage_nonce_security": true,
+                        //            "address_index": 21770330
+                        //        },
+                        //        "peers": 4,
+                        //        "auth_key": "83a989f006b54ce1c92cc74651a7db9a333b23bde8cf62db9043bde66386ae31",
+                        //        "settings": {
+                        //            "serving": true,
+                        //            "bytes_recv": 5163,
+                        //            "optional_downloaded": 0,
+                        //            "size_optional": 2689,
+                        //            "ajax_key": "dbaa051249a326e76c7a376eb0330f58cb7365a8d2448a0a59f0daf39529959e",
+                        //            "modified": 1518939577,
+                        //            "cache": {},
+                        //            "own": false,
+                        //            "permissions": [],
+                        //            "added": 1518940162,
+                        //            "size": 20139
+                        //        },
+                        //        "bad_files": 159,
+                        //        "workers": 3,
+                        //        "cert_user_id": null,
+                        //        "started_task_num": 163,
+                        //        "content_updated": 1518940163.455015
+                        //    }
+                        //};
 
-                        // compare all_hubs and temp_all_hubs. must merge objects to prevent other functions using old hub info
-                        // ( problem with get_my_user_hub running while waiting for first user data hub )
-                        merge = {} ;
-                        for (i=0 ; i<all_hubs.length ; i++) merge[all_hubs[i].hub] = {old_i: i, new_i: -1};
+                        // return all_hubs and run any pending callbacks
+                        done = function() {
+                            var i, hub, merge, deletes, old_i, new_i, deleted_hub, key, row ;
+
+                            // compare all_hubs and temp_all_hubs. must merge objects to prevent other functions using old hub info
+                            // ( problem with get_my_user_hub running while waiting for first user data hub )
+                            merge = {} ;
+                            for (i=0 ; i<all_hubs.length ; i++) merge[all_hubs[i].hub] = {old_i: i, new_i: -1};
+                            for (i=0 ; i<temp_all_hubs.length ; i++) {
+                                hub = temp_all_hubs[i].hub ;
+                                if (merge[hub]) merge[hub].new_i = i ; // in old and in new array
+                                else merge[hub] = {old_i: -1, new_i: i} ; // only in new.
+                            }
+
+                            // merge new info from temp_all_hubs into all_hubs.
+                            deletes = [] ;
+                            for (hub in merge) {
+                                old_i = merge[hub].old_i ;
+                                new_i = merge[hub].new_i ;
+                                if (old_i == -1) {
+                                    // only in new temp_all_hubs. insert
+                                    // console.log(pgm + 'new hub ' + hub + ' inserted into all_hubs') ;
+                                    all_hubs.push(temp_all_hubs[new_i]) ;
+                                }
+                                else if (new_i == -1) {
+                                    // only in old all_hubs. delete
+                                    deletes.push(old_i);
+                                    // console.log(pgm + 'old hub ' + hub + ' was deleted from all_hubs') ;
+                                }
+                                else {
+                                    // merge properties
+                                    // console.log(pgm + 'merged old and new hub ' + hub + ' info. old hub_added = ' + all_hubs[old_i].hub_added + '. new hub_added = ' + temp_all_hubs[new_i].hub_added) ;
+                                    all_hubs[old_i].hub_type     = temp_all_hubs[new_i].hub_type ;
+                                    all_hubs[old_i].title        = temp_all_hubs[new_i].title ;
+                                    all_hubs[old_i].no_users     = temp_all_hubs[new_i].no_users ;
+                                    all_hubs[old_i].hub_added    = temp_all_hubs[new_i].hub_added ;
+                                    all_hubs[old_i].hub_added_at = temp_all_hubs[new_i].hub_added_at ;
+                                    all_hubs[old_i].peers        = temp_all_hubs[new_i].peers ;
+                                    all_hubs[old_i].url          = temp_all_hubs[new_i].url ;
+                                    all_hubs[old_i].priority     = temp_all_hubs[new_i].priority ;
+                                }
+                            }
+                            deletes.sort() ;
+                            for (i=deletes.length-1 ; i >= 0 ; i--) {
+                                old_i =deletes[i] ;
+                                deleted_hub = all_hubs[old_i] ;
+                                all_hubs.splice(old_i,1) ;
+                                // destroy object
+                                hub = deleted_hub.hub ;
+                                for (key in deleted_hub) delete deleted_hub[key] ;
+                                deleted_hub.hub = hub ;
+                                deleted_hub.deleted = true ;
+                            }
+
+                            // return all_hubs to waiting callback(s)
+                            cb(all_hubs) ;
+                            // any callback waiting for this get_all_hubs call to finish?
+                            get_all_hubs_running = false ;
+                            while (get_all_hubs_cbs.length) {
+                                row = get_all_hubs_cbs.shift() ;
+                                if (!row.refresh) row.cb(all_hubs) ;
+                                else get_all_hubs(row.refresh, row.cb) ;
+                            }
+                        }; // done
+
+                        // merger_sites (1) = {"error":"Not a merger site"}
+                        if (merger_sites.error) {
+                            console.log(pgm + JSON.stringify(merger_sites)) ;
+                            // get_all_hubs must wait for Merger:MoneyNetwork permission.
+                            return done() ;
+                        }
+
+                        // remove any non MoneyNetwork hubs from merger site response. normally only one merged_type in mergerSiteList response
+                        remove_hubs = [] ;
+                        for (hub in merger_sites) if (merger_sites[hub].content.merged_type != get_merged_type()) remove_hubs.push(hub) ;
+                        if (remove_hubs.length) {
+                            console.log(pgm + 'removing ' + remove_hubs.length + ' non ' + get_merged_type() + ' hubs from merger_sites') ;
+                            for (i=0 ; i<remove_hubs.length ; i++) {
+                                hub = remove_hubs[i] ;
+                                delete merger_sites[hub] ;
+                            }
+                        }
+
+                        // merge dbQuery result (api query 8) and mergerSiteList list
                         for (i=0 ; i<temp_all_hubs.length ; i++) {
                             hub = temp_all_hubs[i].hub ;
-                            if (merge[hub]) merge[hub].new_i = i ; // in old and in new array
-                            else merge[hub] = {old_i: -1, new_i: i} ; // only in new.
-                        }
-
-                        // merge new info from temp_all_hubs into all_hubs.
-                        deletes = [] ;
-                        for (hub in merge) {
-                            old_i = merge[hub].old_i ;
-                            new_i = merge[hub].new_i ;
-                            if (old_i == -1) {
-                                // only in new temp_all_hubs. insert
-                                all_hubs.push(temp_all_hubs[new_i]) ;
+                            if (merger_sites[hub]) {
+                                temp_all_hubs[i].hub_added = true ;
+                                temp_all_hubs[i].hub_title = merger_sites[hub].content.title ;
+                                temp_all_hubs[i].peers = merger_sites[hub].peers ;
+                                temp_all_hubs[i].url = '/' + (merger_sites[hub].content.domain || hub) ;
+                                delete merger_sites[hub] ;
                             }
-                            else if (new_i == -1) {
-                                // only in old all_hubs. delete
-                                deletes.push(old_i)
-                            }
-                            else {
-                                // merge properties
-                                all_hubs[old_i].type = all_hubs[new_i].type ;
-                                all_hubs[old_i].title = all_hubs[new_i].title ;
-                                all_hubs[old_i].no_users = all_hubs[new_i].no_users ;
-                                all_hubs[old_i].hub_added = all_hubs[new_i].hub_added ;
-                                all_hubs[old_i].hub_added_at = all_hubs[new_i].hub_added_at ;
-                                all_hubs[old_i].peers = all_hubs[new_i].peers ;
-                                all_hubs[old_i].url = all_hubs[new_i].url ;
-                                all_hubs[old_i].priority = all_hubs[new_i].priority ;
-                            }
+                            else temp_all_hubs[i].hub_added = false ;
+                        } // for i
+                        // console.log(pgm + 'all_hubs (2) = ' + JSON.stringify(all_hubs)) ;
+                        // console.log(pgm + 'merger_sites (2) = ' + JSON.stringify(merger_sites)) ;
+
+                        // add merger sites without any users. fx failed hub 1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc User data hub U2
+                        // for (i=temp_all_hubs.length-1 ; i>=0 ; i--) if (!temp_all_hubs[i].no_users) temp_all_hubs.splice(i,1) ;
+                        for (hub in merger_sites) {
+                            if (merger_sites[hub].content.title.match(/user data hub/i) ||
+                                merger_sites[hub].content.description.match(/user data hub/i)) hub_type = 'user';
+                            else if (merger_sites[hub].content.title.match(/wallet data hub/i) ||
+                                merger_sites[hub].content.description.match(/wallet data hub/i)) hub_type = 'wallet';
+                            else hub_type = 'n/a' ;
+                            temp_all_hubs.push({
+                                hub: hub,
+                                hub_type: hub_type,
+                                hub_title: merger_sites[hub].content.title,
+                                no_users: 0,
+                                hub_added: true,
+                                peers: merger_sites[hub].settings.peers,
+                                url: '/' + (merger_sites[hub].content.domain || hub)
+                            })
                         }
-                        deletes.sort() ;
-                        for (i=deletes.length-1 ; i >= 0 ; i--) {
-                            old_i =deletes[i] ;
-                            deleted_hub = all_hubs[old_i] ;
-                            all_hubs.splice(old_i,1) ;
-                            // destroy object
-                            hub = deleted_hub.hub ;
-                            for (key in deleted_hub) delete deleted_hub[key] ;
-                            deleted_hub.hub = hub ;
-                            deleted_hub.deleted = true ;
-                        }
+                        console.log(pgm + 'temp_all_hubs (3) = ' + JSON.stringify(temp_all_hubs)) ;
+                        //all_hubs (3) = [
+                        //    {"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe","hub_type":"user",  "hub_title":"U1 User data hub",  "no_users":134,"add_hub":false,"peers":0},
+                        //    {"hub":"1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ","hub_type":"wallet","hub_title":"W2 Wallet data hub","no_users":36, "add_hub":false,"peers":0},
+                        //    {"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh","hub_type":"user",  "hub_title":"U3 User data hub",  "no_users":108,"add_hub":false,"peers":8},
+                        //    {"hub":"1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc",                    "hub_title":"U2 User data hub",  "no_users":0,  "add_hub":false,"peers":0}];
 
-                        // return all_hubs to waiting callbacks
-                        cb(all_hubs) ;
-                        // any callback waiting for this get_all_hubs call to finish?
-                        get_all_hubs_running = false ;
-                        if (get_all_hubs_cbs.length) {
-                            cb = get_all_hubs_cbs.shift() ;
-                            cb() ;
-                        }
-                    }; // done
-
-                    // merger_sites (1) = {"error":"Not a merger site"}
-                    if (merger_sites.error) {
-                        console.log(pgm + JSON.stringify(merger_sites)) ;
-                        // get_all_hubs must wait for Merger:MoneyNetwork permission.
-                        return done() ;
-                    }
-
-                    // remove any non MoneyNetwork hubs from merger site response. normally only one merged_type in mergerSiteList response
-                    remove_hubs = [] ;
-                    for (hub in merger_sites) if (merger_sites[hub].content.merged_type != get_merged_type()) remove_hubs.push(hub) ;
-                    if (remove_hubs.length) {
-                        console.log(pgm + 'removing ' + remove_hubs.length + ' non ' + get_merged_type() + ' hubs from merger_sites') ;
-                        for (i=0 ; i<remove_hubs.length ; i++) {
-                            hub = remove_hubs[i] ;
-                            delete merger_sites[hub] ;
-                        }
-                    }
-
-                    // merge dbQuery result (api query 8) and mergerSiteList list
-                    for (i=0 ; i<temp_all_hubs.length ; i++) {
-                        hub = temp_all_hubs[i].hub ;
-                        if (merger_sites[hub]) {
-                            temp_all_hubs[i].hub_added = true ;
-                            temp_all_hubs[i].hub_title = merger_sites[hub].content.title ;
-                            temp_all_hubs[i].peers = merger_sites[hub].peers ;
-                            temp_all_hubs[i].url = '/' + (merger_sites[hub].content.domain || hub) ;
-                            delete merger_sites[hub] ;
-                        }
-                        else temp_all_hubs[i].hub_added = false ;
-                    } // for i
-                    // console.log(pgm + 'all_hubs (2) = ' + JSON.stringify(all_hubs)) ;
-                    // console.log(pgm + 'merger_sites (2) = ' + JSON.stringify(merger_sites)) ;
-
-                    // add merger sites without any users. fx failed hub 1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc User data hub U2
-                    for (i=temp_all_hubs.length-1 ; i>=0 ; i--) if (!temp_all_hubs[i].no_users) temp_all_hubs.splice(0,i) ;
-                    for (hub in merger_sites) {
-                        if (merger_sites[hub].content.title.match(/user data hub/i) ||
-                            merger_sites[hub].content.description.match(/user data hub/i)) hub_type = 'user';
-                        else if (merger_sites[hub].content.title.match(/wallet data hub/i) ||
-                            merger_sites[hub].content.description.match(/wallet data hub/i)) hub_type = 'wallet';
-                        else hub_type = 'n/a' ;
-                        temp_all_hubs.push({
-                            hub: hub,
-                            hub_type: hub_type,
-                            hub_title: merger_sites[hub].content.title,
-                            no_users: 0,
-                            hub_added: true,
-                            peers: merger_sites[hub].settings.peers,
-                            url: '/' + (merger_sites[hub].content.domain || hub)
-                        })
-                    }
-                    console.log(pgm + 'all_hubs (3) = ' + JSON.stringify(temp_all_hubs)) ;
-                    //all_hubs (3) = [
-                    //    {"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe","hub_type":"user",  "hub_title":"U1 User data hub",  "no_users":134,"add_hub":false,"peers":0},
-                    //    {"hub":"1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ","hub_type":"wallet","hub_title":"W2 Wallet data hub","no_users":36, "add_hub":false,"peers":0},
-                    //    {"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh","hub_type":"user",  "hub_title":"U3 User data hub",  "no_users":108,"add_hub":false,"peers":8},
-                    //    {"hub":"1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc",                    "hub_title":"U2 User data hub",  "no_users":0,  "add_hub":false,"peers":0}];
-
-                    // add hub_added_at timestamp. only used while waiting for a new user data hub to get ready (waiting for peers / first file to arrive)
-                    if (Object.keys(new_hub_file_get_cbs).length) {
-                        now = new Date().getTime();
-                        for (hub in new_hub_file_get_cbs) {
-                            elapsed = now - new_hub_file_get_cbs[hub].timestamp ;
-                            elapsed = Math.round(elapsed/1000) ;
-                            console.log(pgm + 'waiting for new data hub ' + hub + ' added ' + elapsed + ' seconds ago') ;
-                            for (i=0 ; i<temp_all_hubs.length ; i++) {
-                                if (temp_all_hubs[i].hub == hub) temp_all_hubs[i].hub_added_at = new_hub_file_get_cbs[hub].timestamp ;
+                        // add hub_added_at timestamp. only used while waiting for a new user data hub to get ready (waiting for peers / first file to arrive)
+                        if (Object.keys(new_hub_file_get_cbs).length) {
+                            now = new Date().getTime();
+                            for (hub in new_hub_file_get_cbs) {
+                                elapsed = now - new_hub_file_get_cbs[hub].timestamp ;
+                                elapsed = Math.round(elapsed/1000) ;
+                                console.log(pgm + 'waiting for new data hub ' + hub + ' added ' + elapsed + ' seconds ago') ;
+                                for (i=0 ; i<temp_all_hubs.length ; i++) {
+                                    if (temp_all_hubs[i].hub == hub) temp_all_hubs[i].hub_added_at = new_hub_file_get_cbs[hub].timestamp ;
+                                }
                             }
                         }
-                    }
 
-                    // set priority. can be used when selection hubs to add
-                    //priority_texts = {
-                    //    "1": 'existing hub with peers. always ok',
-                    //    "2": 'just added hub waiting for peers. may or may not fail',
-                    //    "3": 'new hub. maybe or maybe not be a hub with peers',
-                    //    "4": 'existing hub without peers. will always fail'
-                    //};
-                    // temp_all_hubs = [{"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"},{"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"}]
-                    for (i=0 ; i<temp_all_hubs.length ; i++) {
-                        if (!temp_all_hubs[i].hub_added) temp_all_hubs[i].priority = 3 ; // 3. priority. new hub. maybe or maybe not a hub with peers
-                        else if (temp_all_hubs[i].peers) {
-                            if (temp_all_hubs[i].hub_added_at) temp_all_hubs[i].priority = 2 ; // 2. priority. just added hub waiting for peers. may or may not fail
-                            else temp_all_hubs[i].priority = 1 ; // 1. priority. existing hub with peers. always ok
-                        } // 1. priority. existing hubs with peers
-                        else temp_all_hubs[i].priority = 4 ; // 4. priority. existing hubs without peers. publish user content will fail.
-                    }
+                        // set priority. can be used when selection hubs to add
+                        //priority_texts = {
+                        //    "1": 'existing hub with peers. always ok',
+                        //    "2": 'just added hub waiting for peers. may or may not fail',
+                        //    "3": 'new hub. maybe or maybe not be a hub with peers',
+                        //    "4": 'existing hub without peers. will always fail'
+                        //};
+                        // temp_all_hubs = [{"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"},{"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"}]
+                        for (i=0 ; i<temp_all_hubs.length ; i++) {
+                            if (!temp_all_hubs[i].hub_added) temp_all_hubs[i].priority = 3 ; // 3. priority. new hub. maybe or maybe not a hub with peers
+                            else if (temp_all_hubs[i].peers) {
+                                if (temp_all_hubs[i].hub_added_at) temp_all_hubs[i].priority = 2 ; // 2. priority. just added hub waiting for peers. may or may not fail
+                                else temp_all_hubs[i].priority = 1 ; // 1. priority. existing hub with peers. always ok
+                            } // 1. priority. existing hubs with peers
+                            else temp_all_hubs[i].priority = 4 ; // 4. priority. existing hubs without peers. publish user content will fail.
+                        }
 
-                    // done
-                    done() ;
+                        // done
+                        done() ;
 
-                }) ; // mergerSiteList callback 2
+                    }) ; // mergerSiteList callback 3
+
+                }) ; // z_file_get callback 2
 
             }); // dbQuery callback 1
 

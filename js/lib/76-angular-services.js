@@ -4638,7 +4638,7 @@ angular.module('MoneyNetwork')
             // ignore files from wallet data hubs
             if (all_hubs && all_hubs.length) {
                 user_data_hub = false ;
-                for (i=0 ; i<all_hubs.length ; i++) if ((all_hubs[i].hub_type == 'user') && (all_hubs[i].hub == hub) && all_hubs[i].hub_added) { user_data_hub = true ; break }
+                for (i=0 ; i<all_hubs.length ; i++) if ((all_hubs[i].hub_type == 'user') && (all_hubs[i].hub == hub)) { user_data_hub = true ; break }
                 if (!user_data_hub) {
                     // not a MoneyNetwork user data hub
                     console.log(pgm + 'ignoring ' + filename + ' from ' + hub + '. all_hubs = ' + JSON.stringify(all_hubs)) ;
