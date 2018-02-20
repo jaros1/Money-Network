@@ -2097,21 +2097,50 @@ var MoneyNetworkAPILib = (function () {
     // - fileWrite
     // - sitePublish
     var new_hub_file_get_cbs = {} ; // any fileGet callback waiting for hub to be ready?
-    function z_merger_site_add (hub, cb) {
-        var pgm = module + '.z_merger_site_add: ' ;
-        if (!cb) cb = function() {} ;
+    function z_merger_site_add(hub, cb) {
+        var pgm = module + '.z_merger_site_add: ';
+        if (!cb) cb = function () {};
         ZeroFrame.cmd("mergerSiteAdd", [hub], function (res) {
-            var pgm = module + '.z_merger_site_add mergerSiteAdd callback: ' ;
-            console.log(pgm + 'res = '+ JSON.stringify(res));
+            var pgm = module + '.z_merger_site_add mergerSiteAdd callback 1: ';
+            var now, i, found_i, set_priority_2;
+            console.log(pgm + 'res = ' + JSON.stringify(res));
             if (res == 'ok') {
-                console.log(pgm + 'new hub ' + hub + ' was added. hub must be ready. wait for jsons (dbQuery) before first fileGet request to new hub') ;
-                if (!new_hub_file_get_cbs[hub]) new_hub_file_get_cbs[hub] = { timestamp:  new Date().getTime(), files: [], cbs: [] } ;
+                console.log(pgm + 'new hub ' + hub + ' was added. hub must be ready. wait for jsons (dbQuery) before first fileGet request to new hub');
+                now = new Date().getTime();
+                if (!new_hub_file_get_cbs[hub]) new_hub_file_get_cbs[hub] = {timestamp: now, files: [], cbs: []};
                 // fileGet callbacks waiting for mergerSiteAdd operation to finish
                 // start demon process. waiting for new user data hub to be ready
-                if (!monitor_first_hub_event_id) monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
+                if (!monitor_first_hub_event_id) monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250);
+                // also update all_hubs info before running cb
+                set_priority_2 = function (all_hubs) {
+                    found_i = -1;
+                    if (all_hubs) for (i = 0; i < all_hubs.length; i++) {
+                        if (all_hubs[i].hub == hub) {
+                            found_i = i;
+                            break
+                        }
+                    } // i
+                    if (found_i == -1) return false;
+                    else {
+                        all_hubs[found_i].hub_added = true;
+                        all_hubs[found_i].hub_added_at = now;
+                        all_hubs[found_i].priority = 2;
+                        return true;
+                    }
+                }; // set_priority_2
+                if (!set_priority_2(all_hubs)) {
+                    console.log(pgm + 'warning. did not find hub ' + hub + ' in all_hubs. all_hubs = ' + JSON.stringify(all_hubs));
+                    console.log(pgm + 'refreshing list of hubs');
+                    get_all_hubs(true, function (all_hubs) {
+                        var pgm = module + '.z_merger_site_add get_all_hubs callback 2: ';
+                        if (!set_priority_2(all_hubs)) console.log(pgm + 'error. did not find hub ' + hub + ' in all_hubs. all_hubs = ' + JSON.stringify(all_hubs));
+                        cb(res);
+                    });
+                    return;
+                }
             }
-            cb(res) ;
-        }) ; // mergerSiteAdd callback 3
+            cb(res);
+        }); // mergerSiteAdd callback 1
     } // z_merger_site_add
 
     // demon. dbQuery. check for any json for new user data hub before running any fileGet operations
@@ -3864,6 +3893,22 @@ var MoneyNetworkAPILib = (function () {
                         done = function() {
                             var i, hub, merge, deletes, old_i, new_i, deleted_hub, key, row ;
 
+                            // set priority. can be used when selection hubs to add
+                            //priority_texts = {
+                            //    "1": 'existing hub with peers. always ok',
+                            //    "2": 'just added hub waiting for peers. may or may not fail',
+                            //    "3": 'new hub. maybe or maybe not be a hub with peers',
+                            //    "4": 'existing hub without peers. will always fail'
+                            //};
+                            // temp_all_hubs = [{"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"},{"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"}]
+                            for (i=0 ; i<temp_all_hubs.length ; i++) {
+                                if (!temp_all_hubs[i].hub_added) temp_all_hubs[i].priority = 3 ; // 3. priority. new hub. maybe or maybe not a hub with peers
+                                else if (temp_all_hubs[i].hub_added_at) temp_all_hubs[i].priority = 2 ; // 2. priority. just added hub waiting for peers. may or may not fail
+                                else if (temp_all_hubs[i].peers) temp_all_hubs[i].priority = 1 ; // 1. priority. existing hub with peers. always ok
+                                else temp_all_hubs[i].priority = 4 ; // 4. priority. existing hubs without peers. publish user content will fail.
+                            }
+                            console.log(pgm + 'temp_all_hubs (3) = ' + JSON.stringify(temp_all_hubs)) ;
+
                             // compare all_hubs and temp_all_hubs. must merge objects to prevent other functions using old hub info
                             // ( problem with get_my_user_hub running while waiting for first user data hub )
                             merge = {} ;
@@ -3976,7 +4021,6 @@ var MoneyNetworkAPILib = (function () {
                                 url: '/' + (merger_sites[hub].content.domain || hub)
                             })
                         }
-                        console.log(pgm + 'temp_all_hubs (3) = ' + JSON.stringify(temp_all_hubs)) ;
                         //all_hubs (3) = [
                         //    {"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe","hub_type":"user",  "hub_title":"U1 User data hub",  "no_users":134,"add_hub":false,"peers":0},
                         //    {"hub":"1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ","hub_type":"wallet","hub_title":"W2 Wallet data hub","no_users":36, "add_hub":false,"peers":0},
@@ -3994,23 +4038,6 @@ var MoneyNetworkAPILib = (function () {
                                     if (temp_all_hubs[i].hub == hub) temp_all_hubs[i].hub_added_at = new_hub_file_get_cbs[hub].timestamp ;
                                 }
                             }
-                        }
-
-                        // set priority. can be used when selection hubs to add
-                        //priority_texts = {
-                        //    "1": 'existing hub with peers. always ok',
-                        //    "2": 'just added hub waiting for peers. may or may not fail',
-                        //    "3": 'new hub. maybe or maybe not be a hub with peers',
-                        //    "4": 'existing hub without peers. will always fail'
-                        //};
-                        // temp_all_hubs = [{"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"},{"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"}]
-                        for (i=0 ; i<temp_all_hubs.length ; i++) {
-                            if (!temp_all_hubs[i].hub_added) temp_all_hubs[i].priority = 3 ; // 3. priority. new hub. maybe or maybe not a hub with peers
-                            else if (temp_all_hubs[i].peers) {
-                                if (temp_all_hubs[i].hub_added_at) temp_all_hubs[i].priority = 2 ; // 2. priority. just added hub waiting for peers. may or may not fail
-                                else temp_all_hubs[i].priority = 1 ; // 1. priority. existing hub with peers. always ok
-                            } // 1. priority. existing hubs with peers
-                            else temp_all_hubs[i].priority = 4 ; // 4. priority. existing hubs without peers. publish user content will fail.
                         }
 
                         // done

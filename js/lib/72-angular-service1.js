@@ -454,7 +454,7 @@ angular.module('MoneyNetwork')
                 debug_seq = debug_z_api_operation_start(pgm, 'mn query 17', 'dbQuery', show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [mn_query_17], function (res) {
                     var pgm = service + '.get_my_user_hub.step_3_find_user_hubs dbQuery callback: ' ;
-                    var i, merge_job, priority_texts , priorities, priority ;
+                    var i, merge_job, priority_texts , priorities, priority, min_priority ;
                     if (detected_client_log_out(pgm, old_userid)) return ;
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
                     debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
@@ -484,35 +484,27 @@ angular.module('MoneyNetwork')
                     }
                     if (!user_data_hubs.length) return step_4_get_and_add_default_user_hub() ;
 
-                    console.log(pgm + 'todo: priority should already be in user_data_hubs array') ;
-
                     // new user. add random user data hub from available hubs
+                    console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs)) ;
                     priority_texts = {
                         "1": 'existing hub with peers. always ok',
                         "2": 'just added hub waiting for peers. may or may not fail',
                         "3": 'new hub. maybe or maybe not be a hub with peers',
                         "4": 'existing hub without peers. will always fail'
                     };
-                    priorities = [ [], [], [], [], []] ; // arrays for priority 1, 2 and 3
-                    console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs)) ;
+                    priorities = [ [], [], [], [], []] ; // arrays for priority 1, 2, 3 and 4
                     // user_data_hubs = [{"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"},{"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"}]
+                    min_priority = 4 ;
                     for (i=0 ; i<user_data_hubs.length ; i++) {
-                        if (!user_data_hubs[i].hub_added) priorities[3].push(i) ; // 3. priority. new hub. maybe or maybe not a hub with peers
-                        else if (user_data_hubs[i].peers) {
-                            if (user_data_hubs[i].hub_added_at) priorities[2].push(i) ; // 2. priority. just added hub waiting for peers. may or may not fail
-                            else priorities[1].push(i) ; // 1. priority. existing hub with peers. always ok
-                        } // 1. priority. existing hubs with peers
-                        else priorities[4].push(i) ; // 4. priority. existing hubs without peers. publish user content will fail.
+                        priority = user_data_hubs[i].priority ;
+                        priorities[priority].push(i) ;
+                        if (priority < min_priority) min_priority = priority ;
                     }
-                    for (i=1 ; i<= 4; i++) if (priorities[i].length) {
-                        priority = i ;
-                        break ;
-                    }
-                    console.log(pgm + 'using priority ' + priority + ' ' + priority_texts[priority] + ' for hub selecting. found ' + priorities[priority].length + ' hub(s) with priority ' + priority) ;
+                    console.log(pgm + 'using priority ' + min_priority + ' ' + priority_texts[min_priority] + ' for hub selecting. found ' + priorities[min_priority].length + ' hub(s) with priority ' + min_priority) ;
                     // using priority 3 for hub selecting. found 2 hub(s) with priority 3
 
-                    i = Math.floor(Math.random() * priorities[priority].length);
-                    i = priorities[priority][i] ;
+                    i = Math.floor(Math.random() * priorities[min_priority].length);
+                    i = priorities[min_priority][i] ;
 
                     z_cache.my_user_hub = user_data_hubs[i].hub ; // = hub in data.json
                     z_cache.my_user_hub_title = user_data_hubs[i].title ; // = hub_title in data_json
@@ -1767,24 +1759,21 @@ angular.module('MoneyNetwork')
             var old_userid ;
             old_userid = z_cache.user_id ;
             if (detected_client_log_out(pgm, old_userid)) return ;
-            // todo: debug lost Merger:MoneyNetwork permission
-            check_merger_permission(pgm, function() {
+            if (detected_client_log_out(pgm, old_userid)) return ;
+            // callback 1 - get user data hub
+            get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
+                var pgm = service + '.write_status_json get_my_user_hub callback 1: ';
+                var user_path, status, json_raw, debug_seq ;
                 if (detected_client_log_out(pgm, old_userid)) return ;
-                // callback 1 - get user data hub
-                get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
-                    var pgm = service + '.write_status_json get_my_user_hub callback 1: ';
-                    var user_path, status, json_raw, debug_seq ;
+                user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
+                status = z_cache.status_json || {} ;
+                json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
+                z_file_write(pgm, user_path + '/status.json', btoa(json_raw), function (res) {
+                    var pgm = service + '.write_status_json fileWrite callback 2: ';
                     if (detected_client_log_out(pgm, old_userid)) return ;
-                    user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
-                    status = z_cache.status_json || {} ;
-                    json_raw = unescape(encodeURIComponent(JSON.stringify(status, null, "\t")));
-                    z_file_write(pgm, user_path + '/status.json', btoa(json_raw), function (res) {
-                        var pgm = service + '.write_status_json fileWrite callback 2: ';
-                        if (detected_client_log_out(pgm, old_userid)) return ;
-                        cb(res) ;
-                    }) ; // fileWrite callback 2
-                }) ; // get_my_userhub callback 1
-            });
+                    cb(res) ;
+                }) ; // fileWrite callback 2
+            }) ; // get_my_userhub callback 1
         } // write_status_json
 
         // wrapper for like.json fileGet and fileWrite (cache like.json file in memory)
@@ -2035,147 +2024,141 @@ angular.module('MoneyNetwork')
                                 // debug: is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
                                 if (z_cache.user_setup.debug && z_cache.user_setup.debug.check_sha256_addresses) check_sha256_addresses('sitePublish', false, false);
 
-                                // todo: debug problem with lost Merger:MoneyNetwork permission.
-                                check_merger_permission(pgm, function () {
+                                // check content.json and add optional file support if missing
+                                z_file_get(pgm, {inner_path: user_path + '/content.json', required: false}, function (content) {
+                                    var pgm = service + '.zeronet_site_publish z_file_get callback 6: ';
+                                    var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
+                                        logical_deleted_files, now, max_logical_deleted_files, some_time_ago, debug_seq2;
+                                    if (detected_client_log_out(pgm, old_userid)) return;
+                                    content_updated = false;
 
-                                    // check content.json and add optional file support if missing
-                                    z_file_get(pgm, {inner_path: user_path + '/content.json', required: false}, function (content) {
-                                        var pgm = service + '.zeronet_site_publish z_file_get callback 6: ';
-                                        var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
-                                            logical_deleted_files, now, max_logical_deleted_files, some_time_ago, debug_seq2;
-                                        if (detected_client_log_out(pgm, old_userid)) return;
-                                        content_updated = false;
+                                    // optional files support:
+                                    // 1) <to timestamp>-<from timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for first and last chat msg in json file
+                                    // 2) <timestamp>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
+                                    // 3) <timestamp>-<userseq>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
+                                    // Z_CONTENT_OPTIONAL has been changed to a very simple pattern for optional files [0-9]
+                                    // use MN_CONTENT_OPTIONAL pattern for full optional filename validation
+                                    content = JSON.parse(content); // just published - no need for try catch
+                                    if (content.optional == Z_CONTENT_OPTIONAL) {
+                                        // optional file support also in place. save to my_files_optional. used in public chat
+                                        save_my_files_optional(content.files_optional || {});
+                                    }
+                                    else {
+                                        content.optional = Z_CONTENT_OPTIONAL;
+                                        content_updated = true;
+                                    }
 
-                                        // optional files support:
-                                        // 1) <to timestamp>-<from timestamp>-<user_seq>-chat.json - unix timestamp with milliseconds for first and last chat msg in json file
-                                        // 2) <timestamp>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
-                                        // 3) <timestamp>-<userseq>-image.json - unix timestamp with miliseconds = sent_at timestamp for a message in data.json file
-                                        // Z_CONTENT_OPTIONAL has been changed to a very simple pattern for optional files [0-9]
-                                        // use MN_CONTENT_OPTIONAL pattern for full optional filename validation
-                                        content = JSON.parse(content); // just published - no need for try catch
-                                        if (content.optional == Z_CONTENT_OPTIONAL) {
-                                            // optional file support also in place. save to my_files_optional. used in public chat
-                                            save_my_files_optional(content.files_optional || {});
-                                        }
-                                        else {
-                                            content.optional = Z_CONTENT_OPTIONAL;
-                                            content_updated = true;
-                                        }
-
-                                        // check logical deleted optional *-chat.json files
-                                        // rules.
-                                        // - *chat.json files with size 2 = empty json {}
-                                        // - should only delete *chat.json files with info_info.peer = 0
-                                        // - should only delete "old" *chat.json files
-                                        // - max number of logical deleted *chat.json files.
-                                        // check z_cache.user_seqs. deleted users. optional files from deleted users must be removed.
-                                        if (content.files_optional && z_cache.user_seqs) {
-                                            // console.log(pgm + 'z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs)) ;
-                                            // z_cache.user_seqs = [2]
-                                            for (filename in content.files_optional) {
-                                                if (content.files_optional[filename].size <= 2) continue;
-                                                // console.log(pgm + 'filename = ' + filename + ', size = ' + content.files_optional[filename].size) ;
-                                                if (filename.match(/-chat/)) {
-                                                    // public unencrypted chat. 1483633906108-1483633906108-1-chat.json
-                                                    file_user_seq = parseInt(filename.split('-')[2]);
-                                                }
-                                                else if (filename.match(/[0-9]{13}-[0-9]+-image/)) {
-                                                    // encrypted image. new format. 1483877022900-1-image.json
-                                                    file_user_seq = parseInt(filename.split('-')[1]);
-                                                }
-                                                else {
-                                                    // encrypted image. old format. 1483877022900-image.json
-                                                    // todo: cleanup in z_update_1_data_json?
-                                                    continue;
-                                                }
-                                                if (z_cache.user_seqs.indexOf(file_user_seq) != -1) continue; // ok user seq
-                                                // logical delete - overwrite with empty json
-                                                write_empty_chat_file(user_path + '/' + filename);
+                                    // check logical deleted optional *-chat.json files
+                                    // rules.
+                                    // - *chat.json files with size 2 = empty json {}
+                                    // - should only delete *chat.json files with info_info.peer = 0
+                                    // - should only delete "old" *chat.json files
+                                    // - max number of logical deleted *chat.json files.
+                                    // check z_cache.user_seqs. deleted users. optional files from deleted users must be removed.
+                                    if (content.files_optional && z_cache.user_seqs) {
+                                        // console.log(pgm + 'z_cache.user_seqs = ' + JSON.stringify(z_cache.user_seqs)) ;
+                                        // z_cache.user_seqs = [2]
+                                        for (filename in content.files_optional) {
+                                            if (content.files_optional[filename].size <= 2) continue;
+                                            // console.log(pgm + 'filename = ' + filename + ', size = ' + content.files_optional[filename].size) ;
+                                            if (filename.match(/-chat/)) {
+                                                // public unencrypted chat. 1483633906108-1483633906108-1-chat.json
+                                                file_user_seq = parseInt(filename.split('-')[2]);
                                             }
-                                        }
-
-                                        // physical delete old logical deleted optional files (empty json)
-                                        // - all optional files older when one week
-                                        // - keep max <n> logical deleted optional files
-                                        if (content.files_optional) {
-                                            now = new Date().getTime();
-                                            max_logical_deleted_files = 10;
-                                            some_time_ago = now - 1000 * 60 * 60 * 24 * 7; // one week ago
-                                            logical_deleted_files = [];
-                                            for (filename in content.files_optional) {
-                                                if (content.files_optional[filename].size > 2) continue;
-                                                if (!filename.match(/^[0-9]{13}-/)) continue;
-                                                timestamp = parseInt(filename.substr(0, 13));
-                                                if (timestamp < some_time_ago) {
-                                                    // closure. debug_seq in a loop. debug_seq may change before fileDelete callback is ready to execute
-                                                    (function () {
-                                                        var debug_seq;
-                                                        debug_seq = debug_z_api_operation_start(pgm, user_path + '/' + filename, 'fileDelete', show_debug('z_file_delete'));
-                                                        ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function (res) {
-                                                            debug_z_api_operation_end(debug_seq, format_res(res));
-                                                        }); // fileDelete
-                                                    })();
-                                                    content_updated = true;
-                                                    continue;
-                                                }
-                                                logical_deleted_files.push(filename);
+                                            else if (filename.match(/[0-9]{13}-[0-9]+-image/)) {
+                                                // encrypted image. new format. 1483877022900-1-image.json
+                                                file_user_seq = parseInt(filename.split('-')[1]);
                                             }
-                                            logical_deleted_files.sort();
-                                            while (logical_deleted_files.length > max_logical_deleted_files) {
-                                                filename = logical_deleted_files.shift();
-                                                // closure. debug_seq in a loop. May change
+                                            else {
+                                                // encrypted image. old format. 1483877022900-image.json
+                                                // todo: cleanup in z_update_1_data_json?
+                                                continue;
+                                            }
+                                            if (z_cache.user_seqs.indexOf(file_user_seq) != -1) continue; // ok user seq
+                                            // logical delete - overwrite with empty json
+                                            write_empty_chat_file(user_path + '/' + filename);
+                                        }
+                                    }
+
+                                    // physical delete old logical deleted optional files (empty json)
+                                    // - all optional files older when one week
+                                    // - keep max <n> logical deleted optional files
+                                    if (content.files_optional) {
+                                        now = new Date().getTime();
+                                        max_logical_deleted_files = 10;
+                                        some_time_ago = now - 1000 * 60 * 60 * 24 * 7; // one week ago
+                                        logical_deleted_files = [];
+                                        for (filename in content.files_optional) {
+                                            if (content.files_optional[filename].size > 2) continue;
+                                            if (!filename.match(/^[0-9]{13}-/)) continue;
+                                            timestamp = parseInt(filename.substr(0, 13));
+                                            if (timestamp < some_time_ago) {
+                                                // closure. debug_seq in a loop. debug_seq may change before fileDelete callback is ready to execute
                                                 (function () {
                                                     var debug_seq;
                                                     debug_seq = debug_z_api_operation_start(pgm, user_path + '/' + filename, 'fileDelete', show_debug('z_file_delete'));
                                                     ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function (res) {
                                                         debug_z_api_operation_end(debug_seq, format_res(res));
-                                                    });
+                                                    }); // fileDelete
                                                 })();
                                                 content_updated = true;
+                                                continue;
                                             }
+                                            logical_deleted_files.push(filename);
                                         }
-
-                                        // update size in cache_status for my optional files
-                                        if (content.files_optional) for (filename in content.files_optional) {
-                                            if (filename.match(/image/)) continue;
-                                            if (content.files_optional[filename].size <= 2) continue;
-                                            cache_filename = user_path + '/' + filename;
-                                            cache_status = files_optional_cache[cache_filename];
-                                            if (!cache_status) continue;
-                                            if (cache_status.size == content.files_optional[filename].size) continue;
-                                            debug('public_chat', pgm + 'issue #84: updating cache_status for ' + cache_filename +
-                                                '. old size = ' + cache_status.size + ', new size = ' + content.files_optional[filename].size);
-                                            cache_status.size = content.files_optional[filename].size;
+                                        logical_deleted_files.sort();
+                                        while (logical_deleted_files.length > max_logical_deleted_files) {
+                                            filename = logical_deleted_files.shift();
+                                            // closure. debug_seq in a loop. May change
+                                            (function () {
+                                                var debug_seq;
+                                                debug_seq = debug_z_api_operation_start(pgm, user_path + '/' + filename, 'fileDelete', show_debug('z_file_delete'));
+                                                ZeroFrame.cmd("fileDelete", user_path + '/' + filename, function (res) {
+                                                    debug_z_api_operation_end(debug_seq, format_res(res));
+                                                });
+                                            })();
+                                            content_updated = true;
                                         }
+                                    }
 
-                                        if (!content_updated) return cb() ;
+                                    // update size in cache_status for my optional files
+                                    if (content.files_optional) for (filename in content.files_optional) {
+                                        if (filename.match(/image/)) continue;
+                                        if (content.files_optional[filename].size <= 2) continue;
+                                        cache_filename = user_path + '/' + filename;
+                                        cache_status = files_optional_cache[cache_filename];
+                                        if (!cache_status) continue;
+                                        if (cache_status.size == content.files_optional[filename].size) continue;
+                                        debug('public_chat', pgm + 'issue #84: updating cache_status for ' + cache_filename +
+                                            '. old size = ' + cache_status.size + ', new size = ' + content.files_optional[filename].size);
+                                        cache_status.size = content.files_optional[filename].size;
+                                    }
 
-                                        // update content.json. sign and publish in next publish call
-                                        json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
-                                        // debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/content.json fileWrite') ;
-                                        debug_seq2 = debug_z_api_operation_start(pgm, user_path + '/content.json', 'fileWrite', show_debug('z_file_write'));
-                                        z_file_write(pgm, user_path + '/content.json', btoa(json_raw), function (res) {
-                                            // ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
-                                            var pgm = service + '.zeronet_site_publish fileWrite callback 7: ';
-                                            var error;
-                                            // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
-                                            debug_z_api_operation_end(debug_seq2, format_res(res));
-                                            if (detected_client_log_out(pgm, old_userid)) return;
-                                            if (res != "ok") {
-                                                error = "Could not add optional file support to content.json: " + res;
-                                                console.log(pgm + error);
-                                                z_wrapper_notification(["error", error, 5000]);
-                                                return;
-                                            }
-                                            // sign and publish in next zeronet_site_publish call
-                                            cb();
+                                    if (!content_updated) return cb() ;
 
-                                        }); // fileWrite callback 7
+                                    // update content.json. sign and publish in next publish call
+                                    json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
+                                    // debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/content.json fileWrite') ;
+                                    debug_seq2 = debug_z_api_operation_start(pgm, user_path + '/content.json', 'fileWrite', show_debug('z_file_write'));
+                                    z_file_write(pgm, user_path + '/content.json', btoa(json_raw), function (res) {
+                                        // ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
+                                        var pgm = service + '.zeronet_site_publish fileWrite callback 7: ';
+                                        var error;
+                                        // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
+                                        debug_z_api_operation_end(debug_seq2, format_res(res));
+                                        if (detected_client_log_out(pgm, old_userid)) return;
+                                        if (res != "ok") {
+                                            error = "Could not add optional file support to content.json: " + res;
+                                            console.log(pgm + error);
+                                            z_wrapper_notification(["error", error, 5000]);
+                                            return;
+                                        }
+                                        // sign and publish in next zeronet_site_publish call
+                                        cb();
 
-                                    }); // z_file_get callback 6
+                                    }); // fileWrite callback 7
 
-                                }); // check_merger_permission
-
+                                }); // z_file_get callback 6
 
                             }); // sitePublish callback 5
 
@@ -2343,41 +2326,68 @@ angular.module('MoneyNetwork')
 
         // request Merger:MoneyNetwork permission
         // not much going on in there without merger permissions
-        // also check number of hubs. there should always be 2 user data hubs connected
-        function request_merger_permission (calling_pgm, cb) {
+        // also check number of hubs. there should always be an user data hub
+        function request_merger_permission (pgm, cb) {
             ZeroFrame.cmd("wrapperPermissionAdd", "Merger:MoneyNetwork", function (res) {
-                if (res != 'ok') {
-                    console.log(calling_pgm + 'error. wrapperPermissionAdd failed. res = ' + JSON.stringify(res)) ;
-                    return cb() ;
+                if (res != 'Granted') {
+                    console.log(pgm + 'error. wrapperPermissionAdd failed. res = ' + JSON.stringify(res)) ;
+                    return cb(res) ;
                 }
                 // refresh list of hubs. no added user data hubs at this time
                 MoneyNetworkAPILib.get_all_hubs(true, function(all_hubs) {
-                    var added_hubs, missing_hubs, i ;
-                    console.log(calling_pgm + 'all_hubs = ' + JSON.stringify(all_hubs)) ;
-                    added_hubs = [] ;
+                    var missing_hubs, i, hub ;
+                    console.log(pgm + 'all_hubs = ' + JSON.stringify(all_hubs)) ;
                     missing_hubs = [] ;
                     for (i=0 ; i<all_hubs.length ; i++) {
-                        if (all_hubs[i].hub_added) added_hubs.push(all_hubs[i]) ;
+                        if (all_hubs[i].hub_added) return cb('ok') ;
                         else missing_hubs.push(all_hubs[[i]]) ;
                     }
-                    if ((added_hubs.length >= 2) || !missing_hubs.length) return cb() ;
-                    // add first/extra hub.
-                    // todo: use same hub selection as in get_my_user_hub
-
-
-                    cb() ;
+                    i = Math.floor(Math.random() * missing_hubs.length) ;
+                    hub = missing_hubs[i].hub ;
+                    console.log(pgm + 'adding user data hub ' + hub) ;
+                    z_merger_site_add(hub, function (res) {
+                        console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                        return cb('ok') ;
+                    }) ; // z_merger_site_add
                 }) ;
             }) ; // wrapperPermissionAdd callback
         } // request_merger_permission
         function check_merger_permission (calling_pgm, cb) {
             var pgm = service + '.check_merger_permission: ' ;
+            if (!cb) cb = function() {} ;
             ZeroFrame.cmd("siteInfo", {}, function (site_info) {
                 var pgm = service + '.check_merger_permission siteInfo callback 1: ';
                 // console.log(pgm , 'site_info = ' + JSON.stringify(site_info)) ;
                 if (site_info.settings.permissions.indexOf("Merger:MoneyNetwork") == -1) return request_merger_permission(calling_pgm, cb);
                 // Merger:MoneyNetwork OK
-                cb() ;
-            }) ; // siteInfo callback
+
+                // check user data hubs. there should always be an user data hub
+                MoneyNetworkAPILib.get_all_hubs(false, function (all_hubs) {
+                    var pgm = service + '.check_merger_permission get_all_hubs callback 2: ';
+                    var i, missing_hubs, hub ;
+                    missing_hubs = [] ;
+                    for (i=0 ; i<all_hubs.length ; i++) {
+                        if (all_hubs[i].hub_type != 'user') continue ;
+                        if (all_hubs[i].hub_added) {
+                            // OK. found
+                            console.log(pgm + 'found already added user data hub ' + all_hubs[i].hub) ;
+                            return cb('ok') ;
+                        }
+                        missing_hubs.push(all_hubs[i]) ;
+                    }
+                    if (!missing_hubs.length) return cb() ;
+                    i = Math.floor(Math.random() * missing_hubs.length) ;
+                    hub = missing_hubs[i].hub ;
+                    console.log(pgm + 'adding user data hub ' + hub) ;
+                    z_merger_site_add(hub, function (res) {
+                        console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                        return cb('ok') ;
+                    }) ; // z_merger_site_add
+
+                }) ; // get_all_hubs callback 2
+
+            }) ; // siteInfo callback 1
+
         } // check_merger_permission
 
         z_cache.my_files_optional = {} ;
