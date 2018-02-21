@@ -81,13 +81,16 @@ angular.module('MoneyNetwork')
 
 
         // inject functions from calling services
-        var get_user_reactions, ls_save_contacts, symbol_to_unicode, z_contact_search, check_public_chat ;
+        var get_user_reactions, ls_save_contacts, symbol_to_unicode, z_contact_search, check_public_chat, z_update_1_data_json, is_user_info_empty, get_help ;
         function inject_functions (hash) {
             if (hash.get_user_reactions) get_user_reactions = hash.get_user_reactions ;
             if (hash.ls_save_contacts) ls_save_contacts = hash.ls_save_contacts ;
             if (hash.symbol_to_unicode) symbol_to_unicode = hash.symbol_to_unicode ;
             if (hash.z_contact_search) z_contact_search = hash.z_contact_search ;
             if (hash.check_public_chat) check_public_chat = hash.check_public_chat ;
+            if (hash.z_update_1_data_json) z_update_1_data_json = hash.z_update_1_data_json ;
+            if (hash.is_user_info_empty) is_user_info_empty = hash.is_user_info_empty ;
+            if (hash.get_help) get_help = hash.get_help ;
         }
 
         //// convert data.json file to newest version / structure
@@ -240,8 +243,9 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'running a dummy fileGet request to new hub. will be executed when ' + hub + ' is ready. inner_path = ' + inner_path) ;
                     z_file_get(pgm, {inner_path: inner_path}, function(res, extra) {
                         var pgm = service + '.z_merger_site_add z_file_get callback 1: ' ;
-                        var job, msg ;
+                        var job, msg, help ;
                         if (res) {
+
                             // OK, received default content.json for new user data hub
                             console.log(pgm + 'hub ' + hub + ' is ready. run new contact search in 5 seconds') ;
                             job = function() {
@@ -252,6 +256,13 @@ angular.module('MoneyNetwork')
                             } ;
                             $timeout(job, 5000) ;
 
+                            // download and help distribute all files?
+                            help = get_help() ;
+                            if (help.bol) {
+                                ZeroFrame.cmd("OptionalHelpAll", [true, hub], function (res) {
+                                    console.log(pgm + 'OptionalHelpAll. res = ' + JSON.stringify(res)) ;
+                                }) ;
+                            }
                         }
                         else {
                             // Error. Add hub failed. Did not receive default content.json for hub
@@ -278,6 +289,8 @@ angular.module('MoneyNetwork')
                                         console.log(pgm + 'my_user_hub = ' + my_user_hub) ;
                                         console.log(pgm + 'other_user_hub = ' + other_user_hub) ;
                                         console.log(pgm + 'other_user_hub_title = ' + other_user_hub_title) ;
+                                        console.log(pgm + 'call i_am_online and write data.json to zeronet') ;
+                                        i_am_online() ;
 
                                     }); // get_my_user_hub callback 3
 
@@ -486,26 +499,29 @@ angular.module('MoneyNetwork')
 
                     // new user. add random user data hub from available hubs
                     console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs)) ;
-                    priority_texts = {
-                        "1": 'existing hub with peers. always ok',
-                        "2": 'just added hub waiting for peers. may or may not fail',
-                        "3": 'new hub. maybe or maybe not be a hub with peers',
-                        "4": 'existing hub without peers. will always fail'
-                    };
-                    priorities = [ [], [], [], [], []] ; // arrays for priority 1, 2, 3 and 4
+                    //priority_texts = {
+                    //    "1": 'existing hub with peers. always ok',
+                    //    "2": 'just added hub waiting for peers. may or may not fail',
+                    //    "3": 'new hub. maybe or maybe not be a hub with peers',
+                    //    "4": 'existing hub without peers. will always fail',
+                    //    "5": 'last mergerSiteAdd failed. unavailable hub'
+                    //};
+                    priorities = [] ; // arrays for priorities
                     // user_data_hubs = [{"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"},{"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"}]
-                    min_priority = 4 ;
+                    min_priority = 999 ;
                     for (i=0 ; i<user_data_hubs.length ; i++) {
                         priority = user_data_hubs[i].priority ;
+                        while (priorities.length < priority+1) priorities.push([]) ;
                         priorities[priority].push(i) ;
                         if (priority < min_priority) min_priority = priority ;
                     }
-                    console.log(pgm + 'using priority ' + min_priority + ' ' + priority_texts[min_priority] + ' for hub selecting. found ' + priorities[min_priority].length + ' hub(s) with priority ' + min_priority) ;
+                    console.log(pgm + 'using priority ' + min_priority + ' for hub selecting. found ' + priorities[min_priority].length + ' hub(s) with priority ' + min_priority) ;
                     // using priority 3 for hub selecting. found 2 hub(s) with priority 3
 
+                    // select random hub
                     i = Math.floor(Math.random() * priorities[min_priority].length);
                     i = priorities[min_priority][i] ;
-
+                    console.log(pgm + 'selected user data hub ' + user_data_hubs[i].hub + ' with priority ' + user_data_hubs[i].priority + ' ' + user_data_hubs[i].priority_text) ;
                     z_cache.my_user_hub = user_data_hubs[i].hub ; // = hub in data.json
                     z_cache.my_user_hub_title = user_data_hubs[i].title ; // = hub_title in data_json
                     console.log(pgm + 'hub = ' + z_cache.my_user_hub) ;
@@ -2473,10 +2489,10 @@ angular.module('MoneyNetwork')
             for (key in ls_reactions) delete ls_reactions[key] ;
             for (key in new_reactions) ls_reactions[key] = new_reactions[key] ;
         } // load_reactions
-        function ls_save_reactions (z_update_1_data_json) {
+        function ls_save_reactions (update_zeronet) {
             var pgm = service + '.save_reactions: ' ;
             MoneyNetworkHelper.setItem('reactions', JSON.stringify(ls_reactions)) ;
-            if (z_update_1_data_json) {
+            if (update_zeronet) {
                 // update localStorage and zeronet
                 $timeout(function () {
                     MoneyNetworkHelper.ls_save() ;
@@ -2793,9 +2809,7 @@ angular.module('MoneyNetwork')
         // update timestamp in status.json file and modified in content.json.
         // will allow users to communicate with active contacts and ignoring old and inactive contacts
         // small file(s) for quick distribution in ZeroNet
-        // - z_update_1_data_json: callback function injected from calling service
-        // - is_user_info_empty: callback function injected from calling service
-        function i_am_online (z_update_1_data_json, is_user_info_empty) {
+        function i_am_online () {
             var pgm, info, user_path, old_userid;
             if (z_cache.user_setup.not_online) pgm = service + '.i_am_not_online: ';
             else pgm = service + '.i_am_online: ';

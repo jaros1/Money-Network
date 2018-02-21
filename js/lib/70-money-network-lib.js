@@ -481,6 +481,7 @@ var MoneyNetworkHelper = (function () {
     var storage_rules = {
         // user authorization - see client_login
         login: {session: false, userid: false, compress: false, encrypt: false}, // enable/disable local log in. disabled: use password = '' in client_login
+        help: {session: false, userid: false, compress: false, encrypt: false}, // download and help distribute all files
         key: {session: false, userid: true, compress: true, encrypt: true}, // random password - used for localStorage encryption
         salt: {session: false, userid: false, compress: false, encrypt: false}, // salt for sha256 hashed passwords
         password: {session: true, userid: false, compress: false, encrypt: false}, // session password in clear text

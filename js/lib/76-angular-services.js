@@ -833,9 +833,6 @@ angular.module('MoneyNetwork')
         function empty_user_info_line() {
             return { tag: '', value: '', privacy: ''} ;
         }
-        function is_user_info_empty () {
-            return moneyNetworkEmojiService.is_user_info_empty() ;
-        }
         function load_user_info (create_new_account, guest) {
             moneyNetworkEmojiService.load_user_info(create_new_account, guest) ;
         }
@@ -869,8 +866,7 @@ angular.module('MoneyNetwork')
         var ls_reactions = moneyNetworkHubService.get_ls_reactions() ;
         function ls_load_reactions () { return moneyNetworkHubService.ls_load_reactions() }
         function ls_save_reactions (update_zeronet) {
-            var cb = update_zeronet ? z_update_1_data_json : false ;
-            moneyNetworkHubService.ls_save_reactions(cb) ;
+            moneyNetworkHubService.ls_save_reactions(update_zeronet) ;
         } // ls_save_reactions
 
 
@@ -924,7 +920,7 @@ angular.module('MoneyNetwork')
             // check merger permission. dummy message should only be added after granting merger permission
             ZeroFrame.cmd("siteInfo", {}, function (site_info) {
                 var pgm = service + '.add_welcome_msg siteInfo callback: ' ;
-                var contact, message_with_envelope ;
+                var contact, message_with_envelope, message, help ;
                 // console.log(pgm , 'site_info = ' + JSON.stringify(site_info)) ;
                 if (site_info.settings.permissions.indexOf("Merger:MoneyNetwork") == -1) {
                     console.log(pgm + 'wait with dummy welcome message. merger permission has not yet been granted') ;
@@ -932,9 +928,16 @@ angular.module('MoneyNetwork')
                 }
 
                 contact = get_public_contact(true) ;
+                help = get_help() ;
+                message =
+                    "Welcome to MoneyNetwork <3 Downloading public chat messages (optional files). Searching for peers with ZeroNet port open. " +
+                    "First time visitors may have to wait several minutes before finding peers with public chat messages and ZeroNet port open. " +
+                    "You can add more user data hubs in \"add hubs\" section in Log in, Account and Wallet page. " +
+                    (help.bol ? '' : "You can help distribute content for this site by clicking \"download and help distribute all files\". ")  +
+                    "Please wait :D" ;
                 message_with_envelope = {
                     folder:"inbox",
-                    message:{msgtype:"chat msg",message:"Welcome to MoneyNetwork <3 Downloading public chat messages (optional files). Searching for peers with ZeroNet port open. First time visitors may have to wait several minutes before finding peers with public chat messages and ZeroNet port open. Please wait :D"},
+                    message:{msgtype:"chat msg", message: message},
                     created_at: new Date().getTime(),
                     sent_at: new Date().getTime()
                 };
@@ -958,10 +961,9 @@ angular.module('MoneyNetwork')
                     if (message_with_envelope.folder != 'inbox') continue ;
                     js_messages_row = get_message_by_seq(message_with_envelope.seq) ;
                     remove_message(js_messages_row) ;
+                    console.log(pgm + 'removed dummy welcome message from chat');
                 }
             }
-            dummy_welcome_msg = false ;
-            console.log(pgm + 'removed dummy welcome message from chat');
         } // remove_welcome_msg
 
         // wrappers
@@ -1815,7 +1817,7 @@ angular.module('MoneyNetwork')
                         if (fnc_when_ready) fnc_when_ready(no_contacts);
                         return ;
                     }
-                    if (!res.length && z_cache.user_id) {
+                    if (!res.length && z_cache.user_id && !file_auth_address) {
                         // current user not in data.users array. must be a new user (first save). Try again in 3 seconds
                         console.log(pgm + 'current user not in data.users array. must be a new user (first save). Try again in 3 seconds');
                         // ZeroFrame.cmd("wrapperNotification", ["info", "Updating ZeroNet database. Please wait", 3000]);
@@ -1825,7 +1827,7 @@ angular.module('MoneyNetwork')
                     if (res.length > 1) {
                         console.log(pgm + 'todo: user with auth_address ' + ZeroFrame.site_info.auth_address + ' found at more that one hub. res = ' + JSON.stringify(res)) ;
                     }
-                    if (z_cache.user_id) {
+                    if (z_cache.user_id && res.length) {
                         var json_id = res[0].json_id ;
                         var user_seq = res[0].user_seq ;
                     }
@@ -5576,16 +5578,19 @@ angular.module('MoneyNetwork')
                     MoneyNetworkAPILib.get_all_hubs(false, function (all_hubs) {
                         var missing_hubs, i, hub ;
                         missing_hubs = [] ;
+                        // select moneynetwork user data hubs (ignoring moneynetwork wallet data hubs)
+                        // also skip failed user data hub.
                         for (i=0 ; i<all_hubs.length ; i++) {
-                            if ((all_hubs[i].hub_type == 'user') && !all_hubs[i].hub_added) missing_hubs.push(all_hubs[i]) ;
+                            if ((all_hubs[i].hub_type == 'user') && !all_hubs[i].hub_added && !all_hubs[i].add_hub_timeout_at) missing_hubs.push(all_hubs[i]) ;
                         }
                         if (!missing_hubs.length) return ;
                         console.log(pgm + 'found ' + total_downloaded + ' chat files. elapsed = ' + elapsed + '. adding an extra user data hub for more chat files') ;
+                        console.log(pgm + 'missing_hubs = ' + JSON.stringify(missing_hubs)) ;
                         z_wrapper_notification(['info', 'Adding an extra user data hub<br>to get more public chat messages', 5000]) ;
                         i = Math.floor(Math.random() * missing_hubs.length) ;
                         hub = missing_hubs[i].hub ;
                         moneyNetworkHubService.z_merger_site_add(hub, function (res) {
-                            console.log(pgm + 'mergerSiteAdd ' + hub + '. res = ' + JSON.stringify(res)) ;
+                            console.log(pgm + 'mergerSiteAdd ' + hub + '. hub info = ' + JSON.stringify(missing_hubs[i]) + '. res = ' + JSON.stringify(res)) ;
                         }) ;
                     }) ;
                     return ;
@@ -6422,7 +6427,7 @@ angular.module('MoneyNetwork')
                         file_auth_address, file_user_seq, z_filename, folder, renamed_chat_file, old_timestamps,
                         new_timestamps, deleted_timestamps, old_z_filename, old_cache_filename, old_cache_status,
                         image, byteAmount, chat_bytes, chat_length, error, auth_address, index, break_point,
-                        reactions_index, reactions_info, file_hub, js_messages_row, contact2, hub ;
+                        reactions_index, reactions_info, file_hub, js_messages_row, contact2, hub, now, elapsed ;
                     // update cache_status
                     cache_status.is_pending = false;
                     debug('public_chat', pgm + 'downloaded ' + cache_filename) ; // + ', chat = ' + chat);
@@ -6478,7 +6483,15 @@ angular.module('MoneyNetwork')
 
                     // count number of downloaded chat files (detect problems with peers)
                     hub = cache_filename.split('/')[1] ;
-                    if (!no_chat_files_downloaded[hub]) no_chat_files_downloaded[hub] = 0 ;
+                    if (!no_chat_files_downloaded[hub]) {
+                        if (merger_site_added[hub]) {
+                            now = new Date().getTime() ;
+                            elapsed = now - merger_site_added[hub] ;
+                            elapsed = Math.round(elapsed/1000) ;
+                            console.log(pgm + 'waited ' + elapsed + ' seconds for first optional file from ' + hub) ;
+                        }
+                        no_chat_files_downloaded[hub] = 0 ;
+                    }
                     no_chat_files_downloaded[hub]++ ;
                     // console.log(pgm + 'no_chat_files_downloaded = ' + JSON.stringify(no_chat_files_downloaded)) ;
 
@@ -6914,7 +6927,7 @@ angular.module('MoneyNetwork')
         // update timestamp in status.json file and modified in content.json.
         // will allow users to communicate with active contacts and ignoring old and inactive contacts
         // small file(s) for quick distribution in ZeroNet
-        function i_am_online() {moneyNetworkHubService.i_am_online(z_update_1_data_json, is_user_info_empty) }
+        function i_am_online() {moneyNetworkHubService.i_am_online() }
 
         // contact actions: add, remove, ignore, unplonk, verify. Used in NetWork and Chat controllers
         function contact_add (contact) {
@@ -7381,6 +7394,31 @@ angular.module('MoneyNetwork')
             }
         }
 
+        // download and help distribute all files? (user data hubs). used for public chat
+        var help = { bol: false } ;
+        function set_help (value) {
+            var help_str ;
+            if ([true, false].indexOf(value) != -1) {
+                // set from add hubs section
+                help.bol = value ;
+            }
+            else {
+                // startup. get from ls
+                help_str = MoneyNetworkHelper.getItem('help') ;
+                if (help_str) {
+                    try { help.bol = JSON.parse(help_str) }
+                    catch (e) { help.bol = false }
+                }
+                else help.bol = false ;
+            }
+            MoneyNetworkHelper.setItem('help', JSON.stringify(help.bol)) ;
+            MoneyNetworkHelper.ls_save() ;
+        }
+        function get_help () {
+            return help ;
+        }
+        moneyNetworkHubService.inject_functions({get_help: get_help}) ;
+
         // moneyNetworkService ready.
         // using ls_bind (interface to ZeroNet API localStorage functions may still be loading)
         MoneyNetworkHelper.ls_bind(function () {
@@ -7390,6 +7428,7 @@ angular.module('MoneyNetwork')
             // set register = Y/N. used in auth page (login or register as default option)
             set_register_yn() ;
             set_use_login() ;
+            set_help() ;
 
             // get list of all user data hubs and wallet data hubs
             all_hubs = MoneyNetworkAPILib.get_all_hubs(true, function() {}) ;
@@ -7531,8 +7570,9 @@ angular.module('MoneyNetwork')
             z_merger_site_add: moneyNetworkHubService.z_merger_site_add,
             z_wrapper_notification: moneyNetworkHubService.z_wrapper_notification,
             sanitize: moneyNetworkHubService.sanitize,
-            add_welcome_msg: add_welcome_msg,
-            check_merger_permission: moneyNetworkHubService.check_merger_permission
+            check_merger_permission: moneyNetworkHubService.check_merger_permission,
+            set_help: set_help,
+            get_help: get_help
         };
 
         // end MoneyNetworkService

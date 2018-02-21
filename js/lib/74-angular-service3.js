@@ -1400,7 +1400,7 @@ angular.module('MoneyNetwork')
             }) ; // get_my_user_hub callback 1
 
         } // z_update_1_data_json
-
+        moneyNetworkHubService.inject_functions({z_update_1_data_json: z_update_1_data_json}) ;
 
         // update zeronet step 2a. update "data.json" file. encrypt and insert new outbox messages in msg arrays
         // step 2a will call step 2b for all cryptMessage encrypted outbox messages 

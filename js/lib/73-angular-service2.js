@@ -308,6 +308,7 @@ angular.module('MoneyNetwork')
             }
             return true ;
         } //  is_user_info_empty
+        moneyNetworkHubService.inject_functions({is_user_info_empty: is_user_info_empty}) ;
 
 
         function guest_account_user_info() {

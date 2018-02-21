@@ -2097,6 +2097,7 @@ var MoneyNetworkAPILib = (function () {
     // - fileWrite
     // - sitePublish
     var new_hub_file_get_cbs = {} ; // any fileGet callback waiting for hub to be ready?
+    var add_hub_timeout_at = {} ; // remember timeout for mergerSiteAdd
     function z_merger_site_add(hub, cb) {
         var pgm = module + '.z_merger_site_add: ';
         if (!cb) cb = function () {};
@@ -2238,6 +2239,8 @@ var MoneyNetworkAPILib = (function () {
                     msg = ['Error. Timeout while waiting for new user data hub ' + hub, 'Maybe user data hub without peers', 'Maybe running on a proxy server with add site disabled'] ;
                     if (new_hub_file_get_cbs[hub].cbs.length) msg.push(new_hub_file_get_cbs[hub].cbs.length + ' pending fileGet operations will fail. See log') ;
                     ZeroFrame.cmd("wrapperNotification", ['error', msg.join('<br>')]) ;
+                    add_hub_timeout_at[hub] = now ;
+                    console.log(pgm + 'add_hub_timeout_at = ' + JSON.stringify(add_hub_timeout_at)) ;
                     run_cbs(hub, msg.join('. ')) ;
                     monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
                     return ;
@@ -3713,6 +3716,13 @@ var MoneyNetworkAPILib = (function () {
     //    {"hub":"1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ","hub_type":"wallet","hub_title":"W2 Wallet data hub","no_users":36, "add_hub":false,"peers":0},
     //    {"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh","hub_type":"user",  "hub_title":"U3 User data hub",  "no_users":108,"add_hub":false,"peers":8},
     //    {"hub":"1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc","hub_type":"user",  "hub_title":"U2 User data hub",  "no_users":0,  "add_hub":false,"peers":0}];
+    var hub_priority_texts = {
+        "1": 'existing hub with peers. always ok',
+        "2": 'just added hub waiting for peers. may or may not fail',
+        "3": 'new hub. maybe or maybe not be a hub with peers',
+        "4": 'existing hub without peers. will always fail',
+        "5": 'last mergerSiteAdd failed. unavailable hub'
+    };
 
     function get_all_hubs (refresh, cb) {
         var pgm = module + '.get_all_hubs: ' ;
@@ -3893,19 +3903,20 @@ var MoneyNetworkAPILib = (function () {
                         done = function() {
                             var i, hub, merge, deletes, old_i, new_i, deleted_hub, key, row ;
 
-                            // set priority. can be used when selection hubs to add
-                            //priority_texts = {
-                            //    "1": 'existing hub with peers. always ok',
-                            //    "2": 'just added hub waiting for peers. may or may not fail',
-                            //    "3": 'new hub. maybe or maybe not be a hub with peers',
-                            //    "4": 'existing hub without peers. will always fail'
-                            //};
-                            // temp_all_hubs = [{"hub":"182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe"},{"hub":"1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh"}]
+                            // set priority 1-5. can be used when selection hubs to add.
                             for (i=0 ; i<temp_all_hubs.length ; i++) {
-                                if (!temp_all_hubs[i].hub_added) temp_all_hubs[i].priority = 3 ; // 3. priority. new hub. maybe or maybe not a hub with peers
+                                if (temp_all_hubs[i].add_hub_timeout_at) temp_all_hubs[i].priority = 5 ; // 5. priority. last mergerSiteAdd failed with timeout after 1 minute
+                                else if (!temp_all_hubs[i].hub_added) temp_all_hubs[i].priority = 3 ; // 3. priority. new hub. maybe or maybe not a hub with peers
                                 else if (temp_all_hubs[i].hub_added_at) temp_all_hubs[i].priority = 2 ; // 2. priority. just added hub waiting for peers. may or may not fail
                                 else if (temp_all_hubs[i].peers) temp_all_hubs[i].priority = 1 ; // 1. priority. existing hub with peers. always ok
                                 else temp_all_hubs[i].priority = 4 ; // 4. priority. existing hubs without peers. publish user content will fail.
+                                temp_all_hubs[i].priority_text = hub_priority_texts[temp_all_hubs[i].priority] ;
+                            }
+
+                            // add timeout info. should not retry mergerSiteAdd for an unavailable user data hub
+                            for (i=0 ; i<temp_all_hubs.length ; i++) {
+                                hub = temp_all_hubs[i] ;
+                                if (add_hub_timeout_at[hub]) temp_all_hubs[i].add_hub_timeout_at = add_hub_timeout_at[hub] ;
                             }
                             console.log(pgm + 'temp_all_hubs (3) = ' + JSON.stringify(temp_all_hubs)) ;
 
@@ -3937,14 +3948,16 @@ var MoneyNetworkAPILib = (function () {
                                 else {
                                     // merge properties
                                     // console.log(pgm + 'merged old and new hub ' + hub + ' info. old hub_added = ' + all_hubs[old_i].hub_added + '. new hub_added = ' + temp_all_hubs[new_i].hub_added) ;
-                                    all_hubs[old_i].hub_type     = temp_all_hubs[new_i].hub_type ;
-                                    all_hubs[old_i].title        = temp_all_hubs[new_i].title ;
-                                    all_hubs[old_i].no_users     = temp_all_hubs[new_i].no_users ;
-                                    all_hubs[old_i].hub_added    = temp_all_hubs[new_i].hub_added ;
-                                    all_hubs[old_i].hub_added_at = temp_all_hubs[new_i].hub_added_at ;
-                                    all_hubs[old_i].peers        = temp_all_hubs[new_i].peers ;
-                                    all_hubs[old_i].url          = temp_all_hubs[new_i].url ;
-                                    all_hubs[old_i].priority     = temp_all_hubs[new_i].priority ;
+                                    all_hubs[old_i].hub_type           = temp_all_hubs[new_i].hub_type ;
+                                    all_hubs[old_i].title              = temp_all_hubs[new_i].title ;
+                                    all_hubs[old_i].no_users           = temp_all_hubs[new_i].no_users ;
+                                    all_hubs[old_i].hub_added          = temp_all_hubs[new_i].hub_added ;
+                                    all_hubs[old_i].hub_added_at       = temp_all_hubs[new_i].hub_added_at ;
+                                    all_hubs[old_i].peers              = temp_all_hubs[new_i].peers ;
+                                    all_hubs[old_i].url                = temp_all_hubs[new_i].url ;
+                                    all_hubs[old_i].priority           = temp_all_hubs[new_i].priority ;
+                                    all_hubs[old_i].priority_text      = temp_all_hubs[new_i].priority_text ;
+                                    all_hubs[old_i].add_hub_timeout_at = temp_all_hubs[new_i].add_hub_timeout_at
                                 }
                             }
                             deletes.sort() ;
