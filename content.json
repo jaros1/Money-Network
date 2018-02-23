@@ -30,12 +30,12 @@
    "size": 4286
   },
   "index.html": {
-   "sha512": "b415b14d3d456f0e5bc6b066a58e3e1d71be3ef6e3adca62958af4b983e7a16b",
-   "size": 146618
+   "sha512": "5bb72ac060a9ee15e4fac12e35c31957474b07fc44c83c13e7b01153bbd57e3f",
+   "size": 146656
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "603b717a3f48c76306150a90985b473a6730cc0c5285f78e77b8da4e0c9e7cef",
-   "size": 340184
+   "sha512": "56e8f51d046583356f5da7fd30fcdcc90fad2adc7a26f3cdaf6484a78da22553",
+   "size": 339798
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -66,8 +66,8 @@
    "size": 4814
   },
   "js-external/30-ZeroFrame.js": {
-   "sha512": "c202099b11f7fd67c3b6a4209f5345fc29c4e3384fd4cb329d4f31d3c70aff73",
-   "size": 9656
+   "sha512": "bdee95093ca1b7a10e5f71a6c0783fdcd0c65b527d96896a6ad98c24e66ef6b0",
+   "size": 9762
   },
   "js-external/40-angular.js": {
    "sha512": "1609aea738f6b492bfe1d46ed034005db6edbef1f65c1c5610ddb89a613d009e",
@@ -178,8 +178,8 @@
    "size": 53602
   },
   "js/all.js.zip": {
-   "sha512": "76292e420bb77011cb670d437cd60a830ed89cd6e1139a0953a5b8554b316c5b",
-   "size": 276825
+   "sha512": "40d735533a0c0c5fb8f71370d3a516645a436635eea1f86dd7b0de0c7eac7ff0",
+   "size": 276986
   },
   "public/css/fonts/glyphicons-12-camera.png": {
    "sha512": "94cdc9ad56ddbbfd7f710d4bf864cc7bb73108d6a88a952d82c7990e51ab7e5e",
@@ -350,7 +350,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1519222239,
+ "modified": 1519235145,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -370,7 +370,7 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G3744iIkKCL2uq5i+QMZi7Cipv4Kx1fYOynC0X4RjdivKKo4x2+EmHlBm4nq5m+hwK0/ltq4shJxDURW+ZtTH9o="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "GwsJL61/oOKgBoCdEpSmvw6c3YXJR0zEdFPKW+uVYCdxYvVpfW1APhO6MLT5TAj8RfK8dtSpnsFzxgIc2qAZhYc="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",

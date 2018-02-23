@@ -713,6 +713,11 @@ angular.module('MoneyNetwork')
 
         var MONEY_API_RE = /^[0-9a-f]{10}(-i|-e|-o|-io|-p)?\.[0-9]{13}$/ ; // ignore temporary files & money transaction files in export
 
+
+        // change user profile hub
+        self.my_user_data_hub ;
+        self.user_data_hubs = ['182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe', ''] ;
+
         // get export info. show in export and import options sections
         (function() {
             var pgm = controller + ': ' ;
@@ -733,6 +738,7 @@ angular.module('MoneyNetwork')
             moneyNetworkService.get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = controller + ' get_my_user_hub callback 1: ' ;
                 var inner_path ;
+                self.my_user_data_hub = my_user_data_hub ;
                 user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 inner_path = user_path + '/content.json' ;
                 z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {

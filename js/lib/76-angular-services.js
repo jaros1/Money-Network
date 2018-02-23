@@ -7397,10 +7397,29 @@ angular.module('MoneyNetwork')
         // download and help distribute all files? (user data hubs). used for public chat
         var help = { bol: false } ;
         function set_help (value) {
-            var help_str ;
+            var pgm = service + '.set_help: ' ;
+            var help_str, change_settings ;
+            console.log(pgm + 'value = ' + JSON.stringify(value)) ;
             if ([true, false].indexOf(value) != -1) {
                 // set from add hubs section
                 help.bol = value ;
+                // change setting for all user data hubs. todo: where to find old value?
+                MoneyNetworkAPILib.get_all_hubs(false, function (all_hubs) {
+                    var all_hubs_clone, i ;
+                    all_hubs_clone = [] ;
+                    for (i=0 ; i<all_hubs.length ; i++) all_hubs_clone.push(all_hubs[i]) ;
+                    change_settings = function() {
+                        var hub_info ;
+                        hub_info = all_hubs_clone.shift() ;
+                        if (!hub_info) return ; // done
+                        if (hub_info.hub_type != 'user') return change_settings() ;
+                        if (!hub_info.hub_added) return change_settings() ;
+                        ZeroFrame.cmd("OptionalHelpAll", [value, hub_info.hub], function (res) {
+                            change_settings() ;
+                        }) ;
+                    } ;
+                    change_settings() ;
+                }) ;
             }
             else {
                 // startup. get from ls
@@ -7572,7 +7591,8 @@ angular.module('MoneyNetwork')
             sanitize: moneyNetworkHubService.sanitize,
             check_merger_permission: moneyNetworkHubService.check_merger_permission,
             set_help: set_help,
-            get_help: get_help
+            get_help: get_help,
+            move_user_hub: moneyNetworkHubService.move_user_hub
         };
 
         // end MoneyNetworkService

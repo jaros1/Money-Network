@@ -689,7 +689,7 @@ angular.module('MoneyNetwork')
             if (user_contents_max_size == -1) {
                 // fatal error. hub content.json file was not found.
                 console.log(pgm + 'abort processing. hub content.json file was not found. problem with hub') ;
-                return ;
+                return moneyNetworkHubService.reset_my_user_hub();
             }
             // console.log(pgm + 'user_contents_max_size = ' + user_contents_max_size) ;
 

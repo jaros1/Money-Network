@@ -281,18 +281,7 @@ angular.module('MoneyNetwork')
                                     var pgm = service + '.z_merger_site_add get_all_hubs callback 2: ' ;
                                     console.log(pgm + 'all_hubs = ' + JSON.stringify(all_hubs)) ;
                                     console.log(pgm + 'reset and select user data hub once more') ;
-                                    delete z_cache.my_user_hub ;
-                                    delete z_cache.other_user_hub ;
-                                    z_cache.other_user_hub_title ;
-                                    get_my_user_hub(function(my_user_hub, other_user_hub, other_user_hub_title) {
-                                        var pgm = service + '.z_merger_site_add get_my_user_hub callback 3: ' ;
-                                        console.log(pgm + 'my_user_hub = ' + my_user_hub) ;
-                                        console.log(pgm + 'other_user_hub = ' + other_user_hub) ;
-                                        console.log(pgm + 'other_user_hub_title = ' + other_user_hub_title) ;
-                                        console.log(pgm + 'call i_am_online and write data.json to zeronet') ;
-                                        i_am_online() ;
-
-                                    }); // get_my_user_hub callback 3
+                                    reset_my_user_hub() ;
 
                                 }) ; // get_all_hubs callback 2
                             } // if
@@ -822,6 +811,29 @@ angular.module('MoneyNetwork')
             return user_data_hubs ;
         }
 
+        // workaround for failed user data hub selection
+        // 1) user hub in a hub without any peers. mergerSiteAdd failed.
+        // 2) could not find max user directory size (same problem as in 1)
+        // 3) user area on a hub without any peers. publish failed.
+        function reset_my_user_hub () {
+            var pgm = service + '.reset_my_user_hub: ' ;
+            console.log(pgm + 'reset and select user data hub once more') ;
+            delete z_cache.my_user_hub ;
+            delete z_cache.other_user_hub ;
+            z_cache.other_user_hub_title ;
+            get_my_user_hub(function(my_user_hub, other_user_hub, other_user_hub_title) {
+                var pgm = service + '.z_merger_site_add get_my_user_hub callback 3: ' ;
+                console.log(pgm + 'my_user_hub = ' + my_user_hub) ;
+                console.log(pgm + 'other_user_hub = ' + other_user_hub) ;
+                console.log(pgm + 'other_user_hub_title = ' + other_user_hub_title) ;
+                console.log(pgm + 'call i_am_online and write data.json to zeronet') ;
+                i_am_online() ;
+
+            }); // get_my_user_hub callback 3
+
+        } // reset_my_user_hub
+
+
         // merge old user hub data into current user hub and delete old user hub data
         var merge_user_hubs_status = { running: false } ;
         function merge_user_hubs (hubs) {
@@ -1022,7 +1034,7 @@ angular.module('MoneyNetwork')
 
                     // step 4: download any missing optional files
                     step_4_download_files = function (cb4) {
-                        var key, filename, debug_seq0, required, format, timeout, regexp ;
+                        var key, filename, debug_seq0, required, format, timeout, regexp, inner_path ;
                         if (Object.keys(hub_content.files_optional).length == 0) return cb4() ;
                         regexp = new RegExp(MN_CONTENT_OPTIONAL) ; // internal rule for optional filenames
                         // find next optional file to download
@@ -1047,7 +1059,9 @@ angular.module('MoneyNetwork')
                         required = true ;
                         format = 'text' ;
                         timeout = 10 ; // 300=30 seconds? 10 = 1 second?
-                        z_file_get(pgm, {filename: filename, required: required, format: format, timeout: timeout}, function (file_str) {
+                        inner_path = hub_user_path + filename ;
+                        // todo: use inner_path, not filename!
+                        z_file_get(pgm, {inner_path: inner_path, required: required, format: format, timeout: timeout}, function (file_str) {
                             var pgm = service + '.merge_user_hub.step_4_download_files z_file_get callback: ';
                             if (!file_str) hub_content.files_optional[key].file_info.is_downloaded = -1 ; // download failed
                             hub_content.files_optional[key].file_str = file_str ;
@@ -1461,7 +1475,7 @@ angular.module('MoneyNetwork')
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + hub + ' publish') ;
                             // console.log(pgm + 'todo: use z_site_publish');
                             // debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish', show_debug('z_site_publish')) ;
-                            MoneyNetworkAPILib.z_site_publish({inner_path: inner_path, remove_missing_optional: true, reason: 'merge_user_hub'}, function (res) {
+                            MoneyNetworkAPILib.z_site_publish({inner_path: inner_path, reason: 'merge_user_hub'}, function (res) {
                             //ZeroFrame.cmd("sitePublish", {inner_path: inner_path}, function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub sitePublish callback 2: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
@@ -1623,6 +1637,162 @@ angular.module('MoneyNetwork')
             }) ; // get_my_hub callback 1
 
         } // merge_user_hub
+
+
+        // move user profile from current user data hub to new_user_hub
+        function move_user_hub (new_user_hub, cb) {
+            var pgm = service + '.move_user_hub: ' ;
+
+            // steps:
+            // 1 - sign current user hub
+            // 2 - read current content.json
+            // 3 - copy normal files
+            // 4 - sign and add optional pattern
+            // 5 - use merge_user_hub to move optional files
+            // done
+
+            MoneyNetworkAPILib.start_transaction(pgm, function(transaction_timestamp) {
+
+                var cb2 = function (res) {
+                    MoneyNetworkAPILib.end_transaction(transaction_timestamp) ;
+                    cb(res) ;
+                } ;
+
+                // get list of hub titles. For other_user_hub_title
+                ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
+
+                    // get current hub (to be moved)
+                    get_my_user_hub (function (my_user_data_hub, other_user_hub, other_user_hub_title) {
+                        var pgm = service + '.move_user_hub get_my_user_hub callback 1: ' ;
+                        var old_user_path, new_user_path, inner_path1, debug_seq1 ;
+
+                        if (!merger_sites[my_user_data_hub]) return cb2('error. current user hub ' + my_user_data_hub + ' is not a merger site') ;
+                        if (!merger_sites[new_user_hub]) return cb2('error. new user hub ' + new_user_hub + ' is not a merger site') ;
+                        if (my_user_data_hub == new_user_path) return cb2('error. current user hub = new user hub = ' + new_user_hub) ;
+
+                        // 1: sign old user hub and update list of files
+                        old_user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address + '/';
+                        new_user_path = "merged-" + get_merged_type() + "/" + new_user_hub + "/data/users/" + ZeroFrame.site_info.auth_address + '/';
+                        inner_path1 = old_user_path + 'content.json' ;
+                        debug_seq1 = debug_z_api_operation_start(pgm, old_user_path + '/content.json', 'siteSign', show_debug('z_site_publish')) ;
+                        ZeroFrame.cmd("siteSign", {inner_path: inner_path1, remove_missing_optional: true}, function (res) {
+                            var pgm = service + '.move_user_hub siteSign callback 2: ' ;
+                            debug_z_api_operation_end(debug_seq1, res);
+                            if (res != 'ok') {
+                                // sign failed
+                                console.log(pgm + 'error. cannot move user profile. siteSign for ' + inner_path1 + ' failed. error = ' + JSON.stringify(res)) ;
+                                return cb2(res) ;
+                            }
+
+                            // 2 - sign ok. read content.json and list of normal files
+                            z_file_get(pgm, {inner_path: inner_path1}, function (content_str, extra) {
+                                var pgm = service + '.move_user_hub z_file_get callback 3: ' ;
+                                var content, copy_normal_file ;
+                                if (!content_str) {
+                                    console.log(pgm + 'error. cannot move user profile. ' + inner_path1 + ' was not found') ;
+                                    return cb2('error. cannot move user profile. ' + inner_path1 + ' was not found') ;
+                                }
+                                content = JSON.parse(content_str) ;
+                                if (!content.files) content.files = {} ;
+
+                                // 3. copy normal files
+                                copy_normal_file = function() {
+                                    var pgm = service + '.move_user_hub copy_normal_file callback 4: ' ;
+
+                                    var filenames, filename, old_inner_path, new_inner_path, inner_path3, format, debug_seq3 ;
+                                    filenames = Object.keys(content.files) ;
+                                    if (!filenames.length) {
+                                        // 4: no more normal files to copy. sign new user profile
+                                        inner_path3 = new_user_path + 'content.json' ;
+                                        debug_seq3 = debug_z_api_operation_start(pgm, inner_path3, 'siteSign', show_debug('z_site_publish')) ;
+                                        ZeroFrame.cmd("siteSign", {inner_path: inner_path3, remove_missing_optional: true}, function (res) {
+                                            var pgm = service + '.move_user_hub siteSign callback 5a: ';
+                                            debug_z_api_operation_end(debug_seq3, res);
+                                            if (res != 'ok') {
+                                                // sign failed
+                                                console.log(pgm + 'error. cannot move user profile. siteSign for ' + inner_path3 + ' failed. error = ' + JSON.stringify(res));
+                                                return cb2('cannot move user profile. siteSign for ' + inner_path3 + ' failed. error = ' + JSON.stringify(res));
+                                            }
+                                            // sign new user profile OK
+                                            z_file_get(pgm, {inner_path: inner_path3}, function (content_str, extra) {
+                                                var pgm = service + '.move_user_hub z_file_get callback 6a: ';
+                                                var content, json_raw ;
+                                                // add optional pattern before merge_user operation
+                                                content = JSON.parse(content_str) ;
+                                                content.optional = Z_CONTENT_OPTIONAL ;
+                                                json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
+                                                z_file_write(pgm, inner_path3, btoa(json_raw), function (res) {
+                                                    var pgm = service + '.move_user_hub z_file_write callback 7a: ';
+                                                    if (res != 'ok') {
+                                                        console.log(pgm + 'error. cannot move user profile. fileWrite failed from new content.json ' + inner_path3 + '. res = ' + JSON.stringify(res)) ;
+                                                        return cb2('error. cannot move user profile. fileWrite failed from new content.json ' + inner_path3 + '. res = ' + JSON.stringify(res)) ;
+                                                    }
+                                                    // OK. signed new user content.json with normal files. Ready for merge user operation
+                                                    z_cache.other_user_hub = my_user_data_hub ;
+                                                    z_cache.other_user_hub_title = merger_sites[my_user_data_hub].content.title ;
+                                                    z_cache.my_user_hub = new_user_hub ;
+                                                    // merge optional files from old user hub to new user hub
+                                                    merge_user_hub(my_user_data_hub, function (res) {
+                                                        var pgm = service + '.move_user_hub merge_user_hub callback 8a: ';
+                                                        console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                                                        cb2(res) ;
+
+                                                    }); // merge_user_hub callback 8a
+
+                                                }) ; // z_file_write callback 7a
+
+                                            }) ; // z_file_get callback 6a
+
+
+                                        }) ; // siteSign callback 5a
+                                        return ;
+                                    }
+                                    // copy normal file
+                                    filename = filenames.shift() ;
+                                    delete content.files[filename] ;
+                                    old_inner_path = old_user_path + filename ;
+                                    new_inner_path = new_user_path + filename ;
+                                    format = ['avatar.jpg', 'avatar.png'].indexOf(filename) != -1 ? 'base64' : 'text' ;
+                                    z_file_get(pgm, {inner_path: old_inner_path, format: format}, function (res, extra) {
+                                        var pgm = service + '.move_user_hub z_file_get callback 5b: ' ;
+                                        var image_base64uri, json_raw, post_data ;
+                                        // write file
+                                        if (['avatar.jpg', 'avatar.png'].indexOf(filename) != -1) {
+                                            // images
+                                            image_base64uri = res ;
+                                            post_data = image_base64uri != null ? image_base64uri.replace(/.*?,/, "") : void 0;
+                                        }
+                                        else {
+                                            // json
+                                            json_raw = unescape(encodeURIComponent(res));
+                                            post_data = btoa(json_raw) ;
+                                        }
+                                        z_file_write(pgm, new_inner_path, post_data, function (res) {
+                                            var pgm = service + '.move_user_hub z_file_write callback 6b: ' ;
+                                            if (res != 'ok') return cb2('cannot move user profile. ' + filename + ' fileWrite failed. res = ' + JSON.stringify(res)) ;
+                                            // next file
+                                            copy_normal_file() ;
+                                        }) ; // z_file_write callback 6b
+
+                                    }) ; // z_file_get callback 5b
+
+                                } ; // copy file callback 4
+                                // start copy file loop
+                                copy_normal_file() ;
+
+                            }) ; // z_file_get callback 3
+
+                        }) ; // siteSign callback 2
+
+                    }) ; // get_my_user_hub callback 1
+
+                }) ; // mergerSiteList callback 0
+
+
+            }) ;
+
+
+        } // move_user_hub
 
         //// wrapper for data.json fileGet and fileWrite (cache data.json file in memory)
         var get_data_json_cbs = [] ; // callbacks waiting for get_data_json to finish
@@ -1948,6 +2118,8 @@ angular.module('MoneyNetwork')
         // params:
         // - cb: optional callback function. post publish processing. used in i_am_online. check pubkey2 takes long time and best done after publish
         var zeronet_site_publish_interval = 0 ;
+        var zeronet_site_publish_no_peers = false ; // true after failed publish and no peers. move user directory confirm box open
+
 
         function zeronet_site_publish(options,cb) {
             var pgm = service + '.zeronet_site_publish: ';
@@ -2019,22 +2191,108 @@ angular.module('MoneyNetwork')
                                 console.log(pgm + 'res = ' + JSON.stringify(res) + ' (' + debug_seq + ')');
                                 if (detected_client_log_out(pgm, old_userid)) return;
                                 if (res != "ok") {
-                                    z_wrapper_notification(["error", "Failed to publish: " + res.error, 5000]);
-                                    // error - repeat sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
-                                    if (!zeronet_site_publish_interval) zeronet_site_publish_interval = 30;
-                                    else zeronet_site_publish_interval = zeronet_site_publish_interval * 2;
-                                    console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
-                                    var retry_zeronet_site_publish = function () {
-                                        zeronet_site_publish({reason: reason});
-                                    };
-                                    cb();
-                                    $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval * 1000);
-                                    // debug_info() ;
+
+
+                                    // https://github.com/jaros1/Money-Network/issues/321 Publish failed - no peers
+                                    // publish failed. check number of peers for current user data hub
+                                    // refresh list of user data hubs. user may have to move user profile to an other user data hub
+                                    MoneyNetworkAPILib.get_all_hubs(true, function (all_hubs) {
+                                        var i, peers, msg, user_data_hubs, hub ;
+
+                                        // any peers serving my_user_data_hub?
+                                        peers = true ;
+                                        for (i=0 ; i<all_hubs.length ; i++) {
+                                            if (all_hubs[i].hub != my_user_data_hub) continue ;
+                                            if (all_hubs[i].hasOwnProperty('peers') && (all_hubs[i].peers < 2)) peers = false ;
+                                        }
+
+                                        if (peers) {
+                                            // publish failed. unknown reason (internet offline, vpn problem, ZeroNet port problem)
+                                            z_wrapper_notification(["error", "Failed to publish: " + res.error, 5000]);
+                                        }
+                                        else {
+                                            // publish failed. No peers for my_user_data_hub
+
+                                            // any user data hubs with peers?
+                                            user_data_hubs = [] ;
+                                            for (i=0 ; i<all_hubs.length ; i++) {
+                                                if (all_hubs[i].hub_type != 'user') continue ;
+                                                if (!all_hubs[i].hub_added) continue ;
+                                                if (all_hubs[i].hub == my_user_data_hub) continue ;
+                                                if (all_hubs[i].peers >= 2) user_data_hubs.push(all_hubs[i].hub) ;
+                                            }
+                                            if (!user_data_hubs.length) {
+                                                // no user data hubs with peers.
+                                                msg = [
+                                                    "Failed to publish: " + res.error,
+                                                    'No peers were found for user data hub' + my_user_data_hub,
+                                                    'No other user data hubs with peers were found',
+                                                    'Please add more user data hubs in Account page',
+                                                    'Please select default user data hub in Account page'
+                                                ] ;
+                                                console.log(pgm + msg.join('. ')) ;
+                                                z_wrapper_notification(["error", msg.join('<br>')]);
+
+                                            }
+                                            else if (user_data_hubs.length == 1) {
+                                                // one user data hub with peers. move user profile
+                                                msg = [
+                                                    "Failed to publish: " + res.error,
+                                                    'No peers were found for user data hub' + my_user_data_hub,
+                                                    'Moving user profile to ' + user_data_hubs[0]
+                                                ] ;
+                                                console.log(pgm + msg.join('. ')) ;
+                                                z_wrapper_notification(["error", msg.join('<br>')]);
+
+                                            }
+                                            else {
+                                                // more user data hubs with peers. Select random or ask user to select user data hub in Account page
+                                                msg = [
+                                                    "Failed to publish: " + res.error,
+                                                    'No peers were found for user data hub' + my_user_data_hub,
+                                                    'You should move your user profile to an other user data hub',
+                                                    'Press OK to confirm box or go to Account page and change default user data hub'] ;
+                                                console.log(pgm + msg.join('. ')) ;
+                                                z_wrapper_notification(["error", msg.join('<br>')]);
+
+                                                if (!zeronet_site_publish_no_peers) {
+                                                    // confirm box. offer the user as easy workaround for publish failed and no peers
+                                                    zeronet_site_publish_no_peers = true ;
+                                                    ZeroFrame.cmd("wrapperConfirm", ['Move user profile to an other user data hub?', 'OK'], function (confirm) {
+                                                        if (!confirm) return ;
+                                                        z_wrapper_notification(["error", "Sorry. Move user profile has not yet been implemented"]);
+
+                                                        //
+
+                                                        // todo: move user profile
+
+                                                    })
+                                                }
+
+                                            }
+
+                                        }
+
+                                        // error - repeat sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
+                                        if (!zeronet_site_publish_interval) zeronet_site_publish_interval = 30;
+                                        else zeronet_site_publish_interval = zeronet_site_publish_interval * 2;
+                                        console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
+                                        var retry_zeronet_site_publish = function () {
+                                            zeronet_site_publish({reason: reason});
+                                        };
+                                        cb();
+                                        $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval * 1000);
+                                        // debug_info() ;
+
+
+                                    }) ;
+
                                     return;
                                 }
 
                                 // sitePublish OK
                                 zeronet_site_publish_interval = 0;
+                                zeronet_site_publish_no_peers = false ;
                                 z_cache.publish = false;
 
                                 // debug: is sha256 links in localStorage (contacts.messages) and ZeroNet (data.json message table) OK?
@@ -3494,6 +3752,7 @@ angular.module('MoneyNetwork')
             write_like_json: write_like_json,
             update_like_index: update_like_index,
             get_my_user_hub: get_my_user_hub,
+            reset_my_user_hub: reset_my_user_hub,
             get_z_cache: get_z_cache,
             check_merger_permission: check_merger_permission,
             get_ls_reactions: get_ls_reactions,
@@ -3544,7 +3803,8 @@ angular.module('MoneyNetwork')
             z_merger_site_add: z_merger_site_add,
             get_merger_site_added: get_merger_site_added,
             z_wrapper_notification: z_wrapper_notification,
-            sanitize: sanitize
+            sanitize: sanitize,
+            move_user_hub: move_user_hub
         };
 
         // end MoneyNetworkHubService

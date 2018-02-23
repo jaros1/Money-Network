@@ -71,6 +71,7 @@ ZeroFrame = (function() {
             if (!this.site_info || (this.site_info.address == message.params.address)) this.site_info = message.params; // main site. MN or Wallet
             else {
                 // hub. user data hub (MN) or wallet data hub (wallet sites)
+                // this.log("ZeroFrame.prototype.route: site_info = " + JSON.stringify(message.params)) ;
                 if (!this.merger_sites) this.merger_sites = {} ;
                 if (this.merger_sites[message.params.address]) old_peers = this.merger_sites[message.params.address].peers ;
                 this.merger_sites[message.params.address] = message.params ;

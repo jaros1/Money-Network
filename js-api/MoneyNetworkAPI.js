@@ -2289,6 +2289,7 @@ var MoneyNetworkAPILib = (function () {
         if (!ZeroFrame) throw pgm + 'fileGet aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
 
         inner_path = options.inner_path ;
+        if (!inner_path || (typeof inner_path != 'string')) throw pgm + 'fileGet aborted. Missing or invalid inner_path' ;
         if (inner_path.match(inner_path_re1)) {
             // path to user directory.
             // check inner_path (old before merger site syntax data/users/<auth_address>/<filename>
@@ -3846,56 +3847,50 @@ var MoneyNetworkAPILib = (function () {
                         var pgm = module + '.get_all_hubs mergerSiteList callback 3: ';
                         var i, hub, hub_type, done, remove_hubs, now, elapsed ;
                         console.log(pgm + 'merger_sites (1) = ' + JSON.stringify(merger_sites)) ;
-
-                        //merger_sites (1) = {
-                        //    "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh": {
-                        //        "tasks": 105,
+                        // merger_sites (1) = {
+                        //    "1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc": {
+                        //        "tasks": 8,
                         //        "size_limit": 10,
-                        //        "address": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
+                        //        "address": "1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc",
                         //        "next_size_limit": 10,
-                        //        "auth_address": "1P95VjET2ReAix8hc6u8uqCdbpkzUEkKwT",
+                        //        "auth_address": "17oELXQt6Wp5decKKS2Y4sdBnjkCsZPqTH",
                         //        "feed_follow_num": null,
                         //        "content": {
                         //            "files": 3,
-                        //            "description": "Money Network - U3 - User data hub - runner jro",
-                        //            "cloned_from": "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk",
-                        //            "address": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
-                        //            "clone_root": "",
-                        //            "favicon": "favicon.ico",
-                        //            "cloneable": true,
-                        //            "includes": 1,
-                        //            "viewport": "width=device-width, initial-scale=1.0",
                         //            "inner_path": "content.json",
                         //            "merged_type": "MoneyNetwork",
-                        //            "title": "U3 User data hub",
+                        //            "description": "Money Network - U2 - User data hub - runner jro",
+                        //            "title": "U2 User data hub",
                         //            "files_optional": 0,
+                        //            "address": "1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc",
                         //            "signs_required": 1,
-                        //            "modified": 1497251747,
+                        //            "modified": 1518457195,
+                        //            "favicon": "favicon.ico",
                         //            "ignore": "(.idea|.git|data/users/.*/.*)",
-                        //            "zeronet_version": "0.5.5",
-                        //            "postmessage_nonce_security": true,
-                        //            "address_index": 21770330
+                        //            "cloneable": true,
+                        //            "zeronet_version": "0.6.2",
+                        //            "includes": 1
                         //        },
-                        //        "peers": 4,
-                        //        "auth_key": "83a989f006b54ce1c92cc74651a7db9a333b23bde8cf62db9043bde66386ae31",
+                        //        "peers": 2,
+                        //        "auth_key": "be30248bfe16951f4437faceb4b83df155fa79f887db57e6bd3c8b2e2e1a2c47",
                         //        "settings": {
                         //            "serving": true,
-                        //            "bytes_recv": 5163,
+                        //            "bytes_recv": 4827,
                         //            "optional_downloaded": 0,
-                        //            "size_optional": 2689,
-                        //            "ajax_key": "dbaa051249a326e76c7a376eb0330f58cb7365a8d2448a0a59f0daf39529959e",
-                        //            "modified": 1518939577,
+                        //            "size_optional": 0,
+                        //            "ajax_key": "8e3c303c08cc7b690b3a3521215181fed656b60963c7da2a2d1e462f745b20b4",
+                        //            "modified": 1519120091,
                         //            "cache": {},
                         //            "own": false,
                         //            "permissions": [],
-                        //            "added": 1518940162,
-                        //            "size": 20139
+                        //            "added": 1519128047,
+                        //            "size": 6733
                         //        },
-                        //        "bad_files": 159,
+                        //        "bad_files": 8,
                         //        "workers": 3,
                         //        "cert_user_id": null,
-                        //        "started_task_num": 163,
-                        //        "content_updated": 1518940163.455015
+                        //        "started_task_num": 14,
+                        //        "content_updated": 1519128048.489843
                         //    }
                         //};
 
