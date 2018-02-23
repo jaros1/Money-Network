@@ -1731,11 +1731,15 @@ angular.module('MoneyNetwork')
                                                     z_cache.other_user_hub = my_user_data_hub ;
                                                     z_cache.other_user_hub_title = merger_sites[my_user_data_hub].content.title ;
                                                     z_cache.my_user_hub = new_user_hub ;
+
+                                                    // end transaction. using transaction for publish in merge_user_hub
+                                                    MoneyNetworkAPILib.end_transaction(transaction_timestamp) ;
+
                                                     // merge optional files from old user hub to new user hub
                                                     merge_user_hub(my_user_data_hub, function (res) {
                                                         var pgm = service + '.move_user_hub merge_user_hub callback 8a: ';
                                                         console.log(pgm + 'res = ' + JSON.stringify(res)) ;
-                                                        cb2(res) ;
+                                                        cb(res) ;
 
                                                     }); // merge_user_hub callback 8a
 
