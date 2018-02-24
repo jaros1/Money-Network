@@ -80,15 +80,23 @@ angular.module('MoneyNetwork')
         self.user_data_hubs = [] ;
         self.my_user_data_hub_changed = function() {
             var pgm = controller + '.my_user_data_hub_changed: ' ;
+            var msg ;
             if (self.my_user_data_hub == self.old_user_data_hub) return ;
             console.log(pgm + 'self.my_user_data_hub = ' + self.my_user_data_hub) ;
-            ZeroFrame.cmd("wrapperConfirm", ['Move user profile<br>from ' + self.old_user_data_hub + '<br>to ' + self.my_user_data_hub + '?', 'OK'], function (confirm) {
-                var new_user_hub, pos1, pos2 ;
+            msg = [
+                'Moving user profile',
+                'from ' + self.old_user_data_hub,
+                'to ' + self.my_user_data_hub,
+                'You may want to create a export before continuing (Account page)',
+                'Move user hub?'] ;
+            ZeroFrame.cmd("wrapperConfirm", [msg.join('<br>'), 'OK'], function (confirm) {
+                var new_user_hub, pos1, pos2, msg ;
                 console.log(pgm + 'confirm = ' + confirm) ;
                 if (!confirm) {
                     self.my_user_data_hub = self.old_user_data_hub ;
                     return ;
                 }
+                moneyNetworkService.z_wrapper_notification(['info', 'Moving user profile<br>Please wait for receipt<br>Publish operations can take some time', 20000]) ;
                 // confirmed. move user profile to new user data hub
                 pos1 = self.my_user_data_hub.lastIndexOf('(') ;
                 pos2 = self.my_user_data_hub.lastIndexOf(')') ;
@@ -96,6 +104,17 @@ angular.module('MoneyNetwork')
                 console.log(pgm + 'new_user_hub = ' + JSON.stringify(new_user_hub)) ;
                 moneyNetworkService.move_user_hub(new_user_hub, function (res) {
                     console.log(pgm + 'move_user_hub. res = ' + JSON.stringify(res)) ;
+                    if (res) {
+                        msg = [
+                            'Move user profile failed',
+                            'res = ' + JSON.stringify(res) +
+                            'You may want to log out + log in to cleanup files',
+                            'You may want to import a backup (Account page)'
+                        ] ;
+                        console.log(pgm + msg.join('. ')) ;
+                        moneyNetworkService.z_wrapper_notification(['error', msg.join('<br>')]) ;
+                    }
+                    else moneyNetworkService.z_wrapper_notification(['done', 'OK. User profile was moved']) ;
 
                 })
 
