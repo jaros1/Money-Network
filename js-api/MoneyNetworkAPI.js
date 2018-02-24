@@ -2276,8 +2276,11 @@ var MoneyNetworkAPILib = (function () {
     // - todo: send waiting_for_file notification to other wallet
     var inner_path_re1 = /data\/users\// ; // user directory?
     var inner_path_re2 = /^data\/users\// ; // invalid inner_path. old before merger-site syntax
-    var inner_path_re3 = new RegExp('^merged-' + get_merged_type() + '\/(.*?)\/data\/users\/content\.json$') ; // extract hub
-    var inner_path_re4 = new RegExp('^merged-' + get_merged_type() + '\/(.*?)\/data\/users\/(.*?)\/(.*?)$') ; // extract hub, auth_address and filename
+
+    // todo: problem with merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/content.json
+
+    var inner_path_re3 = new RegExp('^merged-' + get_merged_type() + '\/([^\/]*?)\/data\/users\/content\.json$') ; // extract hub
+    var inner_path_re4 = new RegExp('^merged-' + get_merged_type() + '\/([^\/]*?)\/data\/users\/([^\/]*?)\/([^\/]*?)$') ; // extract hub, auth_address and filename
 
     // cache fileGet requests. normally only one running fileGet request for a file
     var z_file_get_cbs = {} ;
@@ -3510,7 +3513,7 @@ var MoneyNetworkAPILib = (function () {
 
     // sitePublish
     // - privatekey is not supported
-    // - inner_path must be an user directory /^merged-MoneyNetwork\/(.*?)\/data\/users\/content\.json$/ path
+    // - inner_path must be an user directory /^merged-MoneyNetwork\/([^\/]*?)\/data\/users\/content\.json$/ path
     // - minimum interval between publish is 30 seconds (shared for MN and MN wallet sites)
     function z_site_publish(options, cb) {
         var pgm = module + '.z_site_publish: ';

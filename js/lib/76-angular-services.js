@@ -5554,9 +5554,9 @@ angular.module('MoneyNetwork')
 
             no_new_files = function() {
                 var total_downloaded, hub, last_hub_added, elapsed ;
-                console.log(pgm + 'files_without_peers = ' + JSON.stringify(files_without_peers)) ;
-                console.log(pgm + 'merger_site_added = ' + JSON.stringify(merger_site_added)) ;
-                console.log(pgm + 'no_chat_files_downloaded = ' + JSON.stringify(no_chat_files_downloaded)) ;
+                //console.log(pgm + 'files_without_peers = ' + JSON.stringify(files_without_peers)) ;
+                //console.log(pgm + 'merger_site_added = ' + JSON.stringify(merger_site_added)) ;
+                //console.log(pgm + 'no_chat_files_downloaded = ' + JSON.stringify(no_chat_files_downloaded)) ;
                 total_downloaded = 0 ;
                 for (hub in no_chat_files_downloaded) total_downloaded = total_downloaded + no_chat_files_downloaded[hub] ;
                 if (total_downloaded >= 10) return ; // OK public chat found
