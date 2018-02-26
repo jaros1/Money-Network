@@ -77,10 +77,11 @@ var MoneyNetworkHelper = (function () {
             }
             if (!local_storage_cbs.length) return ;
 
-            // check if ZeroFrame.site_info is ready. some functions in ls_bind uses site_info
+            // check if ZeroFrame.site_info is ready. some functions in local_storage_cbs are using site_info
             wait_for_site_info = function () {
                 var i, cb ;
                 if (!ZeroFrame.site_info) return setTimeout(wait_for_site_info, 200) ;
+                if (!ZeroFrame.site_info.cert_user_id) console.log(pgm + 'warning. localStorage and site_info is avaible but no cert_user_id. getItem requests will fail') ;
                 // execute callbacks waiting for localStorage to be ready
                 for (i=0 ; i<local_storage_cbs.length ; i++) {
                     cb = local_storage_cbs[i] ;

@@ -5647,7 +5647,7 @@ angular.module('MoneyNetwork')
                         reset_first_and_last_chat() ;
                         check_public_chat() ;
 
-                    }
+                    };
                     $timeout(check) ;
 
                 }) ; // optionalFileInfo callback
@@ -5656,7 +5656,7 @@ angular.module('MoneyNetwork')
             check_file() ;
 
         } // monitor_files_without_peers
-        $interval(monitor_files_without_peers, 1000) ;
+        var monitor_files_without_peers_process_id ; // demon process id or promise. see client_login / client_logout
 
         // callback from chatCtrl
         // check for any public chat relevant for current chat page context
@@ -6740,10 +6740,6 @@ angular.module('MoneyNetwork')
             moneyNetworkHubService.clear_admin_key() ;
         }
 
-        function cleanup_inactive_users() {
-            moneyNetworkHubService.cleanup_inactive_users();
-        } // cleanup_inactive_users
-
         // MoneyNetwork was previously a non merger site with data under data/users/...
         // MoneyNetwork is now a merger site with data under merged-MoneyNetwork/<hub>/data/users/...
         // data folder should be deleted manuelly. all use of API functions to delete content has failed
@@ -6814,9 +6810,10 @@ angular.module('MoneyNetwork')
                 load_user_contents_max_size(pgm) ;
                 // load_my_public_chat() ;
                 update_chat_notifications() ;
-                cleanup_inactive_users() ;
                 // cleanup_non_merger_site_data() ;
                 moneyNetworkWService.w_login() ;
+                if (!monitor_files_without_peers_process_id) monitor_files_without_peers_process_id = $interval(monitor_files_without_peers, 1000) ;
+
             }
             return z_cache.user_id ;
         } // client_login
@@ -6829,6 +6826,12 @@ angular.module('MoneyNetwork')
             if (!login_setting_changed) z_wrapper_notification(['done', 'Log out OK', 3000]);
             // clear sessionStorage
             MoneyNetworkHelper.client_logout();
+            if (monitor_files_without_peers_process_id) {
+                $interval.cancel(monitor_files_without_peers_process_id) ;
+                monitor_files_without_peers_process_id = null ;
+            }
+            for (key in chat_files_without_peers) delete chat_files_without_peers[key] ;
+            for (key in no_chat_files_downloaded) delete no_chat_files_downloaded[key] ;
             // clear all JS work data in MoneyNetworkService
             for (key in ls_reactions) delete ls_reactions[key] ;
             clear_contacts() ;

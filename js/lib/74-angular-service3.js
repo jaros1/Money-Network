@@ -1437,20 +1437,42 @@ angular.module('MoneyNetwork')
                             // check public key
                             if (contact.type != 'group') {
                                 if (!contact.pubkey || (('' + contact.encryption == '2') && !contact.pubkey2)) {
-                                    if (('' + contact.encryption == '2') && !contact.pubkey2) {
-                                        console.log(pgm + 'Cannot send message. contact does not have a public key (cryptMessage)');
-                                        z_wrapper_notification(['error', 'Cannot send message<br>contact does not have a public key<br>(cryptMessage encryption)'])
+                                    // cannot send message without public key for encryption
+                                    if (message.sent_at) {
+                                        // received missing message notification from other contact. cannot resend message without a public key
+                                        if (('' + contact.encryption == '2') && !contact.pubkey2) {
+                                            console.log(pgm + 'Cannot resend lost message. contact does not have a public key (cryptMessage)');
+                                        }
+                                        else {
+                                            console.log(pgm + 'Cannot resend lost message. contact does not have a public key (JSEncrypt)');
+                                        }
+                                        console.log(pgm + 'contact.cert_user_id = ' + contact.cert_user_id + ', contact.auth_address = ' + contact.auth_address) ;
+                                        console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+                                        // restore as a normal sent message
+                                        message_with_envelope.sent_at = message.sent_at ;
+                                        delete message.sent_at ;
+                                        // restart loop
+                                        z_update_2a_data_json_encrypt (local_storage_updated, data_json_max_size, data, data_str) ;
+                                        return ;
                                     }
                                     else {
-                                        console.log(pgm + 'Cannot send message. contact does not have a public key (JSEncrypt)');
-                                        z_wrapper_notification(['error', 'Cannot send message<br>contact does not have a public key<br>(JSEncrypt encryption)'])
+                                        if (('' + contact.encryption == '2') && !contact.pubkey2) {
+                                            console.log(pgm + 'Cannot send message. contact does not have a public key (cryptMessage)');
+                                            z_wrapper_notification(['error', 'Cannot send message<br>contact does not have a public key<br>(cryptMessage encryption)'])
+                                        }
+                                        else {
+                                            console.log(pgm + 'Cannot send message. contact does not have a public key (JSEncrypt)');
+                                            z_wrapper_notification(['error', 'Cannot send message<br>contact does not have a public key<br>(JSEncrypt encryption)'])
+                                        }
+
                                     }
                                     console.log(pgm + 'contact.pubkey = ' + contact.pubkey) ;
                                     console.log(pgm + 'contact.pubkey2 = ' + contact.pubkey2) ;
                                     console.log(pgm + 'contact.encryption = ' + contact.encryption) ;
                                     // contact.pubkey2 = undefined
                                     // contact.encryption = 2
-                                    console.log(pgm + 'message = ' + JSON.stringify(message_with_envelope)) ;
+                                    console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message_with_envelope)) ;
+
                                     console.log(pgm + 'deleting message') ;
                                     // delete invalid message
                                     js_messages_row = get_message_by_seq(message.seq) ;

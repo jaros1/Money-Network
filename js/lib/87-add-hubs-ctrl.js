@@ -87,9 +87,11 @@ angular.module('MoneyNetwork')
                 'Moving user profile',
                 'from ' + self.old_user_data_hub,
                 'to ' + self.my_user_data_hub,
-                'You may want to create a export before continuing (Account page)',
-                'Move user hub?'] ;
+                'You may want to create a export/backup before continuing (Account page)',
+                'Any MN-wallet sessions must be reconnected after move',
+                'Move user profile'] ;
             ZeroFrame.cmd("wrapperConfirm", [msg.join('<br>'), 'OK'], function (confirm) {
+                var pgm = controller + '.my_user_data_hub_changed wrapperConfirm callback 1: ' ;
                 var new_user_hub, pos1, pos2, msg ;
                 console.log(pgm + 'confirm = ' + confirm) ;
                 if (!confirm) {
@@ -103,24 +105,33 @@ angular.module('MoneyNetwork')
                 new_user_hub = self.my_user_data_hub.substr(pos1+1,pos2-pos1-1) ;
                 console.log(pgm + 'new_user_hub = ' + JSON.stringify(new_user_hub)) ;
                 moneyNetworkService.move_user_hub(new_user_hub, function (res) {
+                    var pgm = controller + '.my_user_data_hub_changed move_user_hub callback 2: ' ;
                     console.log(pgm + 'move_user_hub. res = ' + JSON.stringify(res)) ;
                     if (res) {
                         msg = [
                             'Move user profile failed',
                             'res = ' + JSON.stringify(res) +
                             'You may want to log out + log in to cleanup files',
-                            'You may want to import a backup (Account page)'
+                            'You may want to import backup (Account page)'
                         ] ;
                         console.log(pgm + msg.join('. ')) ;
                         moneyNetworkService.z_wrapper_notification(['error', msg.join('<br>')]) ;
+                        self.my_user_data_hub = self.old_user_data_hub ;
                     }
-                    else moneyNetworkService.z_wrapper_notification(['done', 'OK. User profile was moved']) ;
+                    else {
+                        msg = [
+                            'User profile was moved',
+                            'Any old MN-wallet sessions must be reconnected'
+                        ] ;
+                        moneyNetworkService.z_wrapper_notification(['done', msg.join('<br>')]) ;
+                        self.old_user_data_hub = self.my_user_data_hub ;
+                    }
 
-                })
+                }); // move_user_hub callback 2
 
+            }); // wrapperConfirm callback 1
 
-            })
-        } ;
+        } ; // my_user_data_hub_changed
 
         // AddHubsCtrl
     }])

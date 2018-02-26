@@ -255,7 +255,7 @@
         Wallet Data Hub: wallet data (wallet info and money transactions) used by MoneyNetwork wallets.<br>
         Use checkbox to add/remove hubs. Use url to see info about hub (will also add site).
         <div style="width: 100%" ng-controller="AddHubsCtrl as c">
-            <div ng-repeat="h in c.all_hubs|orderBy:h.hub_title" style="float: left">
+            <div ng-repeat="h in c.all_hubs|orderBy:'hub_title'" style="float: left">
                 <input type="checkbox" ng-model="h.hub_added" ng-change="c.add_remove_hub(h)" ng-disabled="h.disabled">
                 <a href="" ng-click="c.open_hub_url(h)">
                     <span ng-bind="h.hub"></span>
@@ -2382,9 +2382,9 @@
   MoneyNetwork angularjs app - dynamic part - changed almost every day
   all.js ~= 1.3 Mb. js/all.js.zip ~= 200 Kb. Best to use .zip
  -->
-<script type="text/javascript" src="js/all.js"></script>
+<!--script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->

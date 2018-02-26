@@ -259,7 +259,7 @@ var MoneyNetworkAPILib = (function () {
             started_at: new Date().getTime()
         } ;
         // debug: "global" MoneyNetworkAPILib debug option (null, true, false or a string)
-        if (debug || debug_this) console.log(
+        if (true || debug || debug_this) console.log(
             pgm + (inner_path ? inner_path + ' ' : '') + cmd + ' started (' + debug_seq + (group_debug_seq ? '/' + group_debug_seq : '') + '). ' +
             debug_z_api_operation_pending()) ;
         return debug_seq ;
@@ -281,7 +281,7 @@ var MoneyNetworkAPILib = (function () {
         delete z_debug_operations['' + debug_seq] ;
         finished_at = new Date().getTime() ;
         elapsed_time = finished_at - started_at ;
-        if (debug || debug_this) console.log(
+        if (true || debug || debug_this) console.log(
             pgm + (inner_path ? inner_path + ' ' : '') + cmd + ' finished' + (res ? '. res = ' + JSON.stringify(res) : '') +
             '. elapsed time ' + elapsed_time + ' ms (' + debug_seq + (group_debug_seq ? '/' + group_debug_seq : '') + '). ' +
             debug_z_api_operation_pending()) ;
@@ -2244,7 +2244,7 @@ var MoneyNetworkAPILib = (function () {
                     run_cbs(hub, msg.join('. ')) ;
                     monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
                     return ;
-                    
+
                 }
             }
             monitor_first_hub_event_id = setTimeout(monitor_first_hub_event, 250) ;
@@ -3566,7 +3566,7 @@ var MoneyNetworkAPILib = (function () {
         // console.log(pgm + 'calling queue_publish') ;
         queue_publish({encrypt: encrypt, reason: reason}, function (cb_id, encrypt) {
             var pgm = module + '.z_site_publish queue_publish callback 1: ';
-            var debug_seq, site_publish_cb, site_publish_cb_done, process_id, site_publish_timeout;
+            var debug_seq1, debug_seq2, site_publish_cb, site_publish_cb_done, process_id, site_publish_timeout;
             // console.log(pgm + 'queue_publish OK. cb_id = ', cb_id, ', encrypt = ', encrypt) ;
 
             // start publish transaction. publish must wait for long running update transactions to finish and
@@ -3578,7 +3578,7 @@ var MoneyNetworkAPILib = (function () {
                 // prevent publish operation hanging for ever. add 60 seconds timeout to sitePublish request
                 site_publish_cb_done = false;
                 site_publish_cb = function (res) {
-                    var pgm = module + '.z_site_publish sitePublish callback 3: ';
+                    var pgm = module + '.z_site_publish sitePublish callback 4: ';
                     var run_cb, get_content_json;
                     // stop timeout process + check for already run callback
                     if (process_id) {
@@ -3592,9 +3592,9 @@ var MoneyNetworkAPILib = (function () {
                     if (site_publish_cb_done) return; // sitePublish cb has already run
                     site_publish_cb_done = true;
                     // ok. run sitePublish callback
-                    debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+                    debug_z_api_operation_end(debug_seq2, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                     if (reason) console.log(pgm + 'finished publish. reason = ' + reason) ;
-                    debug_seq = null;
+                    debug_seq2 = null;
 
                     // run sitePublish cb callback (content published)
                     run_cb = function () {
@@ -3668,11 +3668,11 @@ var MoneyNetworkAPILib = (function () {
                             };
                             console.log(pgm2 + 'published request = ' + JSON.stringify(request));
                             encrypt.send_message(request, {response: 5000, group_debug_seq: group_debug_seq}, function (response) {
-                                var pgm = module + '.z_site_publish send_message callback 5: ';
+                                var pgm = module + '.z_site_publish send_message callback 6: ';
                                 var pgm2 ;
                                 pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                                 console.log(pgm2 + 'published response = ' + JSON.stringify(response));
-                            }); // send_message callback 5
+                            }); // send_message callback 6
                         }
                         else {
                             // MoneyNetwork session. This publish should be first row in publish queue
@@ -3685,9 +3685,9 @@ var MoneyNetworkAPILib = (function () {
                             }
                         }
 
-                    }); // get_content_json callback 4
+                    }); // get_content_json callback 5
 
-                }; // sitePublish callback 3
+                }; // sitePublish callback 4
 
                 // execute sitePublish callback by either sitePublish or by timeout fnk
                 site_publish_timeout = function () {
@@ -3700,8 +3700,25 @@ var MoneyNetworkAPILib = (function () {
                     delete options.group_debug_seq ;
                 }
                 if (reason) console.log(pgm + 'starting publish. reason = ' + reason) ;
-                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish');
-                ZeroFrame.cmd("sitePublish", options, site_publish_cb);
+
+                // publish in 2 steps. remove_missing_optional before publish to prevent hanging transactions
+                debug_seq1 = debug_z_api_operation_start(pgm, inner_path, 'siteSign');
+                ZeroFrame.cmd("siteSign", {inner_path: options.inner_path, remove_missing_optional: true}, function (res) {
+                    var pgm = module + '.z_site_publish siteSign callback 3: ';
+                    debug_z_api_operation_end(debug_seq1, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+                    if (res == 'ok') {
+                        // sign ok - publish without sign
+                        debug_seq2 = debug_z_api_operation_start(pgm, inner_path, 'sitePublish');
+                        ZeroFrame.cmd("sitePublish", {inner_path: options.inner_path, sign: false}, site_publish_cb);
+                    }
+                    else {
+                        // sign failed. publish with sign. should fail with same error
+                        console.log(pgm + 'error. ' + options.inner_pATH + ' siteSign failed with ' + JSON.stringify(res)) ;
+                        debug_seq2 = debug_z_api_operation_start(pgm, inner_path, 'sitePublish');
+                        ZeroFrame.cmd("sitePublish", {inner_path: options.inner_path, sign: true}, site_publish_cb);
+                    }
+
+                }) ; // siteSign callback 3
 
             }); // start_transaction callback 2
 

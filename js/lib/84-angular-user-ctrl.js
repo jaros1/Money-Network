@@ -391,6 +391,7 @@ angular.module('MoneyNetwork')
                     // create callbacks for cleanup operation
 
                     var step_6_logout_and_redirect = function () {
+                        var pgm = controller + '.delete_user2.step_6_logout_and_redirect: ' ;
                         var text, a_path, z_path;
                         // done. log out, notification and redirect
                         moneyNetworkService.client_logout();
@@ -409,10 +410,10 @@ angular.module('MoneyNetwork')
                         ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
                         $scope.$apply();
 
-                    }; // logout_and_redirect
+                    }; // step_6_logout_and_redirect
 
                     var step_5_cleanup_localstorage = function () {
-                        var pgm = controller + '.delete_user2 cleanup_localstorage callback: ' ;
+                        var pgm = controller + '.delete_user2.step_5_cleanup_localstorage: ' ;
                         // delete all localStorage data for this user.
                         if ((no_local_accounts == 1) || all_accounts) {
                             // only/last local account - simple JS + localStorage overwrite
@@ -437,21 +438,21 @@ angular.module('MoneyNetwork')
                             MoneyNetworkHelper.setItem('passwords', JSON.stringify(passwords)) ;
                             MoneyNetworkHelper.ls_save() ;
                         }
-                    }; // cleanup_localstorage
+                    }; // step_5_cleanup_localstorage
 
 
                     // step 4 - publish
 
                     var step_4_publish = function () {
-                        MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: 'delete_user2'}, function (res) {
-                        //ZeroFrame.cmd("sitePublish", {inner_path: user_path + '/content.json'}, function (res) {
+                        var pgm = controller + '.delete_user2.step_4_publish: ' ;
+                        // MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: 'delete_user2'}, function (res) {
+                        moneyNetworkService.zeronet_site_publish({inner_path: user_path + '/content.json', reason: 'delete_user2'}, function (res) {
                             var pgm = controller + '.delete_user2.step_4_publish sitePublish: ' ;
                             console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                             step_5_cleanup_localstorage() ;
                             step_6_logout_and_redirect();
                         }); // sitePublish
                     }; // step_4_publish
-
 
                     // step 3 - cleanup status.json
                     var step_3_delete_status_json = function () {
@@ -466,6 +467,7 @@ angular.module('MoneyNetwork')
                             step_4_publish();
                         }) ;
                     }; // step_3_delete_status_json
+
                     var step_3_update_status_json = function (my_user_seq) {
                         var pgm = controller + '.delete_user2.step_3_update_status_json: ' ;
                         var debug_seq, inner_path ;
@@ -1277,7 +1279,8 @@ angular.module('MoneyNetwork')
 
             step_9_publish = function (data) {
                 var pgm = controller + '.import.step_9_publish: ' ;
-                MoneyNetworkAPILib.z_site_publish({inner_path: user_path + 'content.json', reason: 'import'}, function (res) {
+                // MoneyNetworkAPILib.z_site_publish({inner_path: user_path + 'content.json', reason: 'import'}, function (res) {
+                moneyNetworkService.zeronet_site_publish({inner_path: user_path + 'content.json', reason: 'import'}, function (res) {
                     var pgm = controller + '.import.step_9_publish z_site_publish callback 1: ' ;
                     var error ;
                     if (res == "ok") return step_10_ls_write(data) ;

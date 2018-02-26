@@ -786,7 +786,7 @@ angular.module('MoneyNetwork')
                 user_path = "data/users/" + contact.auth_address;
                 inner_path = user_path + '/content.json' ;
                 moneyNetworkService.z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
-                    var pgm = controller + '.delete_user1 z_file_get callback: ' ;
+                    var pgm = controller + '.delete_user1 z_file_get callback 1: ' ;
                     var error, files, file_names, total_size, file_name, file_texts, text, files_optional,
                         file_names_lng1, file_names_lng2, last_online, modified, dif ;
                     if (!content) {
@@ -848,6 +848,8 @@ angular.module('MoneyNetwork')
                     }
                     text += ' Total ' + total_size + ' bytes' ;
                     moneyNetworkService.confirm_admin_task(text, function (private_key) {
+                        var pgm = controller + '.delete_user1 confirm_admin_task callback 2: ' ;
+                        var i ;
                         if (!private_key) return ;
 
                         // delete files
@@ -863,24 +865,40 @@ angular.module('MoneyNetwork')
                             })() ;
                         }
 
-                        // sign and publish
+                        // sign and publish. two steps. remove_missing_optional to prevent hanging transactions
                         var file_name = user_path + '/content.json';
-                        ZeroFrame.cmd("sitePublish", {privatekey: private_key, inner_path: file_name}, function (res) {
-                            var pgm = controller + '.delete_user1 callback: ', error;
+                        ZeroFrame.cmd("siteSign", {privatekey: private_key, inner_path: file_name, remove_missing_optional: true}, function (res) {
+                            var pgm = controller + '.delete_user1 siteSign callback 3: ' ;
+                            var error ;
                             if (res != "ok") {
-                                error = "Failed to publish " + file_name + " : " + res.error;
-                                console.log(pgm + error);
-                                z_wrapper_notification(["error", error, 3000]);
-                                return ;
+                                if (res != "ok") {
+                                    error = "Failed to publish " + file_name + " : " + res.error;
+                                    console.log(pgm + error);
+                                    z_wrapper_notification(["error", error, 3000]);
+                                    return ;
+                                }
                             }
 
-                            // remove public key. rest of cleanup job can be done with normal delete function
-                            delete contact.pubkey ;
-                        }); // sitePublish
+                            ZeroFrame.cmd("sitePublish", {inner_path: file_name, sign: false}, function (res) {
+                                var pgm = controller + '.delete_user1 sitePublish callback 4: ' ;
+                                var error;
+                                if (res != "ok") {
+                                    error = "Failed to publish " + file_name + " : " + res.error;
+                                    console.log(pgm + error);
+                                    z_wrapper_notification(["error", error, 3000]);
+                                    return ;
+                                }
 
-                    }) ; // confirm_admin_task
+                                // remove public key. rest of cleanup job can be done with normal delete function
+                                delete contact.pubkey ;
 
-                }) ; // z_file_get
+                            }); // sitePublish callback 4
+
+                        }) ; // siteSign callback 3
+
+                    }) ; // confirm_admin_task callback 2
+
+                }) ; // z_file_get callback 1
 
             }; // delete_user1
 

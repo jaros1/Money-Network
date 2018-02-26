@@ -319,12 +319,12 @@ angular.module('MoneyNetwork')
             return hubs[i] ;
         } // get_default_user_hub
 
-        var user_data_hubs = [] ;
         var get_my_user_hub_cbs = [] ; // callbacks waiting for query 17 to finish
         function get_my_user_hub (cb) {
             var pgm = service + '.get_my_user_hub: ' ;
-            var step_1_merger_site_list, step_2_compare_tables, step_3_find_user_hubs, step_4_get_and_add_default_user_hub,
-                step_5_user_hub_selected, step_6_run_callbacks, old_userid ;
+            var step_1_get_mn_user_data_hubs, step_2_compare_json_and_files, step_3_find_user_hub, step_4_get_and_add_default_user_hub,
+                step_5_user_hub_selected, step_6_run_callbacks, old_userid, user_data_hubs ;
+            ;
             if (!ZeroFrame.site_info) {
                 console.log(pgm + "ZeroFrame is loading") ;
                 return cb('n/a','n/a', 'n/a') ;
@@ -345,7 +345,7 @@ angular.module('MoneyNetwork')
             }
             if (z_cache.my_user_hub) return cb(z_cache.my_user_hub, z_cache.other_user_hub, z_cache.other_user_hub_title) ;
             z_cache.my_user_hub = true ;
-            user_data_hubs.splice(0,user_data_hubs.length) ;
+            user_data_hubs = [] ;
 
             // setup callback chain step 1-6
 
@@ -353,7 +353,7 @@ angular.module('MoneyNetwork')
                 // run callbacks. this and any pending callbacks
                 var pgm = service + '.get_my_user_hub.step_6_run_callbacks: ' ;
                 console.log(pgm + 'my_user_hub = ' + z_cache.my_user_hub + ', other_user_hub = ' + z_cache.other_user_hub) ;
-                cb(z_cache.my_user_hub, z_cache.other_user_hub) ;
+                cb(z_cache.my_user_hub, z_cache.other_user_hub, z_cache.other_user_hub_title) ;
                 while (get_my_user_hub_cbs.length) {
                     cb = get_my_user_hub_cbs.shift() ;
                     cb(z_cache.my_user_hub, z_cache.other_user_hub, z_cache.other_user_hub_title)
@@ -399,6 +399,7 @@ angular.module('MoneyNetwork')
                 return step_6_run_callbacks() ;
             }; // step_5_user_hub_selected
 
+            // normally never used. default_hubs should be in user_data_hubs array
             step_4_get_and_add_default_user_hub = function () {
                 var pgm = service + '.get_my_user_hub.step_4_get_and_add_default_user_hub: ' ;
                 var my_user_hub ;
@@ -422,8 +423,8 @@ angular.module('MoneyNetwork')
 
             }; // step_4_get_and_add_default_user_hub
 
-            step_3_find_user_hubs = function () {
-                var pgm = service + '.get_my_user_hub.step_3_find_user_hubs: ' ;
+            step_3_find_user_hub = function () {
+                var pgm = service + '.get_my_user_hub.step_3_find_user_hub: ' ;
                 var mn_query_17, i, debug_seq ;
 
                 if (!user_data_hubs.length) {
@@ -455,7 +456,7 @@ angular.module('MoneyNetwork')
                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 17') ;
                 debug_seq = debug_z_api_operation_start(pgm, 'mn query 17', 'dbQuery', show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [mn_query_17], function (res) {
-                    var pgm = service + '.get_my_user_hub.step_3_find_user_hubs dbQuery callback: ' ;
+                    var pgm = service + '.get_my_user_hub.step_3_find_user_hub dbQuery callback: ' ;
                     var i, merge_job, priority_texts , priorities, priority, min_priority ;
                     if (detected_client_log_out(pgm, old_userid)) return ;
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
@@ -463,7 +464,7 @@ angular.module('MoneyNetwork')
                     if (res.error) {
                         console.log(pgm + "user data hub lookup failed: " + res.error);
                         console.log(pgm + 'query = ' + mn_query_17);
-                        return step_4_get_and_add_default_user_hub() ;
+                        res.length = 0 ;
                     }
                     if (res.length) {
                         // user data hub(s) found. use hub with last updated content.json
@@ -484,7 +485,10 @@ angular.module('MoneyNetwork')
                         }
                         return step_5_user_hub_selected() ;
                     }
-                    if (!user_data_hubs.length) return step_4_get_and_add_default_user_hub() ;
+                    if (!user_data_hubs.length) {
+                        console.log(pgm + 'error. user_data_hubs is empty. default_hubs should be in user_data_hubs') ;
+                        return step_4_get_and_add_default_user_hub() ;
+                    }
 
                     // new user. add random user data hub from available hubs
                     console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs)) ;
@@ -528,11 +532,11 @@ angular.module('MoneyNetwork')
 
                 }) ; // dbQuery callback 2
 
-            }; // step_3_find_user_hubs
+            }; // step_3_find_user_hub
 
-            // todo: compare json and files rows before running query 17. Should be identical. files table should not be used in query 17
-            step_2_compare_tables = function () {
-                var pgm = service + '.get_my_user_hub.step_2_compare_tables: ' ;
+            // compare "json" and "files" tables before running query 17 in step_3_find_user_hub. Should be identical. files table is no longer used in query 17
+            step_2_compare_json_and_files = function () {
+                var pgm = service + '.get_my_user_hub.step_2_compare_json_and_files: ' ;
                 var mn_query_6, debug_seq1 ;
 
                 // with operator not supported. one query for each table (json and files)
@@ -547,14 +551,14 @@ angular.module('MoneyNetwork')
                 debug('select', pgm + 'mn query 6 = ' + mn_query_6) ;
                 debug_seq1 = debug_z_api_operation_start(pgm, 'mn query 6', 'dbQuery', show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [mn_query_6], function (res1) {
-                    var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 1: ';
+                    var pgm = service + '.get_my_user_hub.step_2_compare_json_and_files dbQuery callback 1: ';
                     var mn_query_19, debug_seq2, res, i, index, indexed_by_modified ;
                     debug_z_api_operation_end(debug_seq1, (!res1 || res1.error) ? 'Failed. error = ' + JSON.stringify(res1) : 'OK');
                     if (detected_client_log_out(pgm, old_userid)) return ;
                     if (res1.error) {
                         console.log(pgm + "json and files compare failed: " + res1.error);
                         console.log(pgm + 'mn query 8 = ' + mn_query_6);
-                        return step_3_find_user_hubs() ;
+                        return step_3_find_user_hub() ;
                     }
                     res = {} ;
                     indexed_by_modified = {} ;
@@ -581,14 +585,14 @@ angular.module('MoneyNetwork')
                     debug('select', pgm + 'mn query 19 = ' + mn_query_19) ;
                     debug_seq2 = debug_z_api_operation_start(pgm, 'mn query 19', 'dbQuery', show_debug('z_db_query')) ;
                     ZeroFrame.cmd("dbQuery", [mn_query_19], function (res2) {
-                        var pgm = service + '.get_my_user_hub.step_2_compare_tables dbQuery callback 2: ';
+                        var pgm = service + '.get_my_user_hub.step_2_compare_json_and_files dbQuery callback 2: ';
                         var i, index, hub, missing_rows, dictionaries, modified, sign, user_data_hub ;
                         debug_z_api_operation_end(debug_seq2, (!res2 || res2.error) ? 'Failed. error = ' + JSON.stringify(res2) : 'OK');
                         if (detected_client_log_out(pgm, old_userid)) return ;
                         if (res2.error) {
                             console.log(pgm + "json and files compare failed: " + res2.error);
                             console.log(pgm + 'mn query 19 = ' + mn_query_19);
-                            return step_3_find_user_hubs();
+                            return step_3_find_user_hub();
                         }
                         for (i=0 ; i<res2.length ; i++) {
                             index = res2[i].directory + '/' + res2[i].file_name ;
@@ -615,8 +619,7 @@ angular.module('MoneyNetwork')
                             if (!user_data_hub) continue ; // ignore - not a MN User Data Hub - also ignore just added User Data Hubs
                             missing_rows.push(res[index]) ;
                         }
-                        if (!missing_rows.length) return step_3_find_user_hubs() ; // everything is OK. next step
-
+                        if (!missing_rows.length) return step_3_find_user_hub() ; // everything is OK. next step
 
                         // inconsistency between json and files!
                         console.log(pgm + 'warning. difference between json and files rows. could be missing sign or manuel deleted files. signing content.json files in modified order to fix this') ;
@@ -673,7 +676,7 @@ angular.module('MoneyNetwork')
 
                         // loop. sign each content.json file (remove files_optional and add optional)
                         sign = function () {
-                            var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign: ';
+                            var pgm = service + '.get_my_user_hub.step_2_compare_json_and_files.sign: ';
                             var dictionary, hub, inner_path  ;
                             dictionary = dictionaries.shift() ;
                             hub = dictionary.substr(0,dictionary.indexOf('/')) ;
@@ -682,7 +685,7 @@ angular.module('MoneyNetwork')
                             inner_path = 'merged-' + get_merged_type() + '/' + dictionary + '/content.json' ;
 
                             z_file_get(pgm, {inner_path: inner_path, required: true}, function (content_str) {
-                                var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 1: ';
+                                var pgm = service + '.get_my_user_hub.step_2_compare_json_and_files.sign z_file_get callback 1: ';
                                 var content, json_raw, debug_seq1 ;
                                 if (detected_client_log_out(pgm, old_userid)) return ;
                                 if (content_str) {
@@ -697,58 +700,33 @@ angular.module('MoneyNetwork')
                                 else content = {} ;
                                 content.optional = Z_CONTENT_OPTIONAL ;
 
-                                //// # https://github.com/HelloZeroNet/ZeroNet/issues/1147
-                                //if (!content.files_optional || !Object.keys(content.files_optional).length) {
-                                //    console.log(pgm + 'issue #1147: ' + hub + ': no optional files in content.json') ;
-                                //}
-                                //else {
-                                //    console.log(pgm + 'issue #1147: content.files_optional = ' + JSON.stringify(content.files_optional)) ;
-                                //    if (show_debug('issue_1147')) {
-                                //        console.log(pgm + 'issue #1147: ' + hub + ': issue_1147=true: old workaround for siteSign failure. deleting content.files_optional before sign') ;
-                                //        delete content.files_optional ;
-                                //    }
-                                //    else console.log(pgm + 'issue #1147: ' + hub + ':issue_1147=false: new fix. keeping content.files_optional') ;
-                                //}
-
                                 // 2: write content.json
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(content)));
                                 z_file_write(pgm, inner_path, btoa(json_raw), function (res) {
-                                    var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign fileWrite callback 2: ';
+                                    var pgm = service + '.get_my_user_hub.step_2_compare_json_and_files.sign fileWrite callback 2: ';
                                     var debug_seq2 ;
                                     if (detected_client_log_out(pgm, old_userid)) return ;
                                     if (res != 'ok') {
                                         console.log(pgm + 'Error: ' + inner_path + ' fileWrite failed. res = ' + JSON.stringify(res));
-                                        return step_3_find_user_hubs() ; // error - continue with next step
+                                        return step_3_find_user_hub() ; // error - continue with next step
                                     }
                                     // 3: sign
                                     // debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + inner_path + ' sign') ;
                                     debug_seq2 = debug_z_api_operation_start(pgm, inner_path, 'siteSign', show_debug('z_site_publish')) ;
                                     ZeroFrame.cmd("siteSign", {inner_path: inner_path, remove_missing_optional: true}, function (res) {
-                                        var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign siteSign callback 3: ';
+                                        var pgm = service + '.get_my_user_hub.step_2_compare_json_and_files.sign siteSign callback 3: ';
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2);
                                         debug_z_api_operation_end(debug_seq2, format_res(res));
                                         if (detected_client_log_out(pgm, old_userid)) return ;
                                         if (res != 'ok') {
                                             console.log(pgm + inner_path + ' siteSign failed. error = ' + JSON.stringify(res));
-                                            return step_3_find_user_hubs() ; // error - continue with next step;
+                                            return step_3_find_user_hub() ; // error - continue with next step;
                                         }
 
                                         // sign ok
-
-                                        // # https://github.com/HelloZeroNet/ZeroNet/issues/1147
-                                        // check files_optional after sign
-                                        z_file_get(pgm, {inner_path: inner_path, required: false}, function (content_str) {
-                                            var pgm = service + '.get_my_user_hub.step_2_compare_tables.sign z_file_get callback 4: ';
-                                            var content ;
-                                            if (detected_client_log_out(pgm, old_userid)) return ;
-                                            content = JSON.parse(content_str) ; // sign OK. No need for try catch here
-                                            console.log(pgm + 'issue #1147. ' + hub + ': issue_1147 = ' + show_debug('issue_1147') + ', files_optional = ' + JSON.stringify(content.files_optional)) ;
-
-                                            if (!dictionaries.length) return step_3_find_user_hubs() ; // done - continue with next step
-                                            // next sign in 1 second to keep modified sequence
-                                            setTimeout(sign, 1000) ;
-
-                                        }) ; // z_file_get callback 4
+                                        if (!dictionaries.length) return step_3_find_user_hub() ; // done - continue with next step
+                                        // next sign in 1 second to keep content.json modified sequence
+                                        setTimeout(sign, 1000) ;
 
                                     }) ; // siteSign callback 3
 
@@ -757,6 +735,7 @@ angular.module('MoneyNetwork')
                             }) ; // z_file_get callback 1
 
                         } ; // sign
+
                         // start sign loop
                         sign() ;
 
@@ -764,13 +743,11 @@ angular.module('MoneyNetwork')
 
                 }) ; // dbQuery callback 1
 
-            } ; // step_2_compare_tables
+            } ; // step_2_compare_json_and_files
 
             // step 1 : get a list of MoneyNetwork User data hubs. title or description matches /user data hub/i. used for new MoneyNetwork users
-            // todo: why not use MoneyNetworkAPI.get_all_hubs hub_type="user"?
-            step_1_merger_site_list = function () {
-                var pgm = service + '.get_my_user_hub.step_1_merger_site_list: ';
-                // changed. Now using get_all_hubs instead of mergerSiteList call.
+            step_1_get_mn_user_data_hubs = function () {
+                var pgm = service + '.get_my_user_hub.step_1_get_mn_user_data_hubs: ';
                 MoneyNetworkAPILib.get_all_hubs(false, function (all_hubs)  {
                     var i ;
                     if (detected_client_log_out(pgm, old_userid)) return ;
@@ -780,36 +757,14 @@ angular.module('MoneyNetwork')
                     }
                     console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
                     // next step
-                    step_2_compare_tables() ;
+                    step_2_compare_json_and_files() ;
                 }) ;
-
-                //ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
-                //    var pgm = service + '.get_my_user_hub.step_1_merger_site_list: ';
-                //    var hub;
-                //    if (detected_client_log_out(pgm, old_userid)) return ;
-                //
-                //    if (!merger_sites || merger_sites.error) console.log(pgm + 'mergerSiteList failed. merger_sites = ' + JSON.stringify(merger_sites));
-                //    else for (hub in merger_sites) {
-                //        if (merger_sites[hub].content.title.match(/user data hub/i) ||
-                //            merger_sites[hub].content.description.match(/user data hub/i)) {
-                //            user_data_hubs.push({hub: hub, title: merger_sites[hub].content.title});
-                //        }
-                //    }
-                //    console.log(pgm + 'user_data_hubs = ' + JSON.stringify(user_data_hubs));
-                //    // next step
-                //    step_2_compare_tables() ;
-                //}) ;
-
-            } ; // step_1_merger_site_list
+            } ; // step_1_get_mn_user_data_hubs
 
             // start callback chain step 1-6
-            step_1_merger_site_list() ;
+            step_1_get_mn_user_data_hubs() ;
 
         } // get_my_user_hub
-
-        function get_user_data_hubs () {
-            return user_data_hubs ;
-        }
 
         // workaround for failed user data hub selection
         // 1) user hub in a hub without any peers. mergerSiteAdd failed.
@@ -1522,10 +1477,9 @@ angular.module('MoneyNetwork')
                             }
                             // sign and publish
                             // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + hub + ' publish') ;
-                            // console.log(pgm + 'todo: use z_site_publish');
-                            // debug_seq = debug_z_api_operation_start(pgm, inner_path, 'sitePublish', show_debug('z_site_publish')) ;
-                            MoneyNetworkAPILib.z_site_publish({inner_path: inner_path, reason: 'merge_user_hub'}, function (res) {
-                            //ZeroFrame.cmd("sitePublish", {inner_path: inner_path}, function (res) {
+
+                            //MoneyNetworkAPILib.z_site_publish({inner_path: inner_path, reason: 'merge_user_hub'}, function (res) {
+                            zeronet_site_publish({inner_path: inner_path, reason: 'merge_user_hub'}, function (res) {
                                 var pgm = service + '.merge_user_hub.step_12_publish_empty_hub sitePublish callback 2: ';
                                 // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
                                 // debug_z_api_operation_end(debug_seq, format_res(res));
@@ -1614,13 +1568,9 @@ angular.module('MoneyNetwork')
                             if (!status.my_publish) return cb();
 
                             inner_path0 = my_user_path + 'content.json';
-                            // debug_seq0 = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + my_hub + ' publish');
-                            //debug_seq0 = debug_z_api_operation_start(pgm, inner_path0, 'sitePublish', show_debug('z_site_publish'));
-                            MoneyNetworkAPILib.z_site_publish({inner_path: inner_path0, reason: 'merge_user_hub'}, function (res) {
-                            //ZeroFrame.cmd("sitePublish", {inner_path: inner_path0}, function (res) {
+                            // MoneyNetworkAPILib.z_site_publish({inner_path: inner_path0, reason: 'merge_user_hub'}, function (res) {
+                            zeronet_site_publish({inner_path: inner_path0, reason: 'merge_user_hub'}, function (res) {
                                 var pgm = service + '.merge_user_hub.step_13_write_and_publish_user_data.publish sitePublish callback: ';
-                                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq0);
-                                //debug_z_api_operation_end(debug_seq0, format_res(res));
                                 if (res != 'ok') {
                                     console.log(pgm + inner_path0 + ' sitePublish failed. error = ' + JSON.stringify(res));
                                     return;
@@ -2173,6 +2123,7 @@ angular.module('MoneyNetwork')
         var zeronet_site_publish_interval = 0 ;
         var zeronet_site_publish_no_peers = false ; // true after failed publish and no peers. move user directory confirm box open
 
+        // todo: cb should always be called except after detected_client_log_out
 
         function zeronet_site_publish(options,cb) {
             var pgm = service + '.zeronet_site_publish: ';
@@ -2224,7 +2175,7 @@ angular.module('MoneyNetwork')
                             console.log(pgm + error);
                             console.log(pgm + 'status = ' + JSON.stringify(status));
                             z_wrapper_notification(["error", error]);
-                            return ;
+                            return cb(error);
                         }
 
                         // write status.json
@@ -2236,7 +2187,7 @@ angular.module('MoneyNetwork')
                                 error = "Update was not published. fileWrite failed for status.json: " + res;
                                 console.log(pgm + error);
                                 z_wrapper_notification(["error", error, 5000]);
-                                return ;
+                                return cb(error);
                             }
                             // sitePublish
                             MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: reason}, function (res) {
@@ -2245,12 +2196,16 @@ angular.module('MoneyNetwork')
                                 if (detected_client_log_out(pgm, old_userid)) return;
                                 if (res != "ok") {
 
+                                    // run callback. depending on condition the code will either retry publish or ask user to move user profile to an other user data hub
+                                    cb(res);
 
                                     // https://github.com/jaros1/Money-Network/issues/321 Publish failed - no peers
                                     // publish failed. check number of peers for current user data hub
                                     // refresh list of user data hubs. user may have to move user profile to an other user data hub
                                     MoneyNetworkAPILib.get_all_hubs(true, function (all_hubs) {
-                                        var i, peers, msg, user_data_hubs, hub ;
+                                        var pgm = service + '.zeronet_site_publish get_all_hubs callback 6: ';
+                                        var i, peers, msg, user_data_hubs, hub, new_user_data_hub ;
+                                        if (detected_client_log_out(pgm, old_userid)) return;
 
                                         // any peers serving my_user_data_hub?
                                         peers = true ;
@@ -2262,6 +2217,18 @@ angular.module('MoneyNetwork')
                                         if (peers) {
                                             // publish failed. unknown reason (internet offline, vpn problem, ZeroNet port problem)
                                             z_wrapper_notification(["error", "Failed to publish: " + res.error, 5000]);
+
+                                            // retry sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
+                                            // todo: no reason to start retry publish loop if problem is no peers
+                                            if (!zeronet_site_publish_interval) zeronet_site_publish_interval = 30;
+                                            else zeronet_site_publish_interval = zeronet_site_publish_interval * 2;
+                                            console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
+                                            var retry_zeronet_site_publish = function () {
+                                                zeronet_site_publish({reason: reason});
+                                            };
+                                            $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval * 1000);
+                                            // debug_info() ;
+
                                         }
                                         else {
                                             // publish failed. No peers for my_user_data_hub
@@ -2281,10 +2248,11 @@ angular.module('MoneyNetwork')
                                                     'No peers were found for user data hub' + my_user_data_hub,
                                                     'No other user data hubs with peers were found',
                                                     'Please add more user data hubs in Account page',
-                                                    'Please select default user data hub in Account page'
+                                                    'Please select user profile hub in Account page'
                                                 ] ;
                                                 console.log(pgm + msg.join('. ')) ;
                                                 z_wrapper_notification(["error", msg.join('<br>')]);
+                                                new_user_data_hub = null ;
 
                                             }
                                             else if (user_data_hubs.length == 1) {
@@ -2296,6 +2264,7 @@ angular.module('MoneyNetwork')
                                                 ] ;
                                                 console.log(pgm + msg.join('. ')) ;
                                                 z_wrapper_notification(["error", msg.join('<br>')]);
+                                                new_user_data_hub = user_data_hubs[0].hub ;
 
                                             }
                                             else {
@@ -2307,39 +2276,59 @@ angular.module('MoneyNetwork')
                                                     'Press OK to confirm box or go to Account page and change default user data hub'] ;
                                                 console.log(pgm + msg.join('. ')) ;
                                                 z_wrapper_notification(["error", msg.join('<br>')]);
+                                                i = Math.floor(Math.random() * user_data_hubs.length) ;
+                                                new_user_data_hub = user_data_hubs[i].hub ;
 
-                                                if (!zeronet_site_publish_no_peers) {
-                                                    // confirm box. offer the user as easy workaround for publish failed and no peers
-                                                    zeronet_site_publish_no_peers = true ;
-                                                    ZeroFrame.cmd("wrapperConfirm", ['Move user profile to an other user data hub?', 'OK'], function (confirm) {
-                                                        if (!confirm) return ;
-                                                        z_wrapper_notification(["error", "Sorry. Move user profile has not yet been implemented"]);
+                                            }
 
-                                                        //
+                                            // confirm box - move user profile - user may want to create a backup before moving user profile
+                                            if (!zeronet_site_publish_no_peers && new_user_data_hub) {
+                                                // confirm box. offer the user as easy workaround for publish failed and no peers
+                                                zeronet_site_publish_no_peers = true ;
+                                                msg = [
+                                                    'Moving user profile',
+                                                    'from ' + my_user_data_hub,
+                                                    'to ' + new_user_data_hub,
+                                                    'You may want to create a export/backup before continuing (Account page)',
+                                                    'Any MN-wallet sessions must be reconnected after move',
+                                                    'Move user profile?'] ;
+                                                ZeroFrame.cmd("wrapperConfirm", [msg.join('<br>'), 'OK'], function (confirm) {
+                                                    var pgm = service + '.zeronet_site_publish wrapperConfirm callback 7: ';
+                                                    if (detected_client_log_out(pgm, old_userid)) return;
+                                                    if (!confirm) return ;
 
-                                                        // todo: move user profile
+                                                    z_wrapper_notification(['info', 'Moving user profile<br>Please wait for receipt<br>Publish operations can take some time', 20000]) ;
 
-                                                    })
-                                                }
+                                                    move_user_hub(new_user_data_hub, function (res) {
+                                                        var pgm = service + '.zeronet_site_publish wrapperConfirm callback 8: ';
+                                                        var msg ;
+                                                        if (res) {
+                                                            msg = [
+                                                                'Move user profile failed',
+                                                                'res = ' + JSON.stringify(res) +
+                                                                'You may want to log out + log in to cleanup files',
+                                                                'You may want to import backup (Account page)'
+                                                            ] ;
+                                                            console.log(pgm + msg.join('. ')) ;
+                                                            z_wrapper_notification(['error', msg.join('<br>')]) ;
+                                                        }
+                                                        else {
+                                                            msg = [
+                                                                'User profile was moved',
+                                                                'Any old MN-wallet sessions must be reconnected'
+                                                            ] ;
+                                                            z_wrapper_notification(['done', msg.join('<br>')]) ;
+                                                        }
 
+                                                    }) ; // move_user_hub callback 8
+
+                                                }); // wrapperConfirm callback 7
                                             }
 
                                         }
 
-                                        // error - repeat sitePublish in 30, 60, 120, 240 etc seconds (device maybe offline or no peers)
-                                        if (!zeronet_site_publish_interval) zeronet_site_publish_interval = 30;
-                                        else zeronet_site_publish_interval = zeronet_site_publish_interval * 2;
-                                        console.log(pgm + 'Error. Failed to publish: ' + res.error + '. Try again in ' + zeronet_site_publish_interval + ' seconds');
-                                        var retry_zeronet_site_publish = function () {
-                                            zeronet_site_publish({reason: reason});
-                                        };
-                                        cb();
-                                        $timeout(retry_zeronet_site_publish, zeronet_site_publish_interval * 1000);
-                                        // debug_info() ;
-
-
-                                    }) ;
-
+                                    }) ; // get_all_hubs callback 6
+                                    // publish failed
                                     return;
                                 }
 
@@ -2461,27 +2450,27 @@ angular.module('MoneyNetwork')
                                         cache_status.size = content.files_optional[filename].size;
                                     }
 
-                                    if (!content_updated) return cb() ;
+                                    if (!content_updated) return cb(res) ;
 
                                     // update content.json. sign and publish in next publish call
                                     json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
                                     // debug_seq2 = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + user_path + '/content.json fileWrite') ;
                                     debug_seq2 = debug_z_api_operation_start(pgm, user_path + '/content.json', 'fileWrite', show_debug('z_file_write'));
-                                    z_file_write(pgm, user_path + '/content.json', btoa(json_raw), function (res) {
+                                    z_file_write(pgm, user_path + '/content.json', btoa(json_raw), function (res2) {
                                         // ZeroFrame.cmd("fileWrite", [user_path + '/content.json', btoa(json_raw)], function (res) {
                                         var pgm = service + '.zeronet_site_publish fileWrite callback 7: ';
                                         var error;
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
-                                        debug_z_api_operation_end(debug_seq2, format_res(res));
+                                        debug_z_api_operation_end(debug_seq2, format_res(res2));
                                         if (detected_client_log_out(pgm, old_userid)) return;
-                                        if (res != "ok") {
-                                            error = "Could not add optional file support to content.json: " + res;
+                                        if (res2 != "ok") {
+                                            error = "Could not add optional file support to content.json: " + res2;
                                             console.log(pgm + error);
                                             z_wrapper_notification(["error", error, 5000]);
-                                            return;
+                                            return cb(error);
                                         }
                                         // sign and publish in next zeronet_site_publish call
-                                        cb();
+                                        cb(res);
 
                                     }); // fileWrite callback 7
 
@@ -2974,136 +2963,6 @@ angular.module('MoneyNetwork')
         function clear_admin_key() {
             admin_key = null ;
         }
-
-
-        function cleanup_inactive_users() {
-            var pgm = service + '.cleanup_inactive_users: ';
-            var info, mn_query_16, debug_seq ;
-            info = '. Skipping cleanup_inactive_users check';
-            // check Zeronet status
-            if (!z_cache.user_id) {
-                console.log(pgm + 'No client login' + info);
-                return;
-            }
-            if (!ZeroFrame.site_info) {
-                console.log(pgm + 'ZeroFrame is not ready' + info);
-                return;
-            }
-            if (!ZeroFrame.site_info.cert_user_id) {
-                console.log(pgm + 'No ZeroNet login' + info);
-                return;
-            }
-            if (!is_admin()) {
-                // console.log(pgm + 'not administrator');
-                return;
-            }
-
-            // find files for inactive user accounts
-            mn_query_16 =
-                "select" +
-                "  keyvalue.value as timestamp," +
-                "  json.json_id," +
-                "  json.directory," +
-                "  files.filename," +
-                "  files.size " +
-                "from keyvalue, json, " +
-                "  (select filename, sha512, size,  'N' as optional, json_id from files" +
-                "     union all" +
-                "   select filename, sha512, size,  'Y' as optional, json_id from files_optional) as files " +
-                "where keyvalue.key = 'modified' " +
-                "and keyvalue.value <  strftime('%s','now')-60*60*24*" + days_before_cleanup_users + " " +
-                "and json.json_id = keyvalue.json_id " +
-                "and files.json_id = keyvalue.json_id " +
-                "order by keyvalue.value, keyvalue.json_id";
-            debug('select', pgm + 'query 16 (MS OK) = ' + mn_query_16);
-
-            console.log(pgm + 'todo: old user account cleanup is no longer working after adding merger site feature. users are now on different sites with different admin private keys');
-            console.log(pgm + 'query 16 = ' + mn_query_16) ;
-            return ;
-
-            // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_db_query', pgm + 'query 16') ;
-            debug_seq = debug_z_api_operation_start(pgm, 'mn query 16', 'dbQuery', show_debug('z_db_query')) ;
-            ZeroFrame.cmd("dbQuery", [mn_query_16], function (res) {
-                var pgm = service + '.cleanup_inactive_users dbQuery callback: ';
-                var i ;
-                // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK') ;
-                if (res.error) {
-                    z_wrapper_notification(["error", "Search for inactive users: " + res.error, 5000]);
-                    console.log(pgm + "Search for inactive users failed: " + res.error);
-                    console.log(pgm + 'query = ' + mn_query_16);
-                    return;
-                }
-                if (res.length == 0) return; // no more inactive users to cleanup
-
-                console.log(pgm + 'todo: old user account cleanup is no longer working after adding merger site feature. users are on different sites with different admin private keys');
-                console.log(pgm + 'query 16 = ' + mn_query_16) ;
-                // console.log(pgm + 'res = ' + JSON.stringify(res));
-                return ;
-
-                var json_ids = [] ;
-                var bytes = 0 ;
-                for (i=0 ; i<res.length ; i++) {
-                    bytes += res[i].size ;
-                    if (json_ids.indexOf(res[i].json_id) == -1) json_ids.push(res[i].json_id) ;
-                }
-
-                // 1CCiJ97XHgVeJ@moneynetwork auth_address is in "signers", not this is not working as expected
-                // use zite private key instead
-                var users = (json_ids.length == 1 ? '1 user' : json_ids.length + ' users') + '. ' ;
-                var files = (res.length == 1 ? '1 file' : res.length + ' files') + '. ' ;
-
-                confirm_admin_task("Cleanup old user accounts? " + users + files + "Total " + bytes + " bytes.", function (privatekey) {
-                    if (!privatekey) return;
-
-                    // sign/publish is not working. 1CCiJ97XHgVeJ@moneynetwork should be moderator and allowed to delete old user files
-                    // http://127.0.0.1:43110/Blog.ZeroNetwork.bit/?Post:46:ZeroNet+site+development+tutorial+2#Comments
-                    var sign_and_publish = function (directory) {
-                        var filename = 'merged-' + get_merged_type() + '/' + directory + '/content.json';
-                        var debug_seq ;
-                        // console.log(pgm + 'sign and publish. filename = ' + filename);
-                        // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_site_publish', pgm + filename + ' sitePublish') ;
-                        debug_seq = debug_z_api_operation_start(pgm, filename, 'sitePublish', show_debug('z_site_publish')) ;
-                        ZeroFrame.cmd("sitePublish", {privatekey: privatekey, inner_path: filename}, function (res) {
-                            var pgm = service + '.cleanup_inactive_users sitePublish callback: ', error;
-                            // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                            debug_z_api_operation_end(debug_seq, format_res(res)) ;
-                            if (res != "ok") {
-                                error = "Failed to publish " + filename + " : " + res.error;
-                                console.log(pgm + error);
-                                z_wrapper_notification(["error", error, 3000]);
-                            }
-                        }); // sitePublish
-                    }; // sign_and_publish
-
-                    // delete files and publish content.json for each user
-                    var last_directory = res[0].directory, i, filename;
-                    for (i = 0; i < res.length; i++) {
-                        if (res[i].directory != last_directory) {
-                            sign_and_publish(last_directory);
-                            last_directory = res[i].directory;
-                        }
-                        filename = "merged-" + get_merged_type() + "/" + res[i].directory + "/" + res[i].filename;
-                        if (res[i].optional == 'N') {
-                            debug_seq = debug_z_api_operation_start(pgm, filename, 'fileDelete', show_debug('z_file_delete')) ;
-                            ZeroFrame.cmd("fileDelete", filename, function (res) {
-                                debug_z_api_operation_end(debug_seq, format_res(res)) ;
-                            });
-                        }
-                        else {
-                            debug_seq = debug_z_api_operation_start(pgm, filename, 'optionalFileDelete', show_debug('z_file_delete')) ;
-                            ZeroFrame.cmd("optionalFileDelete", filename, function (res) {
-                                debug_z_api_operation_end(debug_seq, format_res(res)) ;
-                            });
-                        }
-                    } // for i (res)
-                    sign_and_publish(last_directory);
-
-                }); // confirm_admin_task
-
-            }); // dbQuery
-
-        } // cleanup_inactive_users
 
         function get_my_unique_id () {
             if (z_cache.my_unique_id) z_cache.my_unique_id ;
@@ -3833,7 +3692,6 @@ angular.module('MoneyNetwork')
             is_admin: is_admin,
             get_admin_key: get_admin_key,
             clear_admin_key: clear_admin_key,
-            cleanup_inactive_users: cleanup_inactive_users,
             get_no_days_before_cleanup: get_no_days_before_cleanup,
             get_my_unique_id: get_my_unique_id,
             i_am_online: i_am_online,
@@ -3852,7 +3710,6 @@ angular.module('MoneyNetwork')
             recursive_delete_message: recursive_delete_message,
             inject_functions: inject_functions,
             z_file_get: z_file_get,
-            get_user_data_hubs: get_user_data_hubs,
             z_merger_site_add: z_merger_site_add,
             get_merger_site_added: get_merger_site_added,
             z_wrapper_notification: z_wrapper_notification,
