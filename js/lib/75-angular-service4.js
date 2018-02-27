@@ -598,6 +598,7 @@ angular.module('MoneyNetwork')
                 if (encrypt.destroyed) {
                     // MoneyNetworkAPI instance has been destroyed. Maybe deleted session. Maybe too many invalid get_password requests?
                     console.log(pgm + 'ignoring incoming message ' + filename + '. session has been destroyed. reason = ' + encrypt.destroyed);
+                    MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'ok. session was destroyed') ;
                     return;
                 }
                 console.log(pgm + 'filename = ' + filename);
@@ -614,6 +615,7 @@ angular.module('MoneyNetwork')
                     if (!session_info.hasOwnProperty('done')) session_info.done = {};
                     if (session_info.done[file_timestamp]) {
                         console.log(pgm + 'ignoring incoming message ' + filename + '. already received');
+                        MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'ok. already received') ;
                         return;
                     }
                 }
@@ -622,10 +624,16 @@ angular.module('MoneyNetwork')
                     // OK. other session has deleted this message. normally deleted after a short time
                     if (session_info) session_info.done[file_timestamp] = true;
                     ls_save_sessions();
+                    MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'ok. deleted message') ;
                     return;
                 }
 
                 // console.log(pgm + 'request = ' + JSON.stringify(request)) ;
+                if (!request) {
+                    console.log(pgm + 'ignoring incoming message ' + filename + '. failed to decrypt. could be encrypted for an other public key (JSEncrypt or cryptMessage') ;
+                    MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'failed to decrypt message') ;
+                    return ;
+                }
 
                 // default is 3 layers encryption
                 encryptions = [1, 2, 3];

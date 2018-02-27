@@ -901,13 +901,14 @@ angular.module('MoneyNetwork')
             filename = 'moneynetwork-' + date(now, 'yyyyMMdd-HHmmss') + '.txt' ;
             data = {
                 timestamp: now,
-                options: {
+                options: { // export options (true/false)
                     ls: true,
                     z: self.export_z,
                     chat: self.export_chat,
                     wallets_ls: self.export_wallets,
                     encrypt: self.export_encrypt
-                }
+                },
+                certs: {}
             };
 
             // ready for export. callback sequence:
@@ -1029,6 +1030,11 @@ angular.module('MoneyNetwork')
                                     wallet_ls: response1.ls,
                                     wallet_files: files ? files : null
                                 });
+                                // what zeronet certificate was used in wallet export? same certificate should be used in import!
+                                data.certs[self.wallets[index].wallet_url] = {
+                                    auth_address: response1.auth_address,
+                                    cert_user_id: response1.cert_user_id
+                                };
 
                                 // next wallet
                                 return step_7_get_wallet_backup(index + 1);
@@ -1066,6 +1072,11 @@ angular.module('MoneyNetwork')
 
                 step_6_get_ls = function() {
                     data.ls = MoneyNetworkHelper.ls_get() ;
+                    // add info about MN cert. should import with identical cert
+                    data.certs['/moneynetwork.bit'] = {
+                        auth_address: ZeroFrame.site_info.auth_address,
+                        cert_user_id: ZeroFrame.site_info.cert_user_id
+                    };
                     if (self.export_wallets) step_7_get_wallet_backup(0) ;
                     else step_8_encrypt_data() ;
                 }; // step_6_get_ls
@@ -1187,6 +1198,7 @@ angular.module('MoneyNetwork')
                 }; // step_3_read_content_json cb
 
                 step_2_get_password = function () {
+                    z_wrapper_notification(['info', 'Creating export file. Please wait', 15000]) ;
                     if (data.options.encrypt) {
                         data.password = self.export_password ;
                         self.export_password = null ;
@@ -1446,7 +1458,7 @@ angular.module('MoneyNetwork')
             } ; // step_5_get_user_path
 
             function confirm_import_msg (data) {
-                var no_z_files, no_chat_files, msg, filename, no_selected_wallets, i ;
+                var no_z_files, no_chat_files, msg, filename, no_selected_wallets, i, export_auth_address, other_user_path_split, import_auth_address, wallet_warnings ;
                 no_z_files = 0 ;
                 no_chat_files = 0 ;
 
@@ -1458,18 +1470,46 @@ angular.module('MoneyNetwork')
                 }
                 else data.z_files = {} ;
                 msg = 'Money Network export file looks OK:' ;
+                if (data.certs && data.certs['/moneynetwork.bit']) {
+                    // check certificates used in MN export and import.
+                    if ((data.certs['/moneynetwork.bit'].auth_address != ZeroFrame.site_info.auth_address) ||
+                        (data.certs['/moneynetwork.bit'].cert_user_id != ZeroFrame.site_info.cert_user_id)) {
+                        msg += '<br>- WARNING. MN export and import using different ZeroNet certificates:' ;
+                        msg += '<br>- MN export as ' + data.certs['/moneynetwork.bit'].cert_user_id + ' (' + data.certs['/moneynetwork.bit'].auth_address + ')' ;
+                        msg += '<br>- MN import as ' + ZeroFrame.site_info.cert_user_id + ' (' + ZeroFrame.site_info.auth_address + ')' ;
+                    }
+                }
                 msg += '<br>- localStorage data from ' + date(data.timestamp, 'short') ;
                 if (data.options.z && self.import_z) msg += '<br>- ZeroNet user files (' + no_z_files + ' files)' ;
                 if (data.options.chat && self.import_chat) msg += '<br>- ZeroNet optional files (public chat) (' + no_chat_files + ' files)' ;
                 if (data.options.wallets_ls && self.import_wallets) {
                     no_selected_wallets = 0 ;
+                    wallet_warnings = '' ;
                     for (i=0 ; i<self.wallets.length ; i++) {
                         if (self.wallets[i].import_file_index == -1) continue ;
                         if (!self.wallets[i].import) continue ;
                         if (self.wallets[i].ping_error) continue ; // error. import processing should have been aborted in step_3_check_wallets
                         no_selected_wallets++ ;
+                        // todo: check wallet certificate used in export and import
+                        no_selected_wallets = no_selected_wallets ;
+                        if (data.certs && data.certs[self.wallets[i].wallet_url]) {
+                            // check certificates used in wallet export and import
+                            console.log(pgm + 'found export cert for ' + self.wallets[i].wallet_url + ': ' + JSON.stringify(data.certs[self.wallets[i].wallet_url])) ;
+                            export_auth_address = data.certs[self.wallets[i].wallet_url].auth_address ;
+                            // found export cert for /1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1: {"auth_address":"18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ","cert_user_id":"jro@zeroid.bit"}
+                            console.log(pgm + 'other_user_path = ' + self.wallets[i].session_info.encrypt.other_user_path) ;
+                            // other_user_path = merged-MoneyNetwork/17k1QzQRhpkJubxCxaCcD6ytqnp8cqUkXe/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/
+                            other_user_path_split = self.wallets[i].session_info.encrypt.other_user_path.split('/') ;
+                            import_auth_address = other_user_path_split[other_user_path_split.length-2] ;
+                            if (export_auth_address != import_auth_address) {
+                                wallet_warnings += '<br>- WARNING. Wallet ' + self.wallets[i].wallet_name + ' export and import using different ZeroNet certificates:' ;
+                                wallet_warnings += '<br>- wallet ' + self.wallets[i].wallet_name + ' export as ' + data.certs[self.wallets[i].wallet_url].cert_user_id + ' (' + data.certs[self.wallets[i].wallet_url].auth_address + ')' ;
+                                wallet_warnings += '<br>- wallet ' + self.wallets[i].wallet_name + ' import using auth_address ' + import_auth_address ;
+                            }
+                        }
                     }
                     msg += '<br>- localStorage data for ' + no_selected_wallets + ' wallet' + (no_selected_wallets == 1 ? '' : 's') ;
+                    if (wallet_warnings) msg += wallet_warnings ;
                 }
                 msg += '<br>Use import options section to configurate import' ;
                 msg += '<br>Import will overwrite all your Money Network data!' ;

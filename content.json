@@ -34,8 +34,8 @@
    "size": 147247
   },
   "js-api/MoneyNetworkAPI.js": {
-   "sha512": "74c4b76f1cbf6c3bbd2169d9b7890c7365c1fda1074dcb3b4988f377b13f39d3",
-   "size": 341414
+   "sha512": "d9a5fd452764d123be24e762e8b80a1a4f7b9fdb23de4776c811addf0d7b7372",
+   "size": 342137
   },
   "js-external/01-math.js": {
    "sha512": "4905661e8e781b0f6fad2c363291e1d354efb87d8a8d5721677e5e6fc7b16111",
@@ -178,8 +178,8 @@
    "size": 53602
   },
   "js/all.js.zip": {
-   "sha512": "2ed8505d913eb66f0bda53a21f4d79688dae9706216669113147449ab58ee37e",
-   "size": 279670
+   "sha512": "072663ea21e8414f8b0782c95d5abc5291f1224051db2334009d41a0eaa35e54",
+   "size": 280488
   },
   "public/css/fonts/glyphicons-12-camera.png": {
    "sha512": "94cdc9ad56ddbbfd7f710d4bf864cc7bb73108d6a88a952d82c7990e51ab7e5e",
@@ -350,7 +350,7 @@
   }
  },
  "inner_path": "content.json",
- "modified": 1519664766,
+ "modified": 1519731662,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -370,7 +370,7 @@
  },
  "signers_sign": "HKCAdoe7JxILoKnbuGqPlHvPjsCAsby4hJg9BZ4v3tsVR9vQ3vfXwOzy0FdL+Os9uc7Jlp9vLCONSIKKh/gI1Y4=",
  "signs": {
-  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "GzL7U+6NHNqqqtM6IKcCgfTncn8PFYyoanxGWirIy4sqK3bexW7tIgYSG/fkGD4SHcrQLIFKPuxelz+elzzsQ7w="
+  "1JeHa67QEvrrFpsSow82fLypw8LoRcmCXk": "G10yY3lbc51nXvMwMbUVdWWBsG3x0dzhYQAHSQRlR3aLEO5WmoLPidnsTQHsXOuoGWU4nmxZ5x+SMlPhOjvUJhE="
  },
  "signs_required": 1,
  "title": "MoneyNetwork",

@@ -259,7 +259,7 @@ var MoneyNetworkAPILib = (function () {
             started_at: new Date().getTime()
         } ;
         // debug: "global" MoneyNetworkAPILib debug option (null, true, false or a string)
-        if (true || debug || debug_this) console.log(
+        if (debug || debug_this) console.log(
             pgm + (inner_path ? inner_path + ' ' : '') + cmd + ' started (' + debug_seq + (group_debug_seq ? '/' + group_debug_seq : '') + '). ' +
             debug_z_api_operation_pending()) ;
         return debug_seq ;
@@ -281,7 +281,7 @@ var MoneyNetworkAPILib = (function () {
         delete z_debug_operations['' + debug_seq] ;
         finished_at = new Date().getTime() ;
         elapsed_time = finished_at - started_at ;
-        if (true || debug || debug_this) console.log(
+        if (debug || debug_this) console.log(
             pgm + (inner_path ? inner_path + ' ' : '') + cmd + ' finished' + (res ? '. res = ' + JSON.stringify(res) : '') +
             '. elapsed time ' + elapsed_time + ' ms (' + debug_seq + (group_debug_seq ? '/' + group_debug_seq : '') + '). ' +
             debug_z_api_operation_pending()) ;
@@ -1139,7 +1139,7 @@ var MoneyNetworkAPILib = (function () {
                                         else {
                                             // using MoneyNetworkAPILib sitePublish code. No retry after failed publish
                                             inner_path = encrypt.this_user_path + 'content.json' ;
-                                            z_site_publish({inner_path: inner_path, encrypt: encrypt, reason: request_filename}, function (response) {
+                                            z_site_publish({inner_path: inner_path, remove_missing_optional: true, encrypt: encrypt, reason: request_filename}, function (response) {
                                                 var pgm = module + '.message_demon.step_2_fileget.waiting_for_file z_site_publish callback 2: ';
                                                 pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
                                                 if (debug) console.log(pgm2 + 'response = ' + JSON.stringify(response));
@@ -1739,7 +1739,7 @@ var MoneyNetworkAPILib = (function () {
             "wallet_backup": {
                 "type": 'object',
                 "title": 'Wallet: return string with full localStorage copy to MN session',
-                "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage data',
+                "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage data. auth_address and cert_user_id: info about ZeroNet certificate used in export. Should also be used in import to prevent communication problems between MN and wallet',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^wallet_backup$'},
                     "ls": {"type": 'string'},
@@ -1748,16 +1748,18 @@ var MoneyNetworkAPILib = (function () {
                         "description": 'optional list of files to be included in backup',
                         "items": { "type": 'string' },
                         "minItems": 1
-                    }
+                    },
+                    "auth_address": { "type": 'string'},
+                    "cert_user_id": { "type": 'string'}
                 },
-                "required": ['msgtype', 'ls'],
+                "required": ['msgtype', 'ls', 'auth_address', 'cert_user_id'],
                 "additionalProperties": false
             },
 
             "restore_wallet_backup": {
                 "type": 'object',
                 "title": 'MN: ask wallet to restore previous localStorage backup',
-                "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage. wallet: JSON.stringify wallet.json file. timestamp and filename: backup timestamp and filename',
+                "description": 'Used for full MN and wallets localStorage backup/restore. ls: JSON.stringify localStorage. files: array with filenames and content. auth_addresse and cert_user_id: info about ZeroNet certificate used in export. Should also be used in import to prevent communication problems between MN and wallet. file timestamp and filename: backup timestamp and filename',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^restore_wallet_backup$'},
                     "ls": {"type": 'string'},
@@ -1775,6 +1777,8 @@ var MoneyNetworkAPILib = (function () {
                         },
                         "minItems": 1
                     },
+                    "auth_address": { "type": 'string'},
+                    "cert_user_id": { "type": 'string'},
                     "timestamp": {"type": 'number', "multipleOf": 1.0},
                     "filename": {"type": 'string'}
                 },
@@ -2806,7 +2810,7 @@ var MoneyNetworkAPILib = (function () {
         if (last_published_hash[published].system == 'MN') {
             // new publish in MoneyNetwork session to replace failed publish
             if (!last_published_hash[published].hasOwnProperty('retry_publish_interval')) last_published_hash[published].retry_publish_interval = 0 ;
-            z_site_publish({inner_path: user_path + 'content.json', reason: 'ratelimit error'}, function (res) {
+            z_site_publish({inner_path: user_path + 'content.json', remove_missing_optional: true, reason: 'ratelimit error'}, function (res) {
                 var pgm = module + '.ratelimit_error z_site_publish callback: ' ;
                 var pgm2, retry ;
                 pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
@@ -3513,6 +3517,7 @@ var MoneyNetworkAPILib = (function () {
 
     // sitePublish
     // - privatekey is not supported
+    // - remove_missing_optional supported in publish
     // - inner_path must be an user directory /^merged-MoneyNetwork\/([^\/]*?)\/data\/users\/content\.json$/ path
     // - minimum interval between publish is 30 seconds (shared for MN and MN wallet sites)
     function z_site_publish(options, cb) {
@@ -3703,7 +3708,7 @@ var MoneyNetworkAPILib = (function () {
 
                 // publish in 2 steps. remove_missing_optional before publish to prevent hanging transactions
                 debug_seq1 = debug_z_api_operation_start(pgm, inner_path, 'siteSign');
-                ZeroFrame.cmd("siteSign", {inner_path: options.inner_path, remove_missing_optional: true}, function (res) {
+                ZeroFrame.cmd("siteSign", {inner_path: options.inner_path, remove_missing_optional: options.remove_missing_optional}, function (res) {
                     var pgm = module + '.z_site_publish siteSign callback 3: ';
                     debug_z_api_operation_end(debug_seq1, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
                     if (res == 'ok') {

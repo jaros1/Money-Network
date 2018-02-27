@@ -2190,7 +2190,7 @@ angular.module('MoneyNetwork')
                                 return cb(error);
                             }
                             // sitePublish
-                            MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', reason: reason}, function (res) {
+                            MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', remove_missing_optional: true, reason: reason}, function (res) {
                                 var pgm = service + '.zeronet_site_publish sitePublish callback 5: ';
                                 console.log(pgm + 'res = ' + JSON.stringify(res) + ' (' + debug_seq + ')');
                                 if (detected_client_log_out(pgm, old_userid)) return;
