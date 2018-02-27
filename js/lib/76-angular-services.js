@@ -5611,7 +5611,7 @@ angular.module('MoneyNetwork')
                 inner_path = files.shift() ;
                 if (!inner_path) {
                     if (files_without_peers.length) {
-                        console.log(pgm + 'checked ' + files_without_peers.length + ' chat files without finding peers.') ;
+                        // console.log(pgm + 'checked ' + files_without_peers.length + ' chat files without finding peers.') ;
                         return no_new_files() ;
                     }
                     return ;
@@ -5639,6 +5639,14 @@ angular.module('MoneyNetwork')
                         chat_files_without_peers[inner_path].file_info = file_info ;
                         chat_files_without_peers[inner_path].file_info_at = new Date().getTime()  ;
                         files_without_peers.push(inner_path) ;
+                        if (!chat_files_without_peers[inner_path].file_get_at || (now - chat_files_without_peers[inner_path].file_get_at >= 60000)) {
+                            // start a dummy fileGet. Forcing ZeroNet to find peers faster
+                            z_file_get(pgm, {inner_path: inner_path, timeout: 10}, function (file_str) {
+                                if (!file_str) return ;
+                                console.log(pgm + 'OK. found peer serving ' + inner_path + '. should be loaded into chat page in a few seconds') ;
+                            }) ;
+                            chat_files_without_peers[inner_path].file_get_at = now ;
+                        }
                         return check_file() ;
                     }
                     console.log(pgm + 'found public chat file ' + inner_path + ' with peers. check public chat now') ;
