@@ -119,6 +119,100 @@
             </ul>
             <br>
 
+            <table>
+                <tbody ng-repeat="w in m.wallets">
+                <tr>
+                    <th>Wallet:</th>
+                    <td style="vertical-align: top">
+                        <a ng-click="m.open_wallet_url(w)" ng-bind="w.wallet_url"></a>
+                        <span ng-bind="w.wallet_title"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Description:</th>
+                    <td ng-bind="w.wallet_description" style="vertical-align: top"></td>
+                </tr>
+                <tr>
+                    <th>API:</th>
+                    <td style="vertical-align: top">
+                        <a href="{{w.wallet.api_url}}" target="_blank" rel="noopener noreferrer" ng-bind="w.wallet.api_url"></a>
+                    </td>
+                </tr>
+                <tr>
+                    <th style="vertical-align: top">Currencies:</th>
+                    <td>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th></th>
+                                <th>Name</th>
+                                <th></th>
+                                <th>Url</th>
+                            </tr>
+                            </thead>
+                            <tbody ng-repeat="c in w.wallet.currencies">
+                            <tr>
+                                <td ng-bind="c.code"></td>
+                                <td>&nbsp;</td>
+                                <td ng-bind="c.name"></td>
+                                <td>&nbsp;</td>
+                                <td><a href="{{c.url}}" target="_blank" rel="noopener noreferrer" ng-bind="c.url"></a></td>
+                            </tr>
+                            <tr>
+                                <td colspan="5" ng-bind-html="'<b>Fee info:</b> ' + c.fee_info"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr ng-show="m.is_logged_in()">
+                    <th>Share:</th>
+                    <td>
+                        <input type="checkbox" ng-model="w.share_wallet" ng-change="m.share_wallet_changed(w)">
+                        Click to share info about this wallet with other MoneyNetwork users (wallets.json file - unencrypted)
+                    </td>
+                </tr>
+                <tr ng-show="m.is_logged_in()">
+                    <th>Rate:</th>
+                    <td>
+                        <input type="radio" ng-model="w.rate_wallet" value=1 ng-change="m.rating_changed(w)">1<span style="color: red">❤️️</span> &nbsp;&nbsp;
+                        <input type="radio" ng-model="w.rate_wallet" value=2 ng-change="m.rating_changed(w)">2<span style="color: red">❤❤️️</span> &nbsp;&nbsp;
+                        <input type="radio" ng-model="w.rate_wallet" value=3 ng-change="m.rating_changed(w)">3<span style="color: red">❤❤❤️️</span> &nbsp;&nbsp;
+                        <input type="radio" ng-model="w.rate_wallet" value=4 ng-change="m.rating_changed(w)">4<span style="color: red">❤❤❤❤️️</span> &nbsp;&nbsp;
+                        <input type="radio" ng-model="w.rate_wallet" value=5 ng-change="m.rating_changed(w)">5<span style="color: red">❤❤❤❤❤️️</span> &nbsp;&nbsp;
+                        Rating and review are <span ng-hide="w.share_wallet"><b>not</b> </span>shared with other users
+                    </td>
+                </tr>
+                <tr ng-show="m.is_logged_in()">
+                    <th style="vertical-align: top">Review:</th>
+                    <td>
+                        <table style="width: 100%">
+                            <tbody>
+                            <tr>
+                                <td>
+                                    <textarea class="autosize postfield new_chat_msg"
+                                              placeholder="Enter wallet review" rows="1" required
+                                              ng-model="w.wallet_review" ng-keyup="m.handleTextAreaHeight($event)" ng-disabled="c.new_chat_msg_disabled">
+                                    </textarea>
+                                </td>
+                                <td style="vertical-align: top">
+                                    <button type="submit" ng-click="m.review_updated(w)">
+                                        <img title="Save and publish review" src="public/css/fonts/glyphicons-207-ok.png">
+                                    </button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>&nbsp;</td>
+                </tr>
+                </tbody>
+            </table>
+
             Money links:
             <ul style="list-style-type:disc">
                 <li><a href="http://charleseisenstein.net/" target="_blank" rel="noopener noreferrer">Charles Eisenstein</a>'s

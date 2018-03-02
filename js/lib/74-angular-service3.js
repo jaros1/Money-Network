@@ -1697,12 +1697,12 @@ angular.module('MoneyNetwork')
                                 json_raw = unescape(encodeURIComponent(JSON.stringify(image_json, null, "\t")));
                                 console.log(pgm + 'image==true: uploading image file ' + image_path) ;
                                 // debug_seq = MoneyNetworkHelper.debug_z_api_operation_start('z_file_write', pgm + image_path + ' fileWrite') ;
-                                debug_seq = debug_z_api_operation_start(pgm, image_path, 'fileWrite', show_debug('z_file_write')) ;
+                                // debug_seq = debug_z_api_operation_start(pgm, image_path, 'fileWrite', show_debug('z_file_write')) ;
                                 z_file_write(pgm, image_path, btoa(json_raw), function (res) {
                                 //ZeroFrame.cmd("fileWrite", [image_path, btoa(json_raw)], function (res) {
                                     var pgm = service + '.z_update_2a_data_json_encrypt fileWrite callback: ';
                                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq) ;
-                                    debug_z_api_operation_end(debug_seq, format_res(res)) ;
+                                    // debug_z_api_operation_end(debug_seq, format_res(res)) ;
                                     if (detected_client_log_out(pgm, old_userid)) return z_update_7_done() ;
                                     debug('outbox', pgm + 'res = ' + JSON.stringify(res));
                                     console.log(pgm + 'image==true: uploaded image file ' + image_path + '. res = ' + JSON.stringify(res)) ;

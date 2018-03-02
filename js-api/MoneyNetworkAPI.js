@@ -1404,7 +1404,7 @@ var MoneyNetworkAPILib = (function () {
 
             "wallet": {
                 "type": 'object',
-                "title": 'Public wallet information in wallet.json files',
+                "title": 'Public wallet information in wallet.json files on wallet data hubs',
                 "description": 'wallet_* fields from site_info. currencies is a list of supported currencies, api_url is optional url to external API documentation and hub is a random wallet data hub address. wallet_sha256 is sha256 signature for {wallet_address, wallet_domain, wallet_title, wallet_description, currencies, api_url} hash',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^wallet$'},
@@ -1460,6 +1460,31 @@ var MoneyNetworkAPILib = (function () {
                 "required": ['msgtype', 'wallet_sha256'],
                 "additionalProperties": false
             }, // wallet
+
+            "wallets": {
+                "type": 'object',
+                "title": 'Shared information about wallet sites in wallets.json in MoneyNetwork user data hubs',
+                "description": 'array with wallet (see wallet.json), rating and review',
+                "properties": {
+                    "msgtype": {"type": 'string', "pattern": '^wallets$'},
+                    "wallets": {
+                        "type": 'array',
+                        "description": 'One row for each share wallet (Money page)',
+                        "items": {
+                            "type": 'object',
+                            "properties": {
+                                "wallet": { "type": 'object', "description": 'See wallet json definition'},
+                                "rate": { "type": 'number', "multipleOf": 1.0, "minimum": 1, "maximum": 5},
+                                "review": { "type": 'string'}
+                            },
+                            "required": ['wallet'],
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": ['msgtype', 'wallets'],
+                    "additionalProperties": false
+                }
+            } , // wallets
 
             // money transactions step 1: validate and optional return some json to be included in chat msg with money transactions. return prepare_mt_response or error response
             "prepare_mt_request": {

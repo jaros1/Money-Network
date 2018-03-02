@@ -783,6 +783,7 @@ angular.module('MoneyNetwork')
                 contact = self.contact ;
 
                 // any files to delete? check content.json file
+                // todo: this is not a merger site path
                 user_path = "data/users/" + contact.auth_address;
                 inner_path = user_path + '/content.json' ;
                 moneyNetworkService.z_file_get(pgm, {inner_path: inner_path, required: false}, function (content) {
@@ -857,6 +858,7 @@ angular.module('MoneyNetwork')
                         for (i=0 ; i<file_names.length ; i++) {
                             (function() {
                                 var file_name, debug_seq ;
+                                // todo: this is not a merger site patyh
                                 file_name = user_path + "/" + file_names[i] ;
                                 debug_seq = MoneyNetworkAPILib.f(pgm, file_name, 'fileDelete', MoneyNetworkHelper.show_debug('z_file_delete'));
                                 ZeroFrame.cmd("fileDelete", file_name, function (res) {
@@ -866,6 +868,7 @@ angular.module('MoneyNetwork')
                         }
 
                         // sign and publish. two steps. remove_missing_optional to prevent hanging transactions
+                        // todo: this is not a merger site path
                         var file_name = user_path + '/content.json';
                         ZeroFrame.cmd("siteSign", {privatekey: private_key, inner_path: file_name, remove_missing_optional: true}, function (res) {
                             var pgm = controller + '.delete_user1 siteSign callback 3: ' ;
