@@ -1455,7 +1455,10 @@ var MoneyNetworkAPILib = (function () {
                     "message_workflow": {
                         "type": 'object',
                         "description": 'Json message workflow for extra schemas in wallet communication. Used in compatibility check between two different wallet sites (different wallet sites supporting identical currencies)'
-                    }
+                    },
+                    // only wallets.json files. not included in wallet_sha256 calc. extra info about shared wallet
+                    "wallet_modified": {"type": 'number', "multipleOf": 1.0, description: "content.json modified timestamp for wallet.json file"},
+                    "wallet_directory": { "type": 'string', description: "directory (hub and auth_address) for wallet.json file"}
                 },
                 "required": ['msgtype', 'wallet_sha256'],
                 "additionalProperties": false
@@ -1464,27 +1467,37 @@ var MoneyNetworkAPILib = (function () {
             "wallets": {
                 "type": 'object',
                 "title": 'Shared information about wallet sites in wallets.json in MoneyNetwork user data hubs',
-                "description": 'array with wallet (see wallet.json), rating and review',
+                "description": 'object hashes with wallets and shared rating and reviews. key = wallet_address in both object hashes',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^wallets$'},
                     "wallets": {
-                        "type": 'array',
-                        "description": 'One row for each share wallet (Money page)',
-                        "items": {
-                            "type": 'object',
-                            "properties": {
-                                "wallet": { "type": 'object', "description": 'See wallet json definition'},
-                                "rate": { "type": 'number', "multipleOf": 1.0, "minimum": 1, "maximum": 5},
-                                "review": { "type": 'string'}
-                            },
-                            "required": ['wallet'],
-                            "additionalProperties": false
-                        }
+                        "type": 'object',
+                        "description": 'object hash with wallets.json from wallet data hub. key: wallet_address',
+                        "patternProperties": {
+                            "^1[a-km-zA-HJ-NP-Z1-9]{25,34}$": {"type": 'object', "description": 'Structure: See wallet'}
+                        },
+                        "additionalProperties": false
                     },
-                    "required": ['msgtype', 'wallets'],
-                    "additionalProperties": false
-                }
-            } , // wallets
+                    "share": {
+                        "type": 'object',
+                        "description": 'MN user wallet rate and review',
+                        "patternProperties": {
+                            "^1[a-km-zA-HJ-NP-Z1-9]{25,34}$": {
+                                "type": 'object',
+                                "properties": {
+                                    "rate": {"type": 'number', "multipleOf": 1.0, "minimum": 1, "maximum": 5 },
+                                    "review": {"type": 'string'}
+                                },
+                                "additionalProperties": false
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "wallets_modified": {"type": 'number', "multipleOf": 1.0, description: "unix timestamp in seconds (10 digits)"}
+                },
+                "required": ['msgtype', 'wallets', 'share', 'wallets_modified'],
+                "additionalProperties": false
+            }, // wallets
 
             // money transactions step 1: validate and optional return some json to be included in chat msg with money transactions. return prepare_mt_response or error response
             "prepare_mt_request": {
@@ -1974,7 +1987,7 @@ var MoneyNetworkAPILib = (function () {
     var wallet_info_cache = {} ; // sha256 => wallet_info
     function get_wallet_info (wallet_sha256, cb) {
         var pgm = module + '.get_wallet_info: ';
-        var i, re, results, api_query_3, sha256, debug_seq, refresh_angular_ui ;
+        var i, re, results, sha256, debug_seq, refresh_angular_ui ;
         refresh_angular_ui = false ;
         if (!wallet_sha256) return cb({error: 'invalid call. param 1 must be a string or an array of strings'}) ;
         if (typeof wallet_sha256 == 'string') wallet_sha256 = [wallet_sha256] ;
@@ -2001,122 +2014,167 @@ var MoneyNetworkAPILib = (function () {
         }
         if (!wallet_sha256.length) return cb(results, refresh_angular_ui) ; // all sha256 values were found in cache
 
-        // find wallets with full wallet info for the missing wallet_sha256 values
-        api_query_3 =
-            "select  wallet_sha256.value as wallet_sha256, json.directory " +
-            "from keyvalue as wallet_sha256, keyvalue, json " +
-            "where wallet_sha256.key = 'wallet_sha256' " +
-            "and wallet_sha256.value in " ;
-        for (i=0 ; i<wallet_sha256.length ; i++) {
-            api_query_3 += i==0 ? '(' : ',' ;
-            api_query_3 += " '" + wallet_sha256[i] + "'" ;
-        }
-        api_query_3 +=
-            ") and keyvalue.json_id = wallet_sha256.json_id " +
-            "and keyvalue.value is not null " +
-            "and keyvalue.key like 'wallet_%' " +
-            "and json.json_id = keyvalue.json_id " +
-            "group by  wallet_sha256.value, keyvalue.json_id " +
-            "having count(*) >= 4" ;
-        if (debug) console.log(pgm + 'api query 3 = ' + api_query_3);
+        // check if get_wallet_info is called from MN (search wallet and wallets) or from a wallet (search only wallet)
+        is_client(function (client) {
+            var pgm = module + '.get_wallet_info is_client callback 1: ' ;
+            var api_query_3, i ;
 
-        debug_seq = debug_z_api_operation_start(pgm, 'api query 3', 'dbQuery') ;
-        ZeroFrame.cmd("dbQuery", [api_query_3], function (wallets) {
-            var pgm = module + '.get_wallet_info dbQuery callback: ' ;
-            var error, check_wallet ;
-            debug_z_api_operation_end(debug_seq, !wallets || wallets.error ? 'Failed' : 'OK') ;
-            refresh_angular_ui = true ;
-            if (wallets.error) {
-                error = 'failed to find full wallet information. error = ' + wallets.error ;
-                console.log(pgm + error);
-                console.log(pgm + 'query = ' + api_query_3);
-                return cb({error: error});
+            // find wallet.json files with full wallet info for the missing wallet_sha256 values
+            api_query_3 =
+                "select wallet_sha256.value as wallet_sha256, json.directory, json.file_name " +
+                "from keyvalue as wallet_sha256, keyvalue, json " +
+                "where wallet_sha256.key = 'wallet_sha256' " +
+                "and wallet_sha256.value in " ;
+            for (i=0 ; i<wallet_sha256.length ; i++) {
+                api_query_3 += i==0 ? '(' : ',' ;
+                api_query_3 += " '" + wallet_sha256[i] + "'" ;
             }
-            if (!wallets.length) {
-                error = 'could not find any wallet.json with full wallet info for wallet_sha256 in ' + JSON.stringify(wallet_sha256) ;
-                console.log(pgm + error);
-                console.log(pgm + 'query = ' + api_query_3);
-                return cb({error: error});
+            api_query_3 +=
+                ") and keyvalue.json_id = wallet_sha256.json_id " +
+                "and keyvalue.value is not null " +
+                "and keyvalue.key like 'wallet_%' " +
+                "and json.json_id = keyvalue.json_id and json.file_name = 'wallet.json' " +
+                "group by wallet_sha256.value, keyvalue.json_id " +
+                "having count(*) >= 4" ;
+            if (!client) {
+                // MN only: find wallets.json files with full wallet info for the missing wallet_sha256 value (shared wallets)
+                api_query_3 +=
+                    "  union all " +
+                    "select wallets.wallet_sha256, json.directory, json.file_name " +
+                    "from wallets, json " +
+                    "where wallets.wallet_sha256 in " ;
+                for (i=0 ; i<wallet_sha256.length ; i++) {
+                    api_query_3 += i==0 ? '(' : ',' ;
+                    api_query_3 += " '" + wallet_sha256[i] + "'" ;
+                }
+                api_query_3 +=
+                    ") and wallets.wallet_address  is not null " +
+                    "and wallets.wallet_title is not null " +
+                    "and wallets.wallet_description is not null " +
+                    "and json.json_id = wallets.json_id"
             }
-            console.log(pgm + 'wallets = ' + JSON.stringify(wallets)) ;
+            if (debug) console.log(pgm + 'api query 3 = ' + api_query_3);
 
-            // lookup and check wallets one by one. One fileGet for each wallet.json file
-            check_wallet = function () {
-                var pgm = module + '.get_wallet_info.check_wallet: ' ;
-                var row, inner_path, debug_seq ;
-                row = wallets.shift() ;
-                if (!row) return cb(results, refresh_angular_ui) ; // done
-                if (results[row.wallet_sha256]) return check_wallet() ; // wallet info is already found for this sha256 value
-                // check wallet.json file
-                inner_path = 'merged-' + get_merged_type() + '/' + row.directory + '/wallet.json' ;
-                debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet');
-                ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
-                    var pgm = module + '.get_wallet_info.check_wallet fileGet callback: ' ;
-                    var wallet, error, calculated_sha256 ;
-                    debug_z_api_operation_end(debug_seq, wallet_str ? 'OK' : 'Not found') ;
-                    if (!wallet_str) {
-                        console.log(pgm + 'wallet.json was not found. inner_path = ' + inner_path);
-                        return check_wallet(); // next wallet
-                    }
-                    try {
-                        wallet = JSON.parse(wallet_str);
-                    }
-                    catch (e) {
-                        console.log(pgm + 'wallet.json is invalid. inner_path = ' + inner_path + '. error = ' + e.message);
-                        return check_wallet(); // next wallet
-                    }
-                    console.log(pgm + 'wallet = ' + JSON.stringify(wallet));
-                    //wallet = {
-                    //    "msgtype": "wallet",
-                    //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //    "wallet_title": "MoneyNetworkW2",
-                    //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                    //    "currencies": [{
-                    //        "code": "tBTC",
-                    //        "name": "Test Bitcoin",
-                    //        "url": "https://en.bitcoin.it/wiki/Testnet",
-                    //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
-                    //    }],
-                    //    "hub": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ",
-                    //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
-                    //};
-                    // validate wallet.json after read
-                    error = validate_json(pgm, wallet, null, 'api') ;
-                    if (error) {
-                        console.log(pgm + 'wallet.json was found but is invalid. error = ' + error + ', wallet = ' + JSON.stringify(wallet));
-                        return check_wallet(); // next wallet
-                    }
-                    // check wallet_sha256
-                    // full wallet info. test wallet_sha256 signature
-                    calculated_sha256 = calc_wallet_sha256(wallet);
-                    if (!calculated_sha256) {
-                        console.log(pgm + 'wallet.json was found but is invalid. wallet_sha256 could not be calculated, wallet = ' + JSON.stringify(wallet));
-                        return check_wallet() ; // next wallet
-                    }
-                    if (calculated_sha256 != wallet.wallet_sha256) {
-                        console.log(pgm + 'wallet.json was found but is invalid. expected calculated_sha256 = ' + calculated_sha256 + '. found wallet.wallet_sha256 = ' + wallet.wallet_sha256 + ', wallet = ' + JSON.stringify(wallet));
-                        return check_wallet() ; // next wallet
-                    }
-                    // OK. save wallet info.
-                    results[row.wallet_sha256] = {
-                        wallet_address: wallet.wallet_address,
-                        wallet_domain: wallet.wallet_domain,
-                        wallet_title: wallet.wallet_title,
-                        wallet_description: wallet.wallet_description,
-                        currencies: wallet.currencies,
-                        api_url: wallet.api_url,
-                        wallet_sha256: row.wallet_sha256
-                    } ;
-                    wallet_info_cache[row.wallet_sha256] = JSON.parse(JSON.stringify(results[row.wallet_sha256])) ;
-                    // next wallet
-                    check_wallet() ;
-                }) ; // fileGet callback
+            debug_seq = debug_z_api_operation_start(pgm, 'api query 3', 'dbQuery') ;
+            ZeroFrame.cmd("dbQuery", [api_query_3], function (wallets) {
+                var pgm = module + '.get_wallet_info dbQuery callback 2: ' ;
+                var error, check_wallet ;
+                debug_z_api_operation_end(debug_seq, !wallets || wallets.error ? 'Failed' : 'OK') ;
+                // returning results from a ZeroNet callback call. AngularJS does not track this cb
+                refresh_angular_ui = true ;
+                if (wallets.error) {
+                    error = 'failed to find full wallet information. error = ' + wallets.error ;
+                    console.log(pgm + error);
+                    console.log(pgm + 'query = ' + api_query_3);
+                    return cb({error: error});
+                }
+                if (!wallets.length) {
+                    error = 'could not find any wallet.json with full wallet info for wallet_sha256 in ' + JSON.stringify(wallet_sha256) ;
+                    console.log(pgm + error);
+                    console.log(pgm + 'query = ' + api_query_3);
+                    return cb({error: error});
+                }
+                console.log(pgm + 'wallets = ' + JSON.stringify(wallets)) ;
 
-            } ; // check_wallet
-            // start loop
-            check_wallet() ;
+                // lookup and check wallets one by one. One fileGet for each wallet.json file
+                check_wallet = function () {
+                    var pgm = module + '.get_wallet_info.check_wallet: ' ;
+                    var row, inner_path, debug_seq, wallet2 ;
+                    row = wallets.shift() ;
+                    if (!row) return cb(results, refresh_angular_ui) ; // done
+                    if (results[row.wallet_sha256]) return check_wallet() ; // wallet info is already found for this sha256 value
+                    // check wallet.json file
+                    inner_path = 'merged-' + get_merged_type() + '/' + row.directory + '/' + row.file_name ;
+                    debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileGet');
+                    ZeroFrame.cmd("fileGet", {inner_path: inner_path, required: false}, function (wallet_str) {
+                        var pgm = module + '.get_wallet_info.check_wallet fileGet callback: ' ;
+                        var wallet, error, calculated_sha256, shared_wallet, address, rate, review ;
+                        debug_z_api_operation_end(debug_seq, wallet_str ? 'OK' : 'Not found') ;
+                        if (!wallet_str) {
+                            console.log(pgm + row.file_name + ' was not found. inner_path = ' + inner_path);
+                            return check_wallet(); // next wallet
+                        }
+                        try {
+                            wallet = JSON.parse(wallet_str);
+                        }
+                        catch (e) {
+                            console.log(pgm + 'wallet.json is invalid. inner_path = ' + inner_path + '. error = ' + e.message);
+                            return check_wallet(); // next wallet
+                        }
+                        console.log(pgm + 'wallet = ' + JSON.stringify(wallet));
+                        //wallet = {
+                        //    "msgtype": "wallet",
+                        //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                        //    "wallet_title": "MoneyNetworkW2",
+                        //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                        //    "currencies": [{
+                        //        "code": "tBTC",
+                        //        "name": "Test Bitcoin",
+                        //        "url": "https://en.bitcoin.it/wiki/Testnet",
+                        //        "units": [{"unit": "BitCoin", "factor": 1}, {"unit": "Satoshi", "factor": 1e-8}]
+                        //    }],
+                        //    "hub": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ",
+                        //    "wallet_sha256": "6ef0247021e81ae7ae1867a685f0e84cdb8a61838dc25656c4ee94e4f20acb74"
+                        //};
+                        // validate wallet.json after read
+                        error = validate_json(pgm, wallet, null, 'api') ;
+                        if (error) {
+                            console.log(pgm + row.file_name + ' was found but is invalid. error = ' + error + ', wallet = ' + JSON.stringify(wallet));
+                            return check_wallet(); // next wallet
+                        }
+                        if (row.file_name == 'wallets.json') {
+                            // object hash with shared wallets (MN users share wallet info with other MN users)
+                            shared_wallet = null ;
+                            for (address in wallet.wallets) {
+                                if (wallet.wallets[address].wallet_sha256 == row.wallet_sha256) {
+                                    shared_wallet = wallet.wallets[address] ;
+                                    break ;
+                                }
+                            }
+                            if (!wallets) {
+                                console.log(pgm + 'error. could not find wallet_sha256 ' + row.wallet_sha256 + ' in ' + inner_path) ;
+                                return check_wallet(); // next wallet
+                            }
+                            error = validate_json(pgm, shared_wallet, null, 'api') ;
+                            if (error) {
+                                console.log(pgm + row.file_name + ' was found but is invalid. error = ' + error + ', wallet = ' + JSON.stringify(wallet));
+                                return check_wallet(); // next wallet
+                            }
+                            wallet = shared_wallet ;
+                        }
+                        // check wallet_sha256
+                        // full wallet info. test wallet_sha256 signature
+                        calculated_sha256 = calc_wallet_sha256(wallet);
+                        if (!calculated_sha256) {
+                            console.log(pgm + row.file_name + ' was found but is invalid. wallet_sha256 could not be calculated, wallet = ' + JSON.stringify(wallet));
+                            return check_wallet() ; // next wallet
+                        }
+                        if (calculated_sha256 != wallet.wallet_sha256) {
+                            console.log(pgm + row.file_name + ' was found but is invalid. expected calculated_sha256 = ' + calculated_sha256 + '. found wallet_sha256 = ' + wallet.wallet_sha256 + ', wallet = ' + JSON.stringify(wallet));
+                            return check_wallet() ; // next wallet
+                        }
+                        // OK. save wallet info.
+                        results[row.wallet_sha256] = {
+                            wallet_address: wallet.wallet_address,
+                            wallet_domain: wallet.wallet_domain,
+                            wallet_title: wallet.wallet_title,
+                            wallet_description: wallet.wallet_description,
+                            currencies: wallet.currencies,
+                            api_url: wallet.api_url,
+                            wallet_sha256: row.wallet_sha256
+                        } ;
+                        wallet_info_cache[row.wallet_sha256] = JSON.parse(JSON.stringify(results[row.wallet_sha256])) ;
+                        // next wallet
+                        check_wallet() ;
+                    }) ; // fileGet callback
 
-        }) ; // dbQuery callback 1
+                } ; // check_wallet
+                // start loop
+                check_wallet() ;
+
+            }) ; // dbQuery callback 2
+
+        }) ; // is_client callback 2
 
     } // get_wallet_info
 

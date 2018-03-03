@@ -32,6 +32,13 @@
         { "node": "currencies", "table": "currencies"}
       ],
       "to_keyvalue": [ "wallet_address", "wallet_title", "wallet_description", "wallet_sha256", "hub", "hub_title" ]
+    },
+    ".+/data/users/.+/wallets.json": {
+      "to_table": [
+        { "node": "wallets", "key_col": "address", "table": "wallets" },
+        { "node": "share", "key_col": "address", "table": "share" }
+      ],
+      "to_keyvalue": [ "wallets_modified" ]
     }
   },
   "tables": {
@@ -135,6 +142,32 @@
         ["json_id", "INTEGER REFERENCES currencies (json_id)"]
       ],
       "indexes": ["CREATE INDEX currencies_i1 ON currencies(json_id)"],
+      "schema_changed": 10
+    },
+    "wallets": {
+      "cols": [
+        ["address", "TEXT"],
+        ["wallet_address", "TEXT"],
+        ["wallet_domain", "TEXT"],
+        ["wallet_title", "TEXT"],
+        ["wallet_description", "TEXT"],
+        ["api_url", "TEXT"],
+        ["wallet_sha256", "TEXT"],
+        ["wallet_modified", "INTEGER"],
+        ["wallet_directory", "TEXT"],
+        ["json_id", "INTEGER REFERENCES wallets (json_id)"]
+      ],
+      "indexes": ["CREATE INDEX wallets_i1 ON wallets(json_id)"],
+      "schema_changed": 11
+    },
+    "share": {
+      "cols": [
+        ["address", "TEXT"],
+        ["rate", "NUMBER"],
+        ["review", "TEXT"],
+        ["json_id", "INTEGER REFERENCES share (json_id)"]
+      ],
+      "indexes": ["CREATE INDEX share_i1 ON share(json_id)"],
       "schema_changed": 10
     }
   }
