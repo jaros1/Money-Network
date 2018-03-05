@@ -2122,6 +2122,7 @@ angular.module('MoneyNetwork')
         // - cb: optional callback function. post publish processing. used in i_am_online. check pubkey2 takes long time and best done after publish
         var zeronet_site_publish_interval = 0 ;
         var zeronet_site_publish_no_peers = false ; // true after failed publish and no peers. move user directory confirm box open
+        var zeronet_site_publish_running = 0 ; // number of running publish operations
 
         // todo: cb should always be called except after detected_client_log_out
 
@@ -2136,21 +2137,31 @@ angular.module('MoneyNetwork')
 
             get_my_user_hub(function (my_user_data_hub, other_user_hub, other_user_hub_title) {
                 var pgm = service + '.zeronet_site_publish get_my_user_path callback 1: ';
-                var user_path;
+                var user_path, return2, cb2;
 
-                if (detected_client_log_out(pgm, old_userid)) return ;
+                // count number of running publish operations up and down
+                zeronet_site_publish_running++ ;
+                return2 = function () {
+                    zeronet_site_publish_running-- ;
+                } ;
+                cb2 = function (res) {
+                    zeronet_site_publish_running-- ;
+                    cb(res) ;
+                }; // cb2
+
+                if (detected_client_log_out(pgm, old_userid)) return return2() ;
                 user_path = "merged-" + get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
 
                 // get user_seq if ready
                 get_user_seq(function (user_seq) {
                     var pgm = service + '.zeronet_site_publish get_user_seq callback 2: ';
-                    if (detected_client_log_out(pgm, old_userid)) return ;
+                    if (detected_client_log_out(pgm, old_userid)) return return2() ;
                     // update timestamp in status
                     get_status_json(function (status) {
                         var pgm = service + '.zeronet_site_publish get_status_json callback 3: ';
                         // console.log(pgm + 'data = ' + JSON.stringify(data));
                         var i, index, timestamp, error;
-                        if (detected_client_log_out(pgm, old_userid)) return ;
+                        if (detected_client_log_out(pgm, old_userid)) return return2();
                         if (user_seq) {
                             // remove deleted users (removed in z_update_1_data_json)
                             if (z_cache.user_seqs && (z_cache.user_seqs.indexOf(user_seq) != -1)) {
@@ -2175,29 +2186,29 @@ angular.module('MoneyNetwork')
                             console.log(pgm + error);
                             console.log(pgm + 'status = ' + JSON.stringify(status));
                             z_wrapper_notification(["error", error]);
-                            return cb(error);
+                            return cb2(error);
                         }
 
                         // write status.json
                         write_status_json(function (res) {
                             var pgm = service + '.zeronet_site_publish write_status_json callback 4: ';
                             var error, debug_seq;
-                            if (detected_client_log_out(pgm, old_userid)) return ;
+                            if (detected_client_log_out(pgm, old_userid)) return return2();
                             if (res != "ok") {
                                 error = "Update was not published. fileWrite failed for status.json: " + res;
                                 console.log(pgm + error);
                                 z_wrapper_notification(["error", error, 5000]);
-                                return cb(error);
+                                return cb2(error);
                             }
                             // sitePublish
                             MoneyNetworkAPILib.z_site_publish({inner_path: user_path + '/content.json', remove_missing_optional: true, reason: reason}, function (res) {
                                 var pgm = service + '.zeronet_site_publish sitePublish callback 5: ';
                                 console.log(pgm + 'res = ' + JSON.stringify(res) + ' (' + debug_seq + ')');
-                                if (detected_client_log_out(pgm, old_userid)) return;
+                                if (detected_client_log_out(pgm, old_userid)) return return2();
                                 if (res != "ok") {
 
                                     // run callback. depending on condition the code will either retry publish or ask user to move user profile to an other user data hub
-                                    cb(res);
+                                    cb2(res);
 
                                     // https://github.com/jaros1/Money-Network/issues/321 Publish failed - no peers
                                     // publish failed. check number of peers for current user data hub
@@ -2205,7 +2216,7 @@ angular.module('MoneyNetwork')
                                     MoneyNetworkAPILib.get_all_hubs(true, function (all_hubs) {
                                         var pgm = service + '.zeronet_site_publish get_all_hubs callback 6: ';
                                         var i, peers, msg, user_data_hubs, hub, new_user_data_hub ;
-                                        if (detected_client_log_out(pgm, old_userid)) return;
+                                        if (detected_client_log_out(pgm, old_userid)) return ;
 
                                         // any peers serving my_user_data_hub?
                                         peers = true ;
@@ -2345,7 +2356,7 @@ angular.module('MoneyNetwork')
                                     var pgm = service + '.zeronet_site_publish z_file_get callback 6: ';
                                     var json_raw, content_updated, filename, file_user_seq, cache_filename, cache_status,
                                         logical_deleted_files, now, max_logical_deleted_files, some_time_ago, debug_seq2;
-                                    if (detected_client_log_out(pgm, old_userid)) return;
+                                    if (detected_client_log_out(pgm, old_userid)) return return2();
                                     content_updated = false;
 
                                     // optional files support:
@@ -2450,7 +2461,7 @@ angular.module('MoneyNetwork')
                                         cache_status.size = content.files_optional[filename].size;
                                     }
 
-                                    if (!content_updated) return cb(res) ;
+                                    if (!content_updated) return cb2(res) ;
 
                                     // update content.json. sign and publish in next publish call
                                     json_raw = unescape(encodeURIComponent(JSON.stringify(content, null, "\t")));
@@ -2462,15 +2473,15 @@ angular.module('MoneyNetwork')
                                         var error;
                                         // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq2) ;
                                         debug_z_api_operation_end(debug_seq2, format_res(res2));
-                                        if (detected_client_log_out(pgm, old_userid)) return;
+                                        if (detected_client_log_out(pgm, old_userid)) return return2();
                                         if (res2 != "ok") {
                                             error = "Could not add optional file support to content.json: " + res2;
                                             console.log(pgm + error);
                                             z_wrapper_notification(["error", error, 5000]);
-                                            return cb(error);
+                                            return cb2(error);
                                         }
                                         // sign and publish in next zeronet_site_publish call
-                                        cb(res);
+                                        cb2(res);
 
                                     }); // fileWrite callback 7
 
@@ -2487,6 +2498,10 @@ angular.module('MoneyNetwork')
             }); // get_my_user_path callback 1
 
         } // zeronet_site_publish
+
+        function is_publish_running () {
+            return (zeronet_site_publish_running || zeronet_site_publish_interval)
+        }
 
         // check sha256 addresses in localStorage <=> sha256 addresses in data.json file. Should normally be identical
         function check_sha256_addresses (context, update_local_storage, correct_errors) {
@@ -3714,7 +3729,8 @@ angular.module('MoneyNetwork')
             get_merger_site_added: get_merger_site_added,
             z_wrapper_notification: z_wrapper_notification,
             sanitize: sanitize,
-            move_user_hub: move_user_hub
+            move_user_hub: move_user_hub,
+            is_publish_running: is_publish_running
         };
 
         // end MoneyNetworkHubService

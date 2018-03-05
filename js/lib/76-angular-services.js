@@ -7603,7 +7603,8 @@ angular.module('MoneyNetwork')
             check_merger_permission: moneyNetworkHubService.check_merger_permission,
             set_help: set_help,
             get_help: get_help,
-            move_user_hub: moneyNetworkHubService.move_user_hub
+            move_user_hub: moneyNetworkHubService.move_user_hub,
+            is_publish_running: moneyNetworkHubService.is_publish_running
         };
 
         // end MoneyNetworkService

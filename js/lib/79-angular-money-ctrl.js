@@ -14,13 +14,15 @@ angular.module('MoneyNetwork')
             else return false ;
         };
 
-
         self.wallets = [] ;
         (function load_wallets() {
             var pgm = controller + '.load_wallets: ' ;
-            var address_index, step_1_search_wallet_sites, step_2_load_user_wallet_json, step_3_load_users_wallets_json, step_4_done ;
+            var address_index, step_1_search_wallet_sites, step_2_load_user_wallet_json, step_3_load_users_wallets_json,
+                step_4_done, rating_index_by_address, reviews_index_by_address ;
 
             address_index = {} ; // from wallet_address to row in self.wallets
+            rating_index_by_address = {} ; // from wallet_address to ratings object
+            reviews_index_by_address = {} ; // from wallet_address to ratings object
 
             // callback chain:
             // - 1) check wallet.json from added wallet data hubs
@@ -36,7 +38,6 @@ angular.module('MoneyNetwork')
                 var pgm = controller + '.load_wallets.step_3_load_users_wallets_json: ';
 
                 var mn_query_22, debug_seq ;
-                if (!self.is_logged_in()) return step_4_done() ;
 
                 // find wallet info. check latest updated and shared wallet.json files first (wallet_modified = last wallet.json sign and publish)
                 mn_query_22 =
@@ -84,8 +85,6 @@ angular.module('MoneyNetwork')
 
                     // todo: 1) calc avg rating for each wallet_address
                     // todo: 2) sum number of reviews
-                    // todo: 3) lookup full wallet info
-                    // todo: 4) insert missing wallets into self.wallets array. must get full wallet info from wallet_sha256 address. see MoneyNetworkAPI.get_wallet_info
 
                     add_wallet = function (row, wallet) {
                         address_index[wallet.wallet_address] = self.wallets.length ;
@@ -99,13 +98,52 @@ angular.module('MoneyNetwork')
 
                     check_wallet = function () {
                         var pgm = controller + '.load_wallets.step_3_load_users_wallets_json check_wallet 2: ';
-                        var row, inner_path, get_wallet_info ;
+                        var row, inner_path, get_wallet_info, i, no_ratings, sum_ratings, address, rating ;
                         row = res.shift() ;
                         if (!row) {
                             // done
+                            console.log(pgm + 'rating_index_by_address = ' + JSON.stringify(rating_index_by_address)) ;
+                            console.log(pgm + 'reviews_index_by_address = ' + JSON.stringify(reviews_index_by_address)) ;
+                            // add summary for ratings and reviews
+                            for (i=0 ; i<self.wallets.length ; i++) {
+                                // add ratings info
+                                address = self.wallets[i].wallet_address ;
+                                if (rating_index_by_address[address]) {
+                                    self.wallets[i].ratings = rating_index_by_address[address] ;
+                                    no_ratings = 0 ;
+                                    sum_ratings = 0 ;
+                                    for (rating in rating_index_by_address[address]) {
+                                        no_ratings = no_ratings + rating_index_by_address[address][rating] ;
+                                        sum_ratings = sum_ratings + parseInt(rating) * rating_index_by_address[address][rating] ;
+                                    }
+                                    if (no_ratings) {
+                                        self.wallets[i].ratings.no_ratings = no_ratings ;
+                                        self.wallets[i].ratings.avg_rating = sum_ratings / no_ratings ;
+                                        self.wallets[i].style = 'width:' + (self.wallets[i].ratings.avg_rating / 5 * 100) + '%' ;
+                                    }
+                                }
+                                else {
+                                    self.wallets[i].ratings = {1: 0, 2: 0, 3: 0, 4: 0, 5:0, no_ratings: 0, avg_rating: 'n/a' } ;
+                                }
+                                // add review info
+                                if (reviews_index_by_address[address]) self.wallets[i].no_reviews = reviews_index_by_address[address].length ;
+                                else self.wallets[i].no_reviews = 0 ;
+                            }
                             console.log(pgm + 'self.wallets = ' + JSON.stringify(self.wallets)) ;
+
                             return step_4_done() ;
                         }
+
+                        // save rating and review.
+                        if (row.rate) {
+                            if (!rating_index_by_address[row.address]) rating_index_by_address[row.address] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0} ;
+                            rating_index_by_address[row.address][row.rate]++ ;
+                            if (row.review) {
+                                if (!reviews_index_by_address[row.address]) reviews_index_by_address[row.address] = [] ;
+                                reviews_index_by_address[row.address].push(row) ;
+                            }
+                        }
+
                         if (address_index.hasOwnProperty(row.wallet_address)) return check_wallet() ; // already checked
                         // two paths. either a wallet.json with full info (a) or a wallet.json with wallet_sha256 only (b)
 
@@ -172,6 +210,9 @@ angular.module('MoneyNetwork')
                 }) ; // dbQuery callback 1
 
             } ; // step_3_load_users_wallets_json
+
+            // todo: step 2.5. load not shared rating and review from localStorage
+            //       including review without rating. not in wallets.json file.
 
             // load shared wallet info for this user.
             // todo: no user_seq in wallets.json file. user_seq in all other user files (data, status, like)
@@ -440,8 +481,11 @@ angular.module('MoneyNetwork')
                 share: {},
                 wallets_modified: Math.floor(now/1000)
             } ;
+
             // copy info from self.wallets to wallets.json file. Only rows with share_wallet = true ;
-            // todo: add wallet_modified info. when was wallet.json last updated (signed+publish). Other MN without wallet data hub cannot check modified timestamp for wallet.json file
+
+            // todo: save not shared rating and review in ls
+
             for (i=0 ; i<self.wallets.length ; i++) {
                 row1 = self.wallets[i] ;
                 if (!row1.share_wallet) continue ;
@@ -461,7 +505,7 @@ angular.module('MoneyNetwork')
                 wallet.wallet_modified = row1.wallet_modified ;
                 wallet.wallet_directory = row1.directory ;
                 wallets.wallets[wallet_address] = wallet ;
-                if (row1.rate_wallet || row1.wallet_review) {
+                if (row1.rate_wallet) {
                     // add user rating and review for wallets
                     rate = row1.rate_wallet ;
                     if (['1','2','3','4','5'].indexOf(rate) != -1) rate = parseInt(rate) ;
@@ -496,21 +540,56 @@ angular.module('MoneyNetwork')
                 var user_path, inner_path1;
                 user_path = "merged-" + MoneyNetworkAPILib.get_merged_type() + "/" + my_user_data_hub + "/data/users/" + ZeroFrame.site_info.auth_address;
                 inner_path1 = user_path + "/wallets.json" ;
-                json_raw = unescape(encodeURIComponent(JSON.stringify(wallets, null, "\t")));
-                MoneyNetworkAPILib.z_file_write(pgm, inner_path1, btoa(json_raw), {}, function (res) {
-                    var pgm = controller + '. update_wallets_json z_file_write callback 2: ';
-                    var inner_path2 ;
-                    if (res != 'ok') {
-                        console.log(pgm + 'error: ' + inner_path1 + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
+
+                // check old wallets.json file. Any changes?
+                MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path1}, function (old_wallets_str) {
+                    var pgm = controller + '.update_wallets_json z_file_get callback 2: ';
+                    var old_wallets, new_wallets ;
+                    if (old_wallets_str) {
+                        try {
+                            old_wallets = JSON.parse(old_wallets_str) ;
+                        }
+                        catch (e) {
+                            old_wallets = {} ;
+
+                        }
+                    }
+                    else old_wallets = {} ;
+
+                    // compare without wallets_modified timestamp
+                    delete old_wallets.wallets_modified ;
+                    new_wallets = JSON.parse(JSON.stringify(wallets)) ;
+                    delete new_wallets.wallets_modified ;
+                    if (JSON.stringify(new_wallets) == JSON.stringify(old_wallets)) {
+                        console.log(pgm + 'no change to wallets.json file') ;
                         return ;
                     }
-                    inner_path2 = user_path + '/content.json' ;
-                    moneyNetworkService.zeronet_site_publish({inner_path: inner_path2}, function (res) {
-                        var pgm = controller + '. update_wallets_json zeronet_site_publish callback 3: ';
-                        if (res != 'ok') console.log(pgm + 'error. wallets.json publish failed. error = ' + JSON.stringify(res)) ;
-                    }) ; // zeronet_site_publish callback 3
 
-                }) ; // z_file_write callback 2
+                    json_raw = unescape(encodeURIComponent(JSON.stringify(wallets, null, "\t")));
+                    MoneyNetworkAPILib.z_file_write(pgm, inner_path1, btoa(json_raw), {}, function (res) {
+                        var pgm = controller + '. update_wallets_json z_file_write callback 3: ';
+                        var inner_path2 ;
+                        if (res != 'ok') {
+                            console.log(pgm + 'error: ' + inner_path1 + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
+                            return ;
+                        }
+
+                        // heck for pending MN publish.
+                        if (moneyNetworkService.is_publish_running()) {
+                            console.log(pgm + 'wallets.json file was updated. Other publish operation is already running') ;
+                            return ;
+                        }
+
+                        // publish
+                        inner_path2 = user_path + '/content.json' ;
+                        moneyNetworkService.zeronet_site_publish({inner_path: inner_path2}, function (res) {
+                            var pgm = controller + '. update_wallets_json zeronet_site_publish callback 4: ';
+                            if (res != 'ok') console.log(pgm + 'error. wallets.json publish failed. error = ' + JSON.stringify(res)) ;
+                        }) ; // zeronet_site_publish callback 4
+
+                    }) ; // z_file_write callback 3
+
+                }) ; // z_file_get callback 2
 
             }) ; // get_my_user_hub callback 1
 

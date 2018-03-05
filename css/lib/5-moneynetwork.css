@@ -675,3 +675,43 @@ body #file-drop {
     right: 0;
     top: -80%
 }
+
+
+/* used for heart rating 1-5 */
+/* https://codepen.io/anon/pen/NqazVa */
+/* https://angulartutorial.blogspot.com/2014/03/rating-stars-in-angular-js-using.html */
+/* @import "compass/css3"; */
+
+.rating {
+    margin: 0;
+    padding: 0;
+    display: inline-block;
+}
+.rating li {
+    padding: 1px;
+    color: #ddd;
+    font-size: 20px;
+    text-shadow: 0.05em 0.05em #aaa;
+    list-style-type: none;
+    display: inline-block;
+    cursor: pointer;
+}
+.rating li.filled {
+    color: red;
+}
+.rating.readonly li.filled {
+    color: #666;
+}
+.average-rating-container {
+    position: relative;
+    height: 31px;
+    width: 103px;
+    overflow: hidden;
+}
+.average-rating-container .background, .average-rating-container .foreground {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}

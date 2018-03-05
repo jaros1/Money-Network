@@ -132,6 +132,28 @@
                     <th>Description:</th>
                     <td ng-bind="w.wallet_description" style="vertical-align: top"></td>
                 </tr>
+                <tr ng-show="w.ratings.no_ratings">
+                    <th>Rating:</th>
+                    <td>
+                        <table>
+                            <body>
+                            <tr>
+                                <td ng-bind="w.ratings.avg_rating"></td>
+                                <td>&nbsp;</td>
+                                <td>
+                                    <span class="average">
+                                        <average-heart-rating ng-model="w.ratings.avg_rating"></average-heart-rating>
+                                    </span>
+                                </td>
+                                <td>&nbsp;</td>
+                                <td ng-bind="w.ratings.no_reviews"></td>
+                                <td>&nbsp;</td>
+                                <td ng-show="w.ratings.no_reviews">reviews</td>
+                            </tr>
+                            </body>
+                        </table>
+                    </td>
+                </tr>
                 <tr>
                     <th>API:</th>
                     <td style="vertical-align: top">
@@ -176,11 +198,22 @@
                 <tr ng-show="m.is_logged_in()">
                     <th>Rate:</th>
                     <td>
+                        <input type="radio" ng-model="w.rate_wallet" value='' ng-change="m.rating_changed(w)" title="Not rated"> &nbsp;&nbsp;
+                        <span title="I hate this wallet. Do not use it">
                         <input type="radio" ng-model="w.rate_wallet" value=1 ng-change="m.rating_changed(w)">1<span style="color: red">❤️️</span> &nbsp;&nbsp;
+                        </span>
+                        <span title="Poor wallet. Not recommented">
                         <input type="radio" ng-model="w.rate_wallet" value=2 ng-change="m.rating_changed(w)">2<span style="color: red">❤❤️️</span> &nbsp;&nbsp;
+                        </span>
+                        <span title="OK wallet">
                         <input type="radio" ng-model="w.rate_wallet" value=3 ng-change="m.rating_changed(w)">3<span style="color: red">❤❤❤️️</span> &nbsp;&nbsp;
+                        </span>
+                        <span title="Good wallet. Recommended">
                         <input type="radio" ng-model="w.rate_wallet" value=4 ng-change="m.rating_changed(w)">4<span style="color: red">❤❤❤❤️️</span> &nbsp;&nbsp;
+                        </span>
+                        <span title="I love this wallet. Use it">
                         <input type="radio" ng-model="w.rate_wallet" value=5 ng-change="m.rating_changed(w)">5<span style="color: red">❤❤❤❤❤️️</span> &nbsp;&nbsp;
+                        </span>
                         Rating and review are <span ng-hide="w.share_wallet"><b>not</b> </span>shared with other users
                     </td>
                 </tr>
