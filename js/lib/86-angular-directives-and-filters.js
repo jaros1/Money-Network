@@ -483,12 +483,14 @@ angular.module('MoneyNetwork')
         return fallbackSrc;
     })
 
+    // https://codepen.io/anon/pen/NqazVa
+    // https://angulartutorial.blogspot.com/2014/03/rating-stars-in-angular-js-using.html
     .directive("averageHeartRating", function() {
         return {
             restrict : "EA",
             template : "<div class='average-rating-container'>" +
-            "  <ul class='rating foreground' class='readonly' style='width:{{filledInStarsContainerWidth}}%'>" +
-            "    <li ng-repeat='star in stars' class='star filled'>❤️️</li>" +
+            "  <ul class='rating foreground' class='readonly' style='width:{{filledInHeartsContainerWidth}}%'>" +
+            "    <li ng-repeat='heart in hearts' class='filled'>❤️️</li>" +
             "  </ul>" +
             "</div>",
             scope : {
@@ -498,13 +500,13 @@ angular.module('MoneyNetwork')
             link : function(scope, elem, attrs) {
                 if (scope.max == undefined) { scope.max = 5; }
                 function updateStars() {
-                    scope.stars = [];
+                    scope.hearts = [];
                     for (var i = 0; i < scope.max; i++) {
-                        scope.stars.push({});
+                        scope.hearts.push({});
                     }
                     var starContainerMaxWidth = 100; //%
-                    scope.filledInStarsContainerWidth = scope.averageRatingValue / scope.max * starContainerMaxWidth;
-                };
+                    scope.filledInHeartsContainerWidth = scope.averageRatingValue / scope.max * starContainerMaxWidth;
+                }
                 scope.$watch("averageRatingValue", function(oldVal, newVal) {
                     if (newVal) { updateStars(); }
                 });
@@ -531,6 +533,17 @@ angular.module('MoneyNetwork')
             return str ;
         } ;
         // end toJSON filter
+    }])
+
+    .filter('toFixed', [function () {
+        // debug: return object as a JSON string
+        return function (number, decimals) {
+            if (typeof number != 'number') return number ;
+            if (decimals == 0) return number.toFixed(0) ;
+            if (!decimals) decimals = 2 ;
+            return number.toFixed(decimals) ;
+        } ;
+        // end toFixed filter
     }])
 
     .filter('contactAlias', ['MoneyNetworkService', function (moneyNetworkService   ) {

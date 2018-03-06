@@ -21,8 +21,8 @@ angular.module('MoneyNetwork')
                 step_4_done, rating_index_by_address, reviews_index_by_address ;
 
             address_index = {} ; // from wallet_address to row in self.wallets
-            rating_index_by_address = {} ; // from wallet_address to ratings object
-            reviews_index_by_address = {} ; // from wallet_address to ratings object
+            // rating_index_by_address = {} ; // from wallet_address to ratings object
+            // reviews_index_by_address = {} ; // from wallet_address to ratings object
 
             // callback chain:
             // - 1) check wallet.json from added wallet data hubs
@@ -33,7 +33,7 @@ angular.module('MoneyNetwork')
                 safeApply($scope) ;
             } ; // step_4_done
 
-            // load shared wallet info from other users
+            // load shared wallet info from MN users (ratings and reviews)
             step_3_load_users_wallets_json = function() {
                 var pgm = controller + '.load_wallets.step_3_load_users_wallets_json: ';
 
@@ -59,7 +59,7 @@ angular.module('MoneyNetwork')
                 debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'mn query 22', 'dbQuery', MoneyNetworkHelper.show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [mn_query_22], function (res) {
                     var pgm = controller + '.load_wallets.step_3_load_users_wallets_json dbQuery callback 1: ';
-                    var add_wallet, check_wallet ;
+                    var add_wallet, check_wallet, save_rate_and_review ;
                     MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
                     if (res.error) {
                         console.log(pgm + "wallets lookup failed: " + res.error);
@@ -96,55 +96,144 @@ angular.module('MoneyNetwork')
                         self.wallets.push(row) ;
                     } ; // add_wallet
 
+                    save_rate_and_review = function (row) {
+                        var i, wallet, found_i, details ;
+                        i = address_index[row.address] ;
+                        wallet = self.wallets[i] ;
+                        if (!wallet.ratings) wallet.ratings = { details: [] } ;
+                        details = wallet.ratings.details ;
+                        found_i = -1 ;
+                        for (i=0 ; i<details.length ; i++) {
+                            if (row.rate == details[i].rate) {
+                                found_i = i ;
+                                break ;
+                            }
+                        } // for i
+                        if (found_i == -1) {
+                            found_i = details.length ;
+                            details.push({ rate: row.rate, ratings: [], no_reviews: 0}) ;
+                        }
+                        details[found_i].ratings.push(row) ;
+                        if (row.review) details[found_i].no_reviews++ ;
+                    } ; // save_rate_and_review
+
                     check_wallet = function () {
                         var pgm = controller + '.load_wallets.step_3_load_users_wallets_json check_wallet 2: ';
-                        var row, inner_path, get_wallet_info, i, no_ratings, sum_ratings, address, rating ;
+                        var row, inner_path, get_wallet_info, i, no_ratings, sum_ratings, address, rating, wallet, details, rate ;
                         row = res.shift() ;
                         if (!row) {
                             // done
-                            console.log(pgm + 'rating_index_by_address = ' + JSON.stringify(rating_index_by_address)) ;
-                            console.log(pgm + 'reviews_index_by_address = ' + JSON.stringify(reviews_index_by_address)) ;
+                            // console.log(pgm + 'rating_index_by_address = ' + JSON.stringify(rating_index_by_address)) ;
+                            // console.log(pgm + 'reviews_index_by_address = ' + JSON.stringify(reviews_index_by_address)) ;
                             // add summary for ratings and reviews
                             for (i=0 ; i<self.wallets.length ; i++) {
-                                // add ratings info
-                                address = self.wallets[i].wallet_address ;
-                                if (rating_index_by_address[address]) {
-                                    self.wallets[i].ratings = rating_index_by_address[address] ;
-                                    no_ratings = 0 ;
-                                    sum_ratings = 0 ;
-                                    for (rating in rating_index_by_address[address]) {
-                                        no_ratings = no_ratings + rating_index_by_address[address][rating] ;
-                                        sum_ratings = sum_ratings + parseInt(rating) * rating_index_by_address[address][rating] ;
-                                    }
-                                    if (no_ratings) {
-                                        self.wallets[i].ratings.no_ratings = no_ratings ;
-                                        self.wallets[i].ratings.avg_rating = sum_ratings / no_ratings ;
-                                        self.wallets[i].style = 'width:' + (self.wallets[i].ratings.avg_rating / 5 * 100) + '%' ;
-                                    }
-                                }
+                                wallet = self.wallets[i] ;
+                                if (!wallet.ratings) wallet.rating = { details: [], no_ratings: 0, no_reviews: 0, avg_rating: 'n/a' } ;
                                 else {
-                                    self.wallets[i].ratings = {1: 0, 2: 0, 3: 0, 4: 0, 5:0, no_ratings: 0, avg_rating: 'n/a' } ;
+                                    wallet.ratings.no_ratings = 0 ;
+                                    wallet.ratings.no_reviews = 0 ;
+                                    sum_ratings = 0 ;
+                                    details = wallet.ratings.details || [] ;
+                                    for (i=0 ; i<details.length ; i++) {
+                                        wallet.ratings.no_ratings += details[i].ratings.length ;
+                                        sum_ratings += details[i].rate * details[i].ratings.length ;
+                                        wallet.ratings.no_reviews += details[i].no_reviews ;
+                                    }
+                                    if (wallet.ratings.no_ratings) wallet.ratings.avg_rating = sum_ratings / wallet.ratings.no_ratings ;
+                                    else wallet.ratings.avg_rating = 'n/a' ;
                                 }
-                                // add review info
-                                if (reviews_index_by_address[address]) self.wallets[i].no_reviews = reviews_index_by_address[address].length ;
-                                else self.wallets[i].no_reviews = 0 ;
+                                wallet.ratings.show_hide = 'show' ;
                             }
-                            console.log(pgm + 'self.wallets = ' + JSON.stringify(self.wallets)) ;
+                            console.log(pgm + 'self.wallets = ' + CircularJSON.stringify(self.wallets)) ;
+
+                            //self.wallets = [{
+                            //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                            //    "wallet_title": "MoneyNetworkW2",
+                            //    "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
+                            //    "wallet_modified": 1520005131,
+                            //    "directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                            //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //    "wallet": {
+                            //        ...
+                            //    },
+                            //    "wallet_url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //    "ratings": {
+                            //        "details": [{
+                            //            "rate": 4,
+                            //            "ratings": [{
+                            //                "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                            //                "wallet_title": "MoneyNetworkW2",
+                            //                "api_url": "https://www.blocktrail.com/api/docs",
+                            //                "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+                            //                "wallets_modified": 1520160191,
+                            //                "review": "test",
+                            //                "wallet_domain": null,
+                            //                "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
+                            //                "wallet_modified": 1520159403,
+                            //                "rate": 4,
+                            //                "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //                "directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+                            //                "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
+                            //            }, {
+                            //                "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                            //                "wallet_title": "MoneyNetworkW2",
+                            //                "api_url": "https://www.blocktrail.com/api/docs",
+                            //                "wallet_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+                            //                "wallets_modified": 1520163544,
+                            //                "review": "test opera",
+                            //                "wallet_domain": null,
+                            //                "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
+                            //                "wallet_modified": 1520159403,
+                            //                "rate": 4,
+                            //                "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //                "directory": "1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc/data/users/1NJwoHjm67QWvD47DchbeHt7JvyaZ95CWK",
+                            //                "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
+                            //            }],
+                            //            "no_reviews": 2
+                            //        }, {
+                            //            "rate": 3,
+                            //            "ratings": [{
+                            //                "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                            //                "wallet_title": "MoneyNetworkW2",
+                            //                "api_url": "https://www.blocktrail.com/api/docs",
+                            //                "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                            //                "wallets_modified": 1520269830,
+                            //                "review": "test",
+                            //                "wallet_domain": null,
+                            //                "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
+                            //                "wallet_modified": 1520005131,
+                            //                "rate": 3,
+                            //                "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                            //                "directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                            //                "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1"
+                            //            }],
+                            //            "no_reviews": 1
+                            //        }],
+                            //        "no_ratings": 3,
+                            //        "no_reviews": 3,
+                            //        "avg_rating": 3.6666666666666665,
+                            //        "show_hide": "show"
+                            //    }
+                            //}];
 
                             return step_4_done() ;
                         }
 
                         // save rating and review.
-                        if (row.rate) {
-                            if (!rating_index_by_address[row.address]) rating_index_by_address[row.address] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0} ;
-                            rating_index_by_address[row.address][row.rate]++ ;
-                            if (row.review) {
-                                if (!reviews_index_by_address[row.address]) reviews_index_by_address[row.address] = [] ;
-                                reviews_index_by_address[row.address].push(row) ;
-                            }
-                        }
+                        //if (row.rate) {
+                        //    if (!rating_index_by_address[row.address]) rating_index_by_address[row.address] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0} ;
+                        //    rating_index_by_address[row.address][row.rate]++ ;
+                        //    if (row.review) {
+                        //        if (!reviews_index_by_address[row.address]) reviews_index_by_address[row.address] = [] ;
+                        //        reviews_index_by_address[row.address].push(row) ;
+                        //    }
+                        //}
 
-                        if (address_index.hasOwnProperty(row.wallet_address)) return check_wallet() ; // already checked
+                        if (address_index.hasOwnProperty(row.wallet_address)) {
+                            // already checked
+                            save_rate_and_review(row) ;
+                            return check_wallet() ;
+                        }
                         // two paths. either a wallet.json with full info (a) or a wallet.json with wallet_sha256 only (b)
 
                         // path b: looks like a wallet.json with wallet_sha256 only. also used as fallback in path a
@@ -157,6 +246,7 @@ angular.module('MoneyNetwork')
                                 }
                                 // OK. found valid wallet with full wallet info
                                 add_wallet(row, wallet_info[row.wallet_sha256]) ;
+                                save_rate_and_review(row) ;
                                 check_wallet();
                             }) ;
                         } ; // get_wallet_info
@@ -194,6 +284,7 @@ angular.module('MoneyNetwork')
                                 }
                                 // OK. full wallet info and wallet is valid
                                 add_wallet(row, wallet) ;
+                                save_rate_and_review(row) ;
                                 check_wallet();
                             }) ;
 
@@ -622,6 +713,12 @@ angular.module('MoneyNetwork')
             console.log(pgm + 'wallet_review = ' + wallet.wallet_review) ;
             update_wallets_json() ;
         };
+
+        self.show_ratings = function (wallet) {
+            var pgm = controller + '.show_ratings: ' ;
+            // console.log(pgm + 'todo: display ratings and review for wallet') ;
+            wallet.ratings.show_hide = wallet.ratings.show_hide == 'show' ? 'hide' : 'show' ;
+        }; // show_ratings
 
         // end MoneyCtrl
     }])

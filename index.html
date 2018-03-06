@@ -133,24 +133,39 @@
                     <td ng-bind="w.wallet_description" style="vertical-align: top"></td>
                 </tr>
                 <tr ng-show="w.ratings.no_ratings">
-                    <th>Rating:</th>
-                    <td>
+                    <th style="vertical-align: top">Rating:</th>
+                    <td ng-click="m.show_ratings(w)" title="Click to {{w.ratings.show_hide}} details">
                         <table>
-                            <body>
-                            <tr>
-                                <td ng-bind="w.ratings.avg_rating"></td>
-                                <td>&nbsp;</td>
+                            <thead>
+                            <tr ng-show="w.ratings.no_ratings">
+                                <td>Avg. {{w.ratings.avg_rating|toFixed:2}}&nbsp;</td>
                                 <td>
                                     <span class="average">
                                         <average-heart-rating ng-model="w.ratings.avg_rating"></average-heart-rating>
                                     </span>
                                 </td>
-                                <td>&nbsp;</td>
-                                <td ng-bind="w.ratings.no_reviews"></td>
-                                <td>&nbsp;</td>
-                                <td ng-show="w.ratings.no_reviews">reviews</td>
+                                <td>&nbsp; - {{w.ratings.no_ratings}} ratings </td>
+                                <td>&nbsp; - {{w.ratings.no_reviews}} reviews&nbsp; </td>
+                                <td>
+                                    <img ng-show="w.ratings.show_hide == 'show'" src="public/css/fonts/glyphicons-368-expand.png">
+                                    <img ng-show="w.ratings.show_hide == 'hide'" src="public/css/fonts/glyphicons-369-collapse.png">
+                                </td>
                             </tr>
-                            </body>
+                            </thead>
+                            <tbody ng-repeat="d in w.ratings.details|orderBy:'-rate'" ng-show="w.ratings.show_hide == 'hide'">
+                            <tr>
+                                <td>Rate {{d.rate}}&nbsp;</td>
+                                <td>
+                                    <span class="average">
+                                        <average-heart-rating ng-model="d.rate"></average-heart-rating>
+                                    </span>
+
+                                </td>
+                                <td>&nbsp; - {{d.ratings.length}} ratings </td>
+                                <td>&nbsp; - {{d.no_reviews}} reviews&nbsp;</td>
+                                <td></td>
+                            </tr>
+                            </tbody>
                         </table>
                     </td>
                 </tr>
@@ -230,8 +245,8 @@
                                     </textarea>
                                 </td>
                                 <td style="vertical-align: top">
-                                    <button type="submit" ng-click="m.review_updated(w)">
-                                        <img title="Save and publish review" src="public/css/fonts/glyphicons-207-ok.png">
+                                    <button type="submit" ng-click="m.review_updated(w)" ng-disabled="w.wallet_review && !w.rate_wallet">
+                                        <img title="Save review" src="public/css/fonts/glyphicons-207-ok.png">
                                     </button>
                                 </td>
                             </tr>
