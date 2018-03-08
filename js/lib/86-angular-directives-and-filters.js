@@ -488,7 +488,8 @@ angular.module('MoneyNetwork')
     .directive("averageHeartRating", function() {
         return {
             restrict : "EA",
-            template : "<div class='average-rating-container'>" +
+            template :
+            "<div class='average-rating-container'>" +
             "  <ul class='rating foreground' class='readonly' style='width:{{filledInHeartsContainerWidth}}%'>" +
             "    <li ng-repeat='heart in hearts' class='filled'>❤️️</li>" +
             "  </ul>" +

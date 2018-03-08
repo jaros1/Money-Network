@@ -1467,31 +1467,31 @@ var MoneyNetworkAPILib = (function () {
             "wallets": {
                 "type": 'object',
                 "title": 'Shared information about wallet sites in wallets.json in MoneyNetwork user data hubs',
-                "description": 'object hashes with wallets and shared rating and reviews. key = wallet_address in both object hashes',
+                "description": 'object hashes with wallets and shared rating and reviews. key = wallet_address',
                 "properties": {
                     "msgtype": {"type": 'string', "pattern": '^wallets$'},
                     "wallets": {
                         "type": 'object',
                         "description": 'object hash with wallets.json from wallet data hub. key: wallet_address',
                         "patternProperties": {
-                            "^1[a-km-zA-HJ-NP-Z1-9]{25,34}$": {"type": 'object', "description": 'Structure: See wallet'}
+                            "^1[a-km-zA-HJ-NP-Z1-9]{25,34}": {"type": 'object', "description": 'Structure: See wallet'}
                         },
                         "additionalProperties": false
                     },
                     "share": {
-                        "type": 'object',
-                        "description": 'MN user wallet rate and review',
-                        "patternProperties": {
-                            "^1[a-km-zA-HJ-NP-Z1-9]{25,34}$": {
-                                "type": 'object',
-                                "properties": {
-                                    "rate": {"type": 'number', "multipleOf": 1.0, "minimum": 1, "maximum": 5 },
-                                    "review": {"type": 'string'}
-                                },
-                                "additionalProperties": false
-                            }
-                        },
-                        "additionalProperties": false
+                        "type": 'array',
+                        "items": {
+                            "type": 'object',
+                            "description": 'MN user wallet rating and review',
+                            "properties": {
+                                "user_seq": { "type": 'number', "multipleOf": 1.0, "minimum": 1},
+                                "address": { "type": 'string', "pattern": "^1[a-km-zA-HJ-NP-Z1-9]{25,34}"},
+                                "rate": {"type": 'number', "multipleOf": 1.0, "minimum": 1, "maximum": 5 },
+                                "review": {"type": 'string'}
+                            },
+                            "required": ['user_seq', 'address'],
+                            "additionalProperties": false
+                        }
                     },
                     "wallets_modified": {"type": 'number', "multipleOf": 1.0, description: "unix timestamp in seconds (10 digits)"}
                 },
