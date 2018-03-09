@@ -1,13 +1,13 @@
 # MoneyNetwork
-Demo with complementary and alternative money. Implemented in ZeroFrame and AngularJS. Focus on privacy, encryption, max data on client and min data on server. 
+Demo with complementary and alternative money. Implemented in ZeroFrame and AngularJS. Focus on privacy, encryption, max data on client and min unencrypted data in ZeroNet. 
 
 Money is the force that permeates everything in our society. MoneyNetwork is a demo about money. With inspiration from Charles Eisenstein, Bernard Lietaer and others.
 
 The vision here is one app with easy access to any kind of money.
-Use the money systems you like and not only our old outdated money system.
+Use the money systems you like and not only our present money system.
 Choose your money in the same way you choose clothes, food, housing, work, boyfriend, etc.
-We are only free if we are free to choose money systems. No more bullshit. Be free.
-
+My hope is that we humans will choose money systems that are good for our lives and our planet.
+ 
 Here is the demo. 
 
 ## Project status
@@ -17,15 +17,15 @@ Implemented:
 - End-2-end encryption. Data in localStorage and on ZeroNet is encrypted. Only search tags and public chat are stored in clear on ZeroNet. 
 - Contact list: Categories: new, guest, unverified, verified and ignored.
 - Chat: One and two panel chat, encrypted personal and group chat & unencrypted public chat, markdown, emojis, reactions and comments
+- Chat: Send and request money transactions. Tested OK with test bitcoins (https://github.com/jaros1/Money-Network-W2/)
 
 Being implemented:
 - MoneyNetworkAPI for MoneyNetwork <=> wallets and wallet <=> wallet communication
-- Money: Send and request money in chat
-- Tested OK with test bitcoins (https://github.com/jaros1/Money-Network-W2/)
+- Share, rate and review wallets
 
 Todo:
 - More money transaction operations in UI (reject, edit, cancel and rollback money transaction).
-- Wallet or Money page: Test, add, use, rate and remove wallet sites.
+- Wallet or Money page: Test, add and remove wallet sites.
 - Wallet or Money page. Money transaction overview.
 
 ## MoneyNetwork Demo

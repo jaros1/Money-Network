@@ -47,15 +47,17 @@ angular.module('MoneyNetwork')
                     "  content_cert_user_id.value as wallets_cert_user_id, " +
                     "  wallets.address, wallets.wallet_address, wallets.wallet_domain,  wallets.wallet_title, wallets.wallet_description, " +
                     "  wallets.api_url, wallets.wallet_sha256,   wallets.wallet_modified, wallets.wallet_directory, " +
-                    "  share.user_seq, share.rate, share.review " +
+                    "  share.user_seq, share.rate, share.review, " +
+                    "  (select avatar from users where users.json_id = data.json_id and users.user_seq = share.user_seq) as avatar " +
                     "from wallets, json as wallets_json, json as content_json, keyvalue as content_modified, " +
-                    "     keyvalue as wallets_modified, share, keyvalue as content_cert_user_id " +
+                    "     keyvalue as wallets_modified, share, keyvalue as content_cert_user_id, json as data " +
                     "where wallets.wallet_modified is not null and wallets.json_id = wallets_json.json_id " +
                     "and content_json.directory = wallets_json.directory and content_json.file_name = 'content.json' " +
                     "and content_modified.json_id = content_json.json_id and content_modified.key = 'modified' " +
                     "and wallets_modified.json_id = wallets_json.json_id and wallets_modified.key = 'wallets_modified' " +
                     "and share.address = wallets.address and share.json_id = wallets.json_id " +
                     "and content_cert_user_id.json_id = content_json.json_id and content_cert_user_id.key = 'cert_user_id' " +
+                    "and data.directory = wallets_json.directory and data.file_name = 'data.json' " +
                     "order by wallets.wallet_modified desc" ;
 
                 console.log(pgm + 'mn_query_22 = ' + mn_query_22) ;
@@ -141,9 +143,10 @@ angular.module('MoneyNetwork')
                         // from wallet data hub: wallet_directory and wallet_modified (when was wallet info updated and by whom)
                         row2 = {
                             wallets_directory: row.wallets_directory,
-                            wallets_modified: row.wallets_modified,
+                            wallets_modified: row.wallets_modified*1000,
                             wallets_cert_user_id: row.wallets_cert_user_id,
                             user_seq: row.user_seq,
+                            avatar: row.avatar,
                             rate: row.rate
                         } ;
                         if (row.review) row2.review = row.review ;
@@ -932,15 +935,23 @@ angular.module('MoneyNetwork')
         // todo: logged in: missing user_seq in wallets.json to translate to a contact
         self.show_details2 = function (detail) {
             var pgm = controller + '.show_details2: ' ;
-            var missing_contact_info, i, row, wallets_directory_a, hub, auth_address, user_seq ;
-            // console.log(pgm + 'detail = ' + JSON.stringify(detail)) ;
-            detail.show_hide = detail.show_hide == 'show' ? 'hide' : 'show';
-            if (detail.show_hide == 'show') return ;
+            var missing_contact_info, i, row, wallets_directory_a, hub, auth_address, user_seq, avatar_obj, avatar_a, avatar ;
+            console.log(pgm + 'detail = ' + JSON.stringify(detail)) ;
+
+            // just hide
+            if (detail.show_hide == 'hide') {
+                detail.show_hide = 'show' ;
+                return ;
+            }
 
             // check/add contact info
             missing_contact_info = [] ;
             for (i=0 ; i<detail.ratings.length ; i++) if (!detail.ratings[i].contact) missing_contact_info.push(detail.ratings[i]) ;
-            if (!missing_contact_info.length) return ; // already OK
+            if (!missing_contact_info.length) {
+                // already OK
+                detail.show_hide = 'hide' ;
+                return ;
+            }
 
             while (missing_contact_info.length) {
                 row = missing_contact_info.shift() ;
@@ -951,13 +962,33 @@ angular.module('MoneyNetwork')
 
                 if (self.is_logged_in() && (hub == z_cache.my_user_hub) && (auth_address == ZeroFrame.site_info.auth_address) && (user_seq == z_cache.user_seq)) {
                     // logged in user
+                    avatar_obj = moneyNetworkService.get_avatar();
+                    //avatar = {
+                    //    "src": "merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/avatar.jpg",
+                    //    "loaded": true
+                    //};
+                    if (avatar_obj.src) {
+                        avatar_a = avatar_obj.src.split('/') ;
+                        if (['avatar.jpg','avatar.png'].indexOf(avatar_a[avatar_a.length-1]) != -1) {
+                            // uploaded avatar. avatar = jpg/png
+                            avatar = avatar_a[avatar_a.length-1].split('.')[1] ;
+                        }
+                        else {
+                            // random assigned public avatar.
+                            avatar = avatar_obj.src.substr(20) ;
+                        }
+                    }
+                    else avatar = z_cache.user_setup.avatar ;
                     row.contact = {
                         hub: hub,
                         auth_address: auth_address,
                         cert_user_id: row.wallets_cert_user_id,
                         user_seq: user_seq,
-                        alias: z_cache.user_setup.alias
+                        alias: z_cache.user_setup.alias,
+                        avatar: avatar,
+                        pubkey: MoneyNetworkHelper.getItem('pubkey')
                     } ;
+                    console.log(pgm + 'row.contact = ' + JSON.stringify(row.contact)) ;
                     continue ;
                 }
                 if (self.is_logged_in()) {
@@ -971,17 +1002,82 @@ angular.module('MoneyNetwork')
                 }
                 if (!row.contact) {
                     // not logged in - or contact not found in ls_contacts.
-                    // todo: get cert_user_id from keyvalue (content.json)
+                    // todo: add better last online info. maybe only one user with this auth_address.
                     row.contact = {
                         hub: hub,
                         auth_address: auth_address,
                         cert_user_id: row.wallets_cert_user_id,
-                        user_seq: user_seq
+                        user_seq: user_seq,
+                        search: [{ tag: 'Online', value: row.wallets_modified, privacy: 'Search', row: 1, debug_info: {}}],
+                        avatar: row.avatar || 'z.png'
                     } ;
                 }
             } // while
 
-            console.log(pgm + 'detail with contact info = ' + JSON.stringify(detail)) ;
+            // console.log(pgm + 'detail with contact info = ' + JSON.stringify(detail)) ;
+            //info = {
+            //    "rate": 4,
+            //    "ratings": [{
+            //        "wallets_directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+            //        "wallets_modified": 1520505250000,
+            //        "wallets_cert_user_id": "jro@zeroid.bit",
+            //        "user_seq": 1,
+            //        "rate": 4,
+            //        "review": "Very nice test bitcoin wallet with fine MN-wallet integration. Have tested many send/receive money transaction OK from MN chat. Not fast but is working. Also tested backup (export & import) from MN.",
+            //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+            //        "wallet_modified": 1520440207,
+            //        "$$hashKey": "object:5892",
+            //        "contact": {
+            //            "hub": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
+            //            "auth_address": "18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+            //            "cert_user_id": "jro@zeroid.bit",
+            //            "user_seq": 1,
+            //            "alias": "jro torando"
+            //        }
+            //    }, {
+            //        "wallets_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+            //        "wallets_modified": 1520505432000,
+            //        "wallets_cert_user_id": "16nDbDocFiEsu@moneynetwork.bit",
+            //        "user_seq": 1,
+            //        "rate": 4,
+            //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+            //        "wallet_modified": 1520324127,
+            //        "$$hashKey": "object:5893",
+            //        "contact": {
+            //            "unique_id": "a18c172d49b60cdad7b006ab6cc1d56175c41ddf1b0785b7a5077764e718b876",
+            //            "type": "new",
+            //            "guest": null,
+            //            "auth_address": "16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+            //            "cert_user_id": "16nDbDocFiEsu@moneynetwork.bit",
+            //            "avatar": "6.png",
+            //            "search": [{
+            //                "tag": "Online",
+            //                "value": 1520508709,
+            //                "privacy": "Search",
+            //                "row": 1,
+            //                "debug_info": {},
+            //                "unique_id": "a18c172d49b60cdad7b006ab6cc1d56175c41ddf1b0785b7a5077764e718b876",
+            //                "$$hashKey": "object:1333"
+            //            }, {
+            //                "tag": "%",
+            //                "value": "%",
+            //                "privacy": "Search",
+            //                "row": 2,
+            //                "$$hashKey": "object:1334"
+            //            }, {
+            //                "tag": "Name",
+            //                "value": "jro test arch linux",
+            //                "privacy": "Search",
+            //                "row": 3,
+            //                "$$hashKey": "object:1335"
+            //            }],
+            //        }
+            //    }],
+            //    "no_reviews": 1,
+            //    "show_hide": "hide",
+            //    "$$hashKey": "object:5861"
+            //};
+
             // not logged in: detail with contact info = {
             //    "rate": 4,
             //    "ratings": [{
@@ -1030,6 +1126,9 @@ angular.module('MoneyNetwork')
             //    "show_hide": "hide",
             //    "$$hashKey": "object:5959"
             //};
+
+            // update angularJS
+            detail.show_hide = 'hide' ;
 
         }; // show_details2
 

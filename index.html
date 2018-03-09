@@ -183,31 +183,27 @@
                                     <table>
                                         <thead>
                                         <tr>
-                                            <th style="text-align: right">#</th>
+                                            <th style="width: 55px"></th>
+                                            <th style="width: 120px">User id</th>
                                             <th style="width: 10px"></th>
-                                            <th>User id</th>
-                                            <th style="width: 10px"></th>
-                                            <th style="text-align: center">Date</th>
+                                            <th style="width: 100px">Rated</th>
                                             <th style="width: 10px"></th>
                                             <th>Hub</th>
                                         </tr>
                                         </thead>
                                         <tbody>
                                         <tr ng-repeat-start="r in d.ratings">
-                                            <td style="min-width: 40px; text-align: right">{{r.$index+1}}</td>
-                                            <td style="text-align: center">:</td>
+                                            <td><contact-info contact="r.contact"></contact-info></td>
                                             <td ng-bind="r.contact.alias || (r.contact.cert_user_id|shortCertId)" title="{{r.contact.cert_user_id}} alias {{r.contact.auth_address}}"></td>
                                             <td></td>
-                                            <td ng-bind="r.wallets_modified*1000|date:'short'"></td>
+                                            <td ng-bind="r.wallets_modified|shortChatTime" title="{{r.wallets_modified|date:'short'}}"></td>
                                             <td></td>
                                             <td ng-bind="r.contact.hub"></td>
                                         </tr>
                                         <tr ng-repeat-end ng-show="r.review">
-                                            <td colspan="2"></td>
-                                            <td colspan="5" ng-bind="r.review"></td>
+                                            <td colspan="4" ng-bind="r.review"></td>
                                         </tr>
                                         </tbody>
-
                                     </table>
                                 </td>
                             </tr>

@@ -192,7 +192,6 @@ angular.module('MoneyNetwork')
                 linkFn = $compile(content_html) ;
                 content = linkFn(scope);
                 // console.log(pgm + 'content = ' + JSON.stringify(content)) ;
-                // todo: it would be nice if the popover could open on hover and be clickable
                 $rootScope.insidePopover = false;
                 $(element).popover({
                     html: true,
@@ -351,7 +350,7 @@ angular.module('MoneyNetwork')
             scope: true,
             link: function (scope, element, attrs) {
                 var pgm = 'reactInfoCount.link: ' ;
-                var message, content, count, get_params ;
+                var message, content, count, get_params, full_react_info ;
 
                 message = scope.$eval(attrs.message) ;
                 count = scope.$eval(attrs.count) ;
@@ -474,9 +473,9 @@ angular.module('MoneyNetwork')
     // http://stackoverflow.com/questions/16349578/angular-directive-for-a-fallback-image
     .directive('fallbackSrc', function () {
         var fallbackSrc = {
-            link: function postLink(scope, iElement, iAttrs) {
-                iElement.bind('error', function() {
-                    angular.element(this).attr("src", iAttrs.fallbackSrc);
+            link: function postLink(scope, elem, attrs) {
+                elem.bind('error', function() {
+                    angular.element(this).attr("src", attrs.fallbackSrc);
                 });
             }
         };
@@ -496,7 +495,7 @@ angular.module('MoneyNetwork')
             "</div>",
             scope : {
                 averageRatingValue : "=ngModel",
-                max : "=?", //optional: default is 5
+                max : "=?" //optional: default is 5
             },
             link : function(scope, elem, attrs) {
                 if (scope.max == undefined) { scope.max = 5; }
@@ -514,6 +513,24 @@ angular.module('MoneyNetwork')
             }
         };
     })
+
+    // todo: small table with contact info
+    // used in network, chat and money pages
+    .directive("contactInfo", function() {
+        return {
+            restrict : "EA",
+            template :
+            "<table><tbody>" +
+            "<tr>" +
+            "  <td rowspan='2' style='vertical-align: top'>" +
+            "    <img ng-src='{{contact|findContactAvatar}}' class='img-circle img-sm'>" +
+            "  </td>" +
+            "</tr></tbody></table>",
+            scope : {
+                contact : "=contact"
+            }
+        };
+    }) // contactInfo
 
     .filter('toJSON', [function () {
         // debug: return object as a JSON string
@@ -618,17 +635,17 @@ angular.module('MoneyNetwork')
         // find contact avatar - used in must cases
         return function (contact) {
             var src ;
-            if (!contact) return '' ;
-            if (['jpg','png'].indexOf(contact.avatar) != -1) {
+            if (!contact || !contact.avatar) src = '' ;
+            else if (['jpg','png'].indexOf(contact.avatar) != -1) {
                 // contact with uploaded avatar
                 if (!contact.pubkey) src = 'public/images/image_failed.gif' ; // deleted contact
                 else src = 'merged-' + MoneyNetworkAPILib.get_merged_type() + '/' + contact.hub + '/data/users/' + contact.auth_address + '/avatar.' + contact.avatar ;
             }
             else {
-                // must be contact with a random assigned avatar or avatarz for public chat
+                // must be contact with a random assigned avatar or avatar for public chat
                 src = 'public/images/avatar' + contact.avatar ;
             }
-            // if (contact.unique_id == '5a64e36240ab72da3815423b3ae223f243c5a3d780902a5f2d23a2f6c46886cd') console.log('findContactAvatarFilter: avatar = ' + contact.avatar + ', src = ' + src) ;
+            // console.log('findContactAvatarFilter: avatar = ' + (contact ? contact.avatar : '') + ', src = ' + src) ;
             return src ;
         } ;
         // end findContactAvatar filter
@@ -939,6 +956,14 @@ angular.module('MoneyNetwork')
         // end formatSearchTitle filter
     }])
 
+    .filter('getContactName', function() {
+        return function (contact) {
+            var i
+            if (!contact || !Array.isArray(contact.search)) return null ;
+            for (i=0 ; i<contact.search.length ; i++) if (contact.search[i].tag == 'Name') return contact.search[i].value ;
+            return null ;
+        }
+    }) // getContactName
 
     .filter('formatChatMessageAlias', ['MoneyNetworkService', function (moneyNetworkService) {
         // format ingoing or outgoing chat message
