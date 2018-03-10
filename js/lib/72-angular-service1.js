@@ -2275,7 +2275,7 @@ angular.module('MoneyNetwork')
                                                 ] ;
                                                 console.log(pgm + msg.join('. ')) ;
                                                 z_wrapper_notification(["error", msg.join('<br>')]);
-                                                new_user_data_hub = user_data_hubs[0].hub ;
+                                                new_user_data_hub = user_data_hubs[0] ;
 
                                             }
                                             else {

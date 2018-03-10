@@ -514,23 +514,105 @@ angular.module('MoneyNetwork')
         };
     })
 
-    // todo: small table with contact info
+    // small table with contact info
     // used in network, chat and money pages
-    .directive("contactInfo", function() {
+    .directive("contactInfo", ['MoneyNetworkService', '$timeout', function(moneyNetworkService, $timeout) {
+        var pgm = 'contactInfo directive: ' ;
         return {
             restrict : "EA",
             template :
-            "<table><tbody>" +
-            "<tr>" +
-            "  <td rowspan='2' style='vertical-align: top'>" +
+            "<table style='width: 100%' border='1'><tbody><tr>" +
+            "  <td rowspan='2' style='vertical-align: top; width: 50px'>" +
             "    <img ng-src='{{contact|findContactAvatar}}' class='img-circle img-sm'>" +
             "  </td>" +
-            "</tr></tbody></table>",
+            "  <td>" +
+            "    <span ng-hide='z_cache.user_id' ng-bind-html='contact|contactAlias' title='{{contact.cert_user_id}} alias {{contact.auth_address}}'></span> " +
+            "    <span ng-hide='contact.edit_alias || !z_cache.user_id' ng-bind-html='contact|contactAlias|shy' ng-click='edit_alias()' " +
+            "          title='{{contact.cert_user_id}} alias {{contact.auth_address}}. Click to update alias'></span> " +
+            "    <span ng-show='contact.edit_alias' title='{{contact.edit_alias_title}}'> " +
+            "       <input type='text' ng-model='contact.new_alias' style='width: 110px' id='{{contact.$$hashKey}}:alias' " +
+            "       on-key-enter='save_user_info()' on-key-escape='cancel_edit_alias()'" +
+            "    </span>" +
+            "  </td>" +
+            "  <td ng-bind='online.value|shortChatTime' style='text-align: right' title='{{online.value*1000|date:" + '"short"' + "}}'></td>" +
+            "</tr>" +
+            "<tr><td colspan='2' ng-bind='name'></td></tr>" +
+            "<tr ng-repeat='s in contact.search|filter:filter'>" +
+            "  <td ng-bind-html='s.tag|shy:10'></td>" +
+            "  <td colspan='2' ng-bind-html='s.value|shy'>todo</td>" +
+            "</tr>" +
+            "</tbody></table>",
             scope : {
                 contact : "=contact"
-            }
+            },
+            link : function(scope, elem, attrs) {
+                var pgm = 'contactInfo directive link: ' ;
+                var i ;
+                scope.z_cache = moneyNetworkService.get_z_cache() ; // for user_id (logged in / not logged in)
+                scope.edit_alias = function () {
+                    var pgm = 'contactInfo directive link.edit_alias:' ;
+                    var id ;
+                    MoneyNetworkHelper.debug('edit_alias', pgm + 'contact = ' + JSON.stringify(scope.contact));
+                    if (scope.contact["$$hashKey"]) id = scope.contact["$$hashKey"] + ":alias" ;
+                    else id = 'contact_alias_id' ;
+                    scope.contact.new_alias = moneyNetworkService.get_contact_name(scope.contact);
+                    scope.contact.edit_alias = true ;
+                    // set focus - in a timeout - wait for angularJS
+                    var set_focus = function () {
+                        var elem ;
+                        elem = document.getElementById(id) ;
+                        if (elem) elem.focus() ;
+                        else console.log(pgm + 'error. could not find element with id ' + id) ;
+                    } ;
+                    $timeout(set_focus) ;
+                }; // edit_alias
+                scope.cancel_edit_alias = function() {
+                    var pgm = 'contactInfo directive link.cancel_edit_alias: ' ;
+                    MoneyNetworkHelper.debug('edit_alias', pgm + 'contact = ' + JSON.stringify(scope.contact));
+                    delete scope.contact.new_alias ;
+                    delete scope.contact.edit_alias ;
+                    scope.$apply() ;
+                }; // cancel_edit_alias
+                scope.save_user_info = function () {
+                    var pgm = 'contactInfo directive link.save_user_info: ';
+                    MoneyNetworkHelper.debug('edit_alias', pgm + 'contact = ' + JSON.stringify(scope.contact));
+                    // update angular UI
+                    scope.contact.alias = scope.contact.new_alias ;
+                    delete scope.contact.new_alias ;
+                    delete scope.contact.edit_alias ;
+                    scope.$apply() ;
+                    // save contacts in localStorage
+                    // console.log(pgm + 'calling ls_save_contacts') ;
+                    moneyNetworkService.ls_save_contacts(false) ;
+                }; // save_user_info
+                scope.filter = function (row, index, rows) {
+                    var pgm = 'contactInfo directive link.filter: ';
+                    console.log(pgm + 'row = ' + JSON.stringify(row)) ;
+                    return (['Online','Name'].indexOf(row.tag) == -1) ;
+                } ;
+
+                scope.$watch("contact", function(oldVal, newVal) {
+                    var pgm = 'contactInfo directive link.watch: ';
+                    if (scope.contact && scope.contact.search) {
+                        if (!scope.online) {
+                            scope.online = scope.contact.search[0] ;
+                            console.log(pgm + 'scope.online = ' + JSON.stringify(scope.online)) ;
+                        }
+                        if (!scope.name) {
+                            for (i=0 ; i<scope.contact.search.length ; i++) {
+                                if (scope.contact.search[i].tag == 'Name') {
+                                    scope.name = scope.contact.search[i].value ;
+                                    console.log(pgm + 'scope.name = ' + JSON.stringify(scope.name)) ;
+                                }
+                            }
+                        }
+                    }
+                });
+
+
+            } // link
         };
-    }) // contactInfo
+    }]) // contactInfo
 
     .filter('toJSON', [function () {
         // debug: return object as a JSON string
@@ -742,52 +824,49 @@ angular.module('MoneyNetwork')
         // short format for unix timestamp used in chat
         return function (unix_timestamp) {
             var pgm = 'shortChatTime filter: ' ;
+            if ((unix_timestamp >= 1000000000) && (unix_timestamp <= 9999999999)) {
+                // unix timestamp is too short - add milliseconds
+                unix_timestamp = 1000 * unix_timestamp ;
+            }
             var today = new Date ;
             var date = new Date(unix_timestamp) ;
             // today?
             if (today.getDate() == date.getDate()) return $filter('date')(date, 'shortTime');
-            // not today: use format minutes, hours, days, weeks, months, years ago
+            // not today: use format seconds, minutes, hours, days, weeks, months, years ago
             var miliseconds_ago = today - date ;
             var seconds_ago = miliseconds_ago / 1000 ;
             if (seconds_ago < 59.5) {
                 seconds_ago = Math.round(seconds_ago) ;
-                if (seconds_ago == 1) return '1 second ago' ;
-                else return seconds_ago + ' seconds ago' ;
+                return seconds_ago + 's' ;
             }
             var minutes_ago = seconds_ago / 60 ;
             if (minutes_ago < 59.5) {
                 minutes_ago = Math.round(minutes_ago) ;
-                if (minutes_ago == 1) return '1 minute ago' ;
-                else return minutes_ago + ' minutes ago' ;
+                return minutes_ago + 'mi' ;
             }
             var hours_ago = minutes_ago / 60 ;
             if (hours_ago < 23.5) {
                 hours_ago = Math.round(hours_ago) ;
-                if (hours_ago == 1) return '1 hour ago' ;
-                else return hours_ago + ' hours ago' ;
+                return hours_ago + 'h' ;
             }
             var days_ago = hours_ago / 24 ;
             if (days_ago < 6.5) {
                 days_ago = Math.round(days_ago);
-                if (days_ago == 1) return '1 day ago' ;
-                else return days_ago + ' days ago' ;
+                return days_ago + 'd' ;
             }
             var weeks_ago = days_ago / 7 ;
             if (weeks_ago < 4.35) {
                 weeks_ago = Math.round(weeks_ago);
-                if (weeks_ago == 1) return '1 week ago' ;
-                else return weeks_ago + ' weeks ago' ;
+                return weeks_ago + 'w' ;
             }
             var months_ago = days_ago / 365 * 12 ;
             if (months_ago < 11.5) {
                 months_ago = Math.round(months_ago);
-                if (months_ago == 1) return '1 month ago' ;
-                else return months_ago + ' months ago' ;
+                return months_ago + 'm' ;
             }
             var years_ago = days_ago / 365 ;
             years_ago = Math.round(years_ago) ;
-            if (years_ago == 1) return '1 year ago' ;
-            else return years_ago + ' years ago' ;
+            return years_ago + 'y' ;
         } ;
         // end shortChatTime filter
     }])

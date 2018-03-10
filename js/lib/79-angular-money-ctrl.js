@@ -46,11 +46,17 @@ angular.module('MoneyNetwork')
                     "  ifnull(wallets_modified.value, content_modified.value) as wallets_modified, " +
                     "  content_cert_user_id.value as wallets_cert_user_id, " +
                     "  wallets.address, wallets.wallet_address, wallets.wallet_domain,  wallets.wallet_title, wallets.wallet_description, " +
-                    "  wallets.api_url, wallets.wallet_sha256,   wallets.wallet_modified, wallets.wallet_directory, " +
-                    "  share.user_seq, share.rate, share.review, " +
-                    "  (select avatar from users where users.json_id = data.json_id and users.user_seq = share.user_seq) as avatar " +
+                    "  wallets.api_url, wallets.wallet_sha256, wallets.wallet_modified, wallets.wallet_directory, " +
+                    "  share.user_seq, share.rate, share.review, users.avatar, " +
+                    "  (select cast(timestamp/1000 as int) from json as status_json, status " +
+                    "   where status_json.directory = wallets_json.directory and status_json.file_name = 'status.json' " +
+                    "   and status.json_id = status_json.json_id and status.user_seq = share.user_seq) as last_online, " +
+                    "  (select group_concat(tag || ',' || value,',') from search " +
+                    "   where search.json_id = data.json_id and search.user_seq = share.user_seq) as tags1, " +
+                    "  (select group_concat(tag || '#' || value,'#') from search " +
+                    "   where search.json_id = data.json_id and search.user_seq = share.user_seq) as tags2 " +
                     "from wallets, json as wallets_json, json as content_json, keyvalue as content_modified, " +
-                    "     keyvalue as wallets_modified, share, keyvalue as content_cert_user_id, json as data " +
+                    "     keyvalue as wallets_modified, share, keyvalue as content_cert_user_id, json as data, users " +
                     "where wallets.wallet_modified is not null and wallets.json_id = wallets_json.json_id " +
                     "and content_json.directory = wallets_json.directory and content_json.file_name = 'content.json' " +
                     "and content_modified.json_id = content_json.json_id and content_modified.key = 'modified' " +
@@ -58,6 +64,7 @@ angular.module('MoneyNetwork')
                     "and share.address = wallets.address and share.json_id = wallets.json_id " +
                     "and content_cert_user_id.json_id = content_json.json_id and content_cert_user_id.key = 'cert_user_id' " +
                     "and data.directory = wallets_json.directory and data.file_name = 'data.json' " +
+                    "and users.json_id = data.json_id and users.user_seq = share.user_seq " +
                     "order by wallets.wallet_modified desc" ;
 
                 console.log(pgm + 'mn_query_22 = ' + mn_query_22) ;
@@ -143,10 +150,12 @@ angular.module('MoneyNetwork')
                         // from wallet data hub: wallet_directory and wallet_modified (when was wallet info updated and by whom)
                         row2 = {
                             wallets_directory: row.wallets_directory,
-                            wallets_modified: row.wallets_modified*1000,
+                            wallets_modified: row.wallets_modified,
                             wallets_cert_user_id: row.wallets_cert_user_id,
                             user_seq: row.user_seq,
                             avatar: row.avatar,
+                            tags1: row.tags1,
+                            tags2: row.tags2,
                             rate: row.rate
                         } ;
                         if (row.review) row2.review = row.review ;
@@ -935,7 +944,7 @@ angular.module('MoneyNetwork')
         // todo: logged in: missing user_seq in wallets.json to translate to a contact
         self.show_details2 = function (detail) {
             var pgm = controller + '.show_details2: ' ;
-            var missing_contact_info, i, row, wallets_directory_a, hub, auth_address, user_seq, avatar_obj, avatar_a, avatar ;
+            var missing_contact_info, i, row, wallets_directory_a, hub, auth_address, user_seq, avatar_obj, avatar_a, avatar, user_info, search, tags1, tags2, pos1, pos2 ;
             console.log(pgm + 'detail = ' + JSON.stringify(detail)) ;
 
             // just hide
@@ -979,16 +988,24 @@ angular.module('MoneyNetwork')
                         }
                     }
                     else avatar = z_cache.user_setup.avatar ;
+                    search = [{ tag: 'Online', value: row.last_online || row.wallets_modified, privacy: 'Search', row: 1, debug_info: {}}] ;
+                    user_info = moneyNetworkService.get_user_info() ;
+                    for (i=0 ; i<user_info.length ; i++) {
+                        if (user_info[i].privacy != 'Search') continue ;
+                        search.push(JSON.parse(JSON.stringify(user_info[i]))) ;
+                    }
                     row.contact = {
                         hub: hub,
                         auth_address: auth_address,
                         cert_user_id: row.wallets_cert_user_id,
                         user_seq: user_seq,
+                        search: search,
                         alias: z_cache.user_setup.alias,
                         avatar: avatar,
-                        pubkey: MoneyNetworkHelper.getItem('pubkey')
+                        pubkey: MoneyNetworkHelper.getItem('pubkey'),
+                        "$$hashKey": row["$$hashKey"]
                     } ;
-                    console.log(pgm + 'row.contact = ' + JSON.stringify(row.contact)) ;
+                    console.log(pgm + 'Me: contact = ' + JSON.stringify(row.contact)) ;
                     continue ;
                 }
                 if (self.is_logged_in()) {
@@ -996,21 +1013,38 @@ angular.module('MoneyNetwork')
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         if ((ls_contacts[i].hub == hub) && (ls_contacts[i].auth_address == auth_address) && (ls_contacts[i].user_seq == user_seq)) {
                             row.contact = ls_contacts[i] ;
+                            console.log(pgm + 'ls contact = ' + JSON.stringify(row.contact)) ;
                             break ;
                         }
                     }
                 }
                 if (!row.contact) {
                     // not logged in - or contact not found in ls_contacts.
-                    // todo: add better last online info. maybe only one user with this auth_address.
+                    // contact info from mn_query_22
+                    search = [{ tag: 'Online', value: row.last_online || row.wallets_modified}] ;
+                    tags1 = row.tags1 ; // search group_concat separated by ,
+                    tags2 = row.tags2 ; // search group_concat separated by #
+                    while (tags1) {
+                        // find tag
+                        pos1 = 0 ;
+                        while (tags1.charAt(pos1) == tags2.charAt(pos1)) pos1++ ;
+                        // find value
+                        pos2 = pos1 + 1 ;
+                        while ((pos2 < tags1.length) && (tags1.charAt(pos2) == tags2.charAt(pos2))) pos2++ ;
+                        // push
+                        search.push({tag: tags1.substr(0,pos1), value: tags1.substr(pos1+1,pos2-pos1-1)}) ;
+                        tags1 = tags1.substr(pos2+1) ;
+                        tags2 = tags2.substr(pos2+1) ;
+                    }
                     row.contact = {
                         hub: hub,
                         auth_address: auth_address,
                         cert_user_id: row.wallets_cert_user_id,
                         user_seq: user_seq,
-                        search: [{ tag: 'Online', value: row.wallets_modified, privacy: 'Search', row: 1, debug_info: {}}],
+                        search: search,
                         avatar: row.avatar || 'z.png'
                     } ;
+                    console.log(pgm + 'not logged in contact = ' + JSON.stringify(row.contact)) ;
                 }
             } // while
 

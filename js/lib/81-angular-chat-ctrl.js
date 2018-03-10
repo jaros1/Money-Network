@@ -561,14 +561,14 @@ angular.module('MoneyNetwork')
             self.edit_alias_title = "Edit alias. Press ENTER to save. Press ESC to cancel" ;
             var edit_alias_notifications = 1 ;
             self.edit_alias = function (contact) {
-                var pgm = controller + '.edit_alias: ', i, id ;
+                var pgm = controller + '.edit_alias: ', id ;
                 debug('edit_alias', pgm + 'contact = ' + JSON.stringify(contact));
                 if (contact) {
-                    // left panel (network) edit contact alias
+                    // left panel (network) edit contact alias. many. use $$hashKey
                     id = contact["$$hashKey"] + ":alias"
                 }
                 else {
-                    // right panel (chat) edit contact alias
+                    // right panel (chat) edit contact alias. only one in top of page
                     id = 'contact_alias_id';
                     contact = self.contact ;
                 }

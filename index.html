@@ -183,8 +183,7 @@
                                     <table>
                                         <thead>
                                         <tr>
-                                            <th style="width: 55px"></th>
-                                            <th style="width: 120px">User id</th>
+                                            <th style="width: 200px">Contact</th>
                                             <th style="width: 10px"></th>
                                             <th style="width: 100px">Rated</th>
                                             <th style="width: 10px"></th>
@@ -194,14 +193,13 @@
                                         <tbody>
                                         <tr ng-repeat-start="r in d.ratings">
                                             <td><contact-info contact="r.contact"></contact-info></td>
-                                            <td ng-bind="r.contact.alias || (r.contact.cert_user_id|shortCertId)" title="{{r.contact.cert_user_id}} alias {{r.contact.auth_address}}"></td>
                                             <td></td>
                                             <td ng-bind="r.wallets_modified|shortChatTime" title="{{r.wallets_modified|date:'short'}}"></td>
                                             <td></td>
                                             <td ng-bind="r.contact.hub"></td>
                                         </tr>
                                         <tr ng-repeat-end ng-show="r.review">
-                                            <td colspan="4" ng-bind="r.review"></td>
+                                            <td colspan="5" ng-bind="r.review"></td>
                                         </tr>
                                         </tbody>
                                     </table>
@@ -2566,9 +2564,9 @@
   MoneyNetwork angularJS app - dynamic part - changed almost every day
   all.js ~= 1.3 Mb. js/all.js.zip ~= 200 Kb. Best to use .zip
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->
