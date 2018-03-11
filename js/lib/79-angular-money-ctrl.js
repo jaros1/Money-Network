@@ -1166,6 +1166,12 @@ angular.module('MoneyNetwork')
 
         }; // show_details2
 
+        self.chat_contact = function (contact) {
+            var pgm = controller + '.chat_contact: ' ;
+            console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
+
+        }; // chat_contact
+
         // end MoneyCtrl
     }])
 

@@ -146,7 +146,7 @@
                                 <th></th>
                             </tr>
                             <tr>
-                                <td style="text-align: center"">Avg. {{w.ratings.avg_rating|toFixed:2}}</td>
+                                <td style="text-align: center">Avg. {{w.ratings.avg_rating|toFixed:2}}</td>
                                 <td>
                                     <span class="average">
                                         <average-heart-rating ng-model="w.ratings.avg_rating"></average-heart-rating>
@@ -192,7 +192,7 @@
                                         </thead>
                                         <tbody>
                                         <tr ng-repeat-start="r in d.ratings">
-                                            <td><contact-info contact="r.contact"></contact-info></td>
+                                            <td><contact-info contact="r.contact" title="{{m.is_logged_in() ? 'Click to chat with contact' : 'Click to see contact'}}"></contact-info></td>
                                             <td></td>
                                             <td ng-bind="r.wallets_modified|shortChatTime" title="{{r.wallets_modified|date:'short'}}"></td>
                                             <td></td>

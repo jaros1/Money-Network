@@ -7604,7 +7604,8 @@ angular.module('MoneyNetwork')
             set_help: set_help,
             get_help: get_help,
             move_user_hub: moneyNetworkHubService.move_user_hub,
-            is_publish_running: moneyNetworkHubService.is_publish_running
+            is_publish_running: moneyNetworkHubService.is_publish_running,
+            get_ls_contacts: moneyNetworkHubService.get_ls_contacts
         };
 
         // end MoneyNetworkService

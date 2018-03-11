@@ -516,14 +516,16 @@ angular.module('MoneyNetwork')
 
     // small table with contact info
     // used in network, chat and money pages
-    .directive("contactInfo", ['MoneyNetworkService', '$timeout', function(moneyNetworkService, $timeout) {
+    .directive("contactInfo", ['MoneyNetworkService', '$timeout', '$location', function(moneyNetworkService, $timeout, $location) {
         var pgm = 'contactInfo directive: ' ;
+        var z_cache ;
+        z_cache = moneyNetworkService.get_z_cache() ; // for user_id (logged in / not logged in)
         return {
             restrict : "EA",
             template :
-            "<table style='width: 100%' border='1'><tbody><tr>" +
+            "<table style='width: 100%'><tbody><tr>" +
             "  <td rowspan='2' style='vertical-align: top; width: 50px'>" +
-            "    <img ng-src='{{contact|findContactAvatar}}' class='img-circle img-sm'>" +
+            "    <img ng-src='{{contact|findContactAvatar}}' class='img-circle img-sm' title='{{title}}' ng-click='chat_contact()'>" +
             "  </td>" +
             "  <td>" +
             "    <span ng-hide='z_cache.user_id' ng-bind-html='contact|contactAlias' title='{{contact.cert_user_id}} alias {{contact.auth_address}}'></span> " +
@@ -543,12 +545,14 @@ angular.module('MoneyNetwork')
             "</tr>" +
             "</tbody></table>",
             scope : {
-                contact : "=contact"
+                contact : "=contact",
+                title: "@title",
+                chat: "&?chat"
             },
             link : function(scope, elem, attrs) {
                 var pgm = 'contactInfo directive link: ' ;
                 var i ;
-                scope.z_cache = moneyNetworkService.get_z_cache() ; // for user_id (logged in / not logged in)
+
                 scope.edit_alias = function () {
                     var pgm = 'contactInfo directive link.edit_alias:' ;
                     var id ;
@@ -587,10 +591,9 @@ angular.module('MoneyNetwork')
                 }; // save_user_info
                 scope.filter = function (row, index, rows) {
                     var pgm = 'contactInfo directive link.filter: ';
-                    console.log(pgm + 'row = ' + JSON.stringify(row)) ;
+                    // console.log(pgm + 'row = ' + JSON.stringify(row)) ;
                     return (['Online','Name'].indexOf(row.tag) == -1) ;
                 } ;
-
                 scope.$watch("contact", function(oldVal, newVal) {
                     var pgm = 'contactInfo directive link.watch: ';
                     if (scope.contact && scope.contact.search) {
@@ -607,8 +610,53 @@ angular.module('MoneyNetwork')
                             }
                         }
                     }
-                });
+                }); // watch
+                scope.chat_contact = function() {
+                    var pgm = 'contactInfo directive link.chat_contact: ';
+                    var setup, unique_id, a_path, z_path, z_title, ls_contacts, i, contact, online, last_online, last_contact, two_panel_chat ;
 
+                    if (typeof scope.chat == 'function') return scope.chat(scope.contact) ; // use injected chat function
+                    if (!scope.title) return ; // ignore click. no title and no injected chat function
+
+                    // no injected chat function. redirect to chat page using deep link
+                    console.log(pgm + 'todo: not implemented. see chatCtrl.chat_contact') ;
+                    setup = moneyNetworkService.get_user_setup() ;
+                    unique_id = scope.contact.unique_id ;
+                    if (!unique_id) unique_id = scope.contact.cert_user_id ;
+                    if (unique_id && unique_id.match(/^[0-9a-f]{64}$/)) {
+                        // looks like a contact with a valid unique_id
+                        console.log(pgm + 'redirect using unique_id ' + scope.contact.unique_id) ;
+                    }
+                    else if ((unique_id.indexOf('@') != -1) && (unique_id != ZeroFrame.site_info.cert_user_id)) {
+                        // check if unique_id is a known cert_user_id
+                        console.log(pgm + 'check if unique_id ' + unique_id + ' is a known cert_user_id') ;
+                        ls_contacts = moneyNetworkService.get_ls_contacts() ;
+                        for (i=0 ; i<ls_contacts.length ; i++) {
+                            if (ls_contacts[i].type == 'group') continue ;
+                            if (!ls_contacts[i].unique_id) continue ;
+                            if (ls_contacts[i].cert_user_id == unique_id) {
+                                contact = ls_contacts[i] ;
+                                online =  MoneyNetworkHelper.get_last_online(contact) ;
+                                if (!last_online || (online > last_online)) {
+                                    last_contact = contact ;
+                                    last_online = online ;
+                                }
+                            }
+                        }
+                        if (last_contact) unique_id = last_contact.unique_id ;
+                        else {
+                            console.log(pgm + 'contact with cert_user_id ' + unique_id + ' was not found');
+                            return ;
+                        }
+                    }
+                    console.log(pgm + 'redirect using unique_id ' + scope.contact.unique_id) ;
+                    two_panel_chat = setup.hasOwnProperty('two_panel_chat') ? setup.two_panel_chat : true ;
+                    a_path = '/chat' + (two_panel_chat ? '2' : '') + '/' + unique_id;
+                    z_title = 'Chat' ;
+                    $location.path(a_path);
+                    $location.replace();
+                    ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Log in", z_path]);
+                }; // chat_contact
 
             } // link
         };
