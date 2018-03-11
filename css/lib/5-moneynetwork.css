@@ -19,7 +19,7 @@ body {
 }
 
 .bodyleft {
-    width: 250px;
+    width: 220px;
     position: fixed;
     overflow-y: scroll;
     overflow-x: hidden
@@ -28,7 +28,7 @@ body {
 .bodyright {
     width: 86%;
     position: absolute;
-    left: 270px;
+    left: 235px;
     overflow-y: scroll;
     overflow-x: hidden
 }
@@ -155,27 +155,27 @@ form {
 /* one panel chat page. set width and height */
 @media screen and (max-width: 399px) {
     .bodyfull {
-        width: 92.5%;
+        width: 98%;
     }
 }
 @media screen and (min-width: 400px) and (max-width: 499px) {
     .bodyfull {
-        width: 93%;
+        width: 98%;
     }
 }
 @media screen and (min-width: 500px) and (max-width: 599px) {
     .bodyfull {
-        width: 93.5%;
+        width: 98%;
     }
 }
 @media screen and (min-width: 600px) and (max-width: 699px) {
     .bodyfull {
-        width: 94%
+        width: 98%
     }
 }
 @media screen and (min-width: 700px) and (max-width: 767px) {
     .bodyfull {
-        width: 94.5%
+        width: 98%
     }
 }
 @media screen and (min-width: 768px) and (max-width: 1015px) {
@@ -207,7 +207,7 @@ form {
         display: none
     }
     .bodyright {
-        width: 92.5%;
+        width: 95%;
         position: absolute;
         left: 18px;
     }
@@ -218,7 +218,7 @@ form {
         display: none
     }
     .bodyright {
-        width: 93%;
+        width: 95.5%;
         position: absolute;
         left: 18px;
     }
@@ -229,7 +229,7 @@ form {
         display: none
     }
     .bodyright {
-        width: 93.5%;
+        width: 96%;
         position: absolute;
         left: 18px;
     }
@@ -237,163 +237,169 @@ form {
 
 @media screen and (min-width: 550px) and (max-width: 559px) {
     .bodyright {
-        width: 45%
+        width: 56%
     }
 }
 
 @media screen and (min-width: 560px) and (max-width: 569px) {
     .bodyright {
-        width: 46%
+        width: 57%
     }
 }
 
 @media screen and (min-width: 570px) and (max-width: 579px) {
     .bodyright {
-        width: 47%
+        width: 58%
     }
 }
 
 @media screen and (min-width: 580px) and (max-width: 589px) {
     .bodyright {
-        width: 48%
+        width: 59%
     }
 }
 
 @media screen and (min-width: 590px) and (max-width: 599px) {
     .bodyright {
-        width: 49%
+        width: 60%
     }
 }
 
 @media screen and (min-width: 600px) and (max-width: 609px) {
     .bodyright {
-        width: 50%
+        width: 61%
     }
 }
 
 @media screen and (min-width: 610px) and (max-width: 619px) {
     .bodyright {
-        width: 51%
+        width: 61%
     }
 }
 
 @media screen and (min-width: 620px) and (max-width: 629px) {
     .bodyright {
-        width: 51.5%
+        width: 61.5%
     }
 }
 
 @media screen and (min-width: 630px) and (max-width: 639px) {
     .bodyright {
-        width: 52%
+        width: 62%
     }
 }
 
 @media screen and (min-width: 640px) and (max-width: 649px) {
     .bodyright {
-        width: 53%
+        width: 63%
     }
 }
 
 @media screen and (min-width: 650px) and (max-width: 659px) {
     .bodyright {
-        width: 54%
+        width: 63%
     }
 }
 
 @media screen and (min-width: 660px) and (max-width: 669px) {
     .bodyright {
-        width: 55%
+        width: 64%
     }
 }
 
 @media screen and (min-width: 670px) and (max-width: 679px) {
     .bodyright {
-        width: 56%
+        width: 65%
     }
 }
 
 @media screen and (min-width: 680px) and (max-width: 689px) {
     .bodyright {
-        width: 57%
+        width: 65%
     }
 }
 
 @media screen and (min-width: 690px) and (max-width: 709px) {
     .bodyright {
-        width: 58%
+        width: 66%
     }
 }
 
 @media screen and (min-width: 710px) and (max-width: 729px) {
     .bodyright {
-        width: 59%
+        width: 67%
     }
 }
 
 @media screen and (min-width: 730px) and (max-width: 759px) {
     .bodyright {
-        width: 60%
+        width: 68%
     }
 }
 
 @media screen and (min-width: 760px) and (max-width: 767px) {
     .bodyright {
-        width: 61%
+        width: 69%
     }
 }
 
 @media screen and (min-width: 768px) and (max-width: 789px) {
     .bodyright {
-        width: 67%
+        width: 70%
     }
 }
 
 @media screen and (min-width: 790px) and (max-width: 819px) {
     .bodyright {
-        width: 68%
+        width: 71%
     }
 }
 
 @media screen and (min-width: 820px) and (max-width: 849px) {
     .bodyright {
-        width: 69%
+        width: 72%
     }
 }
 
 @media screen and (min-width: 850px) and (max-width: 879px) {
     .bodyright {
-        width: 70%
+        width: 72.5%
     }
 }
 
 @media screen and (min-width: 880px) and (max-width: 909px) {
     .bodyright {
-        width: 71%
-    }
-}
-
-@media screen and (min-width: 910px) and (max-width: 959px) {
-    .bodyright {
-        width: 72%
-    }
-}
-
-@media screen and (min-width: 960px) and (max-width: 979px) {
-    .bodyright {
         width: 73%
     }
 }
 
-@media screen and (min-width: 980px) and (max-width: 1034px) {
+@media screen and (min-width: 910px) and (max-width: 932px) {
     .bodyright {
         width: 74%
     }
 }
 
+@media screen and (min-width: 933px) and (max-width: 959px) {
+    .bodyright {
+        width: 75%
+    }
+}
+
+@media screen and (min-width: 960px) and (max-width: 979px) {
+    .bodyright {
+        width: 75%
+    }
+}
+
+@media screen and (min-width: 980px) and (max-width: 1034px) {
+    .bodyright {
+        width: 76%
+    }
+}
+
 @media screen and (min-width: 1035px) {
     .bodyright {
-        width: 750px
+        width: 785px
     }
 }
 

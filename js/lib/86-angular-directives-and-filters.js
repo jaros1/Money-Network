@@ -523,7 +523,7 @@ angular.module('MoneyNetwork')
         return {
             restrict : "EA",
             template :
-            "<table style='width: 100%'><tbody><tr>" +
+            "<table style='width: 200px'><tbody><tr>" +
             "  <td rowspan='2' style='vertical-align: top; width: 50px'>" +
             "    <img ng-src='{{contact|findContactAvatar}}' class='img-circle img-sm' title='{{title}}' ng-click='chat_contact()'>" +
             "  </td>" +

@@ -991,8 +991,8 @@ a:hover, a:focus {
 }
 
 .container-fluid {
-    padding-right: 20px;
-    padding-left: 20px;
+    padding-right: 10px;
+    padding-left: 10px;
     *zoom: 1;
 }
 
@@ -7476,19 +7476,20 @@ a.label:hover, a.label:focus, a.badge:hover, a.badge:focus {
 
 @media (max-width: 767px) {
     body {
-        padding-left: 20px;
-        padding-right: 20px;
+        padding-left: 0px;
+        padding-right: 0px;
     }
 
     .navbar-fixed-top, .navbar-fixed-bottom, .navbar-static-top {
-        margin-left: -20px;
-        margin-right: -20px;
+        margin-left: 0px;
+        margin-right: 0px;
     }
 
+/*
     .container-fluid {
         padding: 0;
     }
-
+*/
     .dl-horizontal dt {
         float: none;
         clear: none;

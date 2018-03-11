@@ -349,31 +349,24 @@
             <table>
                 <thead>
                 <tr>
-                    <th colspan="1" style="text-align: center"
+                    <th style="text-align: center"
                         title="User id (ZeroNet or alias) and contact status (new, added, unverfied, verified and ignore). Click to User id to edit">User</th>
-                    <th style="text-align: center" colspan="3" title="User information">User information</th>
-                    <th></th>
+                    <th style="width: 10px"></th>
+                    <th>Status</th>
+                    <th style="width: 10px"></th>
                     <th style="text-align: center">Action</th>
                 </tr>
                 </thead>
-                <tbody><tr><td colspan="6">&nbsp;</td></tr></tbody>
+                <tbody><tr><td colspan="3">&nbsp;</td></tr></tbody>
                 <tbody ng-repeat="x in c.contacts|filter:c.filter_contacts|orderBy:c.contact_order_by">
-                <tr>
-                    <td style="vertical-align: top">User id</td>
-                    <td>:</td>
+                <tr style="vertical-align: top">
                     <td>
-                        <span ng-hide="x.edit_alias" ng-bind-html="x|contactAlias" ng-click="c.edit_alias(x)"
-                              title="{{x.cert_user_id}}. Click to update alias"></span>
-                        <span ng-show="x.edit_alias" title="{{c.edit_alias_title}}">
-                            <input type="text" ng-model="x.new_alias" style="width: 110px" id="{{x.$$hashKey}}:alias"
-                                   on-key-enter="c.save_user_info(x)" on-key-escape="c.cancel_edit_alias(x)"></span>
+                        <contact-info contact="x" title="Click to chat with contact" chat="c.chat_contact(x)"></contact-info>
                     </td>
-                    <td rowspan="2" style="width: 55px; vertical-align: top">
-                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat" ng-click="c.chat_contact(x)">
-                    </td>
-                    <td>&nbsp;</td>
-                    <td rowspan="{{x.search.length+1}}" style="vertical-align: top">
-                        {{x.type}}:
+                    <td></td>
+                    <td ng-bind="x.type"></td>
+                    <td></td>
+                    <td>
                         <input ng-show="x|showContactAction:'ignore'" type="button" value="Ignore"
                                ng-click="c.contact_ignore(x)" ng-disabled="!n.is_logged_in()"/>
                         <input ng-show="x|showContactAction:'unplonk'" type="button" value="Unplonk"
@@ -388,14 +381,8 @@
                                ng-click="c.chat_contact(x)"/>
                     </td>
                 </tr>
-                <tr ng-repeat="y in x.search">
-                    <td ng-bind-html="y.tag|shy:10"></td>
-                    <td>:</td>
-                    <td colspan="{{[1,2].indexOf(x.search.row) == -1 ? 3 : 1}}" ng-bind-html="y|formatSearchValue:25"
-                        title="{{y|formatSearchTitle}}"></td>
-                </tr>
                 <tr>
-                    <td colspan="6">&nbsp;</td>
+                    <td colspan="3">&nbsp;</td>
                 </tr>
                 </tbody>
             </table>
@@ -1102,52 +1089,17 @@
             <table>
                 <thead>
                 <tr>
-                    <th colspan="4" style="text-align: center"
+                    <th style="text-align: center"
                         title="Money Network contacts. Click on User id to update alias">Money Network contacts</th>
                 </tr>
                 </thead>
-                <tbody>
+                <tbody><tr><td>&nbsp;</td></tr></tbody>
+                <tbody ng-repeat="x in c.contacts|filter:c.contact_filter|orderBy:c.contact_order_by" ng-style="c.contact_background_color(x)">
                 <tr>
-                    <td colspan="4">&nbsp;</td>
-                </tr>
-                </tbody>
-                <tbody ng-repeat="x in c.contacts|filter:c.contact_filter|orderBy:c.contact_order_by"
-                       ng-style="c.contact_background_color(x)">
-                <tr>
-                    <td style="vertical-align: top">User id</td>
-                    <td>:</td>
-                    <td ng-hide="x.edit_alias" ng-bind-html="x|contactAlias" ng-click="c.edit_alias(x)"
-                        title="{{x.cert_user_id}}. Click to update alias"></td>
-                    <td ng-show="x.edit_alias" title="{{c.edit_alias_title}}">
-                        <input type="text" ng-model="x.new_alias" style="width: 110px" id="{{x.$$hashKey}}:alias"
-                               on-key-enter="c.save_user_info(x)" on-key-escape="c.cancel_edit_alias(x)"></td>
-                    <td rowspan="2" style="vertical-align: top">
-                        <span ng-show="!c.editing_grp_chat && (x.type != 'group')">
-                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat with contact"
-                             ng-click="c.chat_contact(x)" fallback-src="public/images/image_failed.gif">
-                        </span>
-                        <span ng-show="!c.editing_grp_chat && (x.type == 'group')">
-                        <img ng-src="{{x|findContactAvatar}}" title="Click to chat with group"
-                             ng-click="c.chat_contact(x)">
-                        </span>
-                        <span ng-show="c.editing_grp_chat && (x.type != 'group')">
-                        <img ng-src="{{x|findContactAvatar}}" title="Click to add/remove contact to/from group chat"
-                             ng-click="c.grp_chat_add(x)">
-                        </span>
-                        <span ng-show="c.editing_grp_chat && (x.type == 'group')">
-                        <img ng-src="{{x|findContactAvatar}}">
-                        </span>
+                    <td>
+                        <contact-info contact="x" title="Click to chat with contact" chat="c.chat_contact(x)" fallback-src="public/images/image_failed.gif"></contact-info>
                     </td>
-                </tr>
-                <tr ng-repeat="y in x.search">
-                    <td ng-bind-html="y.tag|shy:10"></td>
-                    <td>:</td>
-                    <td colspan="{{[1,2].indexOf(x.search.row) == -1 ? 2 : 1}}" ng-bind-html="y|formatSearchValue:25"
-                        title="{{y|formatSearchTitle}}"></td>
-                </tr>
-                <tr style="background-color: white">
-                    <td colspan="4">&nbsp;</td>
-                </tr>
+                </tr><tr style="background-color: white"><td>&nbsp;</td></tr>
                 </tbody>
             </table>
 
