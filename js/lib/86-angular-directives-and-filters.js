@@ -599,13 +599,13 @@ angular.module('MoneyNetwork')
                     if (scope.contact && scope.contact.search) {
                         if (!scope.online) {
                             scope.online = scope.contact.search[0] ;
-                            console.log(pgm + 'scope.online = ' + JSON.stringify(scope.online)) ;
+                            // console.log(pgm + 'scope.online = ' + JSON.stringify(scope.online)) ;
                         }
                         if (!scope.name) {
                             for (i=0 ; i<scope.contact.search.length ; i++) {
                                 if (scope.contact.search[i].tag == 'Name') {
                                     scope.name = scope.contact.search[i].value ;
-                                    console.log(pgm + 'scope.name = ' + JSON.stringify(scope.name)) ;
+                                    // console.log(pgm + 'scope.name = ' + JSON.stringify(scope.name)) ;
                                 }
                             }
                         }

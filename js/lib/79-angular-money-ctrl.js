@@ -14,6 +14,57 @@ angular.module('MoneyNetwork')
             else return false ;
         };
 
+        function calc_avg_rating() {
+            var pgm = controller + '.calc_avg_rating: ' ;
+            var i, wallet, sum_ratings, details, now, one_month, last_online, months, ratings, j ;
+
+            // check last online filter. count only ratings and reviews newer than "last online"
+            last_online = 0 ; // = 1/1-1970
+            now = Math.floor((new Date().getTime())/1000) ;
+            one_month = 60*60*24*364.25 / 12 ;
+            for (i=0 ; i<self.filters.length ; i++) {
+                if (self.filters[i].name != 'Last online') continue ;
+                if (['', 'All'].indexOf(self.filters[i].value) != -1) ;
+                else if (self.filters[i].value == 'Within last month') {
+                    last_online = now - one_month ;
+                }
+                else {
+                    months = parseInt(self.filters[i].value.split(' ')[2]) ;
+                    last_online = now - months * one_month ;
+                }
+                break ;
+            } // for i
+
+
+            // todo: should also update "details[i].no_reviews"
+
+            // add summary for ratings and reviews
+            for (i=0 ; i<self.wallets.length ; i++) {
+                wallet = self.wallets[i] ;
+                if (!wallet.ratings) wallet.ratings = { details: [], no_ratings: 0, no_reviews: 0, avg_rating: 'n/a' } ;
+                else {
+                    wallet.ratings.no_ratings = 0 ;
+                    wallet.ratings.no_reviews = 0 ;
+                    sum_ratings = 0 ;
+                    details = wallet.ratings.details || [] ;
+                    for (i=0 ; i<details.length ; i++) {
+                        ratings = details[i].ratings ;
+                        for (j=0 ; j<ratings.length ; j++) {
+                            if (ratings[j].last_online >= last_online) {
+                                wallet.ratings.no_ratings++ ;
+                                sum_ratings += ratings[j].rate ;
+                                if (ratings[j].review) wallet.ratings.no_reviews++ ;
+                            }
+                        }
+                    }
+                    if (wallet.ratings.no_ratings) wallet.ratings.avg_rating = sum_ratings / wallet.ratings.no_ratings ;
+                    else wallet.ratings.avg_rating = 'n/a' ;
+                }
+                wallet.ratings.show_hide = 'show' ;
+            }
+            // console.log(pgm + 'self.wallets = ' + CircularJSON.stringify(self.wallets)) ;
+        }
+
         self.wallets = [] ;
         (function load_wallets() {
             var pgm = controller + '.load_wallets: ' ;
@@ -43,7 +94,8 @@ angular.module('MoneyNetwork')
                 mn_query_22 =
                     "select " +
                     "  wallets_json.directory as wallets_directory, " +
-                    "  ifnull(wallets_modified.value, content_modified.value) as wallets_modified, " +
+                    "  wallets_modified.value as wallets_modified, " +
+                    "  content_modified.value as content_modified, " +
                     "  content_cert_user_id.value as wallets_cert_user_id, " +
                     "  wallets.address, wallets.wallet_address, wallets.wallet_domain,  wallets.wallet_title, wallets.wallet_description, " +
                     "  wallets.api_url, wallets.wallet_sha256, wallets.wallet_modified, wallets.wallet_directory, " +
@@ -54,7 +106,10 @@ angular.module('MoneyNetwork')
                     "  (select group_concat(tag || ',' || value,',') from search " +
                     "   where search.json_id = data.json_id and search.user_seq = share.user_seq) as tags1, " +
                     "  (select group_concat(tag || '#' || value,'#') from search " +
-                    "   where search.json_id = data.json_id and search.user_seq = share.user_seq) as tags2 " +
+                    "   where search.json_id = data.json_id and search.user_seq = share.user_seq) as tags2, " +
+                    "  (select cast(status.timestamp/1000 as int) from json as status_json, status " +
+                    "   where status_json.directory = wallets_json.directory and status_json.file_name = 'status.json' " +
+                    "   and status.json_id = status_json.json_id and status.user_seq = share.user_seq) as last_online " +
                     "from wallets, json as wallets_json, json as content_json, keyvalue as content_modified, " +
                     "     keyvalue as wallets_modified, share, keyvalue as content_cert_user_id, json as data, users " +
                     "where wallets.wallet_modified is not null and wallets.json_id = wallets_json.json_id " +
@@ -153,6 +208,7 @@ angular.module('MoneyNetwork')
                             wallets_modified: row.wallets_modified,
                             wallets_cert_user_id: row.wallets_cert_user_id,
                             user_seq: row.user_seq,
+                            last_online: row.last_online,
                             avatar: row.avatar,
                             tags1: row.tags1,
                             tags2: row.tags2,
@@ -162,7 +218,6 @@ angular.module('MoneyNetwork')
                         row2.wallet_directory = row.wallet_directory ;
                         row2.wallet_modified = row.wallet_modified ;
                         details[found_i].ratings.push(row2) ;
-                        if (row.review) details[found_i].no_reviews++ ;
                     } ; // save_rate_and_review
 
                     check_wallet = function () {
@@ -170,42 +225,13 @@ angular.module('MoneyNetwork')
                         var row, inner_path, get_wallet_info, i, no_ratings, sum_ratings, address, rating, wallet, details, rate ;
                         row = res.shift() ;
                         if (!row) {
-                            // done
-                            // console.log(pgm + 'rating_index_by_address = ' + JSON.stringify(rating_index_by_address)) ;
-                            // console.log(pgm + 'reviews_index_by_address = ' + JSON.stringify(reviews_index_by_address)) ;
-                            // add summary for ratings and reviews
-                            for (i=0 ; i<self.wallets.length ; i++) {
-                                wallet = self.wallets[i] ;
-                                if (!wallet.ratings) wallet.ratings = { details: [], no_ratings: 0, no_reviews: 0, avg_rating: 'n/a' } ;
-                                else {
-                                    wallet.ratings.no_ratings = 0 ;
-                                    wallet.ratings.no_reviews = 0 ;
-                                    sum_ratings = 0 ;
-                                    details = wallet.ratings.details || [] ;
-                                    for (i=0 ; i<details.length ; i++) {
-                                        wallet.ratings.no_ratings += details[i].ratings.length ;
-                                        sum_ratings += details[i].rate * details[i].ratings.length ;
-                                        wallet.ratings.no_reviews += details[i].no_reviews ;
-                                    }
-                                    if (wallet.ratings.no_ratings) wallet.ratings.avg_rating = sum_ratings / wallet.ratings.no_ratings ;
-                                    else wallet.ratings.avg_rating = 'n/a' ;
-                                }
-                                wallet.ratings.show_hide = 'show' ;
-                            }
-                            // console.log(pgm + 'self.wallets = ' + CircularJSON.stringify(self.wallets)) ;
+                            // done. add summary for ratings and reviews
+                            calc_avg_rating() ;
 
                             return step_4_done() ;
                         }
-
-                        // save rating and review.
-                        //if (row.rate) {
-                        //    if (!rating_index_by_address[row.address]) rating_index_by_address[row.address] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0} ;
-                        //    rating_index_by_address[row.address][row.rate]++ ;
-                        //    if (row.review) {
-                        //        if (!reviews_index_by_address[row.address]) reviews_index_by_address[row.address] = [] ;
-                        //        reviews_index_by_address[row.address].push(row) ;
-                        //    }
-                        //}
+                        if (!row.wallets_modified) row.wallets_modified = row.content_modified ; // normally always a wallets_modified timestamp in wallets.json file
+                        if (!row.last_online) row.last_online = row.content_modified ; // normally always a last_online = timestamp in status.json file.
 
                         if (address_index.hasOwnProperty(row.wallet_address)) {
                             // already checked
@@ -535,7 +561,8 @@ angular.module('MoneyNetwork')
                 MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path1}, function (old_wallets_str) {
                     var pgm = controller + '.update_wallets_json z_file_get callback 2: ';
                     var old_wallets, error, new_wallets, keep_addresses, i, row1, wallet_address, wallet, j, rate, row2,
-                        identical, old_addresses, new_addresses, old_wallet, new_wallet, sort_fnc, now, json_raw ;
+                        identical, old_addresses, new_addresses, old_wallet, new_wallet, sort_fnc, now, json_raw,
+                        wallet_addresses, compress_wallet ;
                     if (old_wallets_str) {
                         try {
                             old_wallets = JSON.parse(old_wallets_str);
@@ -558,7 +585,7 @@ angular.module('MoneyNetwork')
                         old_wallets = {msgtype: 'wallets', wallets: {}, share: []};
                     }
 
-                    // copy share info from other local users
+                    // copy share info from other local accounts
                     new_wallets = {msgtype: 'wallets', wallets: {}, share: []};
                     keep_addresses = {} ;
                     for (i=0 ; i < old_wallets.share.length ; i++) {
@@ -569,7 +596,6 @@ angular.module('MoneyNetwork')
                     }
 
                     // todo: save not shared rating and review in ls
-
                     for (i=0 ; i<self.wallets.length ; i++) {
                         row1 = self.wallets[i] ;
                         wallet_address = row1.wallet_address ;
@@ -622,63 +648,174 @@ angular.module('MoneyNetwork')
                         }
                     }
 
-                    // todo: compare old and new wallets
-                    identical = true ;
-                    old_addresses = Object.keys(old_wallets.wallets).sort() ;
-                    new_addresses = Object.keys(new_wallets.wallets).sort() ;
-                    if (JSON.stringify(old_addresses) != JSON.stringify(new_addresses)) identical = false ;
-                    if (identical) {
-                        for (wallet_address in old_wallets.wallets) {
-                            old_wallet = old_wallets.wallets[wallet_address] ;
-                            new_wallet = new_wallets.wallets[wallet_address] ;
-                            if (JSON.stringify(old_wallet) != JSON.stringify(new_wallet)) {
-                                identical = false ;
-                                break ;
+                    // compress wallet information
+                    // check wallets.json files from other users. compress wallet info if finding 5 or more wallets with identical full wallet info
+                    wallet_addresses = Object.keys(new_wallets.wallets) ;
+                    compress_wallet = function (cb) {
+                        var pgm = controller + '.update_wallets_json compress 3a: ';
+                        var wallet_address, my_directory, wallet_sha256, mn_query_23, debug_seq3 ;
+                        wallet_address = wallet_addresses.shift() ;
+                        if (!wallet_address) return cb() ; // finish compressing wallet information
+                        wallet_sha256 = new_wallets.wallets[wallet_address].wallet_sha256 ;
+                        my_directory = my_user_data_hub + '/data/users/' + ZeroFrame.site_info.auth_address ;
+
+                        // find wallets with full wallet info on this user data hub (identical wallet_sha256)
+                        mn_query_23 =
+                            "select wallets_json.directory " +
+                            "from wallets, json as wallets_json, keyvalue as wallets_modified " +
+                            "where wallets.wallet_sha256 = '" + wallet_sha256 + "' " +
+                            "and wallets_json.json_id = wallets.json_id " +
+                            "and wallets_json.directory != '" + my_directory + "' " +
+                            "and wallets_modified.json_id = wallets.json_id and wallets_modified.key = 'wallets_modified' " +
+                            "/* and substr(wallets_json.directory,1,instr(wallets_json.directory,'/')-1) = '1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh' */ " +
+                            "and wallets.wallet_address is not null and wallets.wallet_title is not null and wallets.wallet_description is not null " +
+                            "order by  wallets_modified.key  desc" ;
+
+                        console.log(pgm + 'mn_query_23 = ' + mn_query_23) ;
+                        debug_seq3 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'mn query 23', 'dbQuery', MoneyNetworkHelper.show_debug('z_db_query')) ;
+                        ZeroFrame.cmd("dbQuery", [mn_query_23], function (res) {
+                            var pgm = controller + '.update_wallets_json dbQuery callback 4a: ';
+                            var no_ok, read_and_check;
+                            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq3, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
+                            if (res.error) {
+                                console.log(pgm + "error. wallets compress failed: " + res.error);
+                                console.log(pgm + 'mn_query_23 = ' + mn_query_23);
+                                // skipping compress
+                                return cb();
+                            }
+                            no_ok = 0 ;
+                            read_and_check = function (index) {
+                                var pgm = controller + '.update_wallets_json read_and_check 5a: ';
+                                var row, inner_path5 ;
+                                if (res.length + no_ok < 5) {
+                                    // less than 5 files with full wallets information
+                                    console.log(pgm + 'not compressing wallet info for ' + wallet_address + '. less that 5 wallets.json files with full wallet information');
+                                    return compress_wallet(cb) ;
+                                }
+                                row = res.shift() ;
+                                inner_path5 = 'merged-' + MoneyNetworkAPILib.get_merged_type() + '/' + row.directory + '/wallets.json' ;
+                                z_file_get(pgm, {inner_path: inner_path5}, function (wallets_str) {
+                                    var pgm = controller + '.update_wallets_json z_file_get callback 6a: ';
+                                    var wallets, error, wallet ;
+                                    if (!wallets_str) {
+                                        console.log(pgm + 'error. ' + inner_path5 + ' was not found') ;
+                                        return read_and_check() ;
+                                    }
+                                    try { wallets = JSON.parse(wallets_str) }
+                                    catch (e) {
+                                        console.log(pgm + 'error. ' + inner_path5 + ' is invalid. error = ' + e.message) ;
+                                        return read_and_check() ;
+                                    }
+                                    error = MoneyNetworkAPILib.validate_json(pgm, wallets, null, 'api') ;
+                                    if (error) {
+                                        console.log(pgm + 'error. ' + inner_path5 + ' is invalid. error = ' + error) ;
+                                        return read_and_check() ;
+                                    }
+                                    wallet = wallets.wallets[wallet_address] ;
+                                    if (!wallet) {
+                                        console.log(pgm + 'error. could not find wallet_address ' + wallet_address + ' in ' + inner_path5) ;
+                                        return read_and_check() ;
+                                    }
+                                    error = MoneyNetworkAPILib.validate_json(pgm, wallet, null, 'api') ;
+                                    if (error) {
+                                        console.log(pgm + 'error. wallet ' + wallet_address + ' in ' + inner_path5 + ' is invalid. error = ' + error) ;
+                                        return read_and_check() ;
+                                    }
+                                    if (!wallet.wallet_address || !wallet.wallet_title || !wallet.wallet_description || !wallet.currencies) {
+                                        console.log(pgm + 'skipping wallet ' + wallet_address + ' in ' + inner_path5 + '. not full wallet info') ;
+                                        return read_and_check() ;
+                                    }
+                                    // found wallet with full information
+                                    no_ok++ ;
+                                    if (no_ok < 5) return read_and_check() ;
+                                    // OK. found 5 wallets.json files with full wallets information. compress wallets info
+                                    console.log(pgm + 'compressing wallet info for ' + wallet_address + '. found 5 wallets.json files with full wallet information');
+                                    wallet = new_wallets.wallets[wallet_address] ;
+                                    console.log(pgm + 'compressing wallet information for wallet_address ' + wallet_address) ;
+                                    console.log(pgm + 'old wallet = ' + JSON.stringify(wallet)) ;
+                                    delete wallet.wallet_address ;
+                                    delete wallet.wallet_domain ;
+                                    delete wallet.wallet_title ;
+                                    delete wallet.wallet_description ;
+                                    delete wallet.currencies ;
+                                    delete wallet.api_url ;
+                                    delete wallet.json_schemas ;
+                                    delete wallet.message_workflow ;
+                                    console.log(pgm + 'new wallet = ' + JSON.stringify(wallet)) ;
+                                    // compress next wallet
+                                    compress_wallet(cb) ;
+
+                                }); // z_file_get callback 6a
+
+                            }; // read_and_check 5a
+                            read_and_check(0) ;
+
+                        }) ; // dbQuery callback 4a
+
+                    }; // compress 3
+                    compress_wallet(function() {
+                        var pgm = controller + '.update_wallets_json compress callback 3b: ';
+
+                        // compare old and new wallets
+                        identical = true ;
+                        old_addresses = Object.keys(old_wallets.wallets).sort() ;
+                        new_addresses = Object.keys(new_wallets.wallets).sort() ;
+                        if (JSON.stringify(old_addresses) != JSON.stringify(new_addresses)) identical = false ;
+                        if (identical) {
+                            for (wallet_address in old_wallets.wallets) {
+                                old_wallet = old_wallets.wallets[wallet_address] ;
+                                new_wallet = new_wallets.wallets[wallet_address] ;
+                                if (JSON.stringify(old_wallet) != JSON.stringify(new_wallet)) {
+                                    identical = false ;
+                                    break ;
+                                }
                             }
                         }
-                    }
-                    if (identical) {
-                        sort_fnc = function (a,b) {
-                            var a_str, b_str ;
-                            a_str = JSON.stringify(a) ;
-                            b_str = JSON.stringify(b) ;
-                            if (a_str == b_str) return 0 ;
-                            if (a_str < b_str) return -1 ;
-                            else return 1 ;
+                        if (identical) {
+                            sort_fnc = function (a,b) {
+                                var a_str, b_str ;
+                                a_str = JSON.stringify(a) ;
+                                b_str = JSON.stringify(b) ;
+                                if (a_str == b_str) return 0 ;
+                                if (a_str < b_str) return -1 ;
+                                else return 1 ;
 
-                        };
-                        old_wallets.share.sort(sort_fnc) ;
-                        new_wallets.share.sort(sort_fnc) ;
-                        if (JSON.stringify(old_wallets.share) != JSON.stringify(new_wallets.share)) identical = false ;
-                    }
-                    if (identical) {
-                        console.log(pgm + 'no change to wallets.json file') ;
-                        return ;
-                    }
-
-                    json_raw = unescape(encodeURIComponent(JSON.stringify(new_wallets, null, "\t")));
-                    MoneyNetworkAPILib.z_file_write(pgm, inner_path1, btoa(json_raw), {}, function (res) {
-                        var pgm = controller + '. update_wallets_json z_file_write callback 3: ';
-                        var inner_path2 ;
-                        if (res != 'ok') {
-                            console.log(pgm + 'error: ' + inner_path1 + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
+                            };
+                            old_wallets.share.sort(sort_fnc) ;
+                            new_wallets.share.sort(sort_fnc) ;
+                            if (JSON.stringify(old_wallets.share) != JSON.stringify(new_wallets.share)) identical = false ;
+                        }
+                        if (identical) {
+                            console.log(pgm + 'no change to wallets.json file') ;
                             return ;
                         }
 
-                        // heck for pending MN publish.
-                        if (moneyNetworkService.is_publish_running()) {
-                            console.log(pgm + 'wallets.json file was updated. Other publish operation is already running') ;
-                            return ;
-                        }
+                        json_raw = unescape(encodeURIComponent(JSON.stringify(new_wallets, null, "\t")));
+                        MoneyNetworkAPILib.z_file_write(pgm, inner_path1, btoa(json_raw), {}, function (res) {
+                            var pgm = controller + '. update_wallets_json z_file_write callback 4b: ';
+                            var inner_path2 ;
+                            if (res != 'ok') {
+                                console.log(pgm + 'error: ' + inner_path1 + ' fileWrite failed. error = ' + JSON.stringify(res)) ;
+                                return ;
+                            }
 
-                        // publish
-                        inner_path2 = user_path + '/content.json' ;
-                        moneyNetworkService.zeronet_site_publish({inner_path: inner_path2}, function (res) {
-                            var pgm = controller + '. update_wallets_json zeronet_site_publish callback 4: ';
-                            if (res != 'ok') console.log(pgm + 'error. wallets.json publish failed. error = ' + JSON.stringify(res)) ;
-                        }) ; // zeronet_site_publish callback 4
+                            // heck for pending MN publish.
+                            if (moneyNetworkService.is_publish_running()) {
+                                console.log(pgm + 'wallets.json file was updated. Other publish operation is already running') ;
+                                return ;
+                            }
 
-                    }) ; // z_file_write callback 3
+                            // publish
+                            inner_path2 = user_path + '/content.json' ;
+                            moneyNetworkService.zeronet_site_publish({inner_path: inner_path2}, function (res) {
+                                var pgm = controller + '. update_wallets_json zeronet_site_publish callback 5b: ';
+                                if (res != 'ok') console.log(pgm + 'error. wallets.json publish failed. error = ' + JSON.stringify(res)) ;
+                            }) ; // zeronet_site_publish callback 5b
+
+                        }) ; // z_file_write callback 4b
+
+                    }) ; // compress callback 3b
+
 
                 }); // z_file_get callback 2
 
@@ -719,215 +856,6 @@ angular.module('MoneyNetwork')
             var pgm = controller + '.show_details1: ' ;
             var details, i ;
             console.log(pgm + 'wallet = ' + CircularJSON.stringify(wallet)) ;
-            //wallet = {
-            //    "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-            //    "wallet_title": "MoneyNetworkW2",
-            //    "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //    "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
-            //    "wallet_modified": 1520005131,
-            //    "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //    "wallet": {
-            //        "msgtype": "wallet",
-            //        "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //        "wallet_title": "MoneyNetworkW2",
-            //        "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-            //        "currencies": [{
-            //            "code": "tBTC",
-            //            "name": "Test Bitcoin",
-            //            "url": "https://en.bitcoin.it/wiki/Testnet",
-            //            "fee_info": "Fee is calculated by external API (btc.com) and subtracted from amount. Calculated from the last X block in block chain. Lowest fee that still had more than an 80% chance to be confirmed in the next block.",
-            //            "units": [{"unit": "BitCoin", "factor": 1, "decimals": 8}, {
-            //                "unit": "Satoshi",
-            //                "factor": 1e-8,
-            //                "decimals": 0
-            //            }],
-            //            "$$hashKey": "object:18"
-            //        }],
-            //        "api_url": "https://www.blocktrail.com/api/docs",
-            //        "hub": "17k1QzQRhpkJubxCxaCcD6ytqnp8cqUkXe",
-            //        "hub_title": "W2 Wallet data hub 2",
-            //        "json_schemas": {
-            //            "w2_pubkeys": {
-            //                "type": "object",
-            //                "title": "Send pubkeys (JSEncrypt and cryptMessage) to other wallet session",
-            //                "description": "Sent from send_mt and start_mt post processing",
-            //                "properties": {
-            //                    "msgtype": {"type": "string", "pattern": "^w2_pubkeys$"},
-            //                    "pubkey": {"type": "string"},
-            //                    "pubkey2": {"type": "string"}
-            //                },
-            //                "required": ["msgtype", "pubkey", "pubkey2"],
-            //                "additionalProperties": false
-            //            },
-            //            "w2_check_mt": {
-            //                "type": "object",
-            //                "title": "Return bitcoin addresses and check money transactions",
-            //                "description": "From receiver to sender. Workflow: pubkeys => w2_check_mt. Use this message to exchange bitcoin addresses and crosscheck money transaction information. Identical=execute transactions. Different=abort transactions",
-            //                "properties": {
-            //                    "msgtype": {"type": "string", "pattern": "^w2_check_mt$"},
-            //                    "money_transactions": {
-            //                        "type": "array",
-            //                        "items": {
-            //                            "type": "object",
-            //                            "properties": {
-            //                                "action": {"type": "string", "pattern": "^(Send|Request)$"},
-            //                                "code": {"type": "string", "minLength": 2, "maxLength": 5},
-            //                                "amount": {
-            //                                    "type": ["number", "string"],
-            //                                    "description": "number or string with a formatted number (number.toFixed)"
-            //                                },
-            //                                "json": {
-            //                                    "type": "object",
-            //                                    "properties": {
-            //                                        "address": {"type": "string"},
-            //                                        "return_address": {"type": "string"}
-            //                                    },
-            //                                    "required": ["address", "return_address"],
-            //                                    "additionalProperties": false
-            //                                }
-            //                            },
-            //                            "required": ["action", "code", "amount", "json"],
-            //                            "additionalProperties": false
-            //                        },
-            //                        "minItems": 1
-            //                    }
-            //                },
-            //                "required": ["msgtype", "money_transactions"],
-            //                "additionalProperties": false
-            //            },
-            //            "w2_start_mt": {
-            //                "type": "object",
-            //                "title": "start or abort money transactions",
-            //                "description": "From sender to receiver. Workflow: w2_check_mt => w2_start_mt. Start or abort money transaction",
-            //                "properties": {
-            //                    "msgtype": {"type": "string", "pattern": "^w2_start_mt$"},
-            //                    "pay_results": {
-            //                        "type": "array",
-            //                        "items": {"type": ["undefined", "null", "string"]},
-            //                        "description": "null (receiver is sending), bitcoin transactionid or an error message). One row with each row in w2_check_mt.money_transactions array",
-            //                        "minItems": 1
-            //                    },
-            //                    "error": {
-            //                        "type": "string",
-            //                        "description": "w2_check_mt errors. Inconsistency between transaction in the two wallets."
-            //                    }
-            //                },
-            //                "required": ["msgtype"],
-            //                "additionalProperties": false
-            //            },
-            //            "w2_end_mt": {
-            //                "type": "object",
-            //                "title": "end or abort money transactions",
-            //                "description": "From receiver to sender. Workflow: w2_start_mt => w2_end_mt. End (pay_results) or abort money transaction (error)",
-            //                "properties": {
-            //                    "msgtype": {"type": "string", "pattern": "^w2_end_mt$"},
-            //                    "pay_results": {
-            //                        "type": "array",
-            //                        "items": {"type": ["undefined", "null", "string"]},
-            //                        "description": "null (sender is sending) or btc.pay result (transaction id or error message). One row with each row in w2_check_mt.money_transactions array",
-            //                        "minItems": 1
-            //                    },
-            //                    "error": {
-            //                        "type": "string",
-            //                        "description": "w2_start_mt errors. Inconsistency between w2_start_mt and saved transaction info"
-            //                    }
-            //                },
-            //                "required": ["msgtype"],
-            //                "additionalProperties": false
-            //            },
-            //            "w2_cleanup_mt": {
-            //                "type": "object",
-            //                "title": "cleanup file and data after completed or aborted money transaction",
-            //                "description": "From sender to to receiver. Workflow: w2_end_mt => w2_cleanup_mt. Cleanup data in file system and in Ls",
-            //                "properties": {
-            //                    "msgtype": {"type": "string", "pattern": "^w2_cleanup_mt$"},
-            //                    "error": {
-            //                        "type": "string",
-            //                        "description": "w2_end_mt errors. Inconsistency between w2_end_mt and saved transaction info"
-            //                    }
-            //                },
-            //                "required": ["msgtype"],
-            //                "additionalProperties": false
-            //            }
-            //        },
-            //        "message_workflow": {
-            //            "sender": {
-            //                "start": "w2_pubkeys",
-            //                "w2_check_mt": "w2_start_mt",
-            //                "w2_end_mt": "w2_cleanup_mt"
-            //            },
-            //            "receiver": {
-            //                "start": "w2_pubkeys",
-            //                "w2_pubkeys": "w2_check_mt",
-            //                "w2_start_mt": "w2_end_mt",
-            //                "w2_cleanup_mt": "end"
-            //            }
-            //        },
-            //        "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c"
-            //    },
-            //    "wallet_url": "/1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //    "$$hashKey": "object:4",
-            //    "ratings": {
-            //        "details": [{
-            //            "rate": 4,
-            //            "ratings": [{
-            //                "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-            //                "wallets_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
-            //                "wallet_title": "MoneyNetworkW2",
-            //                "api_url": "https://www.blocktrail.com/api/docs",
-            //                "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
-            //                "wallets_modified": 1520160191,
-            //                "review": "test",
-            //                "wallet_domain": null,
-            //                "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
-            //                "rate": 4,
-            //                "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //                "wallet_modified": 1520159403,
-            //                "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //                "$$hashKey": "object:41"
-            //            }, {
-            //                "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-            //                "wallets_directory": "1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc/data/users/1NJwoHjm67QWvD47DchbeHt7JvyaZ95CWK",
-            //                "wallet_title": "MoneyNetworkW2",
-            //                "api_url": "https://www.blocktrail.com/api/docs",
-            //                "wallet_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
-            //                "wallets_modified": 1520163544,
-            //                "review": "test opera",
-            //                "wallet_domain": null,
-            //                "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
-            //                "rate": 4,
-            //                "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //                "wallet_modified": 1520159403,
-            //                "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //                "$$hashKey": "object:42"
-            //            }],
-            //            "no_reviews": 2,
-            //            "show_hide": "show",
-            //            "$$hashKey": "object:32"
-            //        }, {
-            //            "rate": 3,
-            //            "ratings": [{
-            //                "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-            //                "wallets_directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //                "wallet_title": "MoneyNetworkW2",
-            //                "api_url": "https://www.blocktrail.com/api/docs",
-            //                "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //                "wallets_modified": 1520269830,
-            //                "review": "test",
-            //                "wallet_domain": null,
-            //                "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
-            //                "rate": 3,
-            //                "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //                "wallet_modified": 1520005131,
-            //                "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-            //                "$$hashKey": "object:51"
-            //            }],
-            //            "no_reviews": 1,
-            //            "show_hide": "show",
-            //            "$$hashKey": "object:33"
-            //        }], "no_ratings": 3, "no_reviews": 3, "avg_rating": 3.6666666666666665, "show_hide": "show"
-            //    }
-            //};
             wallet.ratings.show_hide = wallet.ratings.show_hide == 'show' ? 'hide' : 'show' ;
             details = wallet.ratings.details ;
             if (details && (wallet.ratings.show_hide == 'show')) {
@@ -1049,128 +977,114 @@ angular.module('MoneyNetwork')
             } // while
 
             // console.log(pgm + 'detail with contact info = ' + JSON.stringify(detail)) ;
-            //info = {
-            //    "rate": 4,
-            //    "ratings": [{
-            //        "wallets_directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //        "wallets_modified": 1520505250000,
-            //        "wallets_cert_user_id": "jro@zeroid.bit",
-            //        "user_seq": 1,
-            //        "rate": 4,
-            //        "review": "Very nice test bitcoin wallet with fine MN-wallet integration. Have tested many send/receive money transaction OK from MN chat. Not fast but is working. Also tested backup (export & import) from MN.",
-            //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //        "wallet_modified": 1520440207,
-            //        "$$hashKey": "object:5892",
-            //        "contact": {
-            //            "hub": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
-            //            "auth_address": "18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //            "cert_user_id": "jro@zeroid.bit",
-            //            "user_seq": 1,
-            //            "alias": "jro torando"
-            //        }
-            //    }, {
-            //        "wallets_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
-            //        "wallets_modified": 1520505432000,
-            //        "wallets_cert_user_id": "16nDbDocFiEsu@moneynetwork.bit",
-            //        "user_seq": 1,
-            //        "rate": 4,
-            //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
-            //        "wallet_modified": 1520324127,
-            //        "$$hashKey": "object:5893",
-            //        "contact": {
-            //            "unique_id": "a18c172d49b60cdad7b006ab6cc1d56175c41ddf1b0785b7a5077764e718b876",
-            //            "type": "new",
-            //            "guest": null,
-            //            "auth_address": "16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
-            //            "cert_user_id": "16nDbDocFiEsu@moneynetwork.bit",
-            //            "avatar": "6.png",
-            //            "search": [{
-            //                "tag": "Online",
-            //                "value": 1520508709,
-            //                "privacy": "Search",
-            //                "row": 1,
-            //                "debug_info": {},
-            //                "unique_id": "a18c172d49b60cdad7b006ab6cc1d56175c41ddf1b0785b7a5077764e718b876",
-            //                "$$hashKey": "object:1333"
-            //            }, {
-            //                "tag": "%",
-            //                "value": "%",
-            //                "privacy": "Search",
-            //                "row": 2,
-            //                "$$hashKey": "object:1334"
-            //            }, {
-            //                "tag": "Name",
-            //                "value": "jro test arch linux",
-            //                "privacy": "Search",
-            //                "row": 3,
-            //                "$$hashKey": "object:1335"
-            //            }],
-            //        }
-            //    }],
-            //    "no_reviews": 1,
-            //    "show_hide": "hide",
-            //    "$$hashKey": "object:5861"
-            //};
-
-            // not logged in: detail with contact info = {
-            //    "rate": 4,
-            //    "ratings": [{
-            //        "wallets_directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //        "wallets_modified": 1520422697,
-            //        "wallets_cert_user_id": "jro@zeroid.bit",
-            //        "user_seq": 1,
-            //        "rate": 4,
-            //        "review": "test2",
-            //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //        "wallet_modified": 1520005131,
-            //        "$$hashKey": "object:5975",
-            //        "contact": {
-            //            "hub": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
-            //            "auth_address": "18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //            "cert_user_id": "jro@zeroid.bit",
-            //            "user_seq": 1
-            //        }
-            //    }],
-            //    "no_reviews": 1,
-            //    "show_hide": "hide",
-            //    "$$hashKey": "object:5969"
-            //};
-
-            // logged in user: detail with contact info = {
-            //    "rate": 4,
-            //    "ratings": [{
-            //        "wallets_directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //        "wallets_modified": 1520422697,
-            //        "wallets_cert_user_id": "jro@zeroid.bit",
-            //        "user_seq": 1,
-            //        "rate": 4,
-            //        "review": "test2",
-            //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //        "wallet_modified": 1520005131,
-            //        "$$hashKey": "object:5980",
-            //        "contact": {
-            //            "hub": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh",
-            //            "auth_address": "18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-            //            "cert_user_id": "jro@zeroid.bit",
-            //            "user_seq": 1,
-            //            "alias": "jro torando"
-            //        }
-            //    }],
-            //    "no_reviews": 1,
-            //    "show_hide": "hide",
-            //    "$$hashKey": "object:5959"
-            //};
 
             // update angularJS
             detail.show_hide = 'hide' ;
 
         }; // show_details2
 
-        self.chat_contact = function (contact) {
-            var pgm = controller + '.chat_contact: ' ;
-            console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
+        //self.chat_contact = function (contact) {
+        //    var pgm = controller + '.chat_contact: ' ;
+        //    console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
+        //
+        //}; // chat_contact
 
-        }; // chat_contact
+
+        // filter money systems
+        // - avg rating >= n hearts
+        // - last online. include only rating and reviews for users last online within n months
+        // - todo: wallet name filter (wild card)
+        // - todo: currency filter (name)
+        // - todo: ?
+
+        self.show_filters = false ;
+        self.show_hide_filers = function() {
+            self.show_filters = !self.show_filters ;
+        } ;
+
+        self.filters = [{name: '', value: ''}] ;
+        self.filter_names = [
+            {   name: 'Avg. rating',
+                values: ['All', '>= 4 ❤️️❤️️❤️️❤️️ hearts', '>= 3 ❤️️❤️️❤️️ hearts', '>= 2 ❤️️❤️️ hearts'],
+                filter_wallet: function (wallet, filter) {
+                    var selected_value_a, selected_value ;
+                    if (!wallet.ratings || (typeof wallet.ratings.avg_rating != 'number')) return false ;
+                    if (filter.name != 'Avg. rating') return false ; // error
+                    if (filter.value == 'All') return true ;
+                    selected_value_a = filter.value.split(' ') ;
+                    selected_value = parseInt(selected_value_a[1]) ;
+                    return (wallet.ratings.avg_rating >= selected_value) ;
+                }
+            },
+            {
+                name: 'Last online',
+                values: ['All', 'Within last month', 'Within last 3 months', 'Within last 6 months', 'Within last 12 months'],
+                filter_wallet: function (wallet, filter) {
+                    // see calc_avg_rating()
+                    return true ;
+                }
+            }
+        ];
+        self.get_filter_values = function (filter) {
+            var pgm = controller + '.get_filter_values: ' ;
+            var i ;
+            if (!filter.name) return [] ;
+            for (i=0 ; i<self.filter_names.length ; i++) {
+                if (self.filter_names[i].name == filter.name) return self.filter_names[i].values ;
+            }
+            return [] ;
+        };
+        self.insert_filter_row = function (filter) {
+            var pgm = controller + '.insert_filter_row: ' ;
+            var index ;
+            for (var i=0 ; i<self.filters.length ; i++) if (self.filters[i].$$hashKey == filter.$$hashKey) index = i ;
+            index = index + 1 ;
+            self.filters.splice(index, 0, {name: '', value: ''});
+            $scope.$apply();
+        };
+
+        self.filter_name_changed = function (filter) {
+            var pgm = controller + '.filter_name_changed: ' ;
+            var i ;
+            // reset value
+            filter.value = '' ;
+            // add check function
+            for (i=0 ; i<self.filter_names.length ; i++) {
+                if (self.filter_names[i].name == filter.name) {
+                    (function(){
+                        var filter_wallet = self.filter_names[i].filter_wallet ;
+                        filter.filter_wallet = function (wallet) { return filter_wallet(wallet, filter) }
+                    })() ;
+                    return ;
+                }
+            } // i
+        } ; // self.filter_name_changed
+
+        self.filter_value_changed = function (filter) {
+            var pgm = controller + '.filter_name_changed: ' ;
+            if (filter.name == 'Last online') calc_avg_rating();
+        } ;
+
+        self.filter_text = function() {
+            var msg, i ;
+            if (self.show_filters) return '' ;
+            msg = [] ;
+            for (i=0 ; i < self.filters.length ; i++) {
+                if (self.filters[i].name && self.filters[i].value) msg.push(self.filters[i].name + ' ' + self.filters[i].value) ;
+            }
+            if (msg.length == 0) return 'No filters. Showing all known wallets, ratings and reviews' ;
+            return msg.join(', ') ;
+        }; // filter_text
+
+        self.filter_wallets = function (wallet, index, wallets) {
+            var pgm = controller + '.filter_wallets: ' ;
+            var i ;
+            for (i=0 ; i<self.filters.length ; i++) {
+                if (!self.filters[i].name || !self.filters[i].value) continue ;
+                if (!self.filters[i].filter_wallet(wallet)) return false ;
+            }
+            return true ;
+        } ;
 
         // end MoneyCtrl
     }])

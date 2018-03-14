@@ -119,8 +119,46 @@
             </ul>
             <br>
 
+
             <table>
-                <tbody ng-repeat="w in m.wallets">
+
+                <tbody>
+                <tr>
+                    <td colspan="2">
+                        <img src="public/css/fonts/glyphicons-137-cogwheel.png" ng-click="m.show_hide_filers()">
+                        <span ng-hide="m.show_filters" ng-bind="m.filter_text()"></span>
+                    </td>
+                </tr>
+                </tbody>
+                <tbody ng-show="m.show_filters">
+                <tr>
+                    <td colspan="2">&nbsp;</td>
+                </tr>
+                <tr ng-repeat="x in m.filters">
+                    <td title="Start typing. Select Avg. rating, Last online etc.">
+                        <input type="text" placeholder="Start typing"
+                               ng-model="x.name"
+                               uib-typeahead="filter.name for filter in m.filter_names | filter:$viewValue | limitTo:8"
+                               typeahead-on-select="m.filter_name_changed(x)" typeahead-editable="false"
+                               class="user_info" style="width: 80px">
+                    </td>
+                    <td title="Enter filter value. No hearts, no months etc">
+                        <input type="text" placeholder="Start typing"
+                               ng-model="x.value" ng-required="x.name"
+                               uib-typeahead="value for value in m.get_filter_values(x) | filter:$viewValue | limitTo:8"
+                               typeahead-on-select="m.filter_value_changed(x)" typeahead-editable="false" on-key-enter="m.insert_filter_row(x)"
+                               class="user_info" style="width: 400px">
+                        <img ng-click="m.delete_filter(x)" src="public/css/fonts/glyphicons-208-remove.png">
+                    </td>
+                </tr>
+                </tbody>
+                <tbody>
+                <tr>
+                    <td colspan="2">&nbsp;</td>
+                </tr>
+                </tbody>
+
+                <tbody ng-repeat="w in m.wallets|filter:m.filter_wallets">
                 <tr>
                     <th>Wallet:</th>
                     <td style="vertical-align: top">
@@ -141,6 +179,7 @@
                                 <th style="width: 60px; text-align: center">Rating</th>
                                 <th style="width: 80px">Hearts</th>
                                 <th style="width: 60px; text-align: right">#ratings</th>
+                                <th style="width: 10px"></th>
                                 <th style="width: 60px; text-align: right">#reviews</th>
                                 <th style="width: 10px"></th>
                                 <th></th>
@@ -153,6 +192,7 @@
                                     </span>
                                 </td>
                                 <td style="text-align: right">{{w.ratings.no_ratings}}</td>
+                                <td></td>
                                 <td style="text-align: right">{{w.ratings.no_reviews}}</td>
                                 <td></td>
                                 <td>
@@ -171,6 +211,7 @@
 
                                 </td>
                                 <td style="text-align: right">{{d.ratings.length}}</td>
+                                <td></td>
                                 <td style="text-align: right">{{d.no_reviews}}</td>
                                 <td></td>
                                 <td>
@@ -179,7 +220,7 @@
                                 </td>
                             </tr>
                             <tr ng-show="d.show_hide == 'hide'" ng-click="$event.stopPropagation()"  title="">
-                                <td colspan="6">
+                                <td colspan="7">
                                     <table>
                                         <thead>
                                         <tr>
@@ -280,8 +321,8 @@
                             <tr>
                                 <td>
                                     <textarea class="autosize postfield new_chat_msg"
-                                              placeholder="Enter wallet review" rows="1" required
-                                              ng-model="w.wallet_review" ng-keyup="m.handleTextAreaHeight($event)" ng-disabled="c.new_chat_msg_disabled">
+                                              placeholder="{{w.rate_wallet ? 'Enter wallet review. Press \'Save review\' when ready' : 'Rate wallet 1-5 hearts'}}" rows="1" requiredr
+                                              ng-model="w.wallet_review" ng-keyup="m.handleTextAreaHeight($event)" ng-disabled="!w.rate_wallet">
                                     </textarea>
                                 </td>
                                 <td style="vertical-align: top">
@@ -1696,7 +1737,7 @@
                 <tr title="Close account and delete data from ZeroNet and localStorage. Delete this account will delete data for this account only. Delete all accounts will remove all data from ZeroNet and all data from localStorage. No way back. You maybe want to make a localStorage export before doing this ...">
                     <td>Delete account:</td>
                     <td>&nbsp;&nbsp;</td>
-                    <td><a href="" ng-click="u.delete_user2(false)">delete this account</a> / <a href="" ng-click="u.delete_user2(true)">delete all accounts</a></td>
+                    <td><a href="" ng-click="u.delete_user2(false)" id="test_delete_user2">delete this account</a> / <a href="" ng-click="u.delete_user2(true)">delete all accounts</a></td>
                 </tr>
                 </tbody>
                 <tbody title="Full localStorage and ZeroNet export/import. Used as backup or when moving from one browser/device to an other browser/device. ZeroNet certificates and avatar icons are not included in export. localStorage data is always included in export. Recommend that ZeroNet user files (data.json and status.json) also is included. Recommend that uploaded optional files (public chat messages) are not included. You also have the option to encrypt export txt file. localStorage and data.json files are already encrypted. Optional files (public chat) are not">
@@ -2212,7 +2253,7 @@
                     <td>
 
                 <span ng-hide="a.use_private_data && a.use_login.bol">
-                    <input ng-hide="a.is_logged_in()" type="submit" value="Log in" ng-click="a.login_or_register()">
+                    <input ng-hide="a.is_logged_in()" type="submit" value="Log in" id="test_log_in_1" ng-click="a.login_or_register()">
                     <input ng-show="a.is_logged_in()" type="submit" value="Log out" ng-click="a.logout()">
                 </span>
 
@@ -2377,7 +2418,7 @@
                 </span>
                 <span title="Uncheck 'encrypted' if you don't want password protection for this site. Not recommended but OK if you are the only one with access to this computer/browser">
                     <span ng-show="a.use_private_data">
-                        <input type="checkbox" ng-model="a.use_login.bol" ng-change="a.use_login_changed()">
+                        <input type="checkbox" ng-model="a.use_login.bol" id="test_use_login_checkbox" ng-change="a.use_login_changed()">
                         <span ng-hide="a.use_login.bol">un</span>encrypted
                     </span>
                     in your browser (localStorage).
