@@ -14,29 +14,41 @@ angular.module('MoneyNetwork')
             else return false ;
         };
 
-        function calc_avg_rating() {
-            var pgm = controller + '.calc_avg_rating: ' ;
-            var i, wallet, sum_ratings, details, now, one_month, last_online, months, ratings, j ;
+        function get_avg_rating_filter() {
+            var i, selected_value_a, selected_value ;
+            for (i=0 ; i<self.filters.length ; i++) {
+                if (self.filters[i].name != 'Avg. rating') continue ;
+                if (typeof self.filters[i].value != 'string') return 0 ;
+                if (self.filters[i].value == 'All') return 0 ;
+                selected_value_a = self.filters[i].value.split(' ') ;
+                return parseInt(selected_value_a[1]) ;
+            }
+            return 0 ;
+        } // get_avg_rating_filter
 
-            // check last online filter. count only ratings and reviews newer than "last online"
-            last_online = 0 ; // = 1/1-1970
-            now = Math.floor((new Date().getTime())/1000) ;
-            one_month = 60*60*24*364.25 / 12 ;
+        function get_last_online_filter() {
+            var last_online, i, now, one_month, months ;
             for (i=0 ; i<self.filters.length ; i++) {
                 if (self.filters[i].name != 'Last online') continue ;
-                if (['', 'All'].indexOf(self.filters[i].value) != -1) ;
-                else if (self.filters[i].value == 'Within last month') {
-                    last_online = now - one_month ;
-                }
-                else {
-                    months = parseInt(self.filters[i].value.split(' ')[2]) ;
-                    last_online = now - months * one_month ;
-                }
-                break ;
+                if (typeof self.filters[i].value != 'string') return 0 ;
+                if (self.filters[i].value == 'All') return 0 ;
+                now = Math.floor((new Date().getTime())/1000) ;
+                one_month = 60*60*24*364.25 / 12 ;
+                if (self.filters[i].value == 'Within last month') return (now - one_month) ;
+                months = parseInt(self.filters[i].value.split(' ')[2]) ;
+                return (now - months * one_month) ;
             } // for i
+            return 0 ;
+        } // get_last_online_filter
 
+        // update avg. rating and # reviews in UI
+        // used after start and after changing filters (Last online)
+        function calc_avg_rating() {
+            var pgm = controller + '.calc_avg_rating: ' ;
+            var i, wallet, sum_ratings, details, now, one_month, last_online, months, ratings, j, no_reviews ;
 
-            // todo: should also update "details[i].no_reviews"
+            // check last online filter. count only ratings and reviews from active users (newer than "last online")
+            last_online = get_last_online_filter() ;
 
             // add summary for ratings and reviews
             for (i=0 ; i<self.wallets.length ; i++) {
@@ -49,13 +61,16 @@ angular.module('MoneyNetwork')
                     details = wallet.ratings.details || [] ;
                     for (i=0 ; i<details.length ; i++) {
                         ratings = details[i].ratings ;
+                        no_reviews = 0 ;
                         for (j=0 ; j<ratings.length ; j++) {
                             if (ratings[j].last_online >= last_online) {
                                 wallet.ratings.no_ratings++ ;
                                 sum_ratings += ratings[j].rate ;
-                                if (ratings[j].review) wallet.ratings.no_reviews++ ;
+                                if (ratings[j].review) no_reviews++ ;
                             }
                         }
+                        details[i].no_reviews = no_reviews ;
+                        wallet.ratings.no_reviews += no_reviews ;
                     }
                     if (wallet.ratings.no_ratings) wallet.ratings.avg_rating = sum_ratings / wallet.ratings.no_ratings ;
                     else wallet.ratings.avg_rating = 'n/a' ;
@@ -1003,37 +1018,106 @@ angular.module('MoneyNetwork')
         } ;
 
         self.filters = [{name: '', value: ''}] ;
-        self.filter_names = [
-            {   name: 'Avg. rating',
+        self.filter_definitions = [
+            { // wallet avg. rating. top level only. Filter wallets. Not details behind wallet avg. rating calculation
+                name: 'Avg. rating',
                 values: ['All', '>= 4 ❤️️❤️️❤️️❤️️ hearts', '>= 3 ❤️️❤️️❤️️ hearts', '>= 2 ❤️️❤️️ hearts'],
                 filter_wallet: function (wallet, filter) {
-                    var selected_value_a, selected_value ;
-                    if (!wallet.ratings || (typeof wallet.ratings.avg_rating != 'number')) return false ;
+                    var array, no_hearts ;
                     if (filter.name != 'Avg. rating') return false ; // error
+                    if (!wallet.ratings || (typeof wallet.ratings.avg_rating != 'number')) return false ;
                     if (filter.value == 'All') return true ;
-                    selected_value_a = filter.value.split(' ') ;
-                    selected_value = parseInt(selected_value_a[1]) ;
-                    return (wallet.ratings.avg_rating >= selected_value) ;
+                    array = filter.value.split(' ') ;
+                    no_hearts = parseInt(array[1]) ;
+                    return (wallet.ratings.avg_rating >= no_hearts) ;
                 }
             },
-            {
+            { // User last online. show only rating and reviews from active users. all three levels. see calc_avg_rating()
                 name: 'Last online',
                 values: ['All', 'Within last month', 'Within last 3 months', 'Within last 6 months', 'Within last 12 months'],
+                filter_rating: function (rating, filter) {
+                    var no_months, no_seconds, now ;
+                    if (filter.name != 'Last online') return false ; // error
+                    if (typeof rating.rate != 'number') return false ; // error
+                    if (typeof filter.value != 'string') return true ; // no filter
+                    if (filter.value == 'All') return true ;
+                    if (filter.value == 'Within last month') no_months = 1 ;
+                    else no_months = parseInt(filter.value.split(' ')[1]) ;
+                    no_seconds = 60*60*24*364.25/12 * no_months ;
+                    now = Math.floor((new Date().getTime())/1000) ;
+                    return (rating.last_online >= now - no_seconds) ;
+                }
+            },
+            { // search wallet address and wallet titles. value = regular expressions
+                name: 'Wallet',
                 filter_wallet: function (wallet, filter) {
-                    // see calc_avg_rating()
-                    return true ;
+                    var re ;
+                    if (filter.name != 'Wallet') return false ; // error
+                    if (typeof filter.value != 'string') return false ;
+                    try { re = new RegExp(filter.value, 'i') }
+                    catch (e) {
+                        // not a regular expression
+                        return false
+                    }
+                    if (wallet.wallet_url.match(re)) return true ;
+                    else if (wallet.wallet_title.match(re)) return true ;
+                    else return false ;
+                }
+            },
+            { // search wallet descriptions. value = regular expression
+                name: 'Description',
+                filter_wallet: function (wallet, filter) {
+                    var re ;
+                    if (filter.name != 'Description') return false ; // error
+                    if (typeof filter.value != 'string') return false ;
+                    try { re = new RegExp(filter.value, 'i') }
+                    catch (e) {
+                        // not a regular expression
+                        return false
+                    }
+                    return wallet.wallet_description.match(re) ;
+                }
+            },
+            { // search currency code and name. value = regular expression
+                name: 'Currency',
+                filter_wallet: function (wallet, filter) {
+                    var pgm = controller + ' Currency filter: ' ;
+                    var re, i ;
+                    if (filter.name != 'Currency') return false ; // error
+                    if (typeof filter.value != 'string') return false ;
+                    try { re = new RegExp(filter.value, 'i') }
+                    catch (e) {
+                        // not a regular expression
+                        return false
+                    }
+                    for (i=0 ; i<wallet.wallet.currencies.length ; i++) {
+                        if (wallet.wallet.currencies[i].code.match(re)) return true ;
+                        if (wallet.wallet.currencies[i].name.match(re)) return true ;
+                    }
+                    return false ;
+                }
+            },
+            { // search currency fee info. value = regular expression
+                name: 'Fee info',
+                filter_wallet: function (wallet, filter) {
+                    var re, i, fee_info ;
+                    if (filter.name != 'Fee info') return false ; // error
+                    if (typeof filter.value != 'string') return false ;
+                    try { re = new RegExp(filter.value, 'i') }
+                    catch (e) {
+                        // not a regular expression
+                        return false
+                    }
+                    for (i=0 ; i<wallet.wallet.currencies.length ; i++) {
+                        fee_info = wallet.wallet.currencies[i].fee_info ;
+                        if (fee_info && fee_info.match(re)) return true ;
+                    }
+                    return false ;
                 }
             }
         ];
-        self.get_filter_values = function (filter) {
-            var pgm = controller + '.get_filter_values: ' ;
-            var i ;
-            if (!filter.name) return [] ;
-            for (i=0 ; i<self.filter_names.length ; i++) {
-                if (self.filter_names[i].name == filter.name) return self.filter_names[i].values ;
-            }
-            return [] ;
-        };
+
+        // tab or enter in filter value field. add one extra filter row
         self.insert_filter_row = function (filter) {
             var pgm = controller + '.insert_filter_row: ' ;
             var index ;
@@ -1043,29 +1127,41 @@ angular.module('MoneyNetwork')
             $scope.$apply();
         };
 
-        self.filter_name_changed = function (filter) {
-            var pgm = controller + '.filter_name_changed: ' ;
+        // filter name changed. reset value and helper functions
+        self.filter_definition_changed = function (filter) {
+            var pgm = controller + '.filter_definition_changed: ' ;
             var i ;
             // reset value
             filter.value = '' ;
-            // add check function
-            for (i=0 ; i<self.filter_names.length ; i++) {
-                if (self.filter_names[i].name == filter.name) {
+            filter.definition = null ;
+            // add 3 check functions (used in ng-repeat filters, three levels, wallet, details and ratings
+            for (i=0 ; i<self.filter_definitions.length ; i++) {
+                if (self.filter_definitions[i].name == filter.name) {
+                    filter.definition = self.filter_definitions[i] ;
                     (function(){
-                        var filter_wallet = self.filter_names[i].filter_wallet ;
-                        filter.filter_wallet = function (wallet) { return filter_wallet(wallet, filter) }
+                        var filter_wallet, filter_detail, filter_rating ;
+                        filter_wallet = self.filter_definitions[i].filter_wallet || function() { return true } ;
+                        filter.filter_wallet = function (wallet) { return filter_wallet(wallet, filter) } ;
+                        filter_detail = self.filter_definitions[i].filter_detail || function() { return true } ;
+                        filter.filter_detail = function (detail) { return filter_detail(detail, filter) } ;
+                        filter_rating = self.filter_definitions[i].filter_rating || function() { return true } ;
+                        filter.filter_rating = function (rating) { return filter_rating(rating, filter) } ;
                     })() ;
                     return ;
                 }
             } // i
-        } ; // self.filter_name_changed
+        } ; // self.filter_definition_changed
 
         self.filter_value_changed = function (filter) {
-            var pgm = controller + '.filter_name_changed: ' ;
-            if (filter.name == 'Last online') calc_avg_rating();
+            var pgm = controller + '.filter_name_value: ' ;
+            if (filter.name == 'Last online') {
+                calc_avg_rating();
+                return ;
+            }
         } ;
 
-        self.filter_text = function() {
+        // filter summary. displayed when not displaying filter input text lines
+        self.filter_summary_text = function() {
             var msg, i ;
             if (self.show_filters) return '' ;
             msg = [] ;
@@ -1076,6 +1172,7 @@ angular.module('MoneyNetwork')
             return msg.join(', ') ;
         }; // filter_text
 
+        // top level filter: filter on wallets. for example avg. rating >= 3 hearts
         self.filter_wallets = function (wallet, index, wallets) {
             var pgm = controller + '.filter_wallets: ' ;
             var i ;
@@ -1084,7 +1181,29 @@ angular.module('MoneyNetwork')
                 if (!self.filters[i].filter_wallet(wallet)) return false ;
             }
             return true ;
-        } ;
+        } ; // filter_wallets
+
+        // mid level filter: filter on heart details. for example avg. rating >= 2 hearts
+        self.filter_details = function (detail, index, details) {
+            var pgm = controller + '.filter_details: ' ;
+            var i ;
+            for (i=0 ; i<self.filters.length ; i++) {
+                if (!self.filters[i].name || !self.filters[i].value) continue ;
+                if (!self.filters[i].filter_detail(detail)) return false ;
+            }
+            return true ;
+        }; // filter_details
+
+        // low level filter: filter rating details (individual ratings)
+        self.filter_ratings = function (rate, index, ratings) {
+            var pgm = controller + '.filter_ratings: ' ;
+            var i ;
+            for (i=0 ; i<self.filters.length ; i++) {
+                if (!self.filters[i].name || !self.filters[i].value) continue ;
+                if (!self.filters[i].filter_rating(rate)) return false ;
+            }
+            return true ;
+        }; // filter_ratings
 
         // end MoneyCtrl
     }])
