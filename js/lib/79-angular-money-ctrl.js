@@ -1,7 +1,7 @@
 angular.module('MoneyNetwork')
 
-    .controller('MoneyCtrl', ['$window', '$http', '$timeout', '$scope', 'safeApply', 'MoneyNetworkService',
-        function ($window, $http, $timeout, $scope, safeApply, moneyNetworkService)
+    .controller('MoneyCtrl', ['$window', '$http', '$timeout', '$scope', '$location', 'safeApply', 'MoneyNetworkService',
+        function ($window, $http, $timeout, $scope, $location, safeApply, moneyNetworkService)
     {
         var self = this;
         var controller = 'MoneyCtrl';
@@ -270,43 +270,115 @@ angular.module('MoneyNetwork')
 
                     check_wallet = function () {
                         var pgm = controller + '.load_wallets.step_3_load_users_wallets_json check_wallet 2: ';
-                        var row, inner_path, get_wallet_info, i, wallet, contacts, pos, hub, auth_address, contact ;
+                        var row, inner_path, get_wallet_info, i, wallet, contacts, pos, hub, auth_address, contact,
+                            wallets_directory_a, user_seq, avatar_obj, avatar_a, avatar, search, user_info, tags1, tags2,
+                            pos1, pos2 ;
                         row = res.shift() ;
                         if (!row) {
                             // done. add summary for ratings and reviews
                             calc_avg_rating() ;
-
                             return step_4_done() ;
                         }
                         if (!row.wallets_modified) row.wallets_modified = row.content_modified ; // normally always a wallets_modified timestamp in wallets.json file
                         if (!row.last_online) row.last_online = row.content_modified ; // normally always a last_online = timestamp in status.json file.
 
-                        // check ignore list (spam)
-                        if (self.is_logged_in()) {
-                            pos = row.wallets_directory.indexOf('/') ;
-                            hub = row.wallets_directory.substr(0,pos) ;
-                            pos = row.wallets_directory.lastIndexOf('/') ;
-                            auth_address = row.wallets_directory.substr(pos+1) ;
+                        // add contact. from ls_contacts or create pseudo contact object from dbQuery res data
+                        wallets_directory_a = row.wallets_directory.split('/') ;
+                        user_seq = row.user_seq ;
+                        hub = wallets_directory_a[0] ;
+                        auth_address = wallets_directory_a[3] ;
+
+                        if (self.is_logged_in() && (hub == z_cache.my_user_hub) && (auth_address == ZeroFrame.site_info.auth_address) && (user_seq == z_cache.user_seq)) {
+                            // logged in user
+                            avatar_obj = moneyNetworkService.get_avatar();
+                            //avatar = {
+                            //    "src": "merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/avatar.jpg",
+                            //    "loaded": true
+                            //};
+                            if (avatar_obj.src) {
+                                avatar_a = avatar_obj.src.split('/') ;
+                                if (['avatar.jpg','avatar.png'].indexOf(avatar_a[avatar_a.length-1]) != -1) {
+                                    // uploaded avatar. avatar = jpg/png
+                                    avatar = avatar_a[avatar_a.length-1].split('.')[1] ;
+                                }
+                                else {
+                                    // random assigned public avatar.
+                                    avatar = avatar_obj.src.substr(20) ;
+                                }
+                            }
+                            else avatar = z_cache.user_setup.avatar ;
+                            search = [{ tag: 'Online', value: row.last_online || row.wallets_modified, privacy: 'Search', row: 1, debug_info: {}}] ;
+                            user_info = moneyNetworkService.get_user_info() ;
+                            for (i=0 ; i<user_info.length ; i++) {
+                                if (user_info[i].privacy != 'Search') continue ;
+                                search.push(JSON.parse(JSON.stringify(user_info[i]))) ;
+                            }
+
+                            // todo: no $$hashKey in dbQuery res!
+
+                            row.contact = {
+                                hub: hub,
+                                auth_address: auth_address,
+                                cert_user_id: row.wallets_cert_user_id,
+                                user_seq: user_seq,
+                                search: search,
+                                alias: z_cache.user_setup.alias,
+                                avatar: avatar,
+                                pubkey: MoneyNetworkHelper.getItem('pubkey'),
+                                "$$hashKey": row["$$hashKey"]
+                            } ;
+                            console.log(pgm + 'Me: contact = ' + JSON.stringify(row.contact)) ;
+                        }
+                        if (!row.contact && self.is_logged_in()) {
+                            // get contact info from ls_contacts.
                             contacts = moneyNetworkService.get_contacts_by_cert_user_id(row.wallets_cert_user_id) ;
-                            contact = null ;
                             if (contacts) {
                                 for (i=0 ; i<contacts.length ; i++) {
                                     if ((contacts[i].hub == hub) && (contacts[i].auth_address == auth_address) && (contacts[i].user_seq == row.user_seq)) {
-                                        contact = contacts[i] ;
+                                        row.contact = contacts[i] ;
                                         break ;
                                     }
                                 }
                             }
-                            if (!contact) {
+                            if (!row.contact) {
                                 console.log(pgm + 'warning. could not find a contact with hub = ' + JSON.stringify(hub) +
                                     ', auth_address = ' + JSON.stringify(auth_address) + ' and user_seq = ' + JSON.stringify(row.user_seq)) ;
                             }
-                            else if (contact.type == 'ignore') {
-                                console.log(pgm + 'ignoring rating and reviews from contact with hub = ' + JSON.stringify(hub) +
-                                    ', auth_address = ' + JSON.stringify(auth_address) + ' and user_seq = ' + JSON.stringify(row.user_seq)) ;
-                                return check_wallet() ;
+                        }
+                        if (!row.contact) {
+                            // not logged in - or contact not found in ls_contacts.
+                            // contact info from mn_query_22
+                            search = [{ tag: 'Online', value: row.last_online || row.wallets_modified}] ;
+                            tags1 = row.tags1 ; // search group_concat separated by ,
+                            tags2 = row.tags2 ; // search group_concat separated by #
+                            while (tags1) {
+                                // find tag
+                                pos1 = 0 ;
+                                while (tags1.charAt(pos1) == tags2.charAt(pos1)) pos1++ ;
+                                // find value
+                                pos2 = pos1 + 1 ;
+                                while ((pos2 < tags1.length) && (tags1.charAt(pos2) == tags2.charAt(pos2))) pos2++ ;
+                                // push
+                                search.push({tag: tags1.substr(0,pos1), value: tags1.substr(pos1+1,pos2-pos1-1)}) ;
+                                tags1 = tags1.substr(pos2+1) ;
+                                tags2 = tags2.substr(pos2+1) ;
                             }
-                            if (contact) row.contact = contact ;
+                            row.contact = {
+                                hub: hub,
+                                auth_address: auth_address,
+                                cert_user_id: row.wallets_cert_user_id,
+                                user_seq: user_seq,
+                                search: search,
+                                avatar: row.avatar || 'z.png'
+                            } ;
+                            console.log(pgm + 'not logged in contact = ' + JSON.stringify(row.contact)) ;
+                        }
+
+                        // check ignore list (spam). only logged in users
+                        if (row.contact.type == 'ignore') {
+                            console.log(pgm + 'ignoring rating and reviews from contact with hub = ' + JSON.stringify(hub) +
+                                ', auth_address = ' + JSON.stringify(auth_address) + ' and user_seq = ' + JSON.stringify(row.user_seq)) ;
+                            return check_wallet() ;
                         }
 
                         if (address_index.hasOwnProperty(row.wallet_address)) {
@@ -944,147 +1016,11 @@ angular.module('MoneyNetwork')
         var ls_contacts = moneyNetworkService.get_contacts() ;
 
         // show/hide individual rating and reviews
-        // todo: not logged in: can only show hub and auth_address for MN users
-        // todo: logged in: missing user_seq in wallets.json to translate to a contact
         self.show_details2 = function (detail) {
             var pgm = controller + '.show_details2: ' ;
-            var missing_contact_info, i, row, wallets_directory_a, hub, auth_address, user_seq, avatar_obj, avatar_a, avatar, user_info, search, tags1, tags2, pos1, pos2 ;
-
-            console.log(pgm + 'detail = ' + JSON.stringify(detail)) ;
-            //detail = {
-            //    "rate": 4,
-            //    "ratings": [{
-            //        "wallets_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
-            //        "wallets_modified": 1520505432,
-            //        "wallets_cert_user_id": "16nDbDocFiEsu@moneynetwork.bit",
-            //        "user_seq": 1,
-            //        "last_online": 1521308835,
-            //        "avatar": "6.png",
-            //        "tags1": "Name,jro test arch linux,%,%",
-            //        "tags2": "Name#jro test arch linux#%#%",
-            //        "rate": 4,
-            //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
-            //        "wallet_modified": 1520324127,
-            //        "$$hashKey": "object:4178"
-            //    }],
-            //    "no_reviews": 0,
-            //    "show_hide": "show",
-            //    "$$hashKey": "object:4154"
-            //};
-
-            // just hide
-            if (detail.show_hide == 'hide') {
-                detail.show_hide = 'show' ;
-                return ;
-            }
-
-            // check/add contact info
-            missing_contact_info = [] ;
-            for (i=0 ; i<detail.ratings.length ; i++) if (!detail.ratings[i].contact) missing_contact_info.push(detail.ratings[i]) ;
-            if (!missing_contact_info.length) {
-                // already OK
-                detail.show_hide = 'hide' ;
-                return ;
-            }
-
-            while (missing_contact_info.length) {
-                row = missing_contact_info.shift() ;
-                wallets_directory_a = row.wallets_directory.split('/') ;
-                user_seq = row.user_seq ;
-                hub = wallets_directory_a[0] ;
-                auth_address = wallets_directory_a[3] ;
-
-                if (self.is_logged_in() && (hub == z_cache.my_user_hub) && (auth_address == ZeroFrame.site_info.auth_address) && (user_seq == z_cache.user_seq)) {
-                    // logged in user
-                    avatar_obj = moneyNetworkService.get_avatar();
-                    //avatar = {
-                    //    "src": "merged-MoneyNetwork/1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/avatar.jpg",
-                    //    "loaded": true
-                    //};
-                    if (avatar_obj.src) {
-                        avatar_a = avatar_obj.src.split('/') ;
-                        if (['avatar.jpg','avatar.png'].indexOf(avatar_a[avatar_a.length-1]) != -1) {
-                            // uploaded avatar. avatar = jpg/png
-                            avatar = avatar_a[avatar_a.length-1].split('.')[1] ;
-                        }
-                        else {
-                            // random assigned public avatar.
-                            avatar = avatar_obj.src.substr(20) ;
-                        }
-                    }
-                    else avatar = z_cache.user_setup.avatar ;
-                    search = [{ tag: 'Online', value: row.last_online || row.wallets_modified, privacy: 'Search', row: 1, debug_info: {}}] ;
-                    user_info = moneyNetworkService.get_user_info() ;
-                    for (i=0 ; i<user_info.length ; i++) {
-                        if (user_info[i].privacy != 'Search') continue ;
-                        search.push(JSON.parse(JSON.stringify(user_info[i]))) ;
-                    }
-                    row.contact = {
-                        hub: hub,
-                        auth_address: auth_address,
-                        cert_user_id: row.wallets_cert_user_id,
-                        user_seq: user_seq,
-                        search: search,
-                        alias: z_cache.user_setup.alias,
-                        avatar: avatar,
-                        pubkey: MoneyNetworkHelper.getItem('pubkey'),
-                        "$$hashKey": row["$$hashKey"]
-                    } ;
-                    console.log(pgm + 'Me: contact = ' + JSON.stringify(row.contact)) ;
-                    continue ;
-                }
-                if (self.is_logged_in()) {
-                    // get contact info from ls_contacts. todo: add index
-                    for (i=0 ; i<ls_contacts.length ; i++) {
-                        if ((ls_contacts[i].hub == hub) && (ls_contacts[i].auth_address == auth_address) && (ls_contacts[i].user_seq == user_seq)) {
-                            row.contact = ls_contacts[i] ;
-                            console.log(pgm + 'ls contact = ' + JSON.stringify(row.contact)) ;
-                            break ;
-                        }
-                    }
-                }
-                if (!row.contact) {
-                    // not logged in - or contact not found in ls_contacts.
-                    // contact info from mn_query_22
-                    search = [{ tag: 'Online', value: row.last_online || row.wallets_modified}] ;
-                    tags1 = row.tags1 ; // search group_concat separated by ,
-                    tags2 = row.tags2 ; // search group_concat separated by #
-                    while (tags1) {
-                        // find tag
-                        pos1 = 0 ;
-                        while (tags1.charAt(pos1) == tags2.charAt(pos1)) pos1++ ;
-                        // find value
-                        pos2 = pos1 + 1 ;
-                        while ((pos2 < tags1.length) && (tags1.charAt(pos2) == tags2.charAt(pos2))) pos2++ ;
-                        // push
-                        search.push({tag: tags1.substr(0,pos1), value: tags1.substr(pos1+1,pos2-pos1-1)}) ;
-                        tags1 = tags1.substr(pos2+1) ;
-                        tags2 = tags2.substr(pos2+1) ;
-                    }
-                    row.contact = {
-                        hub: hub,
-                        auth_address: auth_address,
-                        cert_user_id: row.wallets_cert_user_id,
-                        user_seq: user_seq,
-                        search: search,
-                        avatar: row.avatar || 'z.png'
-                    } ;
-                    console.log(pgm + 'not logged in contact = ' + JSON.stringify(row.contact)) ;
-                }
-            } // while
-
-            // console.log(pgm + 'detail with contact info = ' + JSON.stringify(detail)) ;
-
-            // update angularJS
-            detail.show_hide = 'hide' ;
-
+            // console.log(pgm + 'detail = ' + JSON.stringify(detail)) ;
+            detail.show_hide = detail.show_hide == 'hide' ? 'show' : 'hide' ;
         }; // show_details2
-
-        //self.chat_contact = function (contact) {
-        //    var pgm = controller + '.chat_contact: ' ;
-        //    console.log(pgm + 'contact = ' + JSON.stringify(contact)) ;
-        //
-        //}; // chat_contact
 
 
         // filter money systems
@@ -1246,6 +1182,24 @@ angular.module('MoneyNetwork')
             $scope.$apply();
         }; // insert_filter_row
 
+        self.delete_filter_row = function (filter) {
+            var pgm = controller + '.delete_filter_row: ' ;
+            var found_i, i ;
+            found_i = -1 ;
+            for (i=0 ; i< self.filters.length ; i++) {
+                if (filter['$$hashKey'] == self.filters[i]['$$hashKey']) {
+                    found_i = i ;
+                    break ;
+                }
+            }
+            if (found_i == -1) {
+                console.log(pgm + 'error. could not find filter row ' + JSON.stringify(filter) + ' in self.filters') ;
+                return ;
+            }
+            self.filters.splice(found_i, 1) ;
+            if (!self.filters.length) self.filters.push({name: '', value: ''}) ;
+        } ; // delete_filter_row
+
         self.get_filter_definitions = function(filter) {
             var pgm = controller + '.get_filter_definitions: ' ;
             var filter_definitions, i, j, found_other ;
@@ -1360,6 +1314,111 @@ angular.module('MoneyNetwork')
                 if (self.filter_definitions[i].name == 'Sort') self.order_by = self.filter_definitions[i].order_by ;
              }
         })() ;
+        
+        // wallet test. find connected wallets. show "Test" button for not connected wallets. only for logged in users
+        self.tested_wallets = [] ;
+        (function find_connected_wallets() {
+            var pgm = controller + '.find_connected_wallets: ' ;
+            if (!self.is_logged_in()) return ;
+
+            moneyNetworkService.get_currencies({}, function (currencies, refresh_angular_ui) {
+                var pgm = controller + ' find_connected_wallets callback 1: ' ;
+                var wallet_names, i, wallet_name, ping_wallet ;
+                // console.log(pgm + 'currencies = ' + JSON.stringify(currencies)) ;
+
+                // wallet_name is unique for each wallet. is either wallet_domain or wallet_address.
+                // initialize array with unique wallet names.
+                wallet_names = {} ;
+                self.tested_wallets.splice(0,self.tested_wallets.length) ;
+                for (i=0 ; i<currencies.length ; i++) {
+                    wallet_name = currencies[i].wallet_name ;
+                    if (wallet_names[wallet_name]) continue ;
+                    wallet_names[wallet_name] = true ;
+                    self.tested_wallets.push({
+                        wallet_name: wallet_name,
+                        sessionid: currencies[i].sessionid,
+                        last_request_at: currencies[i].last_request_at,
+                        wallet_sha256: currencies[i].wallet_sha256,
+                        wallet_url: '/' + (currencies[i].wallet_domain || currencies[i].wallet_address),
+                        ping_error: 'Not tested',
+                        export: true,
+                        import_file_index: -1,
+                        import: false
+                    }) ;
+                }
+                console.log(pgm + 'tested_wallets = ' + JSON.stringify(wallet_names)) ;
+                if (!self.tested_wallets.length) return ;
+
+                // ping wallets to count # connected and # not connected wallets. can only export wallet ls data for connected wallet sessions
+                ping_wallet = function (index) {
+                    var pgm = controller + ' find_connected_wallets get_currencies ping_wallet 2: ' ;
+                    var sessionid, timeout_msg, no_ok, no_error, i, msg ;
+                    if (index >= self.tested_wallets.length) {
+                        // console.log(pgm + 'done pinging wallets. wallets = ' + JSON.stringify(self.tested_wallets)) ;
+                        safeApply($scope) ;
+                        return ;
+                    }
+                    sessionid = self.tested_wallets[index].sessionid ;
+                    MoneyNetworkAPILib.get_session(sessionid, function (session_info) {
+                        var pgm = controller + ' find_connected_wallets get_session callback 3: ' ;
+                        var request ;
+                        if (!session_info) {
+                            self.tested_wallets[index].ping_error = 'No session info was found for sessionid ' + sessionid ;
+                            return ping_wallet(index+1) ;
+                        }
+                        request = { msgtype: 'ping'} ;
+                        timeout_msg = ['info', 'Issue with wallet ping may have been solved<br>Please try again (export data)', 10000] ;
+                        session_info.encrypt.send_message(request, {response: 5000, timeout_msg: timeout_msg}, function (response) {
+                            var pgm = controller + ' find_connected_wallets send_message callback 4: ' ;
+                            if (response && response.error && response.error.match(/^Timeout /)) {
+                                self.tested_wallets[index].ping_error = 'Timeout' ;
+                                return ping_wallet(index+1) ;
+                            }
+                            if (!response || response.error) {
+                                self.tested_wallets[index].ping_error = 'Wallet ping error ' + (response ? response.error : '') ;
+                                return ping_wallet(index+1) ;
+                            }
+                            // OK wallet ping
+                            self.tested_wallets[index].ping_error = null ;
+                            self.tested_wallets[index].session_info = session_info ;
+                            ping_wallet(index+1) ;
+                        }) ; // send_message callback 4
+
+                    }) ; // get_session callback 3
+
+
+                } ; // ping_wallet 2
+                ping_wallet(0) ;
+
+            }) ; // get_currencies callback 1
+
+        })() ;
+
+        self.show_test_wallet = function (wallet) {
+            var pgm = controller + '.show_test_wallet: ' ;
+            var i ;
+            if (!self.is_logged_in()) return false ;
+            for (i=0 ; i<self.tested_wallets.length ; i++) {
+                if (wallet.wallet_url == self.tested_wallets[i].wallet_url) {
+                    if (!self.tested_wallets[i].ping_error) return false ; // Tested OK
+                    if (self.tested_wallets[i].ping_error == 'Not tested') return false ; // pending test
+                    return true ; // failed test
+                }
+            }
+            return true ;
+        } ; // show_test_wallet
+
+        self.test_wallet = function (wallet) {
+            var pgm = controller + '.show_test_wallet: ' ;
+            var a_path, z_path ;
+            a_path = '/wallet' ;
+            z_path = "?path=" + a_path ;
+            console.log(pgm + 'a_path = ' + JSON.stringify(a_path)) ;
+            $location.path(a_path).search('new_wallet_site', wallet.wallet_url.substr(1));
+            $location.replace() ;
+            ZeroFrame.cmd("wrapperReplaceState", [{"scrollY": 100}, "Account", z_path]) ;
+        } ; // test_wallet
+        
 
         // end MoneyCtrl
     }])

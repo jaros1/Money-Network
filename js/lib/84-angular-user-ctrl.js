@@ -867,7 +867,6 @@ angular.module('MoneyNetwork')
                         } ; // ping_wallet
                         ping_wallet(0) ;
 
-
                     }) ; // get_currencies callback 2
 
                     // console.log(controller + ': self.export_info = ' + JSON.stringify(self.export_info)) ;

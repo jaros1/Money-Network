@@ -7,7 +7,7 @@ The vision here is one app with easy access to any kind of money.
 Use the money systems you like and not only our present money system.
 Choose your money in the same way you choose clothes, food, housing, work, boyfriend, etc.
 You vote double everytime you use your wallet. What kind of money are you using and what are you using them for.
-My hope is that we humans will choose money systems that are good for our lives and our planet.
+My hope is that humans will choose money systems that are good for our lives and our planet.
  
 Here is the demo. 
 

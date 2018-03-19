@@ -103,24 +103,10 @@
 
         <div class="bodyfull">
 
-            <p>
-                money.html - page to manage the traditional, complementare and alternative money systems that you
-                want to use in here.
-            </p>
-
-            Summary:
-            <ul style="list-style-type:disc">
-                <li>todo: browse money definitions</li>
-                <li>todo: tag cloud with popular money systems</li>
-                <li>todo: create/remove money definitions</li>
-                <li>todo: add/remove access to external money systems</li>
-                <li>todo:</li>
-                <li>todo:</li>
-            </ul>
             <br>
 
-
             <table>
+
                 <tbody>
                 <tr>
                     <td colspan="2">
@@ -151,7 +137,7 @@
                                ng-model="x.value" ng-required="x.name" ng-hide="x.definition.values"
                                ng-change="m.filter_value_changed(x,3)" on-key-enter="m.insert_filter_row(x)"
                                class="user_info" style="width: 400px">
-                        <img ng-click="m.delete_filter(x)" src="public/css/fonts/glyphicons-208-remove.png">
+                        <img ng-click="m.delete_filter_row(x)" src="public/css/fonts/glyphicons-208-remove.png">
                     </td>
                 </tr>
                 </tbody>
@@ -167,6 +153,7 @@
                     <td style="vertical-align: top">
                         <a ng-click="m.open_wallet_url(w)" ng-bind="w.wallet_url"></a>
                         <span ng-bind="w.wallet_title"></span>
+                        <button type="submit" ng-click="m.test_wallet(w)" ng-show="m.show_test_wallet(w)" title="Click to test MN-wallet integration">Test</button>
                     </td>
                 </tr>
                 <tr>
@@ -2560,9 +2547,9 @@
   MoneyNetwork angularJS app - dynamic part - changed almost every day
   all.js ~= 1.3 Mb. js/all.js.zip ~= 200 Kb. Best to use .zip
  -->
-<!--script type="text/javascript" src="js/all.js"></script>
+<script type="text/javascript" src="js/all.js"></script>
 <!-- -->
-<script type="text/javascript" src="js/all.js.zip/all.js"></script>
+<!--script type="text/javascript" src="js/all.js.zip/all.js"></script>
 <!-- -->
 
 <!-- end - some more static js files -->
