@@ -7515,6 +7515,7 @@ angular.module('MoneyNetwork')
             get_contacts: moneyNetworkHubService.get_ls_contacts,
             get_contact_by_unique_id: moneyNetworkHubService.get_contact_by_unique_id,
             get_contact_by_password_sha256: moneyNetworkHubService.get_contact_by_password_sha256,
+            get_contacts_by_cert_user_id: moneyNetworkHubService.get_contacts_by_cert_user_id,
             get_contact_name: get_contact_name,
             get_last_online: get_last_online,
             add_contact: add_contact,

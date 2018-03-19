@@ -41,14 +41,43 @@ angular.module('MoneyNetwork')
             return 0 ;
         } // get_last_online_filter
 
+        function get_ignore_anonymous_certs() {
+            var last_online, i, now, one_month, months ;
+            for (i=0 ; i<self.filters.length ; i++) {
+                if (self.filters[i].name != 'Ignore') continue ;
+                if (typeof self.filters[i].value != 'string') return false ;
+                return (self.filters[i].value == 'Users with anonymous certificates') ;
+            } // for i
+            return false ;
+        } // get_ignore_anonymous_certs
+
+        function is_anonymous_contact (contact) {
+            var pgm = controller + '.is_anonymous_contact: ' ;
+            var cert_user_id, pos, cert_provider ;
+            if (!contact) {
+                console.log(pgm + 'No contact') ;
+                return false ;
+            }
+            cert_user_id = contact.cert_user_id ;
+            if (cert_user_id) pos = cert_user_id.indexOf('@') ;
+            if (!cert_user_id || (pos == -1)) {
+                console.log(pgm + 'No cert_user_id found for ' + JSON.stringify(contact)) ;
+                return ;
+            }
+            cert_provider = cert_user_id.substr(pos+1) ;
+            // console.log(pgm + 'cert_provider = ' + JSON.stringify(cert_provider)) ;
+            return (['zeroid.bit','kaffie.bit'].indexOf(cert_provider) == -1) ;
+        }
+
         // update avg. rating and # reviews in UI
         // used after start and after changing filters (Last online)
         function calc_avg_rating() {
             var pgm = controller + '.calc_avg_rating: ' ;
-            var i, wallet, sum_ratings, details, now, one_month, last_online, months, ratings, j, no_reviews ;
+            var i, wallet, sum_ratings, details, last_online, ratings, j, no_ratings, no_reviews, ignore_anonymous_certs ;
 
             // check last online filter. count only ratings and reviews from active users (newer than "last online")
             last_online = get_last_online_filter() ;
+            ignore_anonymous_certs = get_ignore_anonymous_certs() ;
 
             // add summary for ratings and reviews
             for (i=0 ; i<self.wallets.length ; i++) {
@@ -61,15 +90,18 @@ angular.module('MoneyNetwork')
                     details = wallet.ratings.details || [] ;
                     for (i=0 ; i<details.length ; i++) {
                         ratings = details[i].ratings ;
+                        no_ratings = 0 ;
                         no_reviews = 0 ;
                         for (j=0 ; j<ratings.length ; j++) {
-                            if (ratings[j].last_online >= last_online) {
-                                wallet.ratings.no_ratings++ ;
-                                sum_ratings += ratings[j].rate ;
-                                if (ratings[j].review) no_reviews++ ;
-                            }
+                            if (ignore_anonymous_certs && is_anonymous_contact((ratings[j].contact))) continue ;
+                            if (ratings[j].last_online < last_online) continue ;
+                            no_ratings++ ;
+                            sum_ratings += ratings[j].rate ;
+                            if (ratings[j].review) no_reviews++ ;
                         }
+                        details[i].no_ratings = no_ratings ;
                         details[i].no_reviews = no_reviews ;
+                        wallet.ratings.no_ratings += no_ratings ;
                         wallet.ratings.no_reviews += no_reviews ;
                     }
                     if (wallet.ratings.no_ratings) wallet.ratings.avg_rating = sum_ratings / wallet.ratings.no_ratings ;
@@ -227,17 +259,18 @@ angular.module('MoneyNetwork')
                             avatar: row.avatar,
                             tags1: row.tags1,
                             tags2: row.tags2,
-                            rate: row.rate
+                            rate: row.rate,
                         } ;
                         if (row.review) row2.review = row.review ;
                         row2.wallet_directory = row.wallet_directory ;
                         row2.wallet_modified = row.wallet_modified ;
+                        if (row.contact) row2.contact = row.contact ;
                         details[found_i].ratings.push(row2) ;
                     } ; // save_rate_and_review
 
                     check_wallet = function () {
                         var pgm = controller + '.load_wallets.step_3_load_users_wallets_json check_wallet 2: ';
-                        var row, inner_path, get_wallet_info, i, no_ratings, sum_ratings, address, rating, wallet, details, rate ;
+                        var row, inner_path, get_wallet_info, i, wallet, contacts, pos, hub, auth_address, contact ;
                         row = res.shift() ;
                         if (!row) {
                             // done. add summary for ratings and reviews
@@ -247,6 +280,34 @@ angular.module('MoneyNetwork')
                         }
                         if (!row.wallets_modified) row.wallets_modified = row.content_modified ; // normally always a wallets_modified timestamp in wallets.json file
                         if (!row.last_online) row.last_online = row.content_modified ; // normally always a last_online = timestamp in status.json file.
+
+                        // check ignore list (spam)
+                        if (self.is_logged_in()) {
+                            pos = row.wallets_directory.indexOf('/') ;
+                            hub = row.wallets_directory.substr(0,pos) ;
+                            pos = row.wallets_directory.lastIndexOf('/') ;
+                            auth_address = row.wallets_directory.substr(pos+1) ;
+                            contacts = moneyNetworkService.get_contacts_by_cert_user_id(row.wallets_cert_user_id) ;
+                            contact = null ;
+                            if (contacts) {
+                                for (i=0 ; i<contacts.length ; i++) {
+                                    if ((contacts[i].hub == hub) && (contacts[i].auth_address == auth_address) && (contacts[i].user_seq == row.user_seq)) {
+                                        contact = contacts[i] ;
+                                        break ;
+                                    }
+                                }
+                            }
+                            if (!contact) {
+                                console.log(pgm + 'warning. could not find a contact with hub = ' + JSON.stringify(hub) +
+                                    ', auth_address = ' + JSON.stringify(auth_address) + ' and user_seq = ' + JSON.stringify(row.user_seq)) ;
+                            }
+                            else if (contact.type == 'ignore') {
+                                console.log(pgm + 'ignoring rating and reviews from contact with hub = ' + JSON.stringify(hub) +
+                                    ', auth_address = ' + JSON.stringify(auth_address) + ' and user_seq = ' + JSON.stringify(row.user_seq)) ;
+                                return check_wallet() ;
+                            }
+                            if (contact) row.contact = contact ;
+                        }
 
                         if (address_index.hasOwnProperty(row.wallet_address)) {
                             // already checked
@@ -888,7 +949,28 @@ angular.module('MoneyNetwork')
         self.show_details2 = function (detail) {
             var pgm = controller + '.show_details2: ' ;
             var missing_contact_info, i, row, wallets_directory_a, hub, auth_address, user_seq, avatar_obj, avatar_a, avatar, user_info, search, tags1, tags2, pos1, pos2 ;
+
             console.log(pgm + 'detail = ' + JSON.stringify(detail)) ;
+            //detail = {
+            //    "rate": 4,
+            //    "ratings": [{
+            //        "wallets_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+            //        "wallets_modified": 1520505432,
+            //        "wallets_cert_user_id": "16nDbDocFiEsu@moneynetwork.bit",
+            //        "user_seq": 1,
+            //        "last_online": 1521308835,
+            //        "avatar": "6.png",
+            //        "tags1": "Name,jro test arch linux,%,%",
+            //        "tags2": "Name#jro test arch linux#%#%",
+            //        "rate": 4,
+            //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+            //        "wallet_modified": 1520324127,
+            //        "$$hashKey": "object:4178"
+            //    }],
+            //    "no_reviews": 0,
+            //    "show_hide": "show",
+            //    "$$hashKey": "object:4154"
+            //};
 
             // just hide
             if (detail.show_hide == 'hide') {
@@ -952,7 +1034,7 @@ angular.module('MoneyNetwork')
                     continue ;
                 }
                 if (self.is_logged_in()) {
-                    // get contact info from ls_contacts
+                    // get contact info from ls_contacts. todo: add index
                     for (i=0 ; i<ls_contacts.length ; i++) {
                         if ((ls_contacts[i].hub == hub) && (ls_contacts[i].auth_address == auth_address) && (ls_contacts[i].user_seq == user_seq)) {
                             row.contact = ls_contacts[i] ;
@@ -1012,6 +1094,7 @@ angular.module('MoneyNetwork')
         // - todo: currency filter (name)
         // - todo: ?
 
+
         self.show_filters = false ;
         self.show_hide_filers = function() {
             self.show_filters = !self.show_filters ;
@@ -1022,6 +1105,7 @@ angular.module('MoneyNetwork')
             { // wallet avg. rating. top level only. Filter wallets. Not details behind wallet avg. rating calculation
                 name: 'Avg. rating',
                 values: ['All', '>= 4 ❤️️❤️️❤️️❤️️ hearts', '>= 3 ❤️️❤️️❤️️ hearts', '>= 2 ❤️️❤️️ hearts'],
+                unique: true,
                 filter_wallet: function (wallet, filter) {
                     var array, no_hearts ;
                     if (filter.name != 'Avg. rating') return false ; // error
@@ -1035,6 +1119,7 @@ angular.module('MoneyNetwork')
             { // User last online. show only rating and reviews from active users. all three levels. see calc_avg_rating()
                 name: 'Last online',
                 values: ['All', 'Within last month', 'Within last 3 months', 'Within last 6 months', 'Within last 12 months'],
+                unique: true,
                 filter_rating: function (rating, filter) {
                     var no_months, no_seconds, now ;
                     if (filter.name != 'Last online') return false ; // error
@@ -1050,6 +1135,7 @@ angular.module('MoneyNetwork')
             },
             { // search wallet address and wallet titles. value = regular expressions
                 name: 'Wallet',
+                unique: false,
                 filter_wallet: function (wallet, filter) {
                     var re ;
                     if (filter.name != 'Wallet') return false ; // error
@@ -1066,6 +1152,7 @@ angular.module('MoneyNetwork')
             },
             { // search wallet descriptions. value = regular expression
                 name: 'Description',
+                unique: false,
                 filter_wallet: function (wallet, filter) {
                     var re ;
                     if (filter.name != 'Description') return false ; // error
@@ -1080,6 +1167,7 @@ angular.module('MoneyNetwork')
             },
             { // search currency code and name. value = regular expression
                 name: 'Currency',
+                unique: false,
                 filter_wallet: function (wallet, filter) {
                     var pgm = controller + ' Currency filter: ' ;
                     var re, i ;
@@ -1099,6 +1187,7 @@ angular.module('MoneyNetwork')
             },
             { // search currency fee info. value = regular expression
                 name: 'Fee info',
+                unique: false,
                 filter_wallet: function (wallet, filter) {
                     var re, i, fee_info ;
                     if (filter.name != 'Fee info') return false ; // error
@@ -1114,6 +1203,36 @@ angular.module('MoneyNetwork')
                     }
                     return false ;
                 }
+            },
+            { // not a filter. only sort option
+                name: 'Sort',
+                values: ['Rating', 'Wallet url', 'Wallet title', 'Description', 'Number ratings', 'Number reviews'],
+                unique: true,
+                order_by: function (wallet) {
+                    var pgm = controller + ' Sort filter: ' ;
+                    if (!sort) return wallet['$index'] ;
+                    if (sort == 'Rating') return -(wallet.ratings.avg_rating || 0) ;
+                    if (sort == 'Wallet url') return wallet.wallet_url ;
+                    if (sort == 'Wallet title') return wallet.wallet_title ;
+                    if (sort == 'Description') return wallet.wallet_description ;
+                    if (sort == 'Number ratings') return wallet.ratings.no_ratings || 0 ;
+                    if (sort == 'Number reviews') return wallet.ratings.no_reviews || 0 ;
+                    console.log(pgm + 'unknown sort ' + sort) ;
+                    return wallet['$index'] ;
+                }
+            },
+            { // ignore options. included in calc_avg_rating for wallet and detail levels
+                name: 'Ignore',
+                values: ['Users with anonymous certificates'],
+                unique: false,
+                filter_rating: function (rating, filter) {
+                    var pgm = controller + ' Ignore filter: ' ;
+                    var cert_user_id, pos, cert_provider ;
+                    if (filter.name != 'Ignore') return false ; // error
+                    if (!filter.value) return true ;
+                    if (filter.value != 'Users with anonymous certificates') return false ; // unknown filter value
+                    return !is_anonymous_contact(rating.contact) ;
+                }
             }
         ];
 
@@ -1125,7 +1244,32 @@ angular.module('MoneyNetwork')
             index = index + 1 ;
             self.filters.splice(index, 0, {name: '', value: ''});
             $scope.$apply();
-        };
+        }; // insert_filter_row
+
+        self.get_filter_definitions = function(filter) {
+            var pgm = controller + '.get_filter_definitions: ' ;
+            var filter_definitions, i, j, found_other ;
+            // console.log(pgm + 'filter = ' + JSON.stringify(filter)) ;
+            if (filter.name && filter.value) return self.filter_definitions ; // old row
+            // new row. filter unique filter definitions
+            filter_definitions = [] ;
+            for (i=0 ; i<self.filter_definitions.length ; i++) {
+                if (!self.filter_definitions[i].unique) {
+                    filter_definitions.push(self.filter_definitions[i]) ;
+                    continue ;
+                }
+                found_other = false ;
+                for (j=0 ; j<self.filters.length ; j++) {
+                    if (self.filters[j].name != self.filter_definitions[i].name) continue ;
+                    if (filter['$$hashKey'] == self.filters[j]['$$hashKey']) continue ;
+                    found_other = true ;
+                    // console.log(pgm + 'found other. filter = ' + JSON.stringify(filter) + ', self.filters[' + j + '] = ' + JSON.stringify(self.filters[j])) ;
+                    break ;
+                } // for j
+                if (!found_other) filter_definitions.push(self.filter_definitions[i]) ;
+            } // for i
+            return filter_definitions ;
+        }; // get_filter_definitions
 
         // filter name changed. reset value and helper functions
         self.filter_definition_changed = function (filter) {
@@ -1152,12 +1296,12 @@ angular.module('MoneyNetwork')
             } // i
         } ; // self.filter_definition_changed
 
-        self.filter_value_changed = function (filter) {
+        var sort ;
+        self.filter_value_changed = function (filter, debug) {
             var pgm = controller + '.filter_name_value: ' ;
-            if (filter.name == 'Last online') {
-                calc_avg_rating();
-                return ;
-            }
+            console.log(pgm + filter.name + ' = ' + filter.value + ', debug = ' + debug) ;
+            if (['Last online', 'Ignore'].indexOf(filter.name) != -1) return calc_avg_rating() ;
+            if (filter.name == 'Sort') sort = filter.value ;
         } ;
 
         // filter summary. displayed when not displaying filter input text lines
@@ -1187,6 +1331,7 @@ angular.module('MoneyNetwork')
         self.filter_details = function (detail, index, details) {
             var pgm = controller + '.filter_details: ' ;
             var i ;
+            if (!detail.no_ratings) return false ;
             for (i=0 ; i<self.filters.length ; i++) {
                 if (!self.filters[i].name || !self.filters[i].value) continue ;
                 if (!self.filters[i].filter_detail(detail)) return false ;
@@ -1204,6 +1349,17 @@ angular.module('MoneyNetwork')
             }
             return true ;
         }; // filter_ratings
+
+        // sort. see order_by in filter_definitions
+        self.order_by = function (wallet) {
+            return wallet['$index'];
+        } ;
+        (function(){
+            var i ;
+            for (i=0 ; i<self.filter_definitions.length ; i++) {
+                if (self.filter_definitions[i].name == 'Sort') self.order_by = self.filter_definitions[i].order_by ;
+             }
+        })() ;
 
         // end MoneyCtrl
     }])

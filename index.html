@@ -137,7 +137,7 @@
                     <td title="Start typing. Select Avg. rating, Last online etc.">
                         <input type="text" placeholder="Start typing"
                                ng-model="x.name"
-                               uib-typeahead="filter.name for filter in m.filter_definitions | filter:$viewValue | limitTo:8"
+                               uib-typeahead="filter.name for filter in m.get_filter_definitions(x) | filter:$viewValue | limitTo:8"
                                typeahead-on-select="m.filter_definition_changed(x)" typeahead-editable="false"
                                class="user_info" style="width: 80px">
                     </td>
@@ -145,11 +145,11 @@
                         <input type="text" placeholder="Start typing"
                                ng-model="x.value" ng-required="x.name" ng-show="x.definition.values"
                                uib-typeahead="value for value in x.definition.values | filter:$viewValue | limitTo:8"
-                               typeahead-on-select="m.filter_value_changed(x)" typeahead-editable="false" on-key-enter="m.insert_filter_row(x)"
+                               typeahead-on-select="m.filter_value_changed(x,1)" ng-change="m.filter_value_changed(x,2)" typeahead-editable="false" on-key-enter="m.insert_filter_row(x)"
                                class="user_info" style="width: 400px">
                         <input type="text" placeholder="Enter wildcard"
                                ng-model="x.value" ng-required="x.name" ng-hide="x.definition.values"
-                               ng-change="m.filter_value_changed(x)" on-key-enter="m.insert_filter_row(x)"
+                               ng-change="m.filter_value_changed(x,3)" on-key-enter="m.insert_filter_row(x)"
                                class="user_info" style="width: 400px">
                         <img ng-click="m.delete_filter(x)" src="public/css/fonts/glyphicons-208-remove.png">
                     </td>
@@ -161,7 +161,7 @@
                 </tr>
                 </tbody>
 
-                <tbody ng-repeat="w in m.wallets|filter:m.filter_wallets">
+                <tbody ng-repeat="w in m.wallets|filter:m.filter_wallets|orderBy:m.order_by">
                 <tr>
                     <th>Wallet:</th>
                     <td style="vertical-align: top">
@@ -213,7 +213,7 @@
                                     </span>
 
                                 </td>
-                                <td style="text-align: right">{{d.ratings.length}}</td>
+                                <td style="text-align: right">{{d.no_ratings}}</td>
                                 <td></td>
                                 <td style="text-align: right">{{d.no_reviews}}</td>
                                 <td></td>
