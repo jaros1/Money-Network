@@ -499,6 +499,7 @@ var MoneyNetworkHelper = (function () {
         msg_seq: {session: false, userid: true, compress: true, encrypt: true}, // local msg seq. Sequence. Used in contact.messages
         reactions: {session: false, userid: true, compress: true, encrypt: true}, // private reactions to public chat messages
         sessions: {session: false, userid: true, compress: true, encrypt: true}, // wallet sessions. hash with sessionid => session info object
+        ratings: {session: false, userid: true, compress: true, encrypt: true}, // private wallet ratings. shared ratings in wallets.json.
         // todo: avatar and alias is moved to setup but is still used in js code
         avatar: {session: false, userid: true, compress: true, encrypt: false}, // temporary public avatar image. user should upload a custom avatar image
         alias: {session: false, userid: true, compress: true, encrypt: true}, // user alias. Used in chat page

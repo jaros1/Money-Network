@@ -116,7 +116,7 @@ angular.module('MoneyNetwork')
         (function load_wallets() {
             var pgm = controller + '.load_wallets: ' ;
             var address_index, step_1_search_wallet_sites, step_2_load_user_wallet_json, step_3_load_users_wallets_json,
-                step_4_done, rating_index_by_address, reviews_index_by_address ;
+                step_4_load_ls_ratings, step_5_done, rating_index_by_address, reviews_index_by_address ;
 
             address_index = {} ; // from wallet_address to row in self.wallets
             // rating_index_by_address = {} ; // from wallet_address to ratings object
@@ -127,9 +127,57 @@ angular.module('MoneyNetwork')
             // - 2) merge info from user's wallets.json file (shared wallet rating and reviews)
             // - 3) done. update angularJS UI
 
-            step_4_done = function() {
+            step_5_done = function() {
                 safeApply($scope) ;
-            } ; // step_4_done
+            } ; // step_5_done
+
+            step_4_load_ls_ratings = function() {
+                var pgm = controller + '.load_wallets.step_4_load_ls_ratings: ';
+                var ls_ratings_str, ls_ratings, i, wallet_address, j, found_j ;
+                if (!self.is_logged_in()) return step_5_done() ;
+                ls_ratings_str = MoneyNetworkHelper.getItem('ratings') ;
+                if (!ls_ratings_str) return step_5_done() ;
+                try {
+                    ls_ratings = JSON.parse(ls_ratings_str) ;
+                }
+                catch (e) {
+                    console.log(pgm + 'invalid ls.rating JSON. error = ' + e.message) ;
+                    return step_5_done() ;
+                }
+                if (!Array.isArray(ls_ratings)) {
+                    console.log(pgm + 'invalid ls.rating. Expected an array. found ' + JSON.stringify(ls_ratings)) ;
+                    return step_5_done() ;
+                }
+                //console.log(pgm + 'ls_ratings = ' + JSON.stringify(ls_ratings)) ;
+                //console.log(pgm + 'self.wallets = ' + JSON.stringify(self.wallets)) ;
+
+                // copy not shared info from ls.ratings to self.wallets
+                for (i=0 ; i<ls_ratings.length ; i++) {
+                    wallet_address = ls_ratings[i].address ;
+                    found_j = -1 ;
+                    for (j=0 ; j<self.wallets.length ; j++) {
+                        if (wallet_address == self.wallets[j].wallet_address) {
+                            found_j = j ;
+                            break ;
+                        }
+                    } // for j
+                    if (found_j == -1) {
+                        console.log(pgm + 'error. could not find ls.rating wallet_address ' + wallet_address + ' in self.wallets') ;
+                        continue ;
+                    }
+                    if (self.wallets[found_j].share_wallet) {
+                        console.log(pgm + 'ignoring ls.rating information for wallet_address ' + wallet_address + '. found shared info in wallets.json file') ;
+                        console.log(pgm + 'ls.rating: ' + JSON.stringify(ls_ratings[i])) ;
+                        console.log(pgm + 'wallets.json: rate_wallet = ' + self.wallets[found_j].rate_wallet + ', wallet_review = ' + self.wallets[found_j].wallet_review) ;
+                    }
+                    else {
+                        self.wallets[found_j].rate_wallet = ls_ratings[i].rate ;
+                        self.wallets[found_j].wallet_review = ls_ratings[i].review ;
+                    }
+                } // for i
+
+                step_5_done() ;
+            } ;
 
             // load shared wallet info from MN users (ratings and reviews)
             step_3_load_users_wallets_json = function() {
@@ -178,7 +226,7 @@ angular.module('MoneyNetwork')
                     if (res.error) {
                         console.log(pgm + "error. wallets lookup failed: " + res.error);
                         console.log(pgm + 'mn_query_22 = ' + mn_query_22);
-                        return step_4_done();
+                        return step_4_load_ls_ratings();
                     }
                     console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     //res = [
@@ -277,7 +325,7 @@ angular.module('MoneyNetwork')
                         if (!row) {
                             // done. add summary for ratings and reviews
                             calc_avg_rating() ;
-                            return step_4_done() ;
+                            return step_4_load_ls_ratings() ;
                         }
                         if (!row.wallets_modified) row.wallets_modified = row.content_modified ; // normally always a wallets_modified timestamp in wallets.json file
                         if (!row.last_online) row.last_online = row.content_modified ; // normally always a last_online = timestamp in status.json file.
@@ -457,7 +505,7 @@ angular.module('MoneyNetwork')
             // todo: step 2.5. load not shared rating and review from localStorage
             //       including review without rating. not in wallets.json file.
 
-            // load shared wallet info saved by this user.
+            // load shared wallet info saved by this user (wallets.json file)
             step_2_load_user_wallet_json = function() {
                 var pgm = controller + '.load_wallets.step_2_load_user_wallet_json: ';
                 if (!self.is_logged_in()) return step_3_load_users_wallets_json() ;
@@ -710,7 +758,7 @@ angular.module('MoneyNetwork')
                     var pgm = controller + '.update_wallets_json z_file_get callback 2: ';
                     var old_wallets, error, new_wallets, keep_addresses, i, row1, wallet_address, wallet, j, rate, row2,
                         identical, old_addresses, new_addresses, old_wallet, new_wallet, sort_fnc, now, json_raw,
-                        wallet_addresses, compress_wallet ;
+                        wallet_addresses, compress_wallet, ls_ratings ;
                     if (old_wallets_str) {
                         try {
                             old_wallets = JSON.parse(old_wallets_str);
@@ -743,7 +791,7 @@ angular.module('MoneyNetwork')
                         }
                     }
 
-                    // todo: save not shared rating and review in ls
+                    ls_ratings = [] ;
                     for (i=0 ; i<self.wallets.length ; i++) {
                         row1 = self.wallets[i] ;
                         wallet_address = row1.wallet_address ;
@@ -754,7 +802,8 @@ angular.module('MoneyNetwork')
                             for (j=0 ; j<wallet.currencies.length ; j++) {
                                 delete wallet.currencies[j]['$$hashKey'] ;
                             }
-                            // add extra wallet info only in wallets.json file. MN users must be able to see modified timestamp for wallet.json file for shared information. last updated info is used
+                            // add extra wallet info only in wallets.json file. MN users must be able to see modified
+                            // timestamp for wallet.json file for shared information. last updated info is used
                             wallet.wallet_modified = row1.wallet_modified ;
                             wallet.wallet_directory = row1.wallet_directory ;
                             if (!wallet.wallet_modified || !wallet.wallet_directory) {
@@ -765,21 +814,33 @@ angular.module('MoneyNetwork')
                             }
                             new_wallets.wallets[wallet_address] = wallet ;
                         }
-                        if (!row1.share_wallet) continue ;
-                        // add share info to share array
                         rate = row1.rate_wallet ;
                         if (['1','2','3','4','5'].indexOf(rate) != -1) rate = parseInt(rate) ;
-                        if (rate) {
+                        if (!rate) continue ;
+                        if (row1.share_wallet) {
+                            // add share info to share array
                             row2 = { user_seq: z_cache.user_seq, address: wallet_address, rate: rate } ;
                             if (row1.wallet_review) row2.review = row1.wallet_review ;
                             new_wallets.share.push(row2) ;
                         }
-                    }
+                        else {
+                            // add share info to ls_ratings array
+                            row2 = { address: wallet_address, rate: rate } ;
+                            if (row1.wallet_review) row2.review = row1.wallet_review ;
+                            ls_ratings.push(row2) ;
+                        }
+                    } // for i
+
+                    // save not shared rating and reviews
+                    console.log(pgm + 'ls_ratings = ' + JSON.stringify(ls_ratings)) ;
+                    MoneyNetworkHelper.setItem('ratings', JSON.stringify(ls_ratings)) ;
+                    //ls_ratings = [{"address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1", "rate": 3, "review": "test ls"}];
+                    MoneyNetworkHelper.ls_save() ;
+
+                    // validate wallets.json before write.
                     now = new Date().getTime() ;
                     now = Math.floor(now/1000) ;
                     new_wallets.wallets_modified = now ;
-
-                    // validate wallets.json before write.
                     // two validations: top level is validated with "wallets". wallets object hash is validated with "wallet"
                     error = MoneyNetworkAPILib.validate_json(pgm, new_wallets, null, 'api') ;
                     if (error) {
