@@ -502,9 +502,6 @@ angular.module('MoneyNetwork')
 
             } ; // step_3_load_users_wallets_json
 
-            // todo: step 2.5. load not shared rating and review from localStorage
-            //       including review without rating. not in wallets.json file.
-
             // load shared wallet info saved by this user (wallets.json file)
             step_2_load_user_wallet_json = function() {
                 var pgm = controller + '.load_wallets.step_2_load_user_wallet_json: ';
@@ -624,16 +621,17 @@ angular.module('MoneyNetwork')
                     "and wallet_description.json_id = wallet.json_id and wallet_description.key = 'wallet_description' " +
                     "and wallet_sha256.json_id = wallet.json_id and wallet_sha256.key = 'wallet_sha256' " +
                     "order by modified.value desc" ;
+                console.log(pgm + 'mn_query_21 = ' + mn_query_21) ;
 
                 debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'mn query 21', 'dbQuery', MoneyNetworkHelper.show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [mn_query_21], function (res) {
                     var pgm = controller + '.load_wallets.step_1_search_wallet_sites dbQuery callback 1: ';
                     var add_wallet, check_wallet, inner_path ;
-                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
+                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK. Found ' + res.length + ' rows');
                     if (res.error) {
                         console.log(pgm + "wallets lookup failed: " + res.error);
                         console.log(pgm + 'mn_query_21 = ' + mn_query_21);
-                        return ;
+                        return step_2_load_user_wallet_json() ;
                     }
                     // console.log(pgm + 'res = ' + JSON.stringify(res)) ;
 
@@ -660,7 +658,7 @@ angular.module('MoneyNetwork')
                         // two paths. either a wallet.json with full info (a) or a wallet.json with wallet_sha256 only (b)
 
                         // path b: looks like a wallet.json with wallet_sha256 only. also used as fallback in path a
-                        get_wallet_info = function (row) {
+                        get_wallet_info = function () {
                             MoneyNetworkAPILib.get_wallet_info(row.wallet_sha256, function (wallet_info) {
                                 var pgm = controller + '.load_wallets.step_1_search_wallet_sites get_wallet_info callback 3b: ';
                                 if (!wallet_info || !wallet_info[row.wallet_sha256]) {
@@ -681,7 +679,8 @@ angular.module('MoneyNetwork')
                                 var pgm = controller + '.load_wallets.step_1_search_wallet_sites z_file_get callback 3a: ';
                                 var wallet, wallet_sha256 ;
                                 if (!wallet_str) {
-                                    console.log(pgm + 'error: ' + inner_path + ' fileGet failed') ;
+                                    console.log(pgm + 'error: ' + inner_path + ' fileGet failed. extra = ' + JSON.stringify(extra)) ;
+                                    // fallback to path b:
                                     return get_wallet_info() ;
                                 }
                                 // check wallet
@@ -691,33 +690,24 @@ angular.module('MoneyNetwork')
                                 catch (e) {
                                     console.log(pgm + 'error: ' + inner_path + ' is invalid. error = ' + e.message) ;
                                     return get_wallet_info() ;
+                                    // fallback to path b:
                                 }
                                 wallet_sha256 = MoneyNetworkAPILib.calc_wallet_sha256(wallet) ;
                                 if (!wallet_sha256 || (wallet.wallet_sha256 != wallet_sha256)) {
                                     console.log(pgm + 'ignore ' + inner_path + '. ' + wallet_sha256 + ' != ' + wallet.wallet_sha256) ;
                                     // ignore merged-MoneyNetwork/1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/wallet.json. null != undefined
+                                    // fallback to path b:
                                     return get_wallet_info() ;
                                 }
                                 // OK. full wallet info and wallet is valid
                                 add_wallet(row, wallet) ;
                                 check_wallet();
                             }) ;
-                            return ;
 
                         }
                         else {
                             // path b: looks like a wallet.json file with wallet_sha256 only
-                            MoneyNetworkAPILib.get_wallet_info(row.wallet_sha256, function (wallet_info) {
-                                var pgm = controller + '.load_wallets.step_1_search_wallet_sites get_wallet_info callback 3b: ';
-                                if (!wallet_info || !wallet_info[row.wallet_sha256]) {
-                                    console.log(pgm + 'ignore ' + inner_path + '. could not find any wallet info for wallet_sha256 ' + row.wallet_sha256 + ', row = ' + JSON.stringify(row)) ;
-                                    return check_wallet() ;
-                                }
-                                // OK. found valid wallet with full wallet info
-                                add_wallet(row, wallet_info[row.wallet_sha256]) ;
-                                check_wallet();
-                            }) ;
-                            return ;
+                            get_wallet_info() ;
                         }
 
                     } ; // check_wallet 2

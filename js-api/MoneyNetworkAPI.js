@@ -853,7 +853,7 @@ var MoneyNetworkAPILib = (function () {
 
     // ask message_demon to reprocess already done file
     // fallback used in case of lost messages or files arriving in wrong order
-    // see receive w2_check_mt message in w2 process_incoming_message (test bitcoin wallet)
+    // see receive w2_check_mt message in w2 process_incoming_message (W2 test bitcoin wallet)
     function redo_file (request_filename) {
         var pgm = module + '.redo_file: ' ;
         if (!done[request_filename]) {
@@ -1803,7 +1803,7 @@ var MoneyNetworkAPILib = (function () {
                     "ls": {"type": 'string'},
                     "files": {
                         "type": 'array',
-                        "description": 'List with files to be restored in W2 session. From wallet_backup message',
+                        "description": 'List with files to be restored in wallet session. From wallet_backup message',
                         "items": {
                             "type": 'object',
                             "properties": {
@@ -2440,6 +2440,10 @@ var MoneyNetworkAPILib = (function () {
             }
         } ; // run_cbs
 
+        if (inner_path == 'merged-MoneyNetwork/1W3Et1D5BnqfsXfx2kSx8T61fTPz5V2Ft/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/content.json') {
+            inner_path += '' ;
+        }
+
         // check if file is a normal or an optional files.
         // 1) user directory files - use dbQuery, files and files_optional tables
         // 2) outsize user directories - use fileList
@@ -2455,7 +2459,7 @@ var MoneyNetworkAPILib = (function () {
                 // read content.json and use optional pattern to check if file is an optional file
                 inner_path2 = inner_path.substr(0,pos) + '/content.json' ;
                 // console.log(pgm + 'checking if ' + filename + ' is an optional file') ;
-                z_file_get(pgm, {inner_path: inner_path2}, function (content_str, extra) {
+                z_file_get(pgm, {inner_path: inner_path2, timeout: 1}, function (content_str, extra) {
                     var content, optional_re, m ;
                     if (!content_str) {
                         // abort fileGet operation. no content.json file
@@ -2615,8 +2619,8 @@ var MoneyNetworkAPILib = (function () {
                     run_cbs(data, extra) ;
                 } ; // fileGet callback
 
-                // force timeout after timeout || 60 seconds. only used for optional fileGet operations
-                if (extra.optional_file) {
+                // force timeout after timeout || 60 seconds. normally only used for optional fileGet operations
+                if (extra.optional_file || options.timeout) {
                     cb3_timeout = function () {
                         cb3(null, true) ;
                     };
@@ -3158,7 +3162,7 @@ var MoneyNetworkAPILib = (function () {
                                 else {
                                     // OK queue_publish. publish request was queue in MN session. wait for start_publish message from MN before starting publish
                                     console.log(pgm2 + 'OK queue_publish. wait for start_publish message from MN. cb_id = ' + cb_id) ;
-                                    // 5) W2 will wait for "start_publish" message from MN with cb_id. Return OK and run cb
+                                    // 5) wallet will wait for "start_publish" message from MN with cb_id. Return OK and run cb
                                     // 6) send "published" message to MN with published result and last_published timestamp
 
                                     // #292 MoneyNetworkAPI - max wait time for a start_publish request
@@ -3407,7 +3411,7 @@ var MoneyNetworkAPILib = (function () {
                     // send OK response to MN
                     send_response(null, function () {
                         // start publish process
-                        console.log(pgm + 'starting queued publish cb in W2') ;
+                        console.log(pgm + 'starting queued publish cb in wallet session') ;
                         publish_queue[found].publishing = true ;
                         publish_queue[found].cb(request.cb_id, encrypt) ;
                     });
@@ -3742,7 +3746,7 @@ var MoneyNetworkAPILib = (function () {
                         // remove publish callback from publish queue
                         if (cb_id) {
                             // wallet session
-                            if (!encrypt.sessionid) return; // no MN-W2 session. published without MN publish queue
+                            if (!encrypt.sessionid) return; // no MN-wallet session. published without MN publish queue
 
                             group_debug_seq = MoneyNetworkAPILib.debug_group_operation_start() ;
                             pgm2 = get_group_debug_seq_pgm(pgm, group_debug_seq) ;
@@ -4957,7 +4961,7 @@ MoneyNetworkAPI.prototype.add_optional_files_support = function (options, cb) {
 
 
 // - cb: callback. returns an empty hash, a hash with an error messsage or a response
-// todo: how to send a message without waiting for a response and with a cleanup job. for example cleanup in 60 seconds. could be used in w2->MN ping and in timeout messages
+// todo: how to send a message without waiting for a response and with a cleanup job. for example cleanup in 60 seconds. could be used in wallet->MN ping and in timeout messages
 MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
     var pgm = this.module + '.send_message: ';
     var self, response, request_msgtype, request_timestamp, encryptions, error, request_at, request_file_timestamp,
