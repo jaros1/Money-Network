@@ -73,7 +73,7 @@ angular.module('MoneyNetwork')
         // used after start and after changing filters (Last online)
         function calc_avg_rating() {
             var pgm = controller + '.calc_avg_rating: ' ;
-            var i, wallet, sum_ratings, details, last_online, ratings, j, no_ratings, no_reviews, ignore_anonymous_certs ;
+            var i, wallet, sum_ratings, details, last_online, ratings, j, no_ratings, no_reviews, ignore_anonymous_certs, k ;
 
             // check last online filter. count only ratings and reviews from active users (newer than "last online")
             last_online = get_last_online_filter() ;
@@ -88,19 +88,19 @@ angular.module('MoneyNetwork')
                     wallet.ratings.no_reviews = 0 ;
                     sum_ratings = 0 ;
                     details = wallet.ratings.details || [] ;
-                    for (i=0 ; i<details.length ; i++) {
-                        ratings = details[i].ratings ;
+                    for (j=0 ; j<details.length ; j++) {
+                        ratings = details[j].ratings ;
                         no_ratings = 0 ;
                         no_reviews = 0 ;
-                        for (j=0 ; j<ratings.length ; j++) {
-                            if (ignore_anonymous_certs && is_anonymous_contact((ratings[j].contact))) continue ;
-                            if (ratings[j].last_online < last_online) continue ;
+                        for (k=0 ; k<ratings.length ; k++) {
+                            if (ignore_anonymous_certs && is_anonymous_contact((ratings[k].contact))) continue ;
+                            if (ratings[k].last_online < last_online) continue ;
                             no_ratings++ ;
-                            sum_ratings += ratings[j].rate ;
-                            if (ratings[j].review) no_reviews++ ;
+                            sum_ratings += ratings[k].rate ;
+                            if (ratings[k].review) no_reviews++ ;
                         }
-                        details[i].no_ratings = no_ratings ;
-                        details[i].no_reviews = no_reviews ;
+                        details[j].no_ratings = no_ratings ;
+                        details[j].no_reviews = no_reviews ;
                         wallet.ratings.no_ratings += no_ratings ;
                         wallet.ratings.no_reviews += no_reviews ;
                     }
@@ -221,7 +221,7 @@ angular.module('MoneyNetwork')
                 debug_seq = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'mn query 22', 'dbQuery', MoneyNetworkHelper.show_debug('z_db_query')) ;
                 ZeroFrame.cmd("dbQuery", [mn_query_22], function (res) {
                     var pgm = controller + '.load_wallets.step_3_load_users_wallets_json dbQuery callback 1: ';
-                    var add_wallet, check_wallet, save_rate_and_review ;
+                    var add_wallet, check_row, save_rate_and_review ;
                     MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq, (!res || res.error) ? 'Failed. error = ' + JSON.stringify(res) : 'OK');
                     if (res.error) {
                         console.log(pgm + "error. wallets lookup failed: " + res.error);
@@ -231,37 +231,70 @@ angular.module('MoneyNetwork')
                     console.log(pgm + 'res = ' + JSON.stringify(res)) ;
                     //res = [
                     //    {
-                    //        "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
-                    //        "wallets_directory": "1PgyTnnACGd1XRdpfiDihgKwYRRnzgz2zh/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-                    //        "wallet_title": "MoneyNetworkW2",
-                    //        "api_url": "https://www.blocktrail.com/api/docs",
-                    //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
-                    //        "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //        "review": "Very nice test bitcoin wallet with fine MN-wallet integration. Have tested many send/receive money transaction OK from MN chat. Not fast but is working. Also tested backup (export & import) from MN.",
+                    //        "wallet_description": "Money Network - Wallet 3 - https://docs.ethers.io/ethers.js/ - runner jro",
                     //        "wallet_domain": null,
-                    //        "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
-                    //        "wallets_cert_user_id": "jro@zeroid.bit",
-                    //        "rate": 4,
-                    //        "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //        "wallet_modified": 1520440207,
-                    //        "user_seq": 1,
-                    //        "wallets_modified": 1520505250
-                    //    }, {
-                    //        "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                    //        "wallet_title": "MoneyNetworkW3",
+                    //        "api_url": "https://docs.ethers.io/ethers.js",
+                    //        "content_modified": 1522079070,
+                    //        "wallet_address": "1W3EthT2fgD5GQmKp3B3v2uC4qdn1nFpo",
+                    //        "review": "Wallet is not ready. Implementing Ethereum / ether wallet",
                     //        "wallets_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+                    //        "last_online": 1522079069,
+                    //        "wallet_sha256": "5cbe727157ce287319d4ac018584532f9c6de432d341e2cfc4a52a392e7c71f4",
+                    //        "wallets_cert_user_id": "16nDbDocFiEsu@moneynetwork.bit",
+                    //        "rate": 2,
+                    //        "avatar": "6.png",
+                    //        "wallet_directory": "1W3Et1D5BnqfsXfx2kSx8T61fTPz5V2Ft/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+                    //        "address": "1W3EthT2fgD5GQmKp3B3v2uC4qdn1nFpo",
+                    //        "wallet_modified": 1522078965,
+                    //        "user_seq": 1,
+                    //        "wallets_modified": 1522079069,
+                    //        "tags1": "Name,jro test arch linux,%,%",
+                    //        "tags2": "Name#jro test arch linux#%#%"
+                    //    },
+                    //    {
+                    //        "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                    //        "wallet_domain": null,
                     //        "wallet_title": "MoneyNetworkW2",
                     //        "api_url": "https://www.blocktrail.com/api/docs",
-                    //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+                    //        "content_modified": 1522079070,
                     //        "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
                     //        "review": null,
-                    //        "wallet_domain": null,
+                    //        "wallets_directory": "182Uot1yJ6mZEwQYE5LX1P5f6VPyJ9gUGe/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
+                    //        "last_online": 1522079069,
                     //        "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
                     //        "wallets_cert_user_id": "16nDbDocFiEsu@moneynetwork.bit",
                     //        "rate": 4,
+                    //        "avatar": "6.png",
+                    //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/16nDbDocFiEsuBn91SknhYFbA33DVdxMQ9",
                     //        "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
-                    //        "wallet_modified": 1520324127,
+                    //        "wallet_modified": 1521898749,
                     //        "user_seq": 1,
-                    //        "wallets_modified": 1520505432
+                    //        "wallets_modified": 1522079069,
+                    //        "tags1": "Name,jro test arch linux,%,%",
+                    //        "tags2": "Name#jro test arch linux#%#%"
+                    //    },
+                    //    {
+                    //        "wallet_description": "Money Network - Wallet 2 - BitCoins www.blocktrail.com - runner jro",
+                    //        "wallet_domain": null,
+                    //        "wallet_title": "MoneyNetworkW2",
+                    //        "api_url": "https://www.blocktrail.com/api/docs",
+                    //        "content_modified": 1520510102,
+                    //        "wallet_address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //        "review": null,
+                    //        "wallets_directory": "1922ZMkwZdFjKbSAdFR1zA5YBHMsZC51uc/data/users/1EJPPGCPzkztfwYiRCVj3C5VgHU3FpEoE1",
+                    //        "last_online": 1520510056,
+                    //        "wallet_sha256": "23823ecbc270ac395f20b068efa992d758988b85d570294d81434a463df3210c",
+                    //        "wallets_cert_user_id": "1EJPPGCPzkztf@moneynetwork.bit",
+                    //        "rate": 5,
+                    //        "avatar": "8.png",
+                    //        "wallet_directory": "1HXzvtSLuvxZfh6LgdaqTk4FSVf7x8w7NJ/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ",
+                    //        "address": "1LqUnXPEgcS15UGwEgkbuTbKYZqAUwQ7L1",
+                    //        "wallet_modified": 1520440207,
+                    //        "user_seq": 2,
+                    //        "wallets_modified": 1520510070,
+                    //        "tags1": "Name,jro test zerogate,%,%",
+                    //        "tags2": "Name#jro test zerogate#%#%"
                     //    }];
 
 
@@ -316,14 +349,14 @@ angular.module('MoneyNetwork')
                         details[found_i].ratings.push(row2) ;
                     } ; // save_rate_and_review
 
-                    check_wallet = function () {
-                        var pgm = controller + '.load_wallets.step_3_load_users_wallets_json check_wallet 2: ';
+                    check_row = function () {
+                        var pgm = controller + '.load_wallets.step_3_load_users_wallets_json check_row 2: ';
                         var row, inner_path, get_wallet_info, i, wallet, contacts, pos, hub, auth_address, contact,
                             wallets_directory_a, user_seq, avatar_obj, avatar_a, avatar, search, user_info, tags1, tags2,
                             pos1, pos2 ;
                         row = res.shift() ;
                         if (!row) {
-                            // done. add summary for ratings and reviews
+                            // done checking rows. add summary for ratings and reviews
                             calc_avg_rating() ;
                             return step_4_load_ls_ratings() ;
                         }
@@ -426,13 +459,13 @@ angular.module('MoneyNetwork')
                         if (row.contact.type == 'ignore') {
                             console.log(pgm + 'ignoring rating and reviews from contact with hub = ' + JSON.stringify(hub) +
                                 ', auth_address = ' + JSON.stringify(auth_address) + ' and user_seq = ' + JSON.stringify(row.user_seq)) ;
-                            return check_wallet() ;
+                            return check_row() ;
                         }
 
                         if (address_index.hasOwnProperty(row.wallet_address)) {
                             // already checked
                             save_rate_and_review(row) ;
-                            return check_wallet() ;
+                            return check_row() ;
                         }
                         // two paths. either a wallet.json with full info (a) or a wallet.json with wallet_sha256 only (b)
 
@@ -442,12 +475,12 @@ angular.module('MoneyNetwork')
                                 var pgm = controller + '.load_wallets.step_3_load_users_wallets_json get_wallet_info callback 3b: ';
                                 if (!wallet_info || !wallet_info[row.wallet_sha256]) {
                                     console.log(pgm + 'ignore ' + inner_path + '. could not find any wallet info for wallet_sha256 ' + row.wallet_sha256) ;
-                                    return check_wallet() ;
+                                    return check_row() ;
                                 }
                                 // OK. found valid wallet with full wallet info
                                 add_wallet(row, wallet_info[row.wallet_sha256]) ;
                                 save_rate_and_review(row) ;
-                                check_wallet();
+                                check_row();
                             }) ;
                         } ; // get_wallet_info
 
@@ -485,7 +518,7 @@ angular.module('MoneyNetwork')
                                 // OK. full wallet info and wallet is valid
                                 add_wallet(row, wallet) ;
                                 save_rate_and_review(row) ;
-                                check_wallet();
+                                check_row();
                             }) ;
 
                         }
@@ -494,9 +527,9 @@ angular.module('MoneyNetwork')
                             get_wallet_info() ;
                         }
 
-                    } ; // check_wallet 2
+                    } ; // check_row 2
                     // start check_wallet loop
-                    check_wallet() ;
+                    check_row() ;
 
                 }) ; // dbQuery callback 1
 
