@@ -2607,7 +2607,7 @@ var MoneyNetworkAPILib = (function () {
                         catch (e) {}
                         process_id = null ;
                     }
-                    if (cb3_done) return ; // cb2 has already run
+                    if (cb3_done) return ; // cb3 has already run
                     cb3_done = true ;
                     if (timeout) extra.timeout = timeout ;
                     // MoneyNetworkHelper.debug_z_api_operation_end(debug_seq);
@@ -2665,7 +2665,7 @@ var MoneyNetworkAPILib = (function () {
     var z_file_write_cbs = [] ; // callbacks waiting for other fileWrite to finish
     var z_file_write_running = false ;
     function z_file_write (pgm, inner_path, content, options, cb) {
-        var match4, auth_address, this_file_write_cb, debug_seq, pgm2, hub, found_hub, i ;
+        var match4, auth_address, cb2, cb2_done, cb2_timeout, process_id, debug_seq, pgm2, hub, found_hub, i ;
         if (!ZeroFrame) throw pgm + 'fileWrite aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
         if (!inner_path || inner_path.match(inner_path_re2)) throw pgm + 'Invalid call. parameter 2 inner_parth is not a merger-site path. inner_path = ' + inner_path ;
         if (typeof cb != 'function') throw pgm + 'Invalid call. parameter 5 cb is not a callback function' ;
@@ -2699,21 +2699,81 @@ var MoneyNetworkAPILib = (function () {
         }
         z_file_write_running = true ;
 
+        // https://github.com/jaros1/Money-Network/issues/359
+        // add timeout fnc. timeout after 1 second. timeout:
+        // - run fileList (has file been written to file system?)
+        // - run mergerSiteList (is file in bad_files list)
+
         // extend cb.
-        this_file_write_cb = function(res) {
+        cb2_done = false ;
+        cb2 = function(res, timeout) {
             var next_file_write_cb, run_cb ;
+            if (process_id) {
+                // kill timeout process
+                try {clearTimeout(process_id)}
+                catch (e) {}
+                process_id = null ;
+            }
+            if (cb2_done) return ; // cb2 has already run
+            cb2_done = true ;
+
+
+
             z_file_write_running = false ;
             debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
             run_cb = function () { cb(res)} ;
             setTimeout(run_cb, 0) ;
+
+
+
             // done with this fileWrite. Any other waiting fileWrite operations?
             if (!z_file_write_cbs.length) return ;
             next_file_write_cb = z_file_write_cbs.shift() ;
             z_file_write(pgm, next_file_write_cb.inner_path, next_file_write_cb.content, next_file_write_cb.options, next_file_write_cb.cb) ;
         }; // cb2
 
+
+        // fileWrite timeout in 1 second (UI error: This file still in sync, if you write it now, then the previous content may be lost)
+        // check fileList and mergerSiteList after fileWrite timeout
+        cb2_timeout = function () {
+            var pgm = module + '.z_file_get cb2_timeout: ' ;
+            var directory ;
+            if (cb2_done) return ; // cb2 has already run
+            // timeout.
+            console.log(pgm + 'issue #359 API - add timeout to fileWrite wrapper') ;
+            console.log(pgm + 'fileWrite timeout after 1 second') ;
+
+            // 1: check if file has been written to file system
+            directory = get_merged_type() + '/' + hub + '/data/users/' + auth_address ;
+            ZeroFrame.cmd("fileList", directory, function (files) {
+                var pgm = module + '.z_file_get cb2_timeout fileList callback 1: ' ;
+                console.log(pgm + 'Looking for ' + inner_path + ', files = ' + JSON.stringify(files)) ;
+
+                // 2: check if file is in bad_files.
+                ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
+                    var pgm = module + '.z_file_get cb2_timeout mergerSiteList callback 2: ' ;
+                    if (merger_sites.error) {
+                        console.log(pgm + 'mergerSiteList failed with ' + merger_sites.error) ;
+                        return cb2(null, true) ;
+                    }
+                    if (!merger_sites[hub]) {
+                        console.log(pgm + 'error. could not find hub ' + hub + ' in merger_sites ' + JSON.stringify(merger_sites)) ;
+                        return cb2(null, true) ;
+                    }
+
+                    console.log(pgm + 'Looking for ' + inner_path + ' in bad files. site_info = ' + JSON.stringify(merger_sites[hub])) ;
+                    if (cb2_done) return ; // cb2 has already run
+                    cb2(null, true) ;
+
+                }) ; // mergerSiteList callback 2
+
+            }) ; // fileList callback 1
+
+        }; // cb2_timeout
+        process_id = setTimeout(cb2_timeout, 1000) ;
+
         debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', null, options.group_debug_seq) ;
-        ZeroFrame.cmd("fileWrite", [inner_path, content], this_file_write_cb) ;
+        ZeroFrame.cmd("fileWrite", [inner_path, content], cb2) ;
     } // z_file_write
 
     function z_file_delete (pgm, inner_path, cb) {
