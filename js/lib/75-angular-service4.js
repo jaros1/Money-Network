@@ -1697,6 +1697,7 @@ angular.module('MoneyNetwork')
             var pgm = service + '.monitor_money_transaction: ' ;
             var i, money_transactionids, money_transaction, money_transactionid, new_msg ;
             if (monitoring_money_transaction[message.message.local_msg_seq]) return ; // already monitoring money transaction status for this message
+
             monitoring_money_transaction[message.message.local_msg_seq] = true ;
 
             if (!message.message.message) return ; // error. not a chat message

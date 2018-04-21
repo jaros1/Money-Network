@@ -1390,7 +1390,7 @@ var MoneyNetworkAPILib = (function () {
                             "type": 'object',
                             "properties": {
                                 "code": {"type": 'string', "minLength": 2, "maxLength": 5},
-                                "amount": {"type": 'number'}
+                                "amount": { "type": ['number', 'string'], "description": 'number or string with a formatted number (number.toFixed)' }
                             },
                             "required": ['code', 'amount'],
                             "additionalProperties": false
@@ -2405,7 +2405,27 @@ var MoneyNetworkAPILib = (function () {
                     break ;
                 }
                 if (!hub_added && all_hubs.length) {
-                    console.log(pgm + 'error. cannot start fileGet ' + inner_path) ;
+
+                    // https://github.com/jaros1/Money-Network-W3/issues/13.
+                    // hub added in W3 but all_hubs list was not updated in MN
+                    if (ZeroFrame.merger_sites && ZeroFrame.merger_sites[hub]) {
+                        console.log(pgm + hub + ' must be a new hub added by MN or a wallet site. Refresh all_hubs and try again') ;
+                        get_all_hubs(true, function (all_hubs2) {
+                            var hub_added2, i ;
+                            hub_added2 = false ;
+                            for (i=0 ; i<all_hubs2.length ; i++) {
+                                if (all_hubs2[i].hub != hub) continue ;
+                                hub_added2 = all_hubs2[i].hub_added ;
+                                break ;
+                            }
+                            if (hub_added2) return z_file_get (pgm, options, cb) ; // try again
+                            console.log(pgm + 'error 2. cannot start fileGet ' + inner_path) ;
+                            console.log(pgm + 'hub ' + hub + ' is not in mergerSiteList. all_hubs = ' + JSON.stringify(all_hubs)) ;
+                            return cb(null, {error: hub + ' was not found in mergerSiteList'}) ;
+                        }) ; // get_all_hubs callback
+                        return ;
+                    }
+                    console.log(pgm + 'error 1. cannot start fileGet ' + inner_path) ;
                     console.log(pgm + 'hub ' + hub + ' is not in mergerSiteList. all_hubs = ' + JSON.stringify(all_hubs)) ;
                     return cb(null, {error: hub + ' was not found in mergerSiteList'}) ;
                 }
@@ -5179,287 +5199,300 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                     // 4: add optional files support
                     self.add_optional_files_support({group_debug_seq: group_debug_seq}, function (res) {
                         var pgm = self.module + '.send_message add_optional_files_support callback 4: ';
-                        var request_filename, inner_path4, json_raw;
+                        var inner_path4, debug_seq4;
                         if (!res || res.error) return set_error2('Cannot send message. Add optional files support failed. ' + JSON.stringify(res));
-                        // 5: write file
-                        request_filename = this_session_filename + optional + '.' + request_file_timestamp ;
-                        inner_path4 = self.this_user_path + request_filename;
-                        MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {filename: request_filename}) ;
-                        json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
-                        MoneyNetworkAPILib.z_file_write(pgm, inner_path4, btoa(json_raw), {group_debug_seq: group_debug_seq}, function (res) {
-                            var pgm = self.module + '.send_message fileWrite callback 5: ';
-                            var inner_path5, debug_seq5;
-                            // todo: check res == 'ok'
 
-                            // 5.5: optional update status for wallet to wallet communication.
-                            self.update_wallet_status(status, {group_debug_seq: group_debug_seq, optional: optional}, function (res) {
-                                var pgm = self.module + '.send_message update_wallet_status callback 5.5: ';
+                        // 5:
+                        // fix problems with hanging fileWrite operations. suspect that fileWrite is waiting for content.json.
+                        // sign with remove_missing_optional: true before starting fileWrite operation
+                        inner_path4 = self.this_user_path + 'content.json';
+                        self.log(pgm, 'sign content.json before fileWrite (remove_missing_optional: true)', group_debug_seq);
+                        debug_seq4 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'siteSign', null, group_debug_seq);
+                        self.ZeroFrame.cmd("siteSign", {inner_path: inner_path4, remove_missing_optional: true}, function (res) {
+                            var pgm = self.module + '.send_message siteSign callback 5: ';
+                            var request_filename, inner_path5, json_raw ;
+                            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq4, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
 
-                                // 6: siteSign. publish not needed for for internal MN-wallet communication
-                                inner_path5 = self.this_user_path + 'content.json';
-                                self.log(pgm, 'sign content.json with new' + (optional ? ' optional' : '') + ' file ' + request_filename + ' (' + request.msgtype + ')', group_debug_seq);
-                                debug_seq5 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path5, 'siteSign', null, group_debug_seq);
-                                self.ZeroFrame.cmd("siteSign", {inner_path: inner_path5, remove_missing_optional: true}, function (res) {
-                                    var pgm = self.module + '.send_message siteSign callback 6: ';
-                                    var debug_seq6, sign_at, elapsed_time_ms, elapsed_time_s, elapsed_text ;
-                                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq5, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+                            // 6: write file
+                            // todo: add timeout.
+                            request_filename = this_session_filename + optional + '.' + request_file_timestamp ;
+                            inner_path5 = self.this_user_path + request_filename;
+                            MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {filename: request_filename}) ;
+                            json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
+                            MoneyNetworkAPILib.z_file_write(pgm, inner_path5, btoa(json_raw), {group_debug_seq: group_debug_seq}, function (res) {
+                                var pgm = self.module + '.send_message fileWrite callback 6: ';
+                                // todo: check res == 'ok'
 
-                                    // signed. release transaction lock
-                                    MoneyNetworkAPILib.end_transaction(transaction_timestamp) ;
+                                // 7: optional update status for wallet to wallet communication.
+                                self.update_wallet_status(status, {group_debug_seq: group_debug_seq, optional: optional}, function (res) {
+                                    var pgm = self.module + '.send_message update_wallet_status callback 7: ';
+                                    var debug_seq7;
 
-                                    // error handling
-                                    if (res && res.error && res.error.match(/too large/)) {
-                                        // res = {"error":"Site sign failed: Include too large 50538B > 50000B"}
-                                        MoneyNetworkAPILib.z_file_delete(pgm, inner_path4, function (res2) {
-                                            set_error('Cannot send message. siteSign failed. ' + res.error);
-                                        }) ;
-                                        return ;
-                                    }
-                                    if (!res || res.error) return set_error('Cannot send message. siteSign failed. ' + JSON.stringify(res)) ;
+                                    // 8: siteSign. publish not needed for for internal MN-wallet communication
+                                    // inner_path4 = self.this_user_path + 'content.json';
+                                    self.log(pgm, 'sign content.json with new' + (optional ? ' optional' : '') + ' file ' + request_filename + ' (' + request.msgtype + ')', group_debug_seq);
+                                    debug_seq7 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'siteSign', null, group_debug_seq);
+                                    self.ZeroFrame.cmd("siteSign", {inner_path: inner_path4, remove_missing_optional: true}, function (res) {
+                                        var pgm = self.module + '.send_message siteSign callback 8: ';
+                                        var debug_seq8, sign_at, elapsed_time_ms, elapsed_time_s, elapsed_text ;
+                                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq7, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
 
-                                    if (!response) {
-                                        // no response requested for this outgoing message. end group debug operation after sign
-                                        // rest of message processing is only cleanup operations and not important for process communication
-                                        if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, (res == 'ok' ? null : res)) ;
-                                    }
+                                        // signed. release transaction lock
+                                        MoneyNetworkAPILib.end_transaction(transaction_timestamp) ;
 
-                                    sign_at = new Date().getTime();
-                                    elapsed_time_ms = sign_at - request_at ;
-                                    elapsed_time_s = Math.round(elapsed_time_ms/1000) ;
-                                    elapsed_text = 'elapsed time: ' + elapsed_time_ms + ' ms / ' + elapsed_time_s + ' seconds. ' ;
-                                    if (timeout_at) {
-                                        // sending a response to a previous request
-                                        if (timeout_at < sign_at) {
-                                            self.log(pgm, elapsed_text + 'send_message timeout. receiver will maybe reject ' + request_filename + ' response', group_debug_seq) ;
-                                            // send timeout message with stat about group operations (request-response cycle elapsed time)
-                                            // other process should maybe change timeout in next request
-                                            self.send_timeout_message(request_msgtype) ;
-                                        }
-                                        else self.log(pgm, elapsed_text + 'timeout in ' + (timeout_at-sign_at) + ' ms', group_debug_seq) ;
-                                    }
-
-                                    // 7: check file_info for outgoing optional file. must be different from incoming optional files ...
-                                    // todo: do not check optional file info for normal files (optional = '')
-                                    debug_seq6 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path4, 'optionalFileInfo', null, group_debug_seq);
-                                    ZeroFrame.cmd("optionalFileInfo", [inner_path4], function (file_info) {
-                                        var pgm = self.module + '.send_message.optionalFileInfo callback 7: ';
-                                        var delete_request, cleanup_job_id, get_and_decrypt, response_filename, error, api_query_5, wait_for_response;
-                                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq6, file_info ? 'OK' : 'Failed');
-                                        // self.log(pgm, 'file_info (outgoing) = ' + JSON.stringify(file_info)) ;
-                                        //info_info = {
-                                        //    "inner_path": "data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/b6670bccc3.1508999548065",
-                                        //    "uploaded": 0,
-                                        //    "is_pinned": 1,
-                                        //    "time_accessed": 0,
-                                        //    "site_id": 38,
-                                        //    "is_downloaded": 1,
-                                        //    "file_id": 20386,
-                                        //    "peer": 1,
-                                        //    "time_added": 1508999548,
-                                        //    "hash_id": 303,
-                                        //    "time_downloaded": 1508999548,
-                                        //    "size": 548
-                                        //};
-                                        // outgoing optional file:
-                                        // - is_pinned=1, is_downloaded=1 and time_added=time_downloaded
-
-                                        if (request.request) {
-                                            self.log(pgm, 'sending a response to a previous request. start cleanup job to response. must delete response file after request timeout', group_debug_seq);
-                                            cleanup_in = timeout_at - request_at;
-                                            self.log(pgm, 'request_at = ' + request_at, group_debug_seq);
-                                            self.log(pgm, 'timeout_at = ' + timeout_at, group_debug_seq);
-                                            self.log(pgm, 'cleanup_in = ' + cleanup_in, group_debug_seq);
-                                        }
-                                        else if (timeout_at && !response) {
-                                            // sending message without wait for response
-                                            cleanup_in = timeout_at - (new Date().getTime()) ;
-                                            if (cleanup_in < 0) cleanup_in = 0 ;
-                                            self.log(pgm, 'sending a message without waiting for response. timeout_at = ' + timeout_at + ', cleanup_in = ' + cleanup_in, group_debug_seq);
-                                        }
-                                        // if ((['-o','-io'].indexOf(optional) != -1) || (!response && !request.request)) return cb({}); // exit. offline transaction or not response and no request cleanup job
-                                        if ((['-o','-io'].indexOf(optional) != -1) || (!response && !timeout_at)) {
-                                            // exit. offline transaction or not response and cleanup was not requested
-                                            // no cleanup job. return name of sent file to calling code. used in wallet cleanup function
-                                            if (files) files[request_filename] = request ;
-                                            return cb({}, request_filename);
-                                        }
-
-                                        // problem with timeout on slow running devices. timeout should be time from siteSign and not from start of send_message processing. encryption and file io can take some time on a slow running device
-                                        self.log(pgm, 'adding elapsed time ' + elapsed_time_ms + ' ms to cleanup_id and timeout_at', group_debug_seq) ;
-                                        self.log(pgm, 'old values: cleanup_in = ' + cleanup_in + ', timeout_at = ' + timeout_at, group_debug_seq) ;
-                                        if (cleanup_in) cleanup_in = cleanup_in + elapsed_time_ms ;
-                                        if (timeout_at) timeout_at = timeout_at + elapsed_time_ms ;
-                                        self.log(pgm, 'new values: cleanup_in = ' + cleanup_in + ', timeout_at = ' + timeout_at, group_debug_seq) ;
-
-                                        // delete request file. submit cleanup job
-                                        delete_request = function () {
-                                            var pgm = self.module + '.send_message.delete_request: ' ;
-                                            if (!cleanup_job_id) return; // already run
-                                            cleanup_job_id = null;
-                                            MoneyNetworkAPILib.z_file_delete(pgm, inner_path4, function (res) {
-                                                var pgm = self.module + '.send_message.delete_request z_file_delete callback 1: ';
-                                                console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                                        // error handling
+                                        if (res && res.error && res.error.match(/too large/)) {
+                                            // res = {"error":"Site sign failed: Include too large 50538B > 50000B"}
+                                            MoneyNetworkAPILib.z_file_delete(pgm, inner_path5, function (res2) {
+                                                set_error('Cannot send message. siteSign failed. ' + res.error);
                                             }) ;
-                                        }; // delete_request
-                                        self.log(pgm, 'Submit delete_request job for ' + inner_path4 + '. starts delete_request job in ' + (cleanup_in || default_timeout) + ' milliseconds', group_debug_seq);
-                                        cleanup_job_id = setTimeout(delete_request, (cleanup_in || default_timeout));
-                                        if (!response) return cb({}); // exit. response was not requested. request cleanup job started
+                                            return ;
+                                        }
+                                        if (!res || res.error) return set_error('Cannot send message. siteSign failed. ' + JSON.stringify(res)) ;
 
-                                        // fileGet and json_decrypt
-                                        get_and_decrypt = function (inner_path) {
-                                            var pgm = self.module + '.send_message.get_and_decrypt: ';
-                                            var error ;
-                                            if (typeof inner_path == 'object') {
-                                                self.log(pgm, 'inner_path is an object. must be a timeout error returned from MoneyNetworkAPILib.wait_for_file function. inner_path = ' + JSON.stringify(inner_path), group_debug_seq);
-                                                if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'Timeout. ' + request.msgtype + ' response was not received') ;
-                                                return cb(inner_path);
+                                        if (!response) {
+                                            // no response requested for this outgoing message. end group debug operation after sign
+                                            // rest of message processing is only cleanup operations and not important for process communication
+                                            if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, (res == 'ok' ? null : res)) ;
+                                        }
+
+                                        sign_at = new Date().getTime();
+                                        elapsed_time_ms = sign_at - request_at ;
+                                        elapsed_time_s = Math.round(elapsed_time_ms/1000) ;
+                                        elapsed_text = 'elapsed time: ' + elapsed_time_ms + ' ms / ' + elapsed_time_s + ' seconds. ' ;
+                                        if (timeout_at) {
+                                            // sending a response to a previous request
+                                            if (timeout_at < sign_at) {
+                                                self.log(pgm, elapsed_text + 'send_message timeout. receiver will maybe reject ' + request_filename + ' response', group_debug_seq) ;
+                                                // send timeout message with stat about group operations (request-response cycle elapsed time)
+                                                // other process should maybe change timeout in next request
+                                                self.send_timeout_message(request_msgtype) ;
                                             }
-                                            //if (timeout_at) {
-                                            //    now = new Date().getTime();
-                                            //    self.log(pgm, 'todo: fileGet: add timeout to fileGet call. required must also be false. now = ' + now + ', timeout_at = ' + new Date().getTime() + ', timeout = ' + (timeout_at - now));
-                                            //}
-                                            MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path, required: true, group_debug_seq: group_debug_seq}, function (response_str, extra) {
-                                                var pgm = self.module + '.send_message.get_and_decrypt fileGet callback 8.1: ';
-                                                var encrypted_response, error, request_timestamp;
-                                                if (!response_str) {
-                                                    error = 'fileGet for receipt failed' ;
-                                                    self.log(pgm, error, group_debug_seq) ;
-                                                    self.log(pgm, 'request = ' + JSON.stringify(request)) ;
-                                                    self.log(pgm, 'extra   = ' + JSON.stringify(extra)) ;
-                                                    return set_error(error);
+                                            else self.log(pgm, elapsed_text + 'timeout in ' + (timeout_at-sign_at) + ' ms', group_debug_seq) ;
+                                        }
+
+                                        // 7: check file_info for outgoing optional file. must be different from incoming optional files ...
+                                        // todo: do not check optional file info for normal files (optional = '')
+                                        debug_seq8 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, inner_path5, 'optionalFileInfo', null, group_debug_seq);
+                                        ZeroFrame.cmd("optionalFileInfo", [inner_path5], function (file_info) {
+                                            var pgm = self.module + '.send_message.optionalFileInfo callback 9: '; // todo: rename to callback 9
+                                            var delete_request, cleanup_job_id, get_and_decrypt, response_filename, error, api_query_5, wait_for_response;
+                                            MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq8, file_info ? 'OK' : 'Failed');
+                                            // self.log(pgm, 'file_info (outgoing) = ' + JSON.stringify(file_info)) ;
+                                            //info_info = {
+                                            //    "inner_path": "data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/b6670bccc3.1508999548065",
+                                            //    "uploaded": 0,
+                                            //    "is_pinned": 1,
+                                            //    "time_accessed": 0,
+                                            //    "site_id": 38,
+                                            //    "is_downloaded": 1,
+                                            //    "file_id": 20386,
+                                            //    "peer": 1,
+                                            //    "time_added": 1508999548,
+                                            //    "hash_id": 303,
+                                            //    "time_downloaded": 1508999548,
+                                            //    "size": 548
+                                            //};
+                                            // outgoing optional file:
+                                            // - is_pinned=1, is_downloaded=1 and time_added=time_downloaded
+
+                                            if (request.request) {
+                                                self.log(pgm, 'sending a response to a previous request. start cleanup job to response. must delete response file after request timeout', group_debug_seq);
+                                                cleanup_in = timeout_at - request_at;
+                                                self.log(pgm, 'request_at = ' + request_at, group_debug_seq);
+                                                self.log(pgm, 'timeout_at = ' + timeout_at, group_debug_seq);
+                                                self.log(pgm, 'cleanup_in = ' + cleanup_in, group_debug_seq);
+                                            }
+                                            else if (timeout_at && !response) {
+                                                // sending message without wait for response
+                                                cleanup_in = timeout_at - (new Date().getTime()) ;
+                                                if (cleanup_in < 0) cleanup_in = 0 ;
+                                                self.log(pgm, 'sending a message without waiting for response. timeout_at = ' + timeout_at + ', cleanup_in = ' + cleanup_in, group_debug_seq);
+                                            }
+                                            // if ((['-o','-io'].indexOf(optional) != -1) || (!response && !request.request)) return cb({}); // exit. offline transaction or not response and no request cleanup job
+                                            if ((['-o','-io'].indexOf(optional) != -1) || (!response && !timeout_at)) {
+                                                // exit. offline transaction or not response and cleanup was not requested
+                                                // no cleanup job. return name of sent file to calling code. used in wallet cleanup function
+                                                if (files) files[request_filename] = request ;
+                                                return cb({}, request_filename);
+                                            }
+
+                                            // problem with timeout on slow running devices. timeout should be time from siteSign and not from start of send_message processing. encryption and file io can take some time on a slow running device
+                                            self.log(pgm, 'adding elapsed time ' + elapsed_time_ms + ' ms to cleanup_id and timeout_at', group_debug_seq) ;
+                                            self.log(pgm, 'old values: cleanup_in = ' + cleanup_in + ', timeout_at = ' + timeout_at, group_debug_seq) ;
+                                            if (cleanup_in) cleanup_in = cleanup_in + elapsed_time_ms ;
+                                            if (timeout_at) timeout_at = timeout_at + elapsed_time_ms ;
+                                            self.log(pgm, 'new values: cleanup_in = ' + cleanup_in + ', timeout_at = ' + timeout_at, group_debug_seq) ;
+
+                                            // delete request file. submit cleanup job
+                                            delete_request = function () {
+                                                var pgm = self.module + '.send_message.delete_request: ' ;
+                                                if (!cleanup_job_id) return; // already run
+                                                cleanup_job_id = null;
+                                                MoneyNetworkAPILib.z_file_delete(pgm, inner_path5, function (res) {
+                                                    var pgm = self.module + '.send_message.delete_request z_file_delete callback 1: ';
+                                                    console.log(pgm + 'res = ' + JSON.stringify(res)) ;
+                                                }) ;
+                                            }; // delete_request
+                                            self.log(pgm, 'Submit delete_request job for ' + inner_path5 + '. starts delete_request job in ' + (cleanup_in || default_timeout) + ' milliseconds', group_debug_seq);
+                                            cleanup_job_id = setTimeout(delete_request, (cleanup_in || default_timeout));
+                                            if (!response) return cb({}); // exit. response was not requested. request cleanup job started
+
+                                            // fileGet and json_decrypt
+                                            get_and_decrypt = function (inner_path) {
+                                                var pgm = self.module + '.send_message.get_and_decrypt 10a: ';
+                                                var error ;
+                                                if (typeof inner_path == 'object') {
+                                                    self.log(pgm, 'inner_path is an object. must be a timeout error returned from MoneyNetworkAPILib.wait_for_file function. inner_path = ' + JSON.stringify(inner_path), group_debug_seq);
+                                                    if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq, 'Timeout. ' + request.msgtype + ' response was not received') ;
+                                                    return cb(inner_path);
                                                 }
-                                                try {
-                                                    encrypted_response = JSON.parse(response_str);
-                                                }
-                                                catch (e) {
-                                                    error = 'invalid response. JSON.parse error ' + e.message ;
-                                                    self.log(pgm, error, group_debug_seq) ;
-                                                    self.log(pgm, 'request      = ' + JSON.stringify(request)) ;
-                                                    self.log(pgm, 'response_str = ' + response_str) ;
-                                                    return set_error(error);
-                                                }
-                                                self.log(pgm, 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid, group_debug_seq);
-                                                // read response. run cleanup job now
-                                                if (cleanup_job_id) {
-                                                    clearTimeout(cleanup_job_id);
-                                                    setTimeout(delete_request, 0);
-                                                }
-                                                // decrypt response
-                                                self.decrypt_json(encrypted_response, {group_debug_seq: group_debug_seq}, function (response) {
-                                                    var pgm = self.module + '.send_message.get_and_decrypt decrypt_json callback 8.2: ';
-                                                    // remove request timestamp before validation
-                                                    request_timestamp = response.request;
-                                                    delete response.request;
-                                                    // validate response
-                                                    error = MoneyNetworkAPILib.validate_json(pgm, response, request.msgtype, subsystem);
-                                                    if (!error && (request_timestamp != request_file_timestamp)) {
-                                                        // difference between timestamp in request filename and request timestamp in response!
-                                                        error = 'Expected request = ' + request_file_timestamp + ', found request = ' + request_timestamp;
-                                                    }
-                                                    if (error) response.request = request_timestamp;
-                                                    if (error) {
-                                                        error = request.msgtype + ' response is not valid. ' + error;
-                                                        self.log(pgm, error, group_debug_seq);
-                                                        self.log(pgm, 'request = ' + JSON.stringify(request), group_debug_seq);
-                                                        self.log(pgm, 'response = ' + JSON.stringify(response), group_debug_seq);
+                                                //if (timeout_at) {
+                                                //    now = new Date().getTime();
+                                                //    self.log(pgm, 'todo: fileGet: add timeout to fileGet call. required must also be false. now = ' + now + ', timeout_at = ' + new Date().getTime() + ', timeout = ' + (timeout_at - now));
+                                                //}
+                                                MoneyNetworkAPILib.z_file_get(pgm, {inner_path: inner_path, required: true, group_debug_seq: group_debug_seq}, function (response_str, extra) {
+                                                    var pgm = self.module + '.send_message.get_and_decrypt fileGet callback 11a: ';
+                                                    var encrypted_response, error, request_timestamp;
+                                                    if (!response_str) {
+                                                        error = 'fileGet for receipt failed' ;
+                                                        self.log(pgm, error, group_debug_seq) ;
+                                                        self.log(pgm, 'request = ' + JSON.stringify(request)) ;
+                                                        self.log(pgm, 'extra   = ' + JSON.stringify(extra)) ;
                                                         return set_error(error);
                                                     }
-
-                                                    // return decrypted response
-                                                    self.log(pgm, 'response = ' + JSON.stringify(response) +
-                                                        ', request_timestamp = ' + request_timestamp +
-                                                        ', request_file_timestamp = ' + request_file_timestamp, group_debug_seq);
-
-                                                    // end group debug operation. cb will do something with response. Maybe a new request-response cycle?
-                                                    if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq) ;
-                                                    cb(response);
-                                                }); // decrypt_json callback 8.2
-                                            }); // fileGet callback 8.1
-                                        }; // get_and_decrypt
-
-                                        // normally request and response uses same optional file type.
-                                        // only exception is publish messages. request uses optional = '-p' and response uses optional = '-i'
-                                        response_filename = other_session_filename + (optional == '-p' ? '-i' : optional) + '.' + response;
-
-                                        // 8: is MoneyNetworkAPIDemon monitoring incoming messages for this sessionid?
-                                        if (MoneyNetworkAPILib.is_session(self.sessionid)) {
-                                            // demon is running and is monitoring incoming messages for this sessionid
-                                            self.log(pgm, 'demon is running. wait for response file ' + response_filename + '. cb = get_and_decrypt', group_debug_seq);
-                                            error = MoneyNetworkAPILib.wait_for_file(response_filename, {request: request, timeout_at: timeout_at, cb: get_and_decrypt, countdown_cb: countdown_cb, group_debug_seq: group_debug_seq});
-                                            if (error) return set_error(error);
-                                        }
-                                        else {
-                                            // demon is not running or demon is not monitoring this sessionid
-
-                                            // 7: wait for response. loop. wait until timeout_at
-                                            if (optional == '') api_query_5 =
-                                                "select 'merged-" + MoneyNetworkAPILib.get_merged_type() + "/' || json.directory || '/'   ||  files.filename as inner_path " +
-                                                "from files, json " +
-                                                "where files.filename = '" + response_filename + "' " +
-                                                "and json.json_id = files.json_id";
-                                            else api_query_5 =
-                                                "select 'merged-" + MoneyNetworkAPILib.get_merged_type() + "/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
-                                                "from files_optional, json " +
-                                                "where files_optional.filename = '" + response_filename + "' " +
-                                                "and json.json_id = files_optional.json_id";
-                                            self.log(pgm, 'api query 5 = ' + api_query_5, group_debug_seq) ;
-
-                                            // loop
-                                            wait_for_response = function (last_countdown) {
-                                                var pgm = self.module + '.send_message.wait_for_response 8: ';
-                                                var now, debug_seq8;
-                                                now = new Date().getTime();
-                                                if (now > timeout_at) {
-                                                    self.log(pgm, 'Timeout while waiting for ' + request.msgtype + ' response', group_debug_seq) ;
-                                                    self.log(pgm, 'request was ' + JSON.stringify(request), group_debug_seq) ;
-                                                    self.log(pgm, 'request filename was ' + inner_path4, group_debug_seq) ;
-                                                    self.log(pgm, 'expected response filename was ' + response_filename, group_debug_seq) ;
-                                                    if (countdown_cb && last_countdown) countdown_cb(0) ;
-                                                    return set_error('Timeout while waiting for ' + request.msgtype + ' response');
-                                                }
-                                                // 9: dbQuery
-                                                debug_seq8 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'api query 5', 'dbQuery', null, group_debug_seq);
-                                                self.ZeroFrame.cmd("dbQuery", [api_query_5], function (res) {
-                                                    var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 9: ';
-                                                    var inner_path9, call_countdown_cb, countdown, wait_for_response_with_countdown;
-                                                    MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq8, (!res || res.error) ? 'Failed' : 'OK');
-                                                    if (res.error) return set_error('Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error);
-                                                    if (!res.length) {
-                                                        if (countdown_cb) {
-                                                            call_countdown_cb = false ;
-                                                            countdown = Math.round((timeout_at - now) / 1000) ;
-                                                            if (typeof last_countdown == 'number') {
-                                                                if (countdown != last_countdown) call_countdown_cb = true ;
-                                                            }
-                                                            else call_countdown_cb = true ;
-                                                            if (call_countdown_cb) countdown_cb(countdown) ;
-                                                        }
-                                                        wait_for_response_with_countdown = function() {
-                                                            wait_for_response(countdown) ;
-                                                        };
-                                                        setTimeout(wait_for_response_with_countdown, 500);
-                                                        return;
+                                                    try {
+                                                        encrypted_response = JSON.parse(response_str);
                                                     }
-                                                    inner_path9 = res[0].inner_path;
-                                                    // 10: get_and_decrypt
-                                                    get_and_decrypt(inner_path9);
+                                                    catch (e) {
+                                                        error = 'invalid response. JSON.parse error ' + e.message ;
+                                                        self.log(pgm, error, group_debug_seq) ;
+                                                        self.log(pgm, 'request      = ' + JSON.stringify(request)) ;
+                                                        self.log(pgm, 'response_str = ' + response_str) ;
+                                                        return set_error(error);
+                                                    }
+                                                    self.log(pgm, 'encrypted_response = ' + response_str + ', sessionid = ' + self.sessionid, group_debug_seq);
+                                                    // read response. run cleanup job now
+                                                    if (cleanup_job_id) {
+                                                        clearTimeout(cleanup_job_id);
+                                                        setTimeout(delete_request, 0);
+                                                    }
+                                                    // decrypt response
+                                                    self.decrypt_json(encrypted_response, {group_debug_seq: group_debug_seq}, function (response) {
+                                                        var pgm = self.module + '.send_message.get_and_decrypt decrypt_json callback 12a: ';
+                                                        // remove request timestamp before validation
+                                                        request_timestamp = response.request;
+                                                        delete response.request;
+                                                        // validate response
+                                                        error = MoneyNetworkAPILib.validate_json(pgm, response, request.msgtype, subsystem);
+                                                        if (!error && (request_timestamp != request_file_timestamp)) {
+                                                            // difference between timestamp in request filename and request timestamp in response!
+                                                            error = 'Expected request = ' + request_file_timestamp + ', found request = ' + request_timestamp;
+                                                        }
+                                                        if (error) response.request = request_timestamp;
+                                                        if (error) {
+                                                            error = request.msgtype + ' response is not valid. ' + error;
+                                                            self.log(pgm, error, group_debug_seq);
+                                                            self.log(pgm, 'request = ' + JSON.stringify(request), group_debug_seq);
+                                                            self.log(pgm, 'response = ' + JSON.stringify(response), group_debug_seq);
+                                                            return set_error(error);
+                                                        }
 
-                                                }); // dbQuery callback 9
-                                            }; // wait_for_response callback 8
-                                            setTimeout(wait_for_response, 250);
-                                        }
+                                                        // return decrypted response
+                                                        self.log(pgm, 'response = ' + JSON.stringify(response) +
+                                                            ', request_timestamp = ' + request_timestamp +
+                                                            ', request_file_timestamp = ' + request_file_timestamp, group_debug_seq);
 
-                                    }); // optionalFileInfo callback 8
+                                                        // end group debug operation. cb will do something with response. Maybe a new request-response cycle?
+                                                        if (end_group_operation) MoneyNetworkAPILib.debug_group_operation_end(group_debug_seq) ;
+                                                        cb(response);
+                                                    }); // decrypt_json callback 12a
+                                                }); // fileGet callback 11a
+                                            }; // get_and_decrypt 10a
 
-                                }); // siteSign callback 7 (content.json)
+                                            // normally request and response uses same optional file type.
+                                            // only exception is publish messages. request uses optional = '-p' and response uses optional = '-i'
+                                            response_filename = other_session_filename + (optional == '-p' ? '-i' : optional) + '.' + response;
 
+                                            // 10: is MoneyNetworkAPIDemon monitoring incoming messages for this sessionid?
+                                            if (MoneyNetworkAPILib.is_session(self.sessionid)) {
+                                                // demon is running and is monitoring incoming messages for this sessionid
+                                                self.log(pgm, 'demon is running. wait for response file ' + response_filename + '. cb = get_and_decrypt', group_debug_seq);
+                                                error = MoneyNetworkAPILib.wait_for_file(response_filename, {request: request, timeout_at: timeout_at, cb: get_and_decrypt, countdown_cb: countdown_cb, group_debug_seq: group_debug_seq});
+                                                if (error) return set_error(error);
+                                            }
+                                            else {
+                                                // demon is not running or demon is not monitoring this sessionid
 
+                                                // 10: wait for response. loop. wait until timeout_at
+                                                if (optional == '') api_query_5 =
+                                                    "select 'merged-" + MoneyNetworkAPILib.get_merged_type() + "/' || json.directory || '/'   ||  files.filename as inner_path " +
+                                                    "from files, json " +
+                                                    "where files.filename = '" + response_filename + "' " +
+                                                    "and json.json_id = files.json_id";
+                                                else api_query_5 =
+                                                    "select 'merged-" + MoneyNetworkAPILib.get_merged_type() + "/' || json.directory || '/'   ||  files_optional.filename as inner_path " +
+                                                    "from files_optional, json " +
+                                                    "where files_optional.filename = '" + response_filename + "' " +
+                                                    "and json.json_id = files_optional.json_id";
+                                                self.log(pgm, 'api query 5 = ' + api_query_5, group_debug_seq) ;
 
-                            }); // update_wallet_status callback 5.5
+                                                // loop
+                                                wait_for_response = function (last_countdown) {
+                                                    var pgm = self.module + '.send_message.wait_for_response 10b: ';
+                                                    var now, debug_seq10;
+                                                    now = new Date().getTime();
+                                                    if (now > timeout_at) {
+                                                        self.log(pgm, 'Timeout while waiting for ' + request.msgtype + ' response', group_debug_seq) ;
+                                                        self.log(pgm, 'request was ' + JSON.stringify(request), group_debug_seq) ;
+                                                        self.log(pgm, 'request filename was ' + inner_path5, group_debug_seq) ;
+                                                        self.log(pgm, 'expected response filename was ' + response_filename, group_debug_seq) ;
+                                                        if (countdown_cb && last_countdown) countdown_cb(0) ;
+                                                        return set_error('Timeout while waiting for ' + request.msgtype + ' response');
+                                                    }
+                                                    // 11: dbQuery
+                                                    debug_seq10 = MoneyNetworkAPILib.debug_z_api_operation_start(pgm, 'api query 5', 'dbQuery', null, group_debug_seq);
+                                                    self.ZeroFrame.cmd("dbQuery", [api_query_5], function (res) {
+                                                        var pgm = self.module + '.send_message.wait_for_receipt dbQuery callback 11b: ';
+                                                        var inner_path11, call_countdown_cb, countdown, wait_for_response_with_countdown;
+                                                        MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq10, (!res || res.error) ? 'Failed' : 'OK');
+                                                        if (res.error) return set_error('Wait for receipt failed. Json message was ' + JSON.stringify(request) + '. dbQuery error was ' + res.error);
+                                                        if (!res.length) {
+                                                            if (countdown_cb) {
+                                                                call_countdown_cb = false ;
+                                                                countdown = Math.round((timeout_at - now) / 1000) ;
+                                                                if (typeof last_countdown == 'number') {
+                                                                    if (countdown != last_countdown) call_countdown_cb = true ;
+                                                                }
+                                                                else call_countdown_cb = true ;
+                                                                if (call_countdown_cb) countdown_cb(countdown) ;
+                                                            }
+                                                            wait_for_response_with_countdown = function() {
+                                                                wait_for_response(countdown) ;
+                                                            };
+                                                            setTimeout(wait_for_response_with_countdown, 500);
+                                                            return;
+                                                        }
+                                                        inner_path11 = res[0].inner_path;
+                                                        // 10: get_and_decrypt
+                                                        get_and_decrypt(inner_path11);
 
+                                                    }); // dbQuery callback 11b
 
+                                                }; // wait_for_response callback 10b
+                                                setTimeout(wait_for_response, 250);
+                                            }
 
-                        }); // writeFile callback 5 (request)
+                                        }); // optionalFileInfo callback 9
+
+                                    }); // siteSign callback 8 (content.json)
+
+                                }); // update_wallet_status callback 7
+
+                            }); // writeFile callback 6 (request)
+
+                        }) ; // siteSign callback 5
+
                     }); // add_optional_files_support callback 4
                 }); // encrypt_json callback 3
             }); // get_filenames callback 2

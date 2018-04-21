@@ -1480,6 +1480,7 @@ angular.module('MoneyNetwork')
                         message.money_transactions = [] ;
                         for (i=0 ; i<self.money_transactions.length ; i++) {
                             money_transaction = self.money_transactions[i] ;
+                            if (self.money_transaction_is_empty(money_transaction)) continue ;
                             console.log(pgm + 'money_transaction = ' + JSON.stringify(money_transaction)) ;
                             unique_text = money_transaction.currency ;
                             balance = moneyNetworkService.get_currency_by_unique_text(unique_text) ;

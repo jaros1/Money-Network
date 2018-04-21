@@ -1594,7 +1594,8 @@ angular.module('MoneyNetwork')
             }
             catch (e) {
                 console.log(pgm + 'this_money_transaction_status. error = ' + e.message) ;
-                console.log(pgm + 'message.message.message = ' + JSON.stringify(message.message.message)) ;
+                console.log(e.stack);
+                console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message.message)) ;
                 return '' ;
             }
             if (!message.message.message.money_transactions) return null ;
@@ -1616,7 +1617,8 @@ angular.module('MoneyNetwork')
             }
             catch (e) {
                 console.log(pgm + 'other_money_transaction_status. error = ' + e.message) ;
-                console.log(pgm + 'message.message.message = ' + JSON.stringify(message.message.message)) ;
+                console.log(e.stack);
+                console.log(pgm + 'message_with_envelope = ' + JSON.stringify(message.message)) ;
                 return '' ;
             }
             if (!message.message.message.money_transactions) return null ;
