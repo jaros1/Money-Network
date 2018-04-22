@@ -2664,8 +2664,9 @@ var MoneyNetworkAPILib = (function () {
     // max one fileWrite process. Other fileWrite processes must wait (This file still in sync, if you write is now, then the previous content may be lost)
     var z_file_write_cbs = [] ; // callbacks waiting for other fileWrite to finish
     var z_file_write_running = false ;
+    var z_file_write_hanging = {} ; // directory => null, 1 (publish workaround),>=2 (notification only)
     function z_file_write (pgm, inner_path, content, options, cb) {
-        var match4, auth_address, cb2, cb2_done, cb2_timeout, process_id, debug_seq, pgm2, hub, found_hub, i ;
+        var match4, auth_address, cb2, cb2_done, cb2_timeout, process_id, debug_seq0, pgm2, hub, found_hub, i ;
         if (!ZeroFrame) throw pgm + 'fileWrite aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
         if (!inner_path || inner_path.match(inner_path_re2)) throw pgm + 'Invalid call. parameter 2 inner_parth is not a merger-site path. inner_path = ' + inner_path ;
         if (typeof cb != 'function') throw pgm + 'Invalid call. parameter 5 cb is not a callback function' ;
@@ -2717,14 +2718,10 @@ var MoneyNetworkAPILib = (function () {
             if (cb2_done) return ; // cb2 has already run
             cb2_done = true ;
 
-
-
             z_file_write_running = false ;
-            debug_z_api_operation_end(debug_seq, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
+            debug_z_api_operation_end(debug_seq0, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
             run_cb = function () { cb(res)} ;
             setTimeout(run_cb, 0) ;
-
-
 
             // done with this fileWrite. Any other waiting fileWrite operations?
             if (!z_file_write_cbs.length) return ;
@@ -2736,43 +2733,37 @@ var MoneyNetworkAPILib = (function () {
         // fileWrite timeout in 1 second (UI error: This file still in sync, if you write it now, then the previous content may be lost)
         // check fileList and mergerSiteList after fileWrite timeout
         cb2_timeout = function () {
-            var pgm = module + '.z_file_get cb2_timeout: ' ;
-            var directory ;
+            var pgm = module + '.z_file_get cb2_timeout 1: ' ;
+            var directory, count, inner_path1 ;
             if (cb2_done) return ; // cb2 has already run
             // timeout.
             console.log(pgm + 'issue #359 API - add timeout to fileWrite wrapper') ;
-            console.log(pgm + 'fileWrite timeout after 1 second') ;
+            console.log(pgm + 'fileWrite timeout after 1 second.') ;
 
-            // 1: check if file has been written to file system
-            directory = get_merged_type() + '/' + hub + '/data/users/' + auth_address ;
-            ZeroFrame.cmd("fileList", directory, function (files) {
-                var pgm = module + '.z_file_get cb2_timeout fileList callback 1: ' ;
-                console.log(pgm + 'Looking for ' + inner_path + ', files = ' + JSON.stringify(files)) ;
+            // workaround 1: try sign with remove_missing_optional + publish
+            // workaround 2: notification only
+            directory = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address ;
+            count = z_file_write_hanging[directory] || 0 ;
+            count++ ;
+            z_file_write_hanging[directory] = count ;
+            if (count == 1) {
+                // maybe content.json is in list of bad files. Try if publish solved the problem
+                console.log(pgm + 'trying if sign with remove_missing_optional + publish will solve the problem') ;
+                inner_path1 = directory + '/content.json' ;
+                z_site_publish({inner_path: inner_path1, remove_missing_optional: true, reason: 'hanging fileWrite', encrypt: options.encrypt}, function (res) {
+                    if (res == 'ok') ZeroFrame.cmd("wrapperNotification", ['info', 'Problem with hanging fileWrite operation may have been solved', 5000]);
+                    else console.log(pgm + 'publish failed. error = ' + JSON.stringify(res)) ;
+                }) ;
+            }
+            else {
+                console.log(pgm + 'hanging fileWrite count = ' + count) ;
+                ZeroFrame.cmd("wrapperNotification", ['info', 'Warning. Hanging fileWrite operation<br>Check bad_files for hub ' + hub + '<br>for auth_address ' + auth_address]);
+            }
 
-                // 2: check if file is in bad_files.
-                ZeroFrame.cmd("mergerSiteList", [true], function (merger_sites) {
-                    var pgm = module + '.z_file_get cb2_timeout mergerSiteList callback 2: ' ;
-                    if (merger_sites.error) {
-                        console.log(pgm + 'mergerSiteList failed with ' + merger_sites.error) ;
-                        return cb2(null, true) ;
-                    }
-                    if (!merger_sites[hub]) {
-                        console.log(pgm + 'error. could not find hub ' + hub + ' in merger_sites ' + JSON.stringify(merger_sites)) ;
-                        return cb2(null, true) ;
-                    }
-
-                    console.log(pgm + 'Looking for ' + inner_path + ' in bad files. site_info = ' + JSON.stringify(merger_sites[hub])) ;
-                    if (cb2_done) return ; // cb2 has already run
-                    cb2(null, true) ;
-
-                }) ; // mergerSiteList callback 2
-
-            }) ; // fileList callback 1
-
-        }; // cb2_timeout
+        }; // cb2_timeout 1
         process_id = setTimeout(cb2_timeout, 1000) ;
 
-        debug_seq = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', null, options.group_debug_seq) ;
+        debug_seq0 = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', null, options.group_debug_seq) ;
         ZeroFrame.cmd("fileWrite", [inner_path, content], cb2) ;
     } // z_file_write
 
@@ -5274,12 +5265,12 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             MoneyNetworkAPILib.debug_z_api_operation_end(debug_seq4, res == 'ok' ? 'OK' : 'Failed. error = ' + JSON.stringify(res));
 
                             // 6: write file
-                            // todo: add timeout.
+                            // todo: add timeout. See #359 API - add timeout to fileWrite wrapper
                             request_filename = this_session_filename + optional + '.' + request_file_timestamp ;
                             inner_path5 = self.this_user_path + request_filename;
                             MoneyNetworkAPILib.debug_group_operation_update(group_debug_seq, {filename: request_filename}) ;
                             json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
-                            MoneyNetworkAPILib.z_file_write(pgm, inner_path5, btoa(json_raw), {group_debug_seq: group_debug_seq}, function (res) {
+                            MoneyNetworkAPILib.z_file_write(pgm, inner_path5, btoa(json_raw), {group_debug_seq: group_debug_seq, encrypt: self}, function (res) {
                                 var pgm = self.module + '.send_message fileWrite callback 6: ';
                                 // todo: check res == 'ok'
 
@@ -5752,7 +5743,7 @@ MoneyNetworkAPI.prototype.update_wallet_status = function(status, options, cb) {
                 request_filename = this_session_filename + optional + '.' + max_timestamp ;
                 inner_path2 = self.this_user_path + request_filename;
                 json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
-                MoneyNetworkAPILib.z_file_write(pgm, inner_path2, btoa(json_raw), {group_debug_seq: group_debug_seq}, function (res) {
+                MoneyNetworkAPILib.z_file_write(pgm, inner_path2, btoa(json_raw), {group_debug_seq: group_debug_seq, encrypt: self}, function (res) {
                     var pgm = self.module + '.update_wallet_status fileWrite callback 3: ';
                     var delete_old_status ;
                     if (res != 'ok') {
