@@ -2256,7 +2256,7 @@ angular.module('MoneyNetwork')
                                                 // no user data hubs with peers.
                                                 msg = [
                                                     "Failed to publish: " + res.error,
-                                                    'No peers were found for user data hub' + my_user_data_hub,
+                                                    'No peers were found for user data hub ' + my_user_data_hub,
                                                     'No other user data hubs with peers were found',
                                                     'Please add more user data hubs in Account page',
                                                     'Please select user profile hub in Account page'
@@ -2270,7 +2270,7 @@ angular.module('MoneyNetwork')
                                                 // one user data hub with peers. move user profile
                                                 msg = [
                                                     "Failed to publish: " + res.error,
-                                                    'No peers were found for user data hub' + my_user_data_hub,
+                                                    'No peers were found for user data hub ' + my_user_data_hub,
                                                     'Moving user profile to ' + user_data_hubs[0]
                                                 ] ;
                                                 console.log(pgm + msg.join('. ')) ;
@@ -2282,7 +2282,7 @@ angular.module('MoneyNetwork')
                                                 // more user data hubs with peers. Select random or ask user to select user data hub in Account page
                                                 msg = [
                                                     "Failed to publish: " + res.error,
-                                                    'No peers were found for user data hub' + my_user_data_hub,
+                                                    'No peers were found for user data hub ' + my_user_data_hub,
                                                     'You should move your user profile to an other user data hub',
                                                     'Press OK to confirm box or go to Account page and change default user data hub'] ;
                                                 console.log(pgm + msg.join('. ')) ;

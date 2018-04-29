@@ -1265,7 +1265,9 @@ angular.module('MoneyNetwork')
                 msg = 'MoneyNetwork was restored. Reloading page in 3 seconds' ;
                 console.log(pgm + msg) ;
                 z_wrapper_notification(['done', msg]) ;
-                job = function() { $window.location.reload() } ;
+                job = function() {
+                    $window.location.reload()
+                } ;
                 $timeout(job, 3000) ;
             }; // step_11_done
 
@@ -1605,7 +1607,7 @@ angular.module('MoneyNetwork')
                             found = false ;
                             // check wallet_sha256
                             for (j=0 ; j<self.wallets.length ; j++) {
-                                if (self.wallets[j].wallet_sha256 = data.wallets_ls[i].wallet_sha256) {
+                                if (self.wallets[j].wallet_sha256 == data.wallets_ls[i].wallet_sha256) {
                                     self.wallets[j].import_file_index = i ;
                                     self.wallets[j].import = true ;
                                     found = true ;
@@ -1615,7 +1617,7 @@ angular.module('MoneyNetwork')
                             if (found) continue ;
                             // check wallet url
                             for (j=0 ; j<self.wallets.length ; j++) {
-                                if (self.wallets[j].wallet_url = data.wallets_ls[i].wallet_url) {
+                                if (self.wallets[j].wallet_url == data.wallets_ls[i].wallet_url) {
                                     self.wallets[j].import_file_index = i ;
                                     self.wallets[j].import = true ;
                                     found = true ;

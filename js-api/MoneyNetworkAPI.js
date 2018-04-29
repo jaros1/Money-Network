@@ -742,7 +742,9 @@ var MoneyNetworkAPILib = (function () {
 
     // delete all sessions and reset all data in this lib
     function clear_all_data() {
+        var pgm = module + '.clear_all_data: ' ;
         var key, subsystem ;
+        console.log(pgm + 'clearing all MoneyNetworkAPI data. Expect some following JS errors!')
         delete_all_sessions() ;
         merged_type = 'MoneyNetwork' ;
         init_user_path_regexp() ;
@@ -2373,7 +2375,7 @@ var MoneyNetworkAPILib = (function () {
     var z_file_get_cbs = {} ;
 
     function z_file_get (pgm, options, cb) {
-        var inner_path, match34, hub, is_optional_file, filename, get_optional_file_info, pgm2, i, hub_added, run_cbs, hub_info ;
+        var inner_path, match34, hub, auth_address, filename, pos, is_optional_file, get_optional_file_info, pgm2, i, hub_added, run_cbs, hub_info ;
 
         // Check ZeroFrame
         if (!ZeroFrame) throw pgm + 'fileGet aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
@@ -2384,8 +2386,21 @@ var MoneyNetworkAPILib = (function () {
             // path to user directory.
             // check inner_path (old before merger site syntax data/users/<auth_address>/<filename>
             if (inner_path.match(inner_path_re2)) throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
+
             // check new merger site syntax merged-MoneyNetwork/<hub>/data/users/<auth_address>/<filename>
-            match34 = inner_path.match(inner_path_re3) || inner_path.match(inner_path_re4);
+            match34 = inner_path.match(inner_path_re3) ;
+            if (match34) { // hub content.json
+                auth_address = null ;
+                filename = 'content.json' ;
+            }
+            else {
+                match34 = inner_path.match(inner_path_re4) ;
+                if (match34) { // hub, auth_address and filename
+                    auth_address = match34[2] ;
+                    filename = match34[3] ;
+                }
+            }
+
             if (match34) {
                 // check hub
                 hub = match34[1] ;
@@ -2432,6 +2447,11 @@ var MoneyNetworkAPILib = (function () {
             }
             else throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
         }
+        else {
+            pos = inner_path.lastIndexOf('/') ;
+            filename = inner_path.substr(pos+1) ;
+        }
+        console.log(pgm + 'inner_path = ' + inner_path + ', hub = ' + hub + ', auth_address = ' + auth_address + ', filename = ' + filename) ;
 
         // check z_file_get cache. is fileGet operation already running?
         if (z_file_get_cbs[inner_path]) {
@@ -2460,24 +2480,18 @@ var MoneyNetworkAPILib = (function () {
             }
         } ; // run_cbs
 
-        if (inner_path == 'merged-MoneyNetwork/1W3Et1D5BnqfsXfx2kSx8T61fTPz5V2Ft/data/users/18DbeZgtVCcLghmtzvg4Uv8uRQAwR8wnDQ/content.json') {
-            inner_path += '' ;
-        }
-
         // check if file is a normal or an optional files.
         // 1) user directory files - use dbQuery, files and files_optional tables
         // 2) outsize user directories - use fileList
         is_optional_file = function(cb2) {
             var pgm = module + '.z_file_get.is_optional_file: ' ;
-            var match4, directory, filename, api_query_6, debug_seq, pos, inner_path2 ;
-            pos = inner_path.lastIndexOf('/') ;
-            filename = inner_path.substr(pos+1) ;
+            var directory, pos, inner_path2 ;
             if (filename == 'content.json') return cb2(false) ; // content.json is always a normal file
 
-            if (match4=inner_path.match(inner_path_re4)) {
+            if (auth_address) {
                 // 1: user directory file with hub, auth_address and filename. use files and files_optional tables
                 // read content.json and use optional pattern to check if file is an optional file
-                inner_path2 = inner_path.substr(0,pos) + '/content.json' ;
+                inner_path2 = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address + '/content.json' ;
                 // console.log(pgm + 'checking if ' + filename + ' is an optional file') ;
                 z_file_get(pgm, {inner_path: inner_path2, timeout: 1}, function (content_str, extra) {
                     var content, optional_re, m ;
@@ -2518,7 +2532,7 @@ var MoneyNetworkAPILib = (function () {
                 var pgm = module + '.z_file_get.is_optional_file fileList callback: ';
                 console.log(pgm + 'inner_path = ' + inner_path + ', directory = ' + directory + ', files.length = ' + files.length + ', files = ' + JSON.stringify(files)) ;
                 // assuming that not existing files are missing optional files (for example screendumps)
-                cb2((files.indexOf(filename) == -1)) ;
+                cb2((files.indexOf(inner_path) == -1)) ;
             }) ;
         } ; // is_optional_file
         is_optional_file(function(optional_file) {
@@ -2666,7 +2680,7 @@ var MoneyNetworkAPILib = (function () {
     var z_file_write_running = false ;
     var z_file_write_hanging = {} ; // directory => null, 1 (publish workaround),>=2 (notification only)
     function z_file_write (pgm, inner_path, content, options, cb) {
-        var match4, auth_address, cb2, cb2_done, cb2_timeout, process_id, debug_seq0, pgm2, hub, found_hub, i ;
+        var match4, auth_address, filename, cb2, cb2_done, cb2_timeout, process_id, debug_seq0, pgm2, hub, found_hub, i ;
         if (!ZeroFrame) throw pgm + 'fileWrite aborted. ZeroFrame is missing. Please use ' + module + '.init({ZeroFrame:xxx}) to inject ZeroFrame API into ' + module;
         if (!inner_path || inner_path.match(inner_path_re2)) throw pgm + 'Invalid call. parameter 2 inner_parth is not a merger-site path. inner_path = ' + inner_path ;
         if (typeof cb != 'function') throw pgm + 'Invalid call. parameter 5 cb is not a callback function' ;
@@ -2674,8 +2688,10 @@ var MoneyNetworkAPILib = (function () {
         pgm2 = get_group_debug_seq_pgm(pgm, options.group_debug_seq) ;
         match4 = inner_path.match(inner_path_re4) ;
         if (match4) {
-            // check auth_address
+            hub          = match4[1] ;
             auth_address = match4[2] ;
+            filename     = match4[3] ;
+            // check auth_address
             if (!ZeroFrame.site_info) throw pgm + 'fileWrite aborted. ZeroFrame is not yet ready' ;
             if (!ZeroFrame.site_info.cert_user_id) throw pgm + 'fileWrite aborted. No ZeroNet certificate selected' ;
             if (auth_address != ZeroFrame.site_info.auth_address) {
@@ -2685,11 +2701,10 @@ var MoneyNetworkAPILib = (function () {
             // check hub. for now just error message
             // https://github.com/jaros1/Money-Network-W2/issues/53
             // todo:should make a get_all_hubs call with cb
-            hub = match4[1] ;
             found_hub = -1 ;
             for (i=0 ; i<all_hubs.length ; i++) if (all_hubs[i].hub == hub) found_hub = i ;
-            if (found_hub == -1) console.log(pgm + 'error. could not find ' + hub + '. fileWrite cmd will fail') ;
-            else if (!all_hubs[found_hub].hub_added) console.log(pgm + 'error. hub ' + hub + ' has not been added. fileWrite will fail') ;
+            if (found_hub == -1) console.log(pgm + 'error. could not find ' + hub + '. fileWrite cmd will fail. all_hubs = ' + JSON.stringify(all_hubs)) ;
+            else if (!all_hubs[found_hub].hub_added) console.log(pgm + 'error. hub ' + hub + ' has not been added. fileWrite will fail. all_hubs = ' + JSON.stringify(all_hubs)) ;
         }
         else throw pgm + 'Invalid fileGet path. Not a merger-site path. inner_path = ' + inner_path ;
 
@@ -2707,7 +2722,7 @@ var MoneyNetworkAPILib = (function () {
 
         // extend cb.
         cb2_done = false ;
-        cb2 = function(res, timeout) {
+        cb2 = function(res) {
             var next_file_write_cb, run_cb ;
             if (process_id) {
                 // kill timeout process
@@ -2730,16 +2745,26 @@ var MoneyNetworkAPILib = (function () {
         }; // cb2
 
 
-        // fileWrite timeout in 1 second (UI error: This file still in sync, if you write it now, then the previous content may be lost)
-        // check fileList and mergerSiteList after fileWrite timeout
+        // fileWrite timeout in 5 seconds (UI error: This file still in sync, if you write it now, then the previous content may be lost)
+        // the must likely reason is that content.json is in bad_files list in sites.json files
+        // content.json published from an other ZerNet client. content.json only signed and not published in this client.
+        // sign + publish may solve the problem. clearing bad_files list in sites.json may solve the problem.
+        // see https://github.com/HelloZeroNet/ZeroNet/issues/1391, https://github.com/jaros1/Money-Network/issues/359 and https://github.com/jaros1/Money-Network-W3/issues/12
         cb2_timeout = function () {
             var pgm = module + '.z_file_get cb2_timeout 1: ' ;
-            var directory, count, inner_path1 ;
+            var directory, count, inner_path1, cmd, message, run_cb2_with_timeout ;
             if (cb2_done) return ; // cb2 has already run
             // timeout.
-            console.log(pgm + 'issue #359 API - add timeout to fileWrite wrapper') ;
-            console.log(pgm + 'fileWrite timeout after 1 second.') ;
-
+            console.log(pgm + 'issue #359: API - add timeout to fileWrite wrapper') ;
+            console.log(pgm + 'issue #359: fileWrite timeout after 5 seconds. inner_path = ' + inner_path) ;
+            // notification
+            cmd = './ZeroNet.sh siteSign ' + hub + ' --inner_path data/users/' + auth_address + '/content.json --remove_missing_optional --publish' ;
+            message = [ 'Detected hanging ' + filename + ' fileWrite cmd', 'Trying to fix the issue with a sitePublish', 'Use following cmd if the issue continues', cmd] ;
+            console.log(pgm + 'issue #359: ' + message.join('. ')) ;
+            ZeroFrame.cmd("wrapperNotification", ['info', message.join('<br>')]);
+            // terminate fileWrite operation with "timeout"
+            run_cb2_with_timeout = function() { cb2('timeout')} ;
+            setTimeout(run_cb2_with_timeout, 0) ;
             // workaround 1: try sign with remove_missing_optional + publish
             // workaround 2: notification only
             directory = 'merged-' + get_merged_type() + '/' + hub + '/data/users/' + auth_address ;
@@ -2748,20 +2773,31 @@ var MoneyNetworkAPILib = (function () {
             z_file_write_hanging[directory] = count ;
             if (count == 1) {
                 // maybe content.json is in list of bad files. Try if publish solved the problem
-                console.log(pgm + 'trying if sign with remove_missing_optional + publish will solve the problem') ;
+                console.log(pgm + 'issue #359: trying if publish will solve the problem. use terminal and the following command if the problem continues. clearing bad_files list in sites.json file may also fix the problem') ;
+                console.log(pgm + cmd) ;
                 inner_path1 = directory + '/content.json' ;
                 z_site_publish({inner_path: inner_path1, remove_missing_optional: true, reason: 'hanging fileWrite', encrypt: options.encrypt}, function (res) {
-                    if (res == 'ok') ZeroFrame.cmd("wrapperNotification", ['info', 'Problem with hanging fileWrite operation may have been solved', 5000]);
-                    else console.log(pgm + 'publish failed. error = ' + JSON.stringify(res)) ;
+                    if (res == 'ok') {
+                        message = ['Problem with hanging fileWrite operation may have been solved', 'Check bad_files in sites.json if the problem continues', 'Try the following terminal command if the problem continues', cmd] ;
+                        console.log(pgm + 'issue #359: ' + message.join('. ')) ;
+                        ZeroFrame.cmd("wrapperNotification", ['info', message.join('<br>')]);
+                    }
+                    else {
+                        console.log(pgm + 'issue #359: publish failed. error = ' + JSON.stringify(res)) ;
+                        message = ['Problem with hanging fileWrite operation has not been solved', 'Check bad_files in sites.json if the problem continues', 'Try the following terminal command if the problem continues', cmd] ;
+                        console.log(pgm + 'issue #359: ' + message.join('. ')) ;
+                        ZeroFrame.cmd("wrapperNotification", ['info', message.join('<br>')]);
+                    }
                 }) ;
             }
             else {
-                console.log(pgm + 'hanging fileWrite count = ' + count) ;
-                ZeroFrame.cmd("wrapperNotification", ['info', 'Warning. Hanging fileWrite operation<br>Check bad_files for hub ' + hub + '<br>for auth_address ' + auth_address]);
+                message = ['Warning. Hanging fileWrite operation. count = ' + count, 'Check bad_files in sites.json if the problem continues', 'Try the following terminal command if the problem continues', cmd] ;
+                console.log(pgm + 'issue #359: ' + message.join('. ')) ;
+                ZeroFrame.cmd("wrapperNotification", ['info', message.join('<br>')]);
             }
 
         }; // cb2_timeout 1
-        process_id = setTimeout(cb2_timeout, 1000) ;
+        process_id = setTimeout(cb2_timeout, 5000) ;
 
         debug_seq0 = debug_z_api_operation_start(pgm, inner_path, 'fileWrite', null, options.group_debug_seq) ;
         ZeroFrame.cmd("fileWrite", [inner_path, content], cb2) ;
@@ -5272,7 +5308,7 @@ MoneyNetworkAPI.prototype.send_message = function (request, options, cb) {
                             json_raw = unescape(encodeURIComponent(JSON.stringify(encrypted_json, null, "\t")));
                             MoneyNetworkAPILib.z_file_write(pgm, inner_path5, btoa(json_raw), {group_debug_seq: group_debug_seq, encrypt: self}, function (res) {
                                 var pgm = self.module + '.send_message fileWrite callback 6: ';
-                                // todo: check res == 'ok'
+                                if (res != 'ok') return set_error2('Cannot send message. fileWrite ' + request_filename + ' failed with ' + res) ;
 
                                 // 7: optional update status for wallet to wallet communication.
                                 self.update_wallet_status(status, {group_debug_seq: group_debug_seq, optional: optional}, function (res) {
