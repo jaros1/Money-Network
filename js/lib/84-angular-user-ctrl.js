@@ -1445,7 +1445,8 @@ angular.module('MoneyNetwork')
                     // OK response to wallet restore request. wallet restore will begin within 10 seconds
                     console.log(pgm + 'response = ' + JSON.stringify(response)) ;
 
-                    step_7_delete_z_file(data) ;
+                    // restore next wallet
+                    step_6_restore_wallet(data, index+1) ;
 
                 }) ; // send_message callback 1
 
